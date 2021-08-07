@@ -18,14 +18,15 @@
  *  Reload will enter Pause mode.
  * 
  *  In Pause mode:
- *  A, B, Start, Select, Up, Down, Left, Right = select a profile
- *  Start + Up = Normal gun with averaging, switch between the 2 averaging modes
- *  Start + Down = Normal gun mode (averaging disabled)
- *  Start + A = Processing mode for use with the Processing sketch
- *  B + Up = Cycle IR camera sensitivity (use serial monitor to see the setting)
- *  Reload = Exit pause mode
- *  Trigger = Begin calibration
- *  Start + Select = save settings to non-volatile memory
+ *  A, B, Start, Select, Up, Down, Left, Right: select a profile
+ *  Start + Down: Normal gun mode (averaging disabled)
+ *  Start + Up: Normal gun with averaging, toggles between the 2 averaging modes (use serial monitor to see the setting)
+ *  Start + A: Processing mode for use with the Processing sketch
+ *  B + Down: Decrease IR camera sensitivity (use serial monitor to see the setting)
+ *  B + Up: Increase IR camera sensitivity (use serial monitor to see the setting)
+ *  Reload: Exit pause mode
+ *  Trigger: Begin calibration
+ *  Start + Select: save settings to non-volatile memory
  *
  *  Note that the buttons in pause mode (and to enter pause mode) activate when the last button of
  *  the comination releases.
@@ -34,6 +35,9 @@
 
  /* HOW TO CALIBRATE:
  *  
+ *  Note: I renamed "offset" from the original sketch to "scale" which is a better term for what the setting is.
+ *  The center calibration step determines the offset compensation required for accurate positioning.
+ * 
  *  Step 1: Press Reload to enter pause mode.
  *          Optional: Press a button to select a profile: A, B, Start, Select, Up, Down, Left, Right
  *  Step 2: Pull Trigger to begin calibration.
@@ -46,11 +50,10 @@
  *  Step 7: Pull Trigger to finish and return to run mode. Values will apply to the selected profile.
  *  Step 8: Recommended: Confirm calibration is good. Enter pause mode and press Start and Select
  *          to write calibration to non-volatile memory.
- *  Step 9: Optional: Open serial monitor and update xCenter, yCenter, xOffset & yOffset values in the
+ *  Step 9: Optional: Open serial monitor and update xCenter, yCenter, xScale & yScale values in the
  *          profile data array below.
  * 
  *  Calibration can be cancelled (return to pause mode) during any step by pressing Reload or Start or Select.
- *  
 */
 
 #include <Arduino.h>
@@ -169,8 +172,11 @@ constexpr uint32_t SkipCalCenterBtnMask = BtnMask_A;
 // button combo to save preferences to non-volatile memory
 constexpr uint32_t SaveBtnMask = BtnMask_Start | BtnMask_Select;
 
-// button combo to cycle IR sensitivity
-constexpr uint32_t IRSensitivityBtnMask = BtnMask_B | BtnMask_Up;
+// button combo to increase IR sensitivity
+constexpr uint32_t IRSensitivityUpBtnMask = BtnMask_B | BtnMask_Up;
+
+// button combo to decrease IR sensitivity
+constexpr uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
 
 // button combinations to select a run mode
 constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_Down;
@@ -200,7 +206,7 @@ enum RunMode_e {
 // profiles
 // defaults can be populated here, or not worry about these values and just save to flash/EEPROM
 // if you have original Samco calibration values, multiply by 4 for the center position and
-// offset is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
+// scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
     {1619, 950, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
     {1233, 950, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
@@ -253,11 +259,11 @@ static const ProfileDesc_t profileDesc[ProfileCount] = {
 // see profileData[] array below for specific profile defaults
 int xCenter = MouseMaxX / 2;
 int yCenter = MouseMaxY / 2;
-float xOffset = 1.64;
-float yOffset = 0.95;
+float xScale = 1.64;
+float yScale = 0.95;
 
-// step size for adjusting the offset
-constexpr float OffsetStep = 0.001;
+// step size for adjusting the scale
+constexpr float ScaleStep = 0.001;
 
 int finalX = 0;         // Values after tilt correction
 int finalY = 0;
@@ -451,11 +457,11 @@ void setup() {
     if(profileData[selectedProfile].yCenter == 0) {
         profileData[selectedProfile].yCenter = yCenter;
     }
-    if(profileData[selectedProfile].xOffset == 0) {
-        profileData[selectedProfile].xOffset = CalOffsetFloatToPref(xOffset);
+    if(profileData[selectedProfile].xScale == 0) {
+        profileData[selectedProfile].xScale = CalScaleFloatToPref(xScale);
     }
-    if(profileData[selectedProfile].yOffset == 0) {
-        profileData[selectedProfile].yOffset = CalOffsetFloatToPref(yOffset);
+    if(profileData[selectedProfile].yScale == 0) {
+        profileData[selectedProfile].yScale = CalScaleFloatToPref(yScale);
     }
     
     // fetch the calibration data, other values already handled in ApplyInitialPrefs() 
@@ -654,8 +660,10 @@ void loop() {
                 SetRunMode(runMode == RunMode_Average ? RunMode_Average2 : RunMode_Average);
             } else if(buttons.pressedReleased == RunModeProcessingBtnMask) {
                 SetRunMode(RunMode_Processing);
-            } else if(buttons.pressedReleased == IRSensitivityBtnMask) {
-                CycleIrSensitivity();
+            } else if(buttons.pressedReleased == IRSensitivityUpBtnMask) {
+                IncreaseIrSensitivity();
+            } else if(buttons.pressedReleased == IRSensitivityDownBtnMask) {
+                DecreaseIrSensitivity();
             } else if(buttons.pressedReleased == SaveBtnMask) {
                 SavePreferences();
             } else {
@@ -744,10 +752,10 @@ void ExecRunMode()
             irPosUpdateTick = 0;
             GetPosition();
             
-            int halfHoffset = (int)(mySamco.h() * xOffset + 0.5f) / 2;
-            moveXAxis = map(finalX, xCenter + halfHoffset, xCenter - halfHoffset, 0, MouseMaxX);
-            halfHoffset = (int)(mySamco.h() * yOffset + 0.5f) / 2;
-            moveYAxis = map(finalY, yCenter + halfHoffset, yCenter - halfHoffset, 0, MouseMaxY);
+            int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+            moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+            halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+            moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
 
             switch(runMode) {
             case RunMode_Average:
@@ -885,11 +893,11 @@ void CalCenter()
     PrintCalInterval();
 }
 
-// vertical offset calibration 
+// vertical calibration 
 void CalVert()
 {
     if(GetPositionIfReady()) {
-        int halfH = (int)(mySamco.h() * yOffset + 0.5f) / 2;
+        int halfH = (int)(mySamco.h() * yScale + 0.5f) / 2;
         moveYAxis = map(finalY, yCenter + halfH, yCenter - halfH, 0, MouseMaxY);
         conMoveXAxis = MouseMaxX / 2;
         conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);
@@ -897,12 +905,12 @@ void CalVert()
     }
     
     if(buttons.repeat & BtnMask_B) {
-        yOffset = yOffset + OffsetStep;
+        yScale = yScale + ScaleStep;
     }
     
     if(buttons.repeat & BtnMask_A) {
-        if(yOffset > 0.005f) {
-            yOffset = yOffset - OffsetStep;
+        if(yScale > 0.005f) {
+            yScale = yScale - ScaleStep;
         }
     }
 
@@ -915,11 +923,11 @@ void CalVert()
     PrintCalInterval();
 }
 
-// horizontal offset calibration 
+// horizontal calibration 
 void CalHoriz()
 {
     if(GetPositionIfReady()) {    
-        int halfH = (int)(mySamco.h() * xOffset + 0.5f) / 2;
+        int halfH = (int)(mySamco.h() * xScale + 0.5f) / 2;
         moveXAxis = map(finalX, xCenter + halfH, xCenter - halfH, 0, MouseMaxX);
         conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
         conMoveYAxis = MouseMaxY / 2;
@@ -927,12 +935,12 @@ void CalHoriz()
     }
 
     if(buttons.repeat & BtnMask_B) {
-        xOffset = xOffset + OffsetStep;
+        xScale = xScale + ScaleStep;
     }
     
     if(buttons.repeat & BtnMask_A) {
-        if(yOffset > 0.005f) {
-            xOffset = xOffset - OffsetStep;
+        if(xScale > 0.005f) {
+            xScale = xScale - ScaleStep;
         }
     }
     
@@ -1131,10 +1139,10 @@ void PrintCal()
     Serial.print(xCenter);
     Serial.print(",");
     Serial.print(yCenter);
-    Serial.print(" Offsets x,y: ");
-    Serial.print(xOffset, 3);
+    Serial.print(" Scale x,y: ");
+    Serial.print(xScale, 3);
     Serial.print(",");
-    Serial.println(yOffset, 3);
+    Serial.println(yScale, 3);
 }
 
 void PrintRunMode()
@@ -1146,15 +1154,15 @@ void PrintRunMode()
 }
 
 // helper in case this changes
-float CalOffsetPrefToFloat(uint16_t offset)
+float CalScalePrefToFloat(uint16_t scale)
 {
-    return (float)offset / 1000.0f;
+    return (float)scale / 1000.0f;
 }
 
 // helper in case this changes
-uint16_t CalOffsetFloatToPref(float offset)
+uint16_t CalScaleFloatToPref(float scale)
 {
-    return (uint16_t)(offset * 1000.0f);
+    return (uint16_t)(scale * 1000.0f);
 }
 
 void PrintPreferences()
@@ -1194,10 +1202,10 @@ void PrintPreferences()
             Serial.print(profileData[i].xCenter);
             Serial.print(",");
             Serial.print(profileData[i].yCenter);
-            Serial.print(" Offset: ");
-            Serial.print(CalOffsetPrefToFloat(profileData[i].xOffset), 3);
+            Serial.print(" Scale: ");
+            Serial.print(CalScalePrefToFloat(profileData[i].xScale), 3);
             Serial.print(",");
-            Serial.print(CalOffsetPrefToFloat(profileData[i].yOffset), 3);
+            Serial.print(CalScalePrefToFloat(profileData[i].yScale), 3);
             Serial.print(" IR: ");
             Serial.print((unsigned int)profileData[i].irSensitivity);
             Serial.print(" Mode: ");
@@ -1259,17 +1267,17 @@ void VerifyPreferences()
 {
     // center 0 is used as "no cal data"
     for(unsigned int i = 0; i < ProfileCount; ++i) {
-        if(profileData[i].xCenter >= MouseMaxX || profileData[i].yCenter >= MouseMaxY || profileData[i].xOffset == 0 || profileData[i].yOffset == 0) {
+        if(profileData[i].xCenter >= MouseMaxX || profileData[i].yCenter >= MouseMaxY || profileData[i].xScale == 0 || profileData[i].yScale == 0) {
             profileData[i].xCenter = 0;
             profileData[i].yCenter = 0;
         }
 
-        // if the offsets are large, assign 0 so the values will be ignored
-        if(profileData[i].xOffset >= 30000) {
-            profileData[i].xOffset = 0;
+        // if the scale values are large, assign 0 so the values will be ignored
+        if(profileData[i].xScale >= 30000) {
+            profileData[i].xScale = 0;
         }
-        if(profileData[i].yOffset >= 30000) {
-            profileData[i].yOffset = 0;
+        if(profileData[i].yScale >= 30000) {
+            profileData[i].yScale = 0;
         }
     
         if(profileData[i].irSensitivity > DFRobotIRPositionEx::Sensitivity_Max) {
@@ -1360,6 +1368,24 @@ void CycleIrSensitivity()
     SetIrSensitivity(sens);
 }
 
+void IncreaseIrSensitivity()
+{
+    uint8_t sens = irSensitivity;
+    if(irSensitivity < DFRobotIRPositionEx::Sensitivity_Max) {
+        sens++;
+        SetIrSensitivity(sens);
+    }
+}
+
+void DecreaseIrSensitivity()
+{
+    uint8_t sens = irSensitivity;
+    if(irSensitivity > DFRobotIRPositionEx::Sensitivity_Min) {
+        sens--;
+        SetIrSensitivity(sens);
+    }
+}
+
 // set a new IR camera sensitivity and apply to the selected profile
 void SetIrSensitivity(uint8_t sensitivity)
 {
@@ -1446,12 +1472,12 @@ bool SelectCalPrefs(unsigned int profile)
         xCenter = profileData[profile].xCenter;
         yCenter = profileData[profile].yCenter;
         
-        // 0 offsets will be ignored
-        if(profileData[profile].xOffset) {
-            xOffset = CalOffsetPrefToFloat(profileData[profile].xOffset);
+        // 0 scale will be ignored
+        if(profileData[profile].xScale) {
+            xScale = CalScalePrefToFloat(profileData[profile].xScale);
         }
-        if(profileData[profile].yOffset) {
-            yOffset = CalOffsetPrefToFloat(profileData[profile].yOffset);
+        if(profileData[profile].yScale) {
+            yScale = CalScalePrefToFloat(profileData[profile].yScale);
         }
         return true;
     }
@@ -1480,8 +1506,8 @@ void ApplyCalToProfile()
 {
     profileData[selectedProfile].xCenter = xCenter;
     profileData[selectedProfile].yCenter = yCenter;
-    profileData[selectedProfile].xOffset = CalOffsetFloatToPref(xOffset);
-    profileData[selectedProfile].yOffset = CalOffsetFloatToPref(yOffset);
+    profileData[selectedProfile].xScale = CalScaleFloatToPref(xScale);
+    profileData[selectedProfile].yScale = CalScaleFloatToPref(yScale);
 
     stateFlags |= StateFlag_PrintSelectedProfile;
 }

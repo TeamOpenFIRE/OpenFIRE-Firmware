@@ -48,56 +48,57 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 ## IR camera sensitivity
 The IR camera sensitivity can be adjusted. It is recommended to adjust the sensitivity to as high as possible. If the IR sensitivity is too low then the pointer precision can suffer. However, too high of a sensitivity can cause the camera to pick up unwanted reflections that will cause the pointer to jump around. It is impossible to know which setting will work best since it is all dependent the specific setup. It depends on how bright the IR emitters are, the distance, camera lens, and if shiny surfaces may cause reflections.
 
-A sign that the IR sensitivity is too low is if the pointer moves in noticeable steps acts as if it has a low resolution to it. The movement should look fluid and fine on an HD or even QHD screen. If you have the sensitivity level set to max and you notice this then the IR emitters may not be bright enough.
+A sign that the IR sensitivity is too low is if the pointer moves in noticeable coarse steps, as if it has a low resolution to it. If you have the sensitivity level set to max and you notice this then the IR emitters may not be bright enough.
 
-A sign that the IR sensitivity is too high is if the pointer jumps around erratically, especially when you try and aim at specific locations. This typically means a reflection is being picked up and used for positioning instead of one of the intended IR emitters. If the sensitivity is at max, step it down to high or minimum. Ideally eliminate the reflective surface.
+A sign that the IR sensitivity is too high is if the pointer jumps around erratically, especially when aiming at specific locations. This typically means a reflection is being detected by the camera and used for positioning instead of one of the intended IR emitters. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface.
 
 ## Profiles
-By default there are 8 profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings.
+The sketch is configured with 8 profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by assigning a unique button or combination.
 
-## Default Buttons (normal running mode)
-- Trigger: left mouse button
-- A: left mouse button
-- B: middle mouse button
+## Default Buttons
+- Trigger: Left mouse button
+- A: Right mouse button
+- B: Middle mouse button
 - Start: 1 key
 - Select: 5 key
-- Up/Down/Left/Right: keyboard arrow keys
+- Up/Down/Left/Right: Keyboard arrow keys
 - Reload: Enter pause mode
 - Pedal: Mouse button 5
 
 ## Default Buttons in Pause mode
 - A, B, Start, Select, Up, Down, Left, Right: select a profile
-- Start + Up: Normal gun with averaging, switch between the 2 averaging modes
 - Start + Down: Normal gun mode (averaging disabled)
+- Start + Up: Normal gun with averaging, switch between the 2 averaging modes (use serial monitor to see the setting)
 - Start + A: Processing mode for use with the Processing sketch
-- B + Up: Cycle IR camera sensitivity (use serial monitor to see the setting)
+- B + Down: Decrease IR camera sensitivity (use serial monitor to see the setting)
+- B + Up: Increase IR camera sensitivity (use serial monitor to see the setting)
 - Reload: Exit pause mode
 - Trigger: Begin calibration
 - Start + Select: save settings to non-volatile memory (EEPROM or Flash depending on the board configuration)
 
 ## How to calibrate
-1. Press Reload to enter pause mode.
-2. Press a button to select a profile unless you want to calibration the current profile selection.
-3. Pull Trigger to begin calibration.
-4. Shoot cursor at center of the screen and hold the trigger down for 1/3 of a second. Release the trigger when you see the cursor move.
-5. Mouse should lock to vertical axis. Use A/B buttons (can be held down) buttons to adjust mouse vertical range. A will increase, B will decrease. Track the top and bottom edges of the screen while adjusting.
-6. Pull Trigger for horizontal calibration.
-7. Mouse should lock to horizontal axis. Use A/B buttons (can be held down) to adjust mouse horizontal range. A will increase, B will decrease. Track the left and right edges of the screen while adjusting.
-8. Pull Trigger to finish and return to run mode. Values will apply to the currently selected profile.
+1. Press **Reload** to enter pause mode.
+2. Press a button to select a profile unless you want to calibration the current profile.
+3. Pull the **Trigger** to begin calibration.
+4. Shoot the pointer at center of the screen and hold the trigger down for 1/3 of a second while keeping a steady aim.
+5. The mouse should lock to the vertical axis. Use the **A**/**B** buttons (can be held down) to adjust the mouse vertical range. **A** will increase and **B** will decrease. Track the pointer at the top and bottom edges of the screen while adjusting.
+6. Pull the **Trigger** for horizontal calibration.
+7. The mouse should lock to the horizontal axis. Use the **A**/**B** buttons (can be held down) to adjust the mouse horizontal range. **A** will increase and **B** will decrease. Track the pointer at the left and right edges of the screen while adjusting.
+8. Pull the **Trigger** to finish and return to run mode. Values will apply to the currently selected profile in memory.
 9. Recommended: After confirming the calibration is good, enter pause mode and press Start and Select to save the calibration to non-volatile memory.
-10. Optional: Open serial monitor and update xCenter, yCenter, xOffset & yOffset values in the profile data array (no need with step 9).
+10. Optional: Open serial monitor and update the `xCenter`, `yCenter`, `xScale`, and `yScale` values in the profile data array in the sketch (no need with step 9).
  
-Calibration can be cancelled during any step by pressing Reload or Start or Select. The gun will return to pause mode if you cancel the calibration.
+Calibration can be cancelled during any step by pressing **Reload** or **Start** or **Select**. The gun will return to pause mode if you cancel the calibration.
 
 ### Advanced calibration
-- During center calibration step press A to skip to the vertical offset
-- During vertical offset calibration, tap up or down to manually fine tune the vertical offset
-- During horizontal offset calibration, tap left or right to manually fine tune the horizontal offset
+- During center calibration, press **A** to skip this step and proceed to the vertical calibration
+- During vertical calibration, tap **Up** or **Down** to manually fine tune the vertical offset
+- During horizontal calibration, tap **Left** or **Right** to manually fine tune the horizontal offset
 
 ## Saving settings to non-volatile memory
-The calibration data and profile settings can be saved in non-volatile memory. The currently selected profile is saved as the default when the light gun is plugged in.
+The calibration data and profile settings can be saved in non-volatile memory. The currently selected profile is saved as the default for when the light gun is plugged in.
 
-For ItsyBitsy M0 and M4 boards the external on-board flash memory is used. For ATmega32U4 the EEPROM is used.
+For ItsyBitsy M0 and M4 boards the external on-board SPI flash memory is used. For ATmega32U4 the EEPROM is used.
 
 ## Sketch Configuration
 The sketch is configured for a SAMCO 2.0 (GunCon 2) build. If you are using a SAMCO 2.0 PCB or your build matches the SAMCO 2.0 button assignment then the sketch will work as is. If you are using a different set of buttons then the sketch will have to be modified.

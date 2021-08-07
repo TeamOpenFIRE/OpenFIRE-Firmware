@@ -42,8 +42,8 @@ public:
 
     /// @brief Profile data
     typedef struct ProfileData_s {
-        uint16_t xOffset;	        ///< X Offset * 1000
-        uint16_t yOffset;           ///< Y Offset * 1000
+        uint16_t xScale;	        ///< X Scale * 1000
+        uint16_t yScale;            ///< Y Scale * 1000
         uint32_t xCenter : 12;
         uint32_t yCenter : 12;
         uint32_t irSensitivity : 3;
