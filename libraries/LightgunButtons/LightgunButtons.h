@@ -167,4 +167,4 @@ public:
     }
 };
 
-#endif _LIGHTGUNBUTTONS_H_
+#endif // _LIGHTGUNBUTTONS_H_

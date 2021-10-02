@@ -24,6 +24,9 @@
 
 #include <stdint.h>
 
+// forward declare Wire class
+class TwoWire;
+
 /*!
 *  @brief DFRobot IR positioning camera with extended functionality.
 */
@@ -90,7 +93,7 @@ class DFRobotIRPositionEx {
     /*!
     * @brief Request the position data. IIC will block the progress until all the data is recevied.
     */
-    static bool readPosition(PositionData_t& posData, unsigned int length);
+    bool readPosition(PositionData_t& posData, unsigned int length);
 
     /*!
     * @brief Unconditionally unpack basic frame from positionData. Does not update seen flags.
@@ -111,6 +114,11 @@ class DFRobotIRPositionEx {
     * @brief Unpack extended frame from positionData and update position if seen. Seen flags are updated.
     */
    void unpackExtendedFrameSeen(unsigned int posData);
+
+    /*!
+    * @brief Wire object to use.
+    */
+    TwoWire& wire;
 
     /*!
     * @brief Raw postion data.
@@ -187,7 +195,7 @@ public:
     /*!
     * @brief Constructor
     */
-    DFRobotIRPositionEx();
+    DFRobotIRPositionEx(TwoWire& wire);
   
     /*!
     * @brief Destructor

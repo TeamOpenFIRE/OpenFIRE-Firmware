@@ -4,15 +4,17 @@
  * @n Based on AbsMouse Arduino library. Modified to be a 5 button device.
  */
 
+#if defined(USE_TINYUSB)
+#include <Adafruit_TinyUSB.h>
+#elif defined(CFG_TUSB_MCU)
+#error Incompatible USB stack. Use Arduino or Adafruit TinyUSB.
+#else
 #include <HID.h>
+#endif
+
 #include "AbsMouse5.h"
 
-#if !defined(_USING_HID)
-
-#warning "AbsMouse5 not compatible with this device and/or firmware"
-
-#else
-
+#if defined(_USING_HID)
 static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 	0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
 	0x09, 0x02,        // Usage (Mouse)
@@ -44,11 +46,14 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 	0xC0,              //   End Collection
 	0xC0               // End Collection
 };
+#endif // _USING_HID
 
-AbsMouse5_::AbsMouse5_(void) : _buttons(0), _x(0), _y(0), _width(32767l), _height(32767l), _autoReport(true)
+AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0), _width(32767l), _height(32767l), _autoReport(true)
 {
+#if defined(_USING_HID)
 	static HIDSubDescriptor descriptorNode(HID_REPORT_DESCRIPTOR5, sizeof(HID_REPORT_DESCRIPTOR5));
 	HID().AppendDescriptor(&descriptorNode);
+#endif // _USING_HID
 }
 
 void AbsMouse5_::init(uint16_t width, uint16_t height, bool autoReport)
@@ -66,7 +71,12 @@ void AbsMouse5_::report(void)
 	buffer[2] = (_x >> 8) & 0xFF;
 	buffer[3] = _y & 0xFF;
 	buffer[4] = (_y >> 8) & 0xFF;
-	HID().SendReport(1, buffer, 5);
+#if defined(_USING_HID)
+	HID().SendReport(_reportId, buffer, 5);
+#endif // _USING_HID
+#if defined(USE_TINYUSB)
+	tud_hid_report(_reportId, buffer, 5);
+#endif // USE_TINYUSB
 }
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
@@ -77,7 +87,7 @@ void AbsMouse5_::move(uint16_t x, uint16_t y)
 	if(x != _x || y != _y) {
 		_x = x;
 		_y = y;
-		if (_autoReport) {
+		if(_autoReport) {
 			report();
 		}
 	}
@@ -100,8 +110,3 @@ void AbsMouse5_::release(uint8_t button)
 		report();
 	}
 }
-
-// global singleton
-AbsMouse5_ AbsMouse5;
-
-#endif

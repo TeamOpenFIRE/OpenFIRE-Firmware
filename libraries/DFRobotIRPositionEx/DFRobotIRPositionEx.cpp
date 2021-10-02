@@ -39,7 +39,7 @@ constexpr unsigned long DFRIRdata_IICdelay = 10;
 // maximum valid Y position
 constexpr int DFRIRdata_MaxY = 767;
 
-DFRobotIRPositionEx::DFRobotIRPositionEx() : seenFlags(0)
+DFRobotIRPositionEx::DFRobotIRPositionEx(TwoWire& _wire) : wire(_wire), seenFlags(0)
 {
 }
 
@@ -49,10 +49,10 @@ DFRobotIRPositionEx::~DFRobotIRPositionEx()
 
 void DFRobotIRPositionEx::writeTwoIICByte(uint8_t first, uint8_t second)
 {
-    Wire.beginTransmission(IRAddress);
-    Wire.write(first);
-    Wire.write(second);
-    Wire.endTransmission();
+    wire.beginTransmission(IRAddress);
+    wire.write(first);
+    wire.write(second);
+    wire.endTransmission();
 }
 
 void DFRobotIRPositionEx::dataFormat(DataFormat_e format)
@@ -81,9 +81,17 @@ void DFRobotIRPositionEx::sensitivityLevel(Sensitivity_e sensitivity)
 
 void DFRobotIRPositionEx::begin(uint32_t clock, DataFormat_e format, Sensitivity_e sensitivity)
 {
-    Wire.begin();
-    // looking under the covers, the Wire default is only 100kHz (on ItsyBitsy SAMD), so allow a custom setting
-    Wire.setClock(clock);
+    // looking under the covers, the Wire default is only 100kHz (on AVR and SAMD), so allow a custom setting
+    // so close to the code being 100% portable... yes the order you call setClock() appears to differ for the RP2040
+#ifdef ARDUINO_ARCH_RP2040
+    // For RP2040 the clock must be set before calling begin()
+    wire.setClock(clock);
+    wire.begin();
+#else
+    // For AVR and SAMD the clock must be changed after begin()
+    wire.begin();
+    wire.setClock(clock);
+#endif
     // stop camera?
     writeTwoIICByte(0x30,0x01);
     delay(DFRIRdata_IICdelay);
@@ -97,18 +105,18 @@ void DFRobotIRPositionEx::begin(uint32_t clock, DataFormat_e format, Sensitivity
 
 void DFRobotIRPositionEx::requestPositionExtended()
 {
-    Wire.beginTransmission(IRAddress);
-    Wire.write(0x36);
-    Wire.endTransmission();
-    Wire.requestFrom(IRAddress, DFRIRdata_LengthExtended);
+    wire.beginTransmission(IRAddress);
+    wire.write(0x36);
+    wire.endTransmission();
+    wire.requestFrom(IRAddress, DFRIRdata_LengthExtended);
 }
 
 void DFRobotIRPositionEx::requestPositionBasic()
 {
-    Wire.beginTransmission(IRAddress);
-    Wire.write(0x36);
-    Wire.endTransmission();
-    Wire.requestFrom(IRAddress, DFRIRdata_LengthBasic);
+    wire.beginTransmission(IRAddress);
+    wire.write(0x36);
+    wire.endTransmission();
+    wire.requestFrom(IRAddress, DFRIRdata_LengthBasic);
 }
 
 bool DFRobotIRPositionEx::availableExtended()
@@ -149,9 +157,9 @@ bool DFRobotIRPositionEx::availableBasicNoSeen()
 
 bool DFRobotIRPositionEx::readPosition(PositionData_t& posData, unsigned int length)
 {
-    if(Wire.available() == length) {   //read only the data lenth fits.
+    if(wire.available() == length) {   //read only the data lenth fits.
         for(int i = 0; i < length; ++i) {
-            posData.receivedBuffer[i] = Wire.read();
+            posData.receivedBuffer[i] = wire.read();
         }
 
         // looks like the header should always be 0, extra sanity for valid data
@@ -162,8 +170,8 @@ bool DFRobotIRPositionEx::readPosition(PositionData_t& posData, unsigned int len
     }
 
     // length mismatch, flush the read buffer
-    while(Wire.available()) {
-        Wire.read();
+    while(wire.available()) {
+        wire.read();
     }
     return false;
 }

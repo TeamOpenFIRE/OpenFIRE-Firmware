@@ -47,6 +47,16 @@
     // DFRobot IR camera IIC clock
     // The ATmega32u4 datasheet says a maximum of 400kHz
     #define DFROBOT_IR_IIC_CLOCK 400000
+#elif defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
+    // Raspberry Pi Pico RP2040
+    #define SAMCO_RP2040 1
+    
+    // DFRobot IR camera IIC clock
+    // even with cheap clips and the full length IR cam cable 1MHz is fine
+    #define DFROBOT_IR_IIC_CLOCK 1000000
+
+    // Earle Philhower Arduino RP2040 reserves 4KB of flash using the Arduino EEPROM object, neat!
+    #define SAMCO_EEPROM_ENABLE 1
 #else
     // unknown board
     // this will use millis() for camera update timing instead of a hardware timer
@@ -63,7 +73,8 @@
 
     // use flash
     #define SAMCO_FLASH_ENABLE 1
-#elif defined(ADAFRUIT_ITSYBITSY_M4_EXPRESS) || defined(ARDUINO_ITSYBITSY_M4)
+#endif // ADAFRUIT_ITSYBITSY_M0
+#if defined(ADAFRUIT_ITSYBITSY_M4_EXPRESS) || defined(ARDUINO_ITSYBITSY_M4)
     // included Dot Star on ItsyBitsy M4
     #define DOTSTAR_DATAPIN 8
     #define DOTSTAR_CLOCKPIN 6
@@ -71,7 +82,12 @@
 
     // use flash
     #define SAMCO_FLASH_ENABLE 1
-#endif // ADAFRUIT_ITSYBITSY
+#endif // ADAFRUIT_ITSYBITSY_M4_EXPRESS
+#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
+    // included Neopixel on ItsyBitsy RP2040
+    #define NEOPIXEL_PIN 17
+    #define NEOPIXEL_ENABLEPIN 16
+#endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 
 // auto-detect flash presence if it is not yet enabled and no EEPROM
 #if !defined(SAMCO_FLASH_ENABLE) && !defined(SAMCO_EEPROM_ENABLE)

@@ -15,19 +15,26 @@ Based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/sa
 - Built in Processing mode for use with the SAMCO Processing sketch
 
 ## Requirements
-- Adafruit ItsyBitsy M0, M4, ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz
+- Adafruit ItsyBitsy M0, M4, RP2040, ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz
 - DFRobot IR Positioning Camera (SEN0158)
 - 4 IR LED emitters
 
 With minor modifications it should work with any SAMD21, SAMD51, or ATmega32U4 16MHz boards. See the SAMCO project for build details: https://github.com/samuelballantyne/IR-Light-Gun
 
-I recommend using an ItsyBitsy M0 or M4 to future proof your build since there is way more memory, they are much faster, and the build is super easy if you use a SAMCO PCB. The ATmega32U4 builds are almost out of code space.
+I recommend using an ItsyBitsy M0, M4, or RP2040 to future proof your build since there is way more memory, they are much faster, and the build is super easy if you use a SAMCO PCB. The ATmega32U4 builds are almost out of code space.
 
 ## IR Emitter setup
 The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, you can use 2 Wii sensor bars; one on top of your screen and one below.
 
-## Compiling
-If you are using an ItsyBitsy M0 or M4 then it is recommended to set the Optimize option to -Ofast "Here be dragons" (or Fastest). If you are using an ItsyBitsy M4 (or any other SAMD51 board) then set the CPU Speed to 120 MHz standard. There is no need for overclocking.
+## Arduino Library Dependencies
+Be sure to have the following libraries installed depending on the board you are using (or just install them all).
+- Adafruit DotStar (for ItsyBitsy M0 and M4)
+- Adafruit NeoPixel (for ItsyBitsy RP2040)
+- Adafruit SPI Flash (for ItsyBitsy M0 and M4)
+- Adafruit TinyUSB (for ItsyBitsy RP2040)
+
+## Compiling and Configuration Options
+If you are using an ItsyBitsy M0 or M4 then I recommend you set the Optimize option to -O3 (or faster). If you are using an ItsyBitsy RP2040 then I recommend the -O3 Optimize option. If you are using an ItsyBitsy M4 (or any other SAMD51 board) then set the CPU Speed to 120 MHz standard. If you are using an ItsyBitsy RP2040 then set the CPU Speed to 125 MHz. There is no need for overclocking. Set the USB Stack option to Arduino except for the ItsyBitsy RP2040, it must use Adafruit TinyUSB.
 
 ## Operation
 The light gun operates as a mouse until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
@@ -45,12 +52,15 @@ The gun has the following modes of operation:
 
 The averaging modes are subtle but do reduce the motion jitter a bit without adding much if any noticeable lag.
 
+## Processing mode
+The Processing mode is intended for use with the SAMCO Processing sketch. Download Processing from processing.org and find the 4IR Processing sketch from the SAMCO project. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly. I suppose if you don't want to install Processing then you can just open your favourite serial terminal program and watch the numbers scroll by.
+
 ## IR camera sensitivity
-The IR camera sensitivity can be adjusted. It is recommended to adjust the sensitivity to as high as possible. If the IR sensitivity is too low then the pointer precision can suffer. However, too high of a sensitivity can cause the camera to pick up unwanted reflections that will cause the pointer to jump around. It is impossible to know which setting will work best since it is all dependent the specific setup. It depends on how bright the IR emitters are, the distance, camera lens, and if shiny surfaces may cause reflections.
+The IR camera sensitivity can be adjusted. It is recommended to adjust the sensitivity as high as possible. If the IR sensitivity is too low then the pointer precision can suffer. However, too high of a sensitivity can cause the camera to pick up unwanted reflections that will cause the pointer to jump around. It is impossible to know which setting will work best since it is dependent on the specific setup. It depends on how bright the IR emitters are, the distance, camera lens, and if shiny surfaces may cause reflections.
 
 A sign that the IR sensitivity is too low is if the pointer moves in noticeable coarse steps, as if it has a low resolution to it. If you have the sensitivity level set to max and you notice this then the IR emitters may not be bright enough.
 
-A sign that the IR sensitivity is too high is if the pointer jumps around erratically, especially when aiming at specific locations. This typically means a reflection is being detected by the camera and used for positioning instead of one of the intended IR emitters. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface.
+A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. The Processing sketch can help daignose this problem since it will visually display the 4 IR points.
 
 ## Profiles
 The sketch is configured with 8 profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by assigning a unique button or combination.
@@ -106,10 +116,12 @@ The sketch is configured for a SAMCO 2.0 (GunCon 2) build. If you are using a SA
 ### Define Buttons
 Find the `LightgunButtons::ButtonDesc` array and define all of the buttons. The order of the buttons in the array represent a bit position. Define enum constants in the `ButtonMask_e` enum with the button bit mask values. There is also a `ButtonIndex_e` that defines the index positions in the array, but it is not currently not used except to define the bit mask values. See the `Desc_t` structure in the `LightgunButtons` for details on the structure.
 
-### Behaviour buttons
-Below the button definitions are a bunch of constants that configure the buttons to control the gun. For example, entering and exist pause mode, and changing various settings. See the comments above each value for details.
+At the time of this writing, the button pin values will have to be modified if you are using an ItsyBitsy RP2040 with a SAMCO 2.0 PCB. The sketch has the Arduino pin numbers but the RP2040 must use the physical GPIO pins. It is a bit odd but the library does not provide mapping from the Arduino pin label printed on the top of the PCB to the physical GPIO number printed on the bottom of the PCB (for example, it defines D7 as 7). You will have to modify the pin values with the physical GPIO numbers as seen on the bottom of the PCB (or refer to the pinouts from the Adafruit documentation). For example, the trigger is defined with pin 7 but this is GPIO 6 for the RP2040. The A0 through A3 pins are correctly defined from the library.
 
-Most button behaviours can be assigned a combination. If the comment says a button combination is used then it activates when the last button of the combination releases. This
+### Behaviour buttons
+Below the button definitions are a bunch of constants that configure the buttons to control the gun. For example, enter and exit pause mode, and changing various settings. See the comments above each value for details.
+
+Most button behaviours can be assigned a combination. If the comment says a button combination is used then it activates when the last button of the combination releases.
 
 ### Other constants
 - `IRSeen0Color` colour for the RGB LED when no IR points are seen

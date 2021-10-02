@@ -57,13 +57,26 @@
 */
 
 #include <Arduino.h>
+#include <SamcoBoard.h>
+
+// include TinyUSB or HID depending on USB stack option
+#if defined(USE_TINYUSB)
+#include <Adafruit_TinyUSB.h>
+#elif defined(CFG_TUSB_MCU)
+#error Incompatible USB stack. Use Arduino or Adafruit TinyUSB.
+#else
+// Arduino USB stack
 #include <HID.h>
+#endif
+
 #include <Keyboard.h>
 #include <Wire.h>
-#include <SamcoBoard.h>
 #ifdef DOTSTAR_ENABLE
 #include <Adafruit_DotStar.h>
 #endif // DOTSTAR_ENABLE
+#ifdef NEOPIXEL_PIN
+#include <Adafruit_NeoPixel.h>
+#endif
 #ifdef SAMCO_FLASH_ENABLE
 #include <Adafruit_SPIFlashBase.h>
 #endif // SAMCO_FLASH_ENABLE
@@ -74,6 +87,14 @@
 #include <SamcoConst.h>
 #include "SamcoColours.h"
 #include "SamcoPreferences.h"
+
+#ifdef ARDUINO_ARCH_RP2040
+#include <hardware/pwm.h>
+#include <hardware/irq.h>
+
+// declare PWM ISR
+void rp2040pwmIrq(void);
+#endif
 
 // enable extra serial debug during run mode
 //#define PRINT_VERBOSE 1
@@ -296,7 +317,12 @@ constexpr int BadMoveThreshold = 49 * CamToMouseMult;
 unsigned int selectedProfile = 0;
 
 // IR positioning camera
-DFRobotIRPositionEx dfrIRPos;
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+DFRobotIRPositionEx dfrIRPos(Wire1);
+#else
+//DFRobotIRPosition myDFRobotIRPosition;
+DFRobotIRPositionEx dfrIRPos(Wire);
+#endif
 
 // Samco positioning
 SamcoPositionEnhanced mySamco;
@@ -357,6 +383,10 @@ uint32_t stateFlags = StateFlagsDtrReset;
 // apparently different lots of DotStars may have different colour ordering ¯\_(ツ)_/¯
 Adafruit_DotStar dotstar(1, DOTSTAR_DATAPIN, DOTSTAR_CLOCKPIN, DOTSTAR_BGR);
 #endif // DOTSTAR_ENABLE
+
+#ifdef NEOPIXEL_PIN
+Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+#endif // NEOPIXEL_PIN
 
 // flash transport instance
 #if defined(EXTERNAL_FLASH_USE_QSPI)
@@ -419,13 +449,63 @@ static unsigned long irPosCount = 0;
 // used for periodic serial prints
 unsigned long lastPrintMillis = 0;
 
+#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
+#define SERIAL_DTR() ((bool)Serial)
+#else
+#define SERIAL_DTR() (Serial.dtr())
+#endif
+
+#ifdef USE_TINYUSB
+
+// USB HID Report ID
+enum HID_RID_e{
+  HID_RID_KEYBOARD = 1,
+  HID_RID_MOUSE
+};
+
+// HID report descriptor using TinyUSB's template
+uint8_t const desc_hid_report[] = {
+  TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
+  TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE))
+};
+
+Adafruit_USBD_HID usbHid;
+
+int __USBGetKeyboardReportID()
+{
+    return HID_RID_KEYBOARD;
+}
+
+// AbsMouse5 instance
+AbsMouse5_ AbsMouse5(HID_RID_MOUSE);
+
+#else
+// AbsMouse5 instance
+AbsMouse5_ AbsMouse5(1);
+#endif
+
 void setup() {
+    // init DotStar and/or NeoPixel to red during setup()
 #ifdef DOTSTAR_ENABLE
-    // init DotStar to red during setup()
     dotstar.begin();
     dotstar.setPixelColor(0, 150, 0, 0);
     dotstar.show();
 #endif // DOTSTAR_ENABLE
+#ifdef NEOPIXEL_ENABLEPIN
+    pinMode(NEOPIXEL_ENABLEPIN, OUTPUT);
+    digitalWrite(NEOPIXEL_ENABLEPIN, HIGH);
+#endif // NEOPIXEL_ENABLEPIN
+#ifdef NEOPIXEL_PIN
+    neopixel.begin();
+    neopixel.setPixelColor(0, 255, 0, 0);
+    neopixel.show();
+#endif // NEOPIXEL_PIN
+
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+    // ensure Wire1 SDA and SCL are correct
+    Wire1.setSDA(2);
+    Wire1.setSCL(3);
+#endif
 
     // initialize buttons
     buttons.Begin();
@@ -445,6 +525,14 @@ void setup() {
     // Start IR Camera with basic data format
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
+#ifdef USE_TINYUSB
+    usbHid.setPollInterval(2);
+    usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
+    //usb_hid.setStringDescriptor("TinyUSB HID Composite");
+
+    usbHid.begin();
+#endif
+
     Serial.begin(115200);
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
@@ -467,8 +555,13 @@ void setup() {
     // fetch the calibration data, other values already handled in ApplyInitialPrefs() 
     SelectCalPrefs(selectedProfile);
 
+#ifdef USE_TINYUSB
+    // wait until device mounted
+    while(!USBDevice.mounted()) { yield(); }
+#else
     // was getting weird hangups... maybe nothing, or maybe related to dragons, so wait a bit
     delay(100);
+#endif
 
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(IRCamUpdateRate);
@@ -485,6 +578,10 @@ void startIrCamTimer(int frequencyHz)
     startTimerEx(&TC3->COUNT16, TC3_GCLK_ID, TC3_IRQn, frequencyHz);
 #elif defined(SAMCO_ATMEGA32U4)
     startTimer3(frequencyHz);
+#elif defined(SAMCO_RP2040)
+    rp2040EnablePWMTimer(0, frequencyHz);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, rp2040pwmIrq);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
 #endif
 }
 
@@ -620,6 +717,37 @@ ISR(TIMER3_COMPA_vect)
     irPosUpdateTick = 1;
 }
 #endif // SAMCO_ATMEGA32U4
+
+#ifdef ARDUINO_ARCH_RP2040
+void rp2040EnablePWMTimer(unsigned int slice_num, unsigned int frequency)
+{
+    pwm_config pwmcfg = pwm_get_default_config();
+    float clkdiv = (float)clock_get_hz(clk_sys) / (float)(65535 * frequency);
+    if(clkdiv < 1.0f) {
+        clkdiv = 1.0f;
+    } else {
+        // really just need to round up 1 lsb
+        clkdiv += 2.0f / (float)(1u << PWM_CH1_DIV_INT_LSB);
+    }
+    
+    // set the clock divider in the config and fetch the actual value that is used
+    pwm_config_set_clkdiv(&pwmcfg, clkdiv);
+    clkdiv = (float)pwmcfg.div / (float)(1u << PWM_CH1_DIV_INT_LSB);
+    
+    // calculate wrap value that will trigger the IRQ for the target frequency
+    pwm_config_set_wrap(&pwmcfg, (float)clock_get_hz(clk_sys) / (frequency * clkdiv));
+    
+    // initialize and start the slice and enable IRQ
+    pwm_init(slice_num, &pwmcfg, true);
+    pwm_set_irq_enabled(slice_num, true);
+}
+
+void rp2040pwmIrq(void)
+{
+    pwm_hw->intr = 0xff;
+    irPosUpdateTick = 1;
+}
+#endif
 
 #ifdef SAMCO_NO_HW_TIMER
 void NoHardwareTimerCamTickMicros()
@@ -1092,7 +1220,7 @@ void PrintResults()
         return;
     }
 
-    if(!Serial.dtr()) {
+    if(!SERIAL_DTR()) {
         stateFlags |= StateFlagsDtrReset;
         return;
     }
@@ -1167,7 +1295,7 @@ uint16_t CalScaleFloatToPref(float scale)
 
 void PrintPreferences()
 {
-    if(!(stateFlags & StateFlag_PrintPreferences) || !Serial.dtr()) {
+    if(!(stateFlags & StateFlag_PrintPreferences) || !SERIAL_DTR()) {
         return;
     }
 
@@ -1518,6 +1646,10 @@ void SetLedPackedColor(uint32_t color)
     dotstar.setPixelColor(0, Adafruit_DotStar::gamma32(color & 0x00FFFFFF));
     dotstar.show();
 #endif // DOTSTAR_ENABLE
+#ifdef NEOPIXEL_PIN
+    neopixel.setPixelColor(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
+    neopixel.show();
+#endif // NEOPIXEL_PIN
 }
 
 void LedOff()
@@ -1526,6 +1658,10 @@ void LedOff()
     dotstar.setPixelColor(0, 0);
     dotstar.show();
 #endif // DOTSTAR_ENABLE
+#ifdef NEOPIXEL_PIN
+    neopixel.setPixelColor(0, 0);
+    neopixel.show();
+#endif // NEOPIXEL_PIN
 }
 
 void SetLedColorFromMode()
@@ -1555,7 +1691,7 @@ void SetLedColorFromMode()
 void PrintDebugSerial()
 {
     // only print every second
-    if(millis() - serialDbMs >= 1000 && Serial.dtr()) {
+    if(millis() - serialDbMs >= 1000 && SERIAL_DTR()) {
 #ifdef EXTRA_POS_GLITCH_FILTER
         Serial.print("bad final count ");
         Serial.print(badFinalCount);
