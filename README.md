@@ -26,7 +26,7 @@ I recommend using an ItsyBitsy M0, M4, or RP2040 to future proof your build sinc
 
 ## Installation
 1. Ensure you have the Arduino development environment installed with support for your board.
-2. If you use an ItsyBitsy M0 or M4 then install the **Adafruit DotStar** and **Adafruit SPIFlash** libraries in the Library Manager. If you use an ItsyBitsy RP2040 then install **Adafruit NeoPixel** and **Adafruit TinyUSB**.
+2. Install the **Keyboard** library by Arduino in the Library Manager. If you use an ItsyBitsy M0 or M4 then install the **Adafruit DotStar** and **Adafruit SPIFlash** libraries in the Library Manager. If you use an ItsyBitsy RP2040 then install **Adafruit NeoPixel** and **Adafruit TinyUSB**.
 3. Copy all the folders under **libraries** into your Arduino libraries folder.
 4. Copy the **SamcoEnhanced** folder to your Arduino sketch folder.
 5. Open the **SamcoEnhanced** sketch.

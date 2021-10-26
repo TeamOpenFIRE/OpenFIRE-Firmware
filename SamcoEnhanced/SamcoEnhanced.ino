@@ -1121,7 +1121,7 @@ void GetPosition()
         Serial.print(' ');
         Serial.print(finalY);
         Serial.print("   ");
-        Serial.println(mySamco.H());
+        Serial.println(mySamco.h());
 #endif
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
         Serial.println("Device not available!");
