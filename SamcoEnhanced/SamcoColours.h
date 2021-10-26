@@ -30,6 +30,7 @@
 // also adjusted the brightness to make them look even more distinct on an ItsyBitsy DotStar
 // ... yeah I spent too much time on this
 namespace WikiColor {
+    constexpr uint32_t Amber = COLOR_BRI_ADJ_RGB(130, 0xFFBF00);
     constexpr uint32_t Blue = COLOR_BRI_ADJ_RGB(225, 0x0000FF);
     constexpr uint32_t Carnation_pink = COLOR_BRI_ADJ_RGB(165, 0xFFA6C9);
     constexpr uint32_t Cerulean_blue = COLOR_BRI_ADJ_RGB(255, 0x2A52BE);
@@ -44,6 +45,7 @@ namespace WikiColor {
     constexpr uint32_t Orange = COLOR_BRI_ADJ_RGB(150, 0xFF7F00);
     constexpr uint32_t Red = COLOR_BRI_ADJ_RGB(145, 0xFF0000);
     constexpr uint32_t Salmon = COLOR_BRI_ADJ_RGB(175, 0xFA8072);
+    constexpr uint32_t Yellow = COLOR_BRI_ADJ_RGB(135, 0xFFFF00);
 };
 
 #endif // _SAMCOCOLOURS_H_

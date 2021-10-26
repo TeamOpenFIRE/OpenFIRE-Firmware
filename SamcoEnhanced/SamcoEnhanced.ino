@@ -141,17 +141,17 @@ enum ButtonMask_e {
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {7, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, 8, 0, "Trigger"},
-    {A1, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 12, 0xF, "A"},
-    {A0, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 12, 0xF, "B"},
-    {A2, LightgunButtons::ReportType_Keyboard, '1', 25, 0xFFFF, "Start"},
-    {A3, LightgunButtons::ReportType_Keyboard, '5', 25, 0xFFFF, "Select"},
-    {11, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 15, 0x1FF, "Up"},
-    {9, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 15, 0x1FF, "Down"},
-    {10, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 15, 0x1FF, "Left"},
-    {12, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 15, 0x1FF, "Right"},
-    {13, LightgunButtons::ReportType_Internal, MOUSE_BUTTON4, 12, 0xF, "Reload"},
-    {4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 12, 0, "Pedal"}
+    {7, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, 20, BTN_AG_MASK, "Trigger"},
+    {A1, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 20, BTN_AG_MASK2, "A"},
+    {A0, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 20, BTN_AG_MASK2, "B"},
+    {A2, LightgunButtons::ReportType_Keyboard, '1', 25, BTN_AG_MASK2, "Start"},
+    {A3, LightgunButtons::ReportType_Keyboard, '5', 25, BTN_AG_MASK2, "Select"},
+    {11, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 25, BTN_AG_MASK2, "Up"},
+    {9, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 25, BTN_AG_MASK2, "Down"},
+    {10, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 25, BTN_AG_MASK2, "Left"},
+    {12, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 25, BTN_AG_MASK2, "Right"},
+    {13, LightgunButtons::ReportType_Internal, MOUSE_BUTTON4, 20, BTN_AG_MASK2, "Reload"},
+    {4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 20, BTN_AG_MASK2, "Pedal"}
 };
 
 // button count constant
@@ -205,7 +205,7 @@ constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_Up;
 constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_A;
 
 // colour when no IR points are seen
-constexpr uint32_t IRSeen0Color = WikiColor::Orange;
+constexpr uint32_t IRSeen0Color = WikiColor::Amber;
 
 // colour when calibrating
 constexpr uint32_t CalModeColor = WikiColor::Red;
@@ -448,12 +448,6 @@ static unsigned long irPosCount = 0;
 
 // used for periodic serial prints
 unsigned long lastPrintMillis = 0;
-
-#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
-#define SERIAL_DTR() ((bool)Serial)
-#else
-#define SERIAL_DTR() (Serial.dtr())
-#endif
 
 #ifdef USE_TINYUSB
 
@@ -1220,7 +1214,7 @@ void PrintResults()
         return;
     }
 
-    if(!SERIAL_DTR()) {
+    if(!Serial.dtr()) {
         stateFlags |= StateFlagsDtrReset;
         return;
     }
@@ -1295,7 +1289,7 @@ uint16_t CalScaleFloatToPref(float scale)
 
 void PrintPreferences()
 {
-    if(!(stateFlags & StateFlag_PrintPreferences) || !SERIAL_DTR()) {
+    if(!(stateFlags & StateFlag_PrintPreferences) || !Serial.dtr()) {
         return;
     }
 
@@ -1691,7 +1685,7 @@ void SetLedColorFromMode()
 void PrintDebugSerial()
 {
     // only print every second
-    if(millis() - serialDbMs >= 1000 && SERIAL_DTR()) {
+    if(millis() - serialDbMs >= 1000 && Serial.dtr()) {
 #ifdef EXTRA_POS_GLITCH_FILTER
         Serial.print("bad final count ");
         Serial.print(badFinalCount);
