@@ -117,7 +117,6 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                 }
             }
 
-            //if(state != btn.pinState) {
             // if existing pin state does not match new state
             if((pinState & bitMask) != state) {
                 // update the pin state
@@ -127,7 +126,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                 debounceCount[i] = btn.debounceTicks;
                 debouncing |= bitMask;
 
-                if(state == LOW) {
+                if(!state) {
                     // state is low, button is pressed
 
                     // if reporting is enabled for the button

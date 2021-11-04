@@ -26,6 +26,10 @@
     // timer configuration
     #define TIMER_PRESCALER_DIV 16
     #define TIMER_TC_CTRLA_PRESCALER_DIV TC_CTRLA_PRESCALER_DIV16
+
+    // software button anti-glitch mask
+    #define BTN_AG_MASK 0x3FF
+    #define BTN_AG_MASK2 0xFFF
 #elif defined(ADAFRUIT_ITSYBITSY_M4_EXPRESS) || defined(ARDUINO_ITSYBITSY_M4) || defined(__SAMD51__) || defined(__SAMD51G19A__)
     // use SAMD51 peripherals
     #define SAMCO_SAMD51 1
@@ -37,6 +41,10 @@
     // timer configuration
     #define TIMER_PRESCALER_DIV 16
     #define TIMER_TC_CTRLA_PRESCALER_DIV TC_CTRLA_PRESCALER_DIV16
+
+    // software button anti-glitch mask
+    #define BTN_AG_MASK 0xFFFFFFFF
+    #define BTN_AG_MASK2 0xFFFFFFFF
 #elif defined(ARDUINO_AVR_ITSYBITSY32U4_5V) || defined(ARDUINO_AVR_MICRO) || defined(ARDUINO_AVR_PROMICRO) || defined(ARDUINO_AVR_LEONARDO)
     // ATmega32u4
     #define SAMCO_ATMEGA32U4 1
@@ -47,6 +55,10 @@
     // DFRobot IR camera IIC clock
     // The ATmega32u4 datasheet says a maximum of 400kHz
     #define DFROBOT_IR_IIC_CLOCK 400000
+
+    // software button anti-glitch mask
+    #define BTN_AG_MASK 0x3
+    #define BTN_AG_MASK2 0xF
 #elif defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
     // Raspberry Pi Pico RP2040
     #define SAMCO_RP2040 1
@@ -57,11 +69,19 @@
 
     // Earle Philhower Arduino RP2040 reserves 4KB of flash using the Arduino EEPROM object, neat!
     #define SAMCO_EEPROM_ENABLE 1
+
+    // software button anti-glitch
+    #define BTN_AG_MASK 0xFFFFFFFF
+    #define BTN_AG_MASK2 0xFFFFFFFF
 #else
     // unknown board
     // this will use millis() for camera update timing instead of a hardware timer
     #define SAMCO_NO_HW_TIMER 1
     #define DFROBOT_IR_IIC_CLOCK 400000
+
+    // software button anti-glitch mask
+    #define BTN_AG_MASK1 0xF
+    #define BTN_AG_MASK2 0xF
 #endif // determine SAMCO_xxx board
 
 // specific ItsyBitsy board configuration
