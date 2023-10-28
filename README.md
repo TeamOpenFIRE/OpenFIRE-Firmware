@@ -55,6 +55,7 @@ For reference, the default schematic and (general) layout for the build and its 
 ![Weh](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
 
 ## Known Issues:
+- Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 - Trigger might incidentally double-press on rare occasions, as a result of reading the pin state directly which doesn't use debouncing logic.
 - Start/Select/Dpad debouncing logic is weird and may cause buttons to stick or require a few tries to actuate properly. Still needs investigation.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
@@ -62,6 +63,7 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## TODO:
 - Should implement support for rumble as an alternative force-feedback system; decouple rumble from off-screen exclusively at some point.
+- Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but should be noted regardless.
 - Implement software solution for enabling the rumble or solenoid, or toggle rapid fire system; should probably make a new button mask combo to activate while in pause mode.
 - Make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
