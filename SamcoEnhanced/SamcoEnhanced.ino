@@ -1,24 +1,29 @@
 /*!
  * @file SamcoEnhanced.ino
- * @brief SAMCO Prow Enhanced - Arduino Powered Light Gun sketch for 4 IR LED setup.
- * Based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/samuelballantyne/IR-Light-Gun
+ * @brief SAMCO Enhanced +(plus) - 4IR LED Lightgun sketch w/ support for Rumble motor, Solenoid force feedback,
+ * and hardware switches.
+ * Based on Prow's Enhanced Fork from https://github.com/Prow7/ir-light-gun,
+ * Which in itself is based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/samuelballantyne/IR-Light-Gun
  *
  * @copyright Samco, https://github.com/samuelballantyne, June 2020
  * @copyright Mike Lynch, July 2021
+ * @copyright That One Seong, https://github.com/SeongGino, October 2023
  * @copyright GNU Lesser General Public License
  *
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
- * @version V1.0
- * @date 2021
+ * @author [That One Seong](SeongsSeongs@gmail.com)
+ * @version V1.1
+ * @date 2023
  */
 
  /* Default button assignments
  *
- *  Reload will enter Pause mode.
+ *  Reload (Button C) + Start will send an Esc keypress.
+ *  Reload (Button C) + Select will enter Pause mode.
  * 
  *  In Pause mode:
- *  A, B, Start, Select, Up, Down, Left, Right: select a profile
+ *  A, B, Start, Select: select a profile
  *  Start + Down: Normal gun mode (averaging disabled)
  *  Start + Up: Normal gun with averaging, toggles between the 2 averaging modes (use serial monitor to see the setting)
  *  Start + A: Processing mode for use with the Processing sketch
@@ -35,11 +40,11 @@
 
  /* HOW TO CALIBRATE:
  *  
- *  Note: I renamed "offset" from the original sketch to "scale" which is a better term for what the setting is.
+ *  Note: Prow renamed "offset" from the original sketch to "scale" which is a better term for what the setting is.
  *  The center calibration step determines the offset compensation required for accurate positioning.
  * 
- *  Step 1: Press Reload to enter pause mode.
- *          Optional: Press a button to select a profile: A, B, Start, Select, Up, Down, Left, Right
+ *  Step 1: Press Reload + Select to enter pause mode.
+ *          Optional: Press a button to select a profile: A, B, Start, or Select
  *  Step 2: Pull Trigger to begin calibration.
  *  Step 3: Shoot cursor at center of the Screen and hold the trigger down for 1/3 of a second.
  *  Step 4: Mouse should lock to vertical axis. Use A/B buttons (can be held down) buttons to adjust mouse vertical
@@ -100,11 +105,61 @@ void rp2040pwmIrq(void);
 //#define PRINT_VERBOSE 1
 //#define DEBUG_SERIAL 1
 //#define DEBUG_SERIAL 2
+//#define DEBUG_SOL 1         // used this to test solenoid without cam. fucking EMI problems
 
 // extra position glitch filtering, 
 // not required after discoverving the DFRobotIRPositionEx atomic read technique
 //#define EXTRA_POS_GLITCH_FILTER
 
+    // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
+  // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
+#define USES_SWITCHES 1
+#ifdef USES_SWITCHES // If your build uses hardware switches,
+    // Here's where they should be defined!
+    const byte autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
+    const byte rumbleSwitch = 19;                     // What's the pin number of the rumble switch? Digital.
+    const byte solenoidSwitch = 20;                   // What's the pin number of the solenoid switch? Digital.
+#endif
+
+  // Set this to 1 if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
+//#define USES_TEMP 1
+#ifdef USES_TEMP    
+    const byte tempPin = A0;                          // What's the pin number of the temp sensor? Needs to be analog.
+    const byte tempNormal = 50;                       // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+    const byte tempWarning = 60;                      // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+#endif                                                // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+
+
+  // Which extras should be activated? Set here if your build doesn't use toggle switches.
+bool solenoidActivated = false;                       // Are we allowed to use a solenoid? Default to off.
+bool autofireActivated = false;                       // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
+bool rumbleActivated = false;                         // Are we allowed to do rumble? Default to off.
+
+
+  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
+const byte rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
+const byte solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
+const byte btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
+const byte btnGunA = 7;                               // <-- GCon 1-spec
+const byte btnGunB = 8;                               // <-- GCon 1-spec
+const byte btnGunC = 9;                               // Everything below are for GCon 2-spec only 
+const byte btnStart = 10;
+const byte btnSelect = 11;
+const byte btnGunUp = 1;
+const byte btnGunDown = 0;
+const byte btnGunLeft = 4;
+const byte btnGunRight = 5;
+const byte btnPedal = 12;                             // If you're using a physical Time Crisis-style pedal, this is for that.
+
+
+  // Adjustable aspects:
+const byte rumbleMotorIntensity = 0;                  // This is actually inverted; 0 is 100%, 1 is roughly half power.
+const unsigned int rumbleInterval = 110;              // How long to wait for the whole rumble command, in ms.
+const unsigned int solenoidNormalInterval = 55;       // Interval for solenoid activation, in ms.
+const unsigned int solenoidFastInterval = 40;         // Interval for faster solenoid activation, in ms.
+const unsigned int solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
+
+//--------------------------------------------------------------------------------------------------------------------------------------
 // numbered index of buttons, must match ButtonDesc[] order
 enum ButtonIndex_e {
     BtnIdx_Trigger = 0,
@@ -141,17 +196,17 @@ enum ButtonMask_e {
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {7, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, 20, BTN_AG_MASK, "Trigger"},
-    {A1, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 20, BTN_AG_MASK2, "A"},
-    {A0, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 20, BTN_AG_MASK2, "B"},
-    {A2, LightgunButtons::ReportType_Keyboard, '1', 25, BTN_AG_MASK2, "Start"},
-    {A3, LightgunButtons::ReportType_Keyboard, '5', 25, BTN_AG_MASK2, "Select"},
-    {11, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 25, BTN_AG_MASK2, "Up"},
-    {9, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 25, BTN_AG_MASK2, "Down"},
-    {10, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 25, BTN_AG_MASK2, "Left"},
-    {12, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 25, BTN_AG_MASK2, "Right"},
-    {13, LightgunButtons::ReportType_Internal, MOUSE_BUTTON4, 20, BTN_AG_MASK2, "Reload"},
-    {4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 20, BTN_AG_MASK2, "Pedal"}
+    {btnTrigger, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, 20, BTN_AG_MASK, "Trigger"},
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 20, BTN_AG_MASK2, "A"},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 20, BTN_AG_MASK2, "B"},
+    {btnStart, LightgunButtons::ReportType_Keyboard, '1', 35, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Keyboard, '5', 35, BTN_AG_MASK2, "Select"},
+    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 35, BTN_AG_MASK2, "Up"},
+    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 35, BTN_AG_MASK2, "Down"},
+    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 35, BTN_AG_MASK2, "Left"},
+    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 35, BTN_AG_MASK2, "Right"},
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 20, BTN_AG_MASK2, "Reload"},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 20, BTN_AG_MASK2, "Pedal"}
 };
 
 // button count constant
@@ -175,8 +230,11 @@ typedef struct PauseModeFnEntry_s {
 } PauseModeFnEntry_t;
 */
 
+// button combo to send an escape keypress
+constexpr uint32_t EscapeKeyBtnMask = BtnMask_Reload | BtnMask_Start;
+
 // button combo to enter pause mode
-constexpr uint32_t EnterPauseModeBtnMask = BtnMask_Reload;
+constexpr uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
 
 // press any button to enter pause mode from Processing mode (this is not a button combo)
 constexpr uint32_t EnterPauseModeProcessingBtnMask = BtnMask_A | BtnMask_B | BtnMask_Reload;
@@ -200,9 +258,9 @@ constexpr uint32_t IRSensitivityUpBtnMask = BtnMask_B | BtnMask_Up;
 constexpr uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
 
 // button combinations to select a run mode
-constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_Down;
-constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_Up;
-constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_A;
+constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
+constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
+constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
 
 // colour when no IR points are seen
 constexpr uint32_t IRSeen0Color = WikiColor::Amber;
@@ -211,7 +269,7 @@ constexpr uint32_t IRSeen0Color = WikiColor::Amber;
 constexpr uint32_t CalModeColor = WikiColor::Red;
 
 // number of profiles
-constexpr unsigned int ProfileCount = 8;
+constexpr unsigned int ProfileCount = 4;
 
 // run modes
 // note that this is a 5 bit value when stored in the profiles
@@ -224,31 +282,17 @@ enum RunMode_e {
     RunMode_Count
 };
 
-// profiles
+// profiles ---------------------------------------------------------------------------------------------- (*****THE LAST THING YOU'LL WANT TO ADJUST IS HERE!*****)
 // defaults can be populated here, or not worry about these values and just save to flash/EEPROM
 // if you have original Samco calibration values, multiply by 4 for the center position and
 // scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
-    {1619, 950, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {1233, 950, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {1538, 855, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {1147, 855, MouseMaxX / 2, MouseMaxY / 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal, 0, 0}
+    {1605, 935, 2137, 1522, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {1695, 957, 2121, 1981, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {1723, 890, 2073, 2036, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {1683, 948, 2130, 2053, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0}
 };
-/*SamcoPreferences::ProfileData_t profileData[profileCount] = {
-    {1619, 950, 1899, 1531, DFRobotIRPositionEx::Sensitivity_Max, RunMode_Average},
-    {1233, 943, 1864, 1538, DFRobotIRPositionEx::Sensitivity_Max, RunMode_Average},
-    {1538, 855, 1878, 1515, DFRobotIRPositionEx::Sensitivity_High, RunMode_Average},
-    {1147, 855, 1889, 1507, DFRobotIRPositionEx::Sensitivity_High, RunMode_Average},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal},
-    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Normal}
-};*/
-
+//  ------------------------------------------------------------------------------------------------------
 // profile descriptor
 typedef struct ProfileDesc_s {
     // button(s) to select the profile
@@ -266,14 +310,10 @@ typedef struct ProfileDesc_s {
 
 // profile descriptor
 static const ProfileDesc_t profileDesc[ProfileCount] = {
-    {BtnMask_A, WikiColor::Cerulean_blue, "A", "TV"},
-    {BtnMask_B, WikiColor::Cornflower_blue, "B", "TV 4:3"},
-    {BtnMask_Start, WikiColor::Green, "Start", "Monitor"},
-    {BtnMask_Select, WikiColor::Green_Lizard, "Select", "Monitor 4:3"},
-    {BtnMask_Up, WikiColor::Salmon, "Up", NULL},
-    {BtnMask_Down, WikiColor::Magenta, "Down", NULL},
-    {BtnMask_Left, WikiColor::Electric_indigo, "Left", NULL},
-    {BtnMask_Right, WikiColor::Cyan, "Right", NULL}
+    {BtnMask_A, WikiColor::Cerulean_blue, "A", "TV Fisheye Lens"},
+    {BtnMask_B, WikiColor::Cornflower_blue, "B", "TV Wide-angle Lens"},
+    {BtnMask_Start, WikiColor::Green, "Start", "TV"},
+    {BtnMask_Select, WikiColor::Green_Lizard, "Select", "Monitor"}
 };
 
 // overall calibration defaults, no need to change if data saved to NV memory or populate the profile table
@@ -298,9 +338,28 @@ int moveIndex = 0;
 int conMoveXAxis = 0;   // Constrained mouse postion
 int conMoveYAxis = 0;
 
+  // ADDITIONS HERE: the boring inits related to the things I added.
+// Boring values for the solenoid timing stuff:
+unsigned long previousMillisSol = 0;             // our timer (holds the last time since a successful interval pass)
+bool solenoidFirstShot = false;                  // default to off, but actually set this the first time we shoot.
+#ifdef USES_TEMP
+    int tempSensor;                              // Temp sensor changes over time, so just initialize the variable here ig.
+    const unsigned int solenoidWarningInterval = solenoidFastInterval * 3; // for if solenoid is getting toasty.
+#endif
+
+// For autofire:
+bool triggerHeld = false;                        // Trigger SHOULDN'T be being pulled by default, right?
+
+// For rumble:
+unsigned long previousMillisRumble = 0;          // our time for the rumble motor (two different timers? oh my!)
+unsigned long previousMillisRumbTot = 0;         // our time for each rumble command (yep, that's three timers now! joy)
+bool rumbleHappening = false;                    // To keep track on if this is a rumble command or not.
+bool rumbleHappened = false;                     // If we're holding, this marks we sent a rumble command already.
+// We need the rumbleHappening because we can be in a rumble command without the rumble state being on (emulating variable motor force)
+
 unsigned int lastSeen = 0;
 
-#ifdef EXTRA_POS_GLITCH_FILTER
+#ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
 int badMoveTick = 0;
 int badFinalCount = 0;
@@ -479,6 +538,15 @@ AbsMouse5_ AbsMouse5(1);
 #endif
 
 void setup() {
+    // ADDITIONS HERE
+    pinMode(rumblePin, OUTPUT);
+    pinMode(solenoidPin, OUTPUT);
+    #ifdef USES_SWITCHES
+        pinMode(autofireSwitch, INPUT_PULLUP);
+        pinMode(rumbleSwitch, INPUT_PULLUP);
+        pinMode(solenoidSwitch, INPUT_PULLUP);
+    #endif
+
     // init DotStar and/or NeoPixel to red during setup()
 #ifdef DOTSTAR_ENABLE
     dotstar.begin();
@@ -867,6 +935,20 @@ void ExecRunMode()
     moveIndex = 0;
     buttons.ReportEnable();
     for(;;) {
+        // ADDITIONS HERE: setting the state of our toggles, if used.
+        #ifdef USES_SWITCHES
+            rumbleActivated = !digitalRead(rumbleSwitch);
+            solenoidActivated = !digitalRead(solenoidSwitch);
+            autofireActivated = !digitalRead(autofireSwitch);
+            #ifdef PRINT_VERBOSE
+                //Serial.print("Rumble state: ");
+                //Serial.println(rumbleActivated);
+                //Serial.print("Solenoid state: ");
+                //Serial.println(solenoidActivated);
+                Serial.print("Autofire state: ");
+                Serial.println(autofireActivated);
+            #endif
+        #endif
         buttons.Poll(0);
 
         SAMCO_NO_HW_TIMER_UPDATE();
@@ -913,12 +995,118 @@ void ExecRunMode()
             ++irPosCount;
 #endif // DEBUG_SERIAL
         }
+        // ADDITIONS HERE: The main additions are here.
+        #ifdef DEBUG_SOL // I fucking hate EMI...
+            if(buttons.pressed == BtnMask_Trigger) {                  // We're using this to fire off the solenoid when the trigger is pulled, regardless of camera.
+                SolenoidActivation(solenoidNormalInterval);           // We're just gonna go right to shootin that thang.
+            } else {
+                if(digitalRead(solenoidPin)) {                        // Has the solenoid remain engaged this cycle?
+                    unsigned long currentMillis = millis();           // Start the timer
+                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                        previousMillisSol = currentMillis;            // Timer calibration, yawn.
+                        digitalWrite(solenoidPin, LOW);               // Make sure to turn it off.
+                    }
+                }
+            }
+        #else
+        if(!digitalRead(btnTrigger)) {                              // Check if we pressed the Trigger this run. (Yes we're reading this directly, it's needed for button holds. sue me)
+            if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) && (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX)) { // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+                if(solenoidActivated) {                             // (Only activate when the solenoid switch is on!)
+                    if(!triggerHeld) {                              // If this is the first time we're firing,
+                        solenoidFirstShot = true;                   // Since we're not in an auto mode, set the First Shot flag on.
+                        SolenoidActivation(0);                      // Just activate the Solenoid already!
+                        if(autofireActivated) {                     // If we are in auto mode,
+                            solenoidFirstShot = false;              // Immediately set this bit off!
+                        }
+                    } else if(autofireActivated) {                  // Else, if we've been holding the trigger, is the autofire switch active?
+                        if(digitalRead(solenoidPin)) {              // Is the solenoid engaged?
+                            SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
+                        } else {                                    // Or if it's not,
+                            SolenoidActivation(solenoidFastInterval * 2); // We're holding it for longer.
+                        }
+                    } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
+                        if(digitalRead(solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
+                            unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
+                            if(currentMillis - previousMillisSol >= solenoidNormalInterval) { // If we finally surpassed the wait threshold...
+                                digitalWrite(solenoidPin, LOW);     // Let it go.
+                            }
+                        } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
+                            unsigned long currentMillis = millis(); // Initialize timer.
+                            if(currentMillis - previousMillisSol >= solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
+                                solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
+                                SolenoidActivation(solenoidNormalInterval); // Process it now.
+                            }
+                        }
+                    } else {                                        // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
+                        if(digitalRead(solenoidPin)) {              // Are we engaged right now?
+                            SolenoidActivation(solenoidNormalInterval); // Turn it off with this timer.
+                        } else {                                    // Or we're not engaged.
+                            SolenoidActivation(solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
+                        }
+                    }
+                } else {
+                    #ifdef PRINT_VERBOSE
+                        Serial.println("Solenoid not allowed to go off; not reading, skipping!"); // We ain't using the solenoid, so just ignore all that.
+                    #endif
+                }
+                if(rumbleActivated && rumbleHappening && triggerHeld) { // Is rumble activated, AND we're in a rumbling command WHILE the trigger's held?
+                    RumbleActivation();                             // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
+                }
+            } else {                                                // We're shooting outside of the screen boundaries!
+                #ifdef PRINT_VERBOSE
+                    Serial.println("Shooting outside of the screen! RELOAD!");
+                #endif
+                if(rumbleActivated) {                               // Only activate if the rumble switch is enabled!
+                    if(!rumbleHappened && !triggerHeld) {           // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
+                        RumbleActivation();                         // Start a rumble command.
+                    } else if(rumbleHappening) {                    // We are currently processing a rumble command.
+                        RumbleActivation();                         // Keep processing that command then.
+                    }                                               // Else, we rumbled already, so don't do anything to prevent infinite rumbling.
+                }
+                if(digitalRead(solenoidPin)) {                      // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
+                    unsigned long currentMillis = millis();         // Calibrate current time
+                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                        previousMillisSol = currentMillis;          // Timer calibration, yawn.
+                        digitalWrite(solenoidPin, LOW);             // Turn it off already, dangit.
+                    }
+                }
+            }
+            triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
+        } else {                                                    // ...Or we just didn't press the trigger this cycle.
+            triggerHeld = false;                                    // Disable the holding function
+            if(solenoidActivated) {                                 // Has the solenoid remain engaged this cycle?
+                solenoidFirstShot = false;                          // Make sure this is unset to prevent "sticking" in single shot mode!
+                unsigned long currentMillis = millis();             // Start the timer
+                if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                    previousMillisSol = currentMillis;              // Timer calibration, yawn.
+                    digitalWrite(solenoidPin, LOW);                 // Make sure to turn it off.
+                }
+            }
+            if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs rumbleActivated)
+                RumbleActivation();                                 // Continue processing our rumble command.
+                // (This is to prevent making the lack of trigger pull actually activate a rumble command instead of skipping it like we should.)
+            } else if(rumbleHappened) {                             // If rumble has happened,
+                rumbleHappened = false;                             // well we're clear now that we've stopped holding.
+            }
+        }
+        #endif
+
+        if(buttons.pressedReleased == EscapeKeyBtnMask) {
+            Keyboard.releaseAll();                                  // Clear out keyboard keys (since Seong's default is pressing start, which is num1)
+            delay(1);                                               // Wait a bit. Required for the escape keypress to actually register.
+            Keyboard.press(KEY_ESC);                                // PUSH THE BUTTON.
+            delay(100);                                             // Wait another bit. Required for the escape keypress to actually register, and mitigate sticking.
+            Keyboard.release(KEY_ESC);                              // Aaaaand release.
+        }
 
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+            // MAKE SURE SOLENOID IS OFF:
+            digitalWrite(solenoidPin, LOW);
             SetMode(GunMode_Pause);
             buttons.ReportDisable();
             return;
         }
+
 
 #ifdef DEBUG_SERIAL
         ++frameCount;
@@ -1678,6 +1866,106 @@ void SetLedColorFromMode()
         break;
     default:
         break;
+    }
+}
+
+// ADDITIONS HERE:
+void SolenoidActivation(int solenoidFinalInterval) {
+    if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
+        unsigned long currentMillis = millis();                   // Initialize timer.
+        previousMillisSol = currentMillis;                        // Calibrate the timer for future calcs.
+        digitalWrite(solenoidPin, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
+        return;                                                   // We're done here now.
+    }
+    #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
+        tempSensor = analogRead(tempPin);                         // Read the temp sensor.
+        tempSensor = (tempSensor * 0.32226563) + 0.5;             // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
+        #ifdef PRINT_VERBOSE
+            Serial.print("Current Temp near solenoid: ");
+            Serial.print(tempSensor);
+            Serial.println("*C");
+        #endif
+        if(tempSensor < tempNormal) {                             // Are we at (relatively) normal operating temps?
+            unsigned long currentMillis = millis();               // Start the timer.
+            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
+                previousMillisSol = currentMillis;                // Since we've waited long enough, calibrate the timer
+                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                return;                                           // Aaaand we're done here.
+            } else {                                              // If we pass the temp check but fail the timer check, we're here too quick.
+                return;                                           // Get out of here, speedy mc loserpants.
+            }
+        } else if(tempSensor < tempWarning) {                     // If we failed the room temp check, are we beneath the shutoff threshold?
+            if(digitalRead(solenoidPin)) {                        // Is the valve being pulled now?
+                unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
+                if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // We're holding it high for the requested time.
+                    previousMillisSol = currentMillis;            // Timer calibrate
+                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
+                    return;                                       // Yay.
+                } else {                                          // OR, Passed the temp check, STILL here too quick.
+                    return;                                       // Yeeted.
+                }
+            } else {                                              // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
+                unsigned long currentMillis = millis();           // Timerrrrrr.
+                if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
+                    previousMillisSol = currentMillis;            // Since we've waited long enough, calibrate the timer
+                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                    return;                                       // Doneso.
+                } else {                                          // OR, We passed the temp check but STILL got here too quick.
+                    return;                                       // Loser.
+                }
+            }
+        } else {                                                  // Failed both temp checks, so obviously it's not safe to fire.
+            #ifdef PRINT_VERBOSE
+                Serial.println("Solenoid over safety threshold; not activating!");
+            #endif
+            digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
+            return;                                               // Go away.
+        }
+    #else                                                     // *The shorter version of this function if we're not using a temp sensor.
+        unsigned long currentMillis = millis();               // Start the timer.
+        if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
+            previousMillisSol = currentMillis;                // Since we've waited long enough, calibrate the timer
+            digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+            return;                                           // Aaaand we're done here.
+        } else {                                              // If we failed the timer check, we're here too quick.
+            return;                                           // Get out of here, speedy mc loserpants.
+        }
+    #endif
+}
+
+void RumbleActivation() {
+    if(rumbleHappening) {                                     // Are we in a rumble command rn?
+        if(rumbleMotorIntensity > 0) {                        // Are we using anything but full blast? If so, must be using a higher (lower) value, so let's temper that motor a bit
+            if(digitalRead(rumblePin)) {                      // Is the motor on now? Must be, so let's flick it off now.
+                unsigned long currentMillis = millis();       // Start the timer.
+                if(currentMillis - previousMillisRumble >= rumbleMotorIntensity) { // If we've waited long enough for this interval,
+                    previousMillisRumble = currentMillis;     // Since we've waited long enough, calibrate the timer
+                    digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into an inverted state.
+                }
+            } else {                                          // I guess not, so let's flick it on for a set short interval.
+                unsigned long currentMillis = millis();       // Start the timer.
+                if(currentMillis - previousMillisRumble >= rumbleMotorIntensity * 1.2) { // If we've waited long enough for this interval,
+                    previousMillisRumble = currentMillis;     // Since we've waited long enough, calibrate the timer
+                    digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into the state we've just inverted it to.
+                }
+            }
+        } // If the above didn't go off, guess we're at full blast, so just keep going.
+
+        unsigned long currentMillis = millis();               // Now a second timer to check how long we've been rumbling.
+        if(currentMillis - previousMillisRumbTot >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
+            digitalWrite(rumblePin, LOW);                     // Make sure the rumble is OFF.
+            rumbleHappening = false;                          // This rumble command is done now.
+            rumbleHappened = true;                            // And just to make sure, to prevent holding == repeat rumble commands.
+            #ifdef PRINT_VERBOSE
+                Serial.println("We stopped a rumblin'!");
+            #endif
+        }
+        return;                                               // Alright we done here (if we did this before already)
+    } else {                                                  // OR, we're rumbling for the first time.
+        previousMillisRumbTot = millis();                     // Mark this as the start of this rumble command.
+        digitalWrite(rumblePin, HIGH);                        // Make the rumble rumble.
+        rumbleHappening = true;                               // Mark that we're in a rumble command rn.
+        return;                                               // Now geddoutta here.
     }
 }
 
