@@ -28,8 +28,8 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 
 ## Requirements
 - Adafruit ItsyBitsy [M0](https://www.adafruit.com/product/3727), [M4](https://www.adafruit.com/product/3800), or [RP2040](https://www.adafruit.com/product/4888) (ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz might still work, but no guarantees on performance)
-- DFRobot IR Positioning Camera SEN0158: [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) [DF-Robot (International)](https://www.dfrobot.com/product-1088.html)
-- 4 IR LED emitters | regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
+- DFRobot IR Positioning Camera SEN0158: [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html)
+- 4 IR LED emitters: regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
    * Optional: Any 12V solenoid, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=4uWgqc8g1PM)
      * *Requires a DC power extension cable and a separate adjustable 12V power supply.*
    * Optional: Any 5V gamepad rumble motor, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
