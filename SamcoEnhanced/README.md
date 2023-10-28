@@ -25,7 +25,7 @@
 ## Setup Guide
 
 ### IR Emitter setup
-The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building a set of high power black IR LEDs.
+The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
 ### Arduino Library Dependencies
 Be sure to have the following libraries installed depending on the board you are using (or just install them all).
@@ -41,7 +41,9 @@ Under the "Tools" dropdown in the Arduino IDE, set the compiler to use `Optimize
 The USB Stack option to should be set to `Arduino` for **most boards** (SAMD, ATmega), and `Adafruit TinyUSB` for **RP2040**s.
 
 ### Sketch Configuration
-The sketch is configured for a SAMCO 2.0 (GunCon 2) build... *ish.* Because of the additions added (that may or may not conflict with a SAMCO 2.0 board's pin mapping), you'll probably have to adjust what pins are arranged to what buttons manually, and which pins are reserved for the Rumble and Solenoid signal wires (if any). A0 is reserved for an optional temperature sensor if you plan to use a solenoid - it is recommended if you use a weaker/smaller solenoid or intend to run it in autofire mode for extended periods of time, as the sketch will temper activation at higher temperature thresholds (that are configurable!), but will function without.
+The sketch is configured for a [SAMCO 2.0](https://www.ebay.com/itm/184699412596) (GunCon 2) build... *ish.* Because of the additions added (that may or may not conflict with a SAMCO 2.0 board's pin mapping), you'll probably have to adjust what pins are arranged to what buttons manually, and which pins are reserved for the Rumble and Solenoid signal wires (if any). You can still use a loose board for a custom non-Guncon build, just change the pinout as you see fit - see section below on [Defining Buttons & Timers](#define-buttons--timers).
+
+A0 is reserved for an optional temperature sensor if you plan to use a solenoid - it is recommended if you use a weaker/smaller solenoid or intend to run it in autofire mode for extended periods of time, as the sketch will temper activation at higher temperature thresholds (that are configurable!), but will function without.
 
 ### Define Buttons & Timers
 Refer to Line 119 for the pins of the tactile extras (rumble, solenoid, hardware switches if need be) and the adjustable settings (solenoid activation, rumble event length, etc.), and Line 140-onwards for the button constants.
