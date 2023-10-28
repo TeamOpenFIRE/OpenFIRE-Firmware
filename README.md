@@ -45,19 +45,11 @@ The RP2040 is the most performant board for the cheapest price, and future proof
   * If you use an **ItsyBitsy M0** or **M4** then install the `Adafruit DotStar` and `Adafruit SPIFlash` libraries in the Library Manager.
   * If you use an **ItsyBitsy RP2040** then install `Adafruit NeoPixel` and `Adafruit TinyUSB`.
 3. Copy all the folders under `libraries` into your Arduino libraries folder.
-4. Copy the `SamcoEnhancedPlus` folder to your Arduino sketch folder.
-5. Open the `SamcoEnhancedPlus` sketch.
-
-## Compiling and Configuration Options
-Under the "Tools" dropdown in the Arduino IDE, set the compiler to use `-O3 (optimize even more)`. Use the default clock speeds on M4 or RP2040-based boards.
-
-The USB Stack option to should be set to `Arduino` for most boards, and `Adafruit TinyUSB` for RP2040s.
-
-## Sketch Configuration
-The sketch is configured for a SAMCO 2.0 (GunCon 2) build. If you are using a SAMCO 2.0 PCB or your build matches the SAMCO 2.0 button assignment then the sketch will work as is. If you use the ItsyBitsy RP2040 with the SAMCO 2.0 PCB or a different set of buttons then the sketch will have to be modified.
+4. Copy the `SamcoEnhanced` folder to your Arduino sketch folder.
+5. Open the `SamcoEnhanced` sketch.
 
 ## Additional information
-See the README file in the sketch folder for details on operation and configuration. Also see the README files in libraries for more information on library functionality.
+[Check out the enclosed instruction book!](https://github.com/SeongGino/ir-light-gun-plus/blob/plus/SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
 
 ## Known Issues:
 - Trigger might incidentally double-press on rare occasions, as a result of reading the pin state directly which doesn't use debouncing logic.
