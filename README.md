@@ -51,6 +51,9 @@ The RP2040 is the most performant board for the cheapest price, and future proof
 ## Additional information
 [Check out the enclosed instruction book!](https://github.com/SeongGino/ir-light-gun-plus/blob/plus/SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
 
+For reference, the default schematic and (general) layout for the build and its optional extras are attached:
+![Weh](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
+
 ## Known Issues:
 - Trigger might incidentally double-press on rare occasions, as a result of reading the pin state directly which doesn't use debouncing logic.
 - Start/Select/Dpad debouncing logic is weird and may cause buttons to stick or require a few tries to actuate properly. Still needs investigation.
