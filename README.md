@@ -28,12 +28,12 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 
 ## Requirements
 - Adafruit ItsyBitsy [M0](https://www.adafruit.com/product/3727), [M4](https://www.adafruit.com/product/3800), or [RP2040](https://www.adafruit.com/product/4888) (ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz might still work, but no guarantees on performance)
-- DFRobot IR Positioning Camera [SEN0158](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D)
-- 4 IR LED emitters | regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6 ohm resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
- * Optional: Any 12V solenoid, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=4uWgqc8g1PM)
-   * Requires a DC power extension cable and an adjustable 12V power supply.
- * Optional: Any 5V rumble motor, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
- * Optional: Any 2-way SPDT switches, to adjust state of rumble/solenoid/rapid fire.
+- DFRobot IR Positioning Camera SEN0158: [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) [DF-Robot (International)](https://www.dfrobot.com/product-1088.html)
+- 4 IR LED emitters | regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
+   * Optional: Any 12V solenoid, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=4uWgqc8g1PM)
+     * *Requires a DC power extension cable and a separate adjustable 12V power supply.*
+   * Optional: Any 5V gamepad rumble motor, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
+   * Optional: Any 2-way SPDT switches, to adjust state of rumble/solenoid/rapid fire.
 
 With minor modifications it should work with any SAMD21, SAMD51, or ATmega32U4 16MHz boards. [See the SAMCO project for build details.](https://github.com/samuelballantyne/IR-Light-Gun)
 
@@ -53,6 +53,7 @@ The RP2040 is the most performant board for the cheapest price, and future proof
 
 For reference, the default schematic and (general) layout for the build and its optional extras are attached:
 ![Weh](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
+ * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues:
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
