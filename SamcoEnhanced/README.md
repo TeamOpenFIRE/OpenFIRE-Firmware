@@ -3,8 +3,7 @@
 ## Table of Contents:
  - [Setup Guide](#setup-guide)
    - [IR Emitter Setup](#ir-emitter-setup)
-   - [Arduino Library Dependencies](#arduino-library-dependencies)
-   - [Compiling & Configuration Options](#compiling--configuration-options)
+   - [Arduino Setup & Libraries](#arduino-setup--libraries)
    - [Sketch Configuration](#sketch-configuration)
    - [Define Buttons & Timers](#define-buttons--timers)
  - [Operations Manual](#operations-manual)
@@ -18,6 +17,7 @@
    - [Saving settings to non-volatile memory](#saving-settings-to-non-volatile-memory)
    - [Processing Mode](#processing-mode)
  - [Technical Details & Assorted Errata](#technical-details--assorted-errata)
+   - [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns)
    - [Button Combo Masks](#button-combo-masks)
    - [Other Constants](#other-constants)
    - [Profile Array](#profile-array)
@@ -27,18 +27,30 @@
 ### IR Emitter setup
 The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
-### Arduino Library Dependencies
-Be sure to have the following libraries installed depending on the board you are using (or just install them all).
-- Adafruit DotStar (for ItsyBitsy M0 and M4)
-- Adafruit SPI Flash (for ItsyBitsy M0 and M4)
-- Adafruit NeoPixel (for ItsyBitsy RP2040)
-- Adafruit TinyUSB (for ItsyBitsy RP2040)
+### Arduino Setup & Libraries
+If you're using Arduino IDE for the first time, the setup is relatively simple (*applies to the 'Legacy' 1.8.x version!):
+ 1. [Install the Arduino IDE for your system](https://www.arduino.cc/en/software) (or for Linux users, from your system's package manager)
+    * *Windows users, install the USB drivers when prompted.*
+ 3. Once installed, open Arduino, and from the top bar, click on __*File -> Preferences.*__
+ 4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
+    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
+    and paste it in there. Click OK to confirm.
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager.*__
+ 6. Install the board files for the version of your choice:
+    * M0, M4 boards: Install `Adafruit SAMD Boards`
+    * RP2040: Install `Raspberry Pi Pico/RP 2040`
+ 7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__, and install the following libraries for the board of your choice:
+    * M0, M4 boards: `Adafruit DotStar` & `Adafruit SPI Flash`
+    * RP2040 boards: `Adafruit NeoPixel` & `Adafruit TinyUSB`
+ 8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
+    * **Most boards** should use the default `Arduino` USB stack; **for RP2040 users,** change the USB stack to `Adafruit TinyUSB`.
+    * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
+   
+Extract the `SamcoEnhanced` and `libraries` folders from the source repository/releases into your Arduino sketches folder. Defaults are:
+* Windows: `Documents\Arduino`
+* Linux: `~/Arduino`
 
-### Compiling & Configuration Options
-
-Under the "Tools" dropdown in the Arduino IDE, set the compiler to use `Optimize Even More (-O3)`. Use the default clock speeds on M4 or RP2040-based boards.
-
-The USB Stack option to should be set to `Arduino` for **most boards** (SAMD, ATmega), and `Adafruit TinyUSB` for **RP2040**s.
+Now just go to File -> Open, and load `SamcoEnhanced.ino`.
 
 ### Sketch Configuration
 The sketch is configured for a [SAMCO 2.0](https://www.ebay.com/itm/184699412596) (GunCon 2) build... *ish.* Because of the additions added (that may or may not conflict with a SAMCO 2.0 board's pin mapping), you'll probably have to adjust what pins are arranged to what buttons manually, and which pins are reserved for the Rumble and Solenoid signal wires (if any). You can still use a loose board for a custom non-Guncon build, just change the pinout as you see fit - see section below on [Defining Buttons & Timers](#define-buttons--timers).
@@ -50,6 +62,8 @@ Refer to Line 119 for the pins of the tactile extras (rumble, solenoid, hardware
 
 Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work. All the other Adafruit boards don't have this discrepancy.
 ![Itsybitsy RP2040 Back](https://cdn-learn.adafruit.com/assets/assets/000/101/909/original/adafruit_products_ItsyRP_pinouts_back.jpg)
+
+Once the sketch is configured to your liking, plug the board into a USB port, click Upload (the arrow button next to the checkmark) and your board will reconnect a few times until it's recognized as a combined mouse and keyboard device!
 
 ## Operations Manual
 The light gun operates as an absolute positioning mouse (like a stylus!) until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
@@ -128,6 +142,25 @@ For ItsyBitsy M0 and M4 boards the external on-board SPI flash memory is used. F
 The Processing mode is intended for use with the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Download [Processing](processing.org) and the 4IR processing sketch. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
 
 ## Technical Details & Assorted Errata
+
+### Change USB ID for Multiple Guns
+If you intend to use multiple SAMCO guns, the Arduino software does not have an immediately intuitive way of distinguishing different boards of the same type; ergo, if you have two RP2040 guns, they will both be `Adafruit ItsyBitsy RP2040 Mouse/Keyboard` with the same USB identifier. This will confuse RetroArch and/or TeknoParrot (or other apps that directly addresses individual mice) which won't be fun for play; or you might just want to change the name for flare. All good!
+
+To change this, go to the Arduino system directory (NOT the same directory as where your libraries and sketches go):
+* Windows: `%LOCALAPPDATA%\Arduino15\packages\{adafruit|rp2040}\hardware\$boardFamily\$versionNumber`
+* Linux: `~/.arduino15/packages/{adafruit|rp2040}/hardware/$boardFamily/$versionNumber`
+
+Edit `boards.txt`. Taking the RP2040 as the example, the lines you're looking for should look something like:
+```
+adafruit_itsybitsy.build.vid=0x239a
+adafruit_itsybitsy.build.pid=0x80fd
+adafruit_itsybitsy.build.usb_manufacturer="Adafruit"
+adafruit_itsybitsy.build.usb_product="ItsyBitsy 2040"
+// The 'build' part is VERY important, as this is the one that determines what the board will be flashed into!
+```
+Edit the lines to anything that's *different* from a USB ID that's already used; e.g., changing `0x80fd` to `0x80fe` for a second RP2040 gun (USB IDs are in hexidecimal/Base15, names are normal alphanumeric strings).
+
+**The only one that's necessary to change** is the __*vid/pid*__ pair, but you might also want to change what name they report as to differentiate between multiple gun devices in TP or RA. Unfortunately, *you will have to change this back and forth **every time** you're switching between guns* if you need to reflash the board. You might want to make a safe copy of the original `boards.txt` and make one or more copies of the file with the desired USB identifiers you want to use; switching between them each time before opening the IDE. If you do this often, this could be automated via script if so desired.
 
 ### Button Combo Masks
 Below the button definitions are a bunch of constants that configure the buttons to control the gun. For example, enter and exit pause mode, and changing various settings. See the comments above each value for details.
