@@ -62,6 +62,8 @@ Refer to Line 119 for the pins of the tactile extras (rumble, solenoid, hardware
 
 Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work. All the other Adafruit boards don't have this discrepancy.
 ![Itsybitsy RP2040 Back](https://cdn-learn.adafruit.com/assets/assets/000/101/909/original/adafruit_products_ItsyRP_pinouts_back.jpg)
+The default button:pins layout used is as follows (aside from the power pins and the camera, you may deviate from this as much as desired so long as that's reflected in the sketch!):
+![Schematic](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
 
 Once the sketch is configured to your liking, plug the board into a USB port, click Upload (the arrow button next to the checkmark) and your board will reconnect a few times until it's recognized as a combined mouse and keyboard device!
 
