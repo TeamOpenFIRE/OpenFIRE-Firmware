@@ -84,7 +84,9 @@
 #endif
 #ifdef SAMCO_FLASH_ENABLE
 #include <Adafruit_SPIFlashBase.h>
-#endif // SAMCO_FLASH_ENABLE
+#elif SAMCO_EEPROM_ENABLE
+#include <EEPROM.h>
+#endif // SAMCO_FLASH_ENABLE/EEPROM_ENABLE
 #include <AbsMouse5.h>
 #include <DFRobotIRPositionEx.h>
 #include <LightgunButtons.h>
@@ -282,8 +284,8 @@ enum RunMode_e {
     RunMode_Count
 };
 
-// profiles ---------------------------------------------------------------------------------------------- (*****THE LAST THING YOU'LL WANT TO ADJUST IS HERE!*****)
-// defaults can be populated here, or not worry about these values and just save to flash/EEPROM
+// profiles ----------------------------------------------------------------------------------------------
+// defaults can be populated here, but any values in EEPROM/Flash will override these.
 // if you have original Samco calibration values, multiply by 4 for the center position and
 // scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
@@ -575,7 +577,10 @@ void setup() {
 #ifdef SAMCO_FLASH_ENABLE
     // init flash and load saved preferences
     nvAvailable = flash.begin();
-#endif // SAMCO_FLASH_ENABLE
+#elif SAMCO_EEPROM_ENABLE
+    // initialize EEPROM device. Arduino AVR has a 1k flash, so use that for compatibility.
+    EEPROM.begin(1024); 
+#endif // SAMCO_FLASH_ENABLE/EEPROM_ENABLE
     
     if(nvAvailable) {
         LoadPreferences();
