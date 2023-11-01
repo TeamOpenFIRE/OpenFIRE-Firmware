@@ -1009,7 +1009,7 @@ void ExecRunMode()
                 }
             }
         #else
-        if(!digitalRead(btnTrigger)) {                              // Check if we pressed the Trigger this run. (Yes we're reading this directly, it's needed for button holds. sue me)
+        if(buttons.debounced == BtnMask_Trigger) {                  // Check if we pressed the Trigger this run.
             if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) && (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX)) { // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
                 if(solenoidActivated) {                             // (Only activate when the solenoid switch is on!)
                     if(!triggerHeld) {                              // If this is the first time we're firing,
