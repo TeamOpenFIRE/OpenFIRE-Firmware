@@ -25,19 +25,18 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - Enhanced button debouncing and handling (LightgunButtons library)
 - Modified AbsMouse to be a 5 button device (AbsMouse5 library)
 - Multiple calibration profiles
-- Save settings and calibration profiles to flash memory (SAMD) or EEPROM (ATmega32U4)
+- Save settings and calibration profiles to flash memory (SAMD) or EEPROM (RP2040)
 - Built in Processing mode for use with the SAMCO Processing sketch
 
 ## Requirements
-- Adafruit ItsyBitsy [M0](https://www.adafruit.com/product/3727), [M4](https://www.adafruit.com/product/3800), or [RP2040](https://www.adafruit.com/product/4888) (ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz might still work, but no guarantees on performance)
+- Adafruit ItsyBitsy [M0](https://www.adafruit.com/product/3727), [M4](https://www.adafruit.com/product/3800), or [RP2040](https://www.adafruit.com/product/4888) *(ATmega32U4 5V 16MHz or Pro Micro ATmega32U4 5V 16MHz don't have enough codespace or memory at this point.)*
+  * Arduino SAMD21/51 boards & Raspberry Pi Pico *should* be compatible with minor modifications, but keep in mind the differences in pinouts! [See the SAMCO project for legacy build details.](https://github.com/samuelballantyne/IR-Light-Gun)
 - DFRobot IR Positioning Camera SEN0158: [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html)
 - 4 IR LED emitters: regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
    * Optional: Any 12V solenoid, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=4uWgqc8g1PM)
      * *Requires a DC power extension cable and a separate adjustable 12V power supply.*
    * Optional: Any 5V gamepad rumble motor, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
    * Optional: Any 2-way SPDT switches, to adjust state of rumble/solenoid/rapid fire.
-
-With minor modifications it should work with any SAMD21, SAMD51, or ATmega32U4 16MHz boards. [See the SAMCO project for build details.](https://github.com/samuelballantyne/IR-Light-Gun)
 
 The RP2040 is the most performant board for the cheapest price, and future proofs your build (at the cost of no working EEPROM storage for profile saves), but the M0 and M4 should still work well! The ATmega-based boards have an EEPROM for saving settings, but might be out of code space by now with this build.
 
