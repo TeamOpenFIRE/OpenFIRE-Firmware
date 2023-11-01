@@ -133,12 +133,12 @@ A sign that the IR sensitivity is too low is if the pointer moves in noticeable 
 A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. The Processing sketch can help daignose this problem since it will visually display the 4 IR points.
 
 ### Profiles
-The sketch is configured with 8 profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by assigning a unique button or combination.
+The sketch is configured with 4 profiles available (with up to 8 possible if desired, correlating to the d-pad). Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select).
 
 #### Saving Settings to Non-Volatile Memory
-The calibration data and profile settings can be saved in non-volatile memory. The currently selected profile is saved as the default for when the light gun is plugged in.
+The calibration data and profile settings can be saved in non-volatile memory by pressing Start + Select (by default). The currently selected profile is saved as the default for when the light gun is plugged in.
 
-For ItsyBitsy M0 and M4 boards the external on-board SPI flash memory is used. For ATmega32U4 the EEPROM is used. The RP2040 *should* have flash memory reserved too, but doesn't seem to work unfortunately. :(
+For ItsyBitsy M0 and M4 boards, the external on-board SPI flash memory is used; for ATmega32U4 and RP2040, the EEPROM is used (in the 2040's case, a simulated EEPROM provided by the USB stack that actually writes to program flash space, but EEPROM nonetheless).
 
 #### Processing Mode
 The Processing mode is intended for use with the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Download [Processing](processing.org) and the 4IR processing sketch. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
@@ -174,7 +174,7 @@ Most button behaviours can be assigned a combination. If the comment says a butt
 - `CalModeColor` colour for the RGB LED while calibrating
 
 ### Profile Array
-There is a `ProfileCount` constant that defines the number of profiles. The `profileData` array has the default values for the profile. If there are no settings saved in non-volatile memory, then these values are used. There is no need to change these values if settings are saved to non-volatile memory.
+There is a `ProfileCount` constant that defines the number of profiles. The `profileData` array has the default values for the profile. If there are no settings saved in non-volatile memory, then these values are used. There is no need to change these values if settings are saved to non-volatile memory, as that will always override these (even across board reflashes, unless you nuke the program flash by other means).
 
 Find the `profileDesc` array to configure each profile. The profile descriptor allows you to specify:
 - A button/combination to select the profile while in pause mode
