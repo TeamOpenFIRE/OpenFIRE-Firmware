@@ -49,8 +49,6 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues (want to fix sooner rather than later):
-- RP2040 doesn't save settings currently - it'll say it has, but will be lost on poweroff.
-  * TinyUSB is *supposed* to allocate some space as EEPROM for saving profiles. Wonder why it isn't...
 - Start/Select/Dpad debouncing logic is weird and may cause buttons to stick or require a few tries to actuate properly. Still needs investigation (increasing the debounce time to 60 might help?).
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
@@ -65,6 +63,8 @@ For reference, the default schematic and (general) layout for the build and its 
 ## Wishlist (things I want to but don't know how/can't do yet):
 - Implement [MAMEHOOKER](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) support! Discussed in [#1](../../issues/1)
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
+- Document and implement separate RGB LED support?
+  * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. Could make RGB LEDs react to events, i.e. trigger pulls.
 - *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
 
 
