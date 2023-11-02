@@ -202,12 +202,12 @@ const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 20, BTN_AG_MASK, "Trigger"}, // "Let me take care of this!" Barry Burton
     {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 20, BTN_AG_MASK2, "A"},
     {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 20, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Keyboard, '1', 35, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Keyboard, '5', 35, BTN_AG_MASK2, "Select"},
-    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 35, BTN_AG_MASK2, "Up"},
-    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 35, BTN_AG_MASK2, "Down"},
-    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 35, BTN_AG_MASK2, "Left"},
-    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 35, BTN_AG_MASK2, "Right"},
+    {btnStart, LightgunButtons::ReportType_Internal, '1', 20, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Internal, '5', 20, BTN_AG_MASK2, "Select"},
+    {btnGunUp, LightgunButtons::ReportType_Internal, KEY_UP_ARROW, 20, BTN_AG_MASK2, "Up"},
+    {btnGunDown, LightgunButtons::ReportType_Internal, KEY_DOWN_ARROW, 20, BTN_AG_MASK2, "Down"},
+    {btnGunLeft, LightgunButtons::ReportType_Internal, KEY_LEFT_ARROW, 20, BTN_AG_MASK2, "Left"},
+    {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 20, BTN_AG_MASK2, "Right"},
     {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 20, BTN_AG_MASK2, "Reload"},
     {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 20, BTN_AG_MASK2, "Pedal"}
 };
@@ -264,6 +264,17 @@ constexpr uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
 constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
 constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
 constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
+
+// button combination to toggle offscreen button mode in software:
+constexpr uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
+
+#ifndef USES_SWITCHES
+// button combination to toggle rumble in software:
+constexpr uint32_t RumbleToggleBtnMask = BtnMask_Left;
+
+// button combination to toggle solenoid in software:
+constexpr uint32_t SolenoidToggleBtnMask = BtnMask_Right;
+#endif
 
 // colour when no IR points are seen
 constexpr uint32_t IRSeen0Color = WikiColor::Amber;
@@ -866,6 +877,14 @@ void loop() {
                 DecreaseIrSensitivity();
             } else if(buttons.pressedReleased == SaveBtnMask) {
                 SavePreferences();
+            } else if(buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
+                OffscreenToggle();
+            #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
+            } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
+                RumbleToggle();
+            } else if(buttons.pressedReleased == SolenoidToggleBtnMask) {
+                SolenoidToggle();
+            #endif
             } else {
                 SelectCalProfileFromBtnMask(buttons.pressedReleased);
             }
@@ -1125,17 +1144,58 @@ void ExecRunMode()
         }
         #endif
 
+        // Because LightgunButtons' handling of keyboard inputs are weird, we're just using it for debouncing,
+        // and handling the actual key signals here; it feels significantly better this way.
+        if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
+            Keyboard.press('1');
+        } else {
+            Keyboard.release('1');
+        }
+        if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
+            Keyboard.press('5');
+        } else {
+            Keyboard.release('5');
+        }
+        if(bitRead(buttons.debounced, 5)) {
+            Keyboard.press(KEY_UP_ARROW);
+        } else {
+            Keyboard.release(KEY_UP_ARROW);
+        }
+        if(bitRead(buttons.debounced, 6)) {
+            Keyboard.press(KEY_DOWN_ARROW);
+        } else {
+            Keyboard.release(KEY_DOWN_ARROW);
+        }
+        if(bitRead(buttons.debounced, 7)) {
+            Keyboard.press(KEY_LEFT_ARROW);
+        } else {
+            Keyboard.release(KEY_LEFT_ARROW);
+        }
+        if(bitRead(buttons.debounced, 8)) {
+            Keyboard.press(KEY_RIGHT_ARROW);
+        } else {
+            Keyboard.release(KEY_RIGHT_ARROW);
+        }
+
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
             Keyboard.releaseAll();                                  // Clear out keyboard keys (since Seong's default is pressing start, which is num1)
-            delay(1);                                               // Wait a bit. Required for the escape keypress to actually register.
+            delay(5);                                               // Wait a bit. Required for the escape keypress to actually register.
             Keyboard.press(KEY_ESC);                                // PUSH THE BUTTON.
             delay(100);                                             // Wait another bit. Required for the escape keypress to actually register, and mitigate sticking.
             Keyboard.release(KEY_ESC);                              // Aaaaand release.
         }
 
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
-            // MAKE SURE SOLENOID IS OFF:
+            // MAKE SURE EVERYTHING IS DISENGAGED:
             digitalWrite(solenoidPin, LOW);
+            digitalWrite(rumblePin, LOW);
+            Keyboard.releaseAll();
+            offscreenBShot = false;
+            buttonPressed = false;
+            triggerHeld = false;
+            solenoidFirstShot = false;
+            rumbleHappening = false;
+            rumbleHappened = false;
             SetMode(GunMode_Pause);
             buttons.ReportDisable();
             return;
@@ -1463,6 +1523,7 @@ void PrintResults()
         PrintIrSensitivity();
         PrintRunMode();
         PrintCal();
+        PrintExtras();
     }
         
     lastPrintMillis = millis();
@@ -1591,6 +1652,34 @@ void PrintNVPrefsError()
         Serial.println(nvPrefsError);
 #endif // SAMCO_FLASH_ENABLE
     }
+}
+
+void PrintExtras() {
+    Serial.print("Offscreen button mode enabled: ");
+    if(offscreenButton) {
+        Serial.println("True");
+    } else {
+        Serial.println("False");
+    }
+    Serial.print("Rumble enabled: ");
+    if(rumbleActivated) {
+        Serial.println("True");
+    } else {
+        Serial.println("False");
+    }
+    Serial.print("Solenoid enabled: ");
+    if(solenoidActivated) {
+        Serial.println("True");
+        Serial.print("Rapid fire enabled: ");
+        if(autofireActivated) {
+            Serial.println("True");
+        } else {
+            Serial.println("False");
+        }
+    } else {
+        Serial.println("False");
+    }
+    return;
 }
 
 void LoadPreferences()
@@ -1904,6 +1993,87 @@ void SetLedColorFromMode()
 }
 
 // ADDITIONS HERE:
+void OffscreenToggle() {
+    offscreenButton = !offscreenButton;                           // Toggle
+    if(offscreenButton) {                                         // If we turned ON this mode,
+        Serial.println("Enabled Offscreen Button!");
+        SetLedPackedColor(WikiColor::Ghost_white);                // Set a color,
+        digitalWrite(rumblePin, HIGH);                            // Set rumble on
+        delay(125);                                               // For this long,
+        digitalWrite(rumblePin, LOW);                             // Then flick it off,
+        delay(150);                                               // wait a little,
+        digitalWrite(rumblePin, HIGH);                            // Flick it back on
+        delay(200);                                               // For a bit,
+        digitalWrite(rumblePin, LOW);                             // and then turn it off,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    } else {                                                      // Or we're turning this OFF,
+        Serial.println("Disabled Offscreen Button!");
+        SetLedPackedColor(WikiColor::Ghost_white);                // Just set a color,
+        delay(150);                                               // Keep it on,
+        LedOff();                                                 // Flicker it off
+        delay(100);                                               // for a bit,
+        SetLedPackedColor(WikiColor::Ghost_white);                // Flicker it back on
+        delay(150);                                               // for a bit,
+        LedOff();                                                 // And turn it back off
+        delay(200);                                               // for a bit,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    }
+}
+
+#ifndef USES_SWITCHES
+void RumbleToggle() {
+    rumbleActivated = !rumbleActivated;                           // Toggle
+    if(rumbleActivated) {                                         // If we turned ON this mode,
+        Serial.println("Rumble enabled!");
+        SetLedPackedColor(WikiColor::Salmon);                     // Set a color,
+        digitalWrite(rumblePin, HIGH);                            // Pulse the motor on to notify the user,
+        delay(300);                                               // Hold that,
+        digitalWrite(rumblePin, LOW);                             // Then turn off,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    } else {                                                      // Or if we're turning it OFF,
+        Serial.println("Rumble disabled!");
+        SetLedPackedColor(WikiColor::Salmon);                     // Set a color,
+        delay(150);                                               // Keep it on,
+        LedOff();                                                 // Flicker it off
+        delay(100);                                               // for a bit,
+        SetLedPackedColor(WikiColor::Salmon);                     // Flicker it back on
+        delay(150);                                               // for a bit,
+        LedOff();                                                 // And turn it back off
+        delay(200);                                               // for a bit,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    }
+}
+
+void SolenoidToggle() {
+    solenoidActivated = !solenoidActivated;                       // Toggle
+    if(solenoidActivated) {                                       // If we turned ON this mode,
+        Serial.println("Solenoid enabled!");
+        SetLedPackedColor(WikiColor::Yellow);                     // Set a color,
+        digitalWrite(solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
+        delay(300);                                               // Hold it that way for a bit,
+        digitalWrite(solenoidPin, LOW);                           // Release it,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    } else {                                                      // Or if we're turning it OFF,
+        Serial.println("Solenoid disabled!");
+        SetLedPackedColor(WikiColor::Yellow);                     // Set a color,
+        delay(150);                                               // Keep it on,
+        LedOff();                                                 // Flicker it off
+        delay(100);                                               // for a bit,
+        SetLedPackedColor(WikiColor::Yellow);                     // Flicker it back on
+        delay(150);                                               // for a bit,
+        LedOff();                                                 // And turn it back off
+        delay(200);                                               // for a bit,
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        return;
+    }
+}
+#endif
+
 void SolenoidActivation(int solenoidFinalInterval) {
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
         unsigned long currentMillis = millis();                   // Initialize timer.
