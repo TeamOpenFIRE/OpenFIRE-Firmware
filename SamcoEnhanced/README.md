@@ -14,6 +14,7 @@
    - [Advanced Calibration](#advanced-calibration)
    - [IR Camera Sensitivity](#ir-camera-sensitivity)
    - [Profiles](#profiles)
+   - [Software Toggles](#software-toggles)
    - [Saving settings to non-volatile memory](#saving-settings-to-non-volatile-memory)
    - [Processing Mode](#processing-mode)
  - [Technical Details & Assorted Errata](#technical-details--assorted-errata)
@@ -103,6 +104,9 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 - B + Down: Decrease IR camera sensitivity (use serial monitor to see the setting)
 - B + Up: Increase IR camera sensitivity (use serial monitor to see the setting)
 - C/Reload: Exit pause mode
+- C/Reload + A: Toggle Offscreen Button Mode
+- Left: Toggle Rumble *(when hardware switches are unavailable)*
+- Right: Toggle Solenoid *(when hardware switches are unavailable)*
 - Trigger: Begin calibration
 - Start + Select: save settings to non-volatile memory (EEPROM or Flash depending on the board configuration)
 
@@ -134,6 +138,16 @@ A sign that the IR sensitivity is too high is if the pointer jumps around errati
 
 ### Profiles
 The sketch is configured with 4 profiles available (with up to 8 possible if desired, correlating to the d-pad). Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select).
+
+### Software Toggles
+Introduced since v1.3 (Serious Intensity) is the ability to toggle hardware features at runtime, even without hardware switches!
+
+While in pause mode, the toggles are as follows:
+- Button C/Reload + Button A: **Offscreen Button Mode** (White) - For older games that only activate a reload function with a button press, this enables offscreen shots to send a right mouse click instead of a left click. If a working motor is installed, it will pulse on and off when enabled.
+- Left D-Pad: **Rumble Toggle** (Salmon) - Enables/disables the rumble functionality. When enabled, the motor will engage for a short period.
+- Right D-Pad: **Solenoid Toggle** (Yellow) - Enables/disables the solenoid force feedback. When enabled, the solenoid will engage for a short period.
+
+These settings are not saved in profiles stored in Non-Volatile Memory, but the default state of each function can be set in the sketch hardware options section.
 
 #### Saving Settings to Non-Volatile Memory
 The calibration data and profile settings can be saved in non-volatile memory by pressing Start + Select (by default). The currently selected profile is saved as the default for when the light gun is plugged in.
@@ -178,6 +192,6 @@ There is a `ProfileCount` constant that defines the number of profiles. The `pro
 
 Find the `profileDesc` array to configure each profile. The profile descriptor allows you to specify:
 - A button/combination to select the profile while in pause mode
-- Colour used to light up an RGB LED (ItsyBitsy M0 and M4 include a DotStar) when paused
+- Colour used to light up an RGB LED (ItsyBitsy M0 and M4 include a DotStar, ItsyBitsy RP2040 includes a NeoPixel) when paused
 - A text description for the button/combination
 - An optional text label or brief description
