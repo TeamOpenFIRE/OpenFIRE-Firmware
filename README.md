@@ -9,11 +9,13 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Solenoid Support!** Get the authentic arcade feedback with every shot. Works when aiming *on-screen!*
 - **Rumble Support!** Feel the subtle feedback of a motor, for those moments when you need to *shoot outside of the screen!*
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
+- **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
+- **Toggleable Extras!** Aside from the option for using hardware switches baked in, the extras can all be individually toggled mid-game in pause mode (Button C + Select)!
 - All upgrades are *optional,* and can work as a drop-in replacement for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
 - Remains forever open source, with *compatibility for GUN4IR parts!* Can use the same community resources of parts and tutorials for easier assembly of a complete build.
 - Clearer labeling in the sketch for user readability. Ain't nobody got time to read!
-- Fully cross-platform solution, all configuration done using the open-source Arduino IDE and adjustments done on the board!
+- Fully cross-platform solution, all initial hardware configuration done using the open-source Arduino IDE and profiles are saved on the board!
 - Made out of at least 49% passion and 49% stubbornness (and 2% spite)!
 
 ## Original Prow's Fork Enhancements
@@ -36,7 +38,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
    * Optional: Any 12V solenoid, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=4uWgqc8g1PM)
      * *Requires a DC power extension cable and a separate adjustable 12V power supply.*
    * Optional: Any 5V gamepad rumble motor, w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
-   * Optional: Any 2-way SPDT switches, to adjust state of rumble/solenoid/rapid fire.
+   * Optional: Any 2-way SPDT switches, to adjust state of rumble/solenoid/rapid fire in hardware (can be adjusted in software from pause mode if not available!)
 
 The RP2040 is the most performant board for the cheapest price, and future proofs your build (at the cost of no working EEPROM storage for profile saves), but the M0 and M4 should still work well! The ATmega-based boards have an EEPROM for saving settings, but might be out of code space by now with this build.
 
@@ -48,24 +50,21 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues (want to fix sooner rather than later):
-- Start/Select/Dpad debouncing logic is weird and may cause buttons to stick or require a few tries to actuate properly. Still needs investigation (increasing the debounce time to 60 might help?).
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
-- Code is still kind of a mess, so I should clean things up at some point maybe kinda.
-- Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!)
-  * If, like me, you suffer from this, make sure you use thick enough wiring! I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
+
+***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
 - Should implement support for rumble as an alternative force-feedback system; decouple rumble from off-screen exclusively at some point.
-- Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but noting this regardless.
-- Implement software solution for enabling the rumble or solenoid, or toggle rapid fire system; should probably make a new button mask combo to activate while in pause mode.
+- Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
 - Implement [MAMEHOOKER](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) support! Discussed in [#1](../../issues/1)
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. Could make RGB LEDs react to events, i.e. trigger pulls.
+- Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but noting this regardless.
 - *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
-
 
 ## Thanks:
 * Samuel Ballantyne, for his SAMCO project which inspired my madness in the first place.
