@@ -1002,7 +1002,7 @@ void ExecRunMode()
         }
         // ADDITIONS HERE: The main additions are here.
         #ifdef DEBUG_SOL // I fucking hate EMI...
-            if(buttons.pressed == BtnMask_Trigger) {                  // We're using this to fire off the solenoid when the trigger is pulled, regardless of camera.
+            if(bitRead(buttons.debounced, 0) {                        // We're using this to fire off the solenoid when the trigger is pulled, regardless of camera.
                 SolenoidActivation(solenoidNormalInterval);           // We're just gonna go right to shootin that thang.
             } else {
                 if(digitalRead(solenoidPin)) {                        // Has the solenoid remain engaged this cycle?
@@ -1013,8 +1013,8 @@ void ExecRunMode()
                     }
                 }
             }
-        #else
-        if(buttons.debounced == BtnMask_Trigger) {                  // Check if we pressed the Trigger this run.
+        #else  // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 == start, 4 == select)
+        if(bitRead(buttons.debounced, 0) && !bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 4)) { // Check if we pressed the Trigger this run WITHOUT pressing Start or Select.
             if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) && (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX)) { // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
                 if(solenoidActivated) {                             // (Only activate when the solenoid switch is on!)
                     if(!triggerHeld) {                              // If this is the first time we're firing,
