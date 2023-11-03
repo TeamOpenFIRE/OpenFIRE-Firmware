@@ -105,6 +105,7 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 - B + Up: Increase IR camera sensitivity (use serial monitor to see the setting)
 - C/Reload: Exit pause mode
 - C/Reload + A: Toggle Offscreen Button Mode
+- C/Reload + B: Toggle Solenoid Rapid Fire speed, between 3 levels.
 - Left: Toggle Rumble *(when hardware switches are unavailable)*
 - Right: Toggle Solenoid *(when hardware switches are unavailable)*
 - Trigger: Begin calibration
@@ -142,8 +143,9 @@ The sketch is configured with 4 profiles available (with up to 8 possible if des
 ### Software Toggles
 Introduced since v1.3 (Serious Intensity) is the ability to toggle hardware features at runtime, even without hardware switches!
 
-While in pause mode, the toggles are as follows:
+While in pause mode, the toggles are as follows (color indicating what the board's builtin LED lights up with):
 - Button C/Reload + Button A: **Offscreen Button Mode** (White) - For older games that only activate a reload function with a button press, this enables offscreen shots to send a right mouse click instead of a left click. If a working motor is installed, it will pulse on and off when enabled.
+- Button C/Reload + Button B: **Rapid Fire Speed** (Magenta) - Sets the speed of the rapid fire (when autofire is enabled) by cycling between three different levels. When toggled, the solenoid will fire three times with the selected setting.
 - Left D-Pad: **Rumble Toggle** (Salmon) - Enables/disables the rumble functionality. When enabled, the motor will engage for a short period.
 - Right D-Pad: **Solenoid Toggle** (Yellow) - Enables/disables the solenoid force feedback. When enabled, the solenoid will engage for a short period.
 
