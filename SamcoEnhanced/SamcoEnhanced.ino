@@ -13,7 +13,7 @@
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V1.1
+ * @version V1.3
  * @date 2023
  */
 
@@ -65,7 +65,6 @@ void rp2040pwmIrq(void);
 //#define PRINT_VERBOSE 1
 //#define DEBUG_SERIAL 1
 //#define DEBUG_SERIAL 2
-//#define DEBUG_SOL 1         // used this to test solenoid without cam. fucking EMI problems
 
 // extra position glitch filtering, 
 // not required after discoverving the DFRobotIRPositionEx atomic read technique
@@ -119,6 +118,7 @@ const unsigned int rumbleInterval = 110;              // How long to wait for th
 const unsigned int solenoidNormalInterval = 55;       // Interval for solenoid activation, in ms.
 const unsigned int solenoidFastInterval = 40;         // Interval for faster solenoid activation, in ms.
 const unsigned int solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
+byte autofireWaitFactor = 3;                          // This is the default factor of time to wait between rapid fire pulses (between 2-4)
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 // numbered index of buttons, must match ButtonDesc[] order
@@ -225,6 +225,9 @@ constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
 
 // button combination to toggle offscreen button mode in software:
 constexpr uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
+
+// button combination to toggle offscreen button mode in software:
+constexpr uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
 
 #ifndef USES_SWITCHES
 // button combination to toggle rumble in software:
@@ -837,6 +840,8 @@ void loop() {
                 SavePreferences();
             } else if(buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
                 OffscreenToggle();
+            } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
+                AutofireSpeedToggle();
             #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
             } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
                 RumbleToggle();
@@ -983,19 +988,7 @@ void ExecRunMode()
 #endif // DEBUG_SERIAL
         }
         // ADDITIONS HERE: The main additions are here.
-        #ifdef DEBUG_SOL // I fucking hate EMI...
-            if(bitRead(buttons.debounced, 0) {                        // We're using this to fire off the solenoid when the trigger is pulled, regardless of camera.
-                SolenoidActivation(solenoidNormalInterval);           // We're just gonna go right to shootin that thang.
-            } else {
-                if(digitalRead(solenoidPin)) {                        // Has the solenoid remain engaged this cycle?
-                    unsigned long currentMillis = millis();           // Start the timer
-                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                        previousMillisSol = currentMillis;            // Timer calibration, yawn.
-                        digitalWrite(solenoidPin, LOW);               // Make sure to turn it off.
-                    }
-                }
-            }
-        #else  // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 == start, 4 == select)
+        // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 == start, 4 == select)
         if(bitRead(buttons.debounced, 0)) {                             // Check if we pressed the Trigger this run.
             if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) &&        // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
              (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX) &&
@@ -1016,7 +1009,7 @@ void ExecRunMode()
                             if(digitalRead(solenoidPin)) {              // Is the solenoid engaged?
                                 SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
                             } else {                                    // Or if it's not,
-                                SolenoidActivation(solenoidFastInterval * 2); // We're holding it for longer.
+                                SolenoidActivation(solenoidFastInterval * autofireWaitFactor); // We're holding it for longer, based on the wait factor.
                             }
                         } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
                             if(digitalRead(solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
@@ -1104,7 +1097,6 @@ void ExecRunMode()
                 rumbleHappened = false;                             // well we're clear now that we've stopped holding.
             }
         }
-        #endif
 
         // Because LightgunButtons' handling of keyboard inputs are weird, we're just using it for debouncing,
         // and handling the actual key signals here; it feels significantly better this way.
@@ -1987,6 +1979,37 @@ void OffscreenToggle() {
         SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
         return;
     }
+}
+
+void AutofireSpeedToggle() {
+    switch (autofireWaitFactor) {
+        case 2:
+            autofireWaitFactor = 3;
+            Serial.println("Autofire speed level 2.");
+            break;
+        case 3:
+            autofireWaitFactor = 4;
+            Serial.println("Autofire speed level 3.");
+            break;
+        case 4:
+            autofireWaitFactor = 2;
+            Serial.println("Autofire speed level 1.");
+            break;
+    }
+    SetLedPackedColor(WikiColor::Magenta);                        // Set a color,
+    digitalWrite(solenoidPin, HIGH);                              // And demonstrate the new autofire factor three times!
+    delay(solenoidFastInterval);
+    digitalWrite(solenoidPin, LOW);
+    delay(solenoidFastInterval * autofireWaitFactor);
+    digitalWrite(solenoidPin, HIGH);
+    delay(solenoidFastInterval);
+    digitalWrite(solenoidPin, LOW);
+    delay(solenoidFastInterval * autofireWaitFactor);
+    digitalWrite(solenoidPin, HIGH);
+    delay(solenoidFastInterval);
+    digitalWrite(solenoidPin, LOW);
+    SetLedPackedColor(profileDesc[selectedProfile].color);        // And reset the LED back to pause mode color
+    return;
 }
 
 #ifndef USES_SWITCHES
