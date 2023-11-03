@@ -17,49 +17,7 @@
  * @date 2023
  */
 
- /* Default button assignments
- *
- *  Reload (Button C) + Start will send an Esc keypress.
- *  Reload (Button C) + Select will enter Pause mode.
- * 
- *  In Pause mode:
- *  A, B, Start, Select: select a profile
- *  Start + Down: Normal gun mode (averaging disabled)
- *  Start + Up: Normal gun with averaging, toggles between the 2 averaging modes (use serial monitor to see the setting)
- *  Start + A: Processing mode for use with the Processing sketch
- *  B + Down: Decrease IR camera sensitivity (use serial monitor to see the setting)
- *  B + Up: Increase IR camera sensitivity (use serial monitor to see the setting)
- *  Reload: Exit pause mode
- *  Trigger: Begin calibration
- *  Start + Select: save settings to non-volatile memory
- *
- *  Note that the buttons in pause mode (and to enter pause mode) activate when the last button of
- *  the comination releases.
- *  This is used to detect and differentiate button combinations vs a single button press.
-*/
-
- /* HOW TO CALIBRATE:
- *  
- *  Note: Prow renamed "offset" from the original sketch to "scale" which is a better term for what the setting is.
- *  The center calibration step determines the offset compensation required for accurate positioning.
- * 
- *  Step 1: Press Reload + Select to enter pause mode.
- *          Optional: Press a button to select a profile: A, B, Start, or Select
- *  Step 2: Pull Trigger to begin calibration.
- *  Step 3: Shoot cursor at center of the Screen and hold the trigger down for 1/3 of a second.
- *  Step 4: Mouse should lock to vertical axis. Use A/B buttons (can be held down) buttons to adjust mouse vertical
- *          range. A will increase, B will decrease. Track the top and bottom edges of the screen while adjusting.
- *  Step 5: Pull Trigger
- *  Step 6: Mouse should lock to horizontal axis. Use A/B buttons (can be held down) to adjust mouse horizontal
- *          range. A will increase, B will decrease. Track the left and right edges of the screen while adjusting.
- *  Step 7: Pull Trigger to finish and return to run mode. Values will apply to the selected profile.
- *  Step 8: Recommended: Confirm calibration is good. Enter pause mode and press Start and Select
- *          to write calibration to non-volatile memory.
- *  Step 9: Optional: Open serial monitor and update xCenter, yCenter, xScale & yScale values in the
- *          profile data array below.
- * 
- *  Calibration can be cancelled (return to pause mode) during any step by pressing Reload or Start or Select.
-*/
+ // Remember to check out the enclosed instruction book (README.md) that came with this program for more information!
 
 #include <Arduino.h>
 #include <SamcoBoard.h>
@@ -974,8 +932,8 @@ void ExecRunMode()
                 //Serial.println(rumbleActivated);
                 //Serial.print("Solenoid state: ");
                 //Serial.println(solenoidActivated);
-                Serial.print("Autofire state: ");
-                Serial.println(autofireActivated);
+                //Serial.print("Autofire state: ");
+                //Serial.println(autofireActivated);
             #endif
         #endif
         buttons.Poll(0);
@@ -1039,7 +997,9 @@ void ExecRunMode()
             }
         #else  // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 == start, 4 == select)
         if(bitRead(buttons.debounced, 0)) {                             // Check if we pressed the Trigger this run.
-            if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) && (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX) && !offscreenBShot) { // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+            if((conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) &&        // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+             (conMoveXAxis > 0 && conMoveXAxis < MouseMaxX) &&
+             !offscreenBShot) {                                         // ...WHILE we're not currently holding a held offscreen button mode shot
                 if(!buttonPressed) {                                    // ONLY activate this if we haven't already pressed. Any mouse press/release command in a cycle blocks keyboard inputs.
                     AbsMouse5.press(MOUSE_LEFT);                        // We're handling the trigger button press ourselves for a reason.
                     buttonPressed = true;                               // Set this so we don't go back.
@@ -1090,14 +1050,16 @@ void ExecRunMode()
             } else {                                                // We're shooting outside of the screen boundaries!
                 #ifdef PRINT_VERBOSE
                     Serial.println("Shooting outside of the screen! RELOAD!");
-                #endif                                                  // If the trigger ISN'T held this cycle, AND we confirmed aren't already pressing a button...
-                if(!triggerHeld && !buttonPressed && offscreenButton) { // WHILE the offscreen button press is enabled,
-                    AbsMouse5.press(MOUSE_RIGHT);                   // Press the right mouse button
-                    offscreenBShot = true;                          // Set that we have indeed sent an offscreen button shot command.
-                    buttonPressed = true;                           // Set that we have pressed a button so we don't process this again.
-                } else if(!buttonPressed) {                         // ...Or, if we simply haven't pressed a button already,
-                    AbsMouse5.press(MOUSE_LEFT);                    // Use the left mouse instead.
-                    buttonPressed = true;                           // Sticky buttons be bad m'kay.
+                #endif
+                if(!buttonPressed) {                                // If the trigger hasn't been pressed before this cycle,
+                    if(!triggerHeld && offscreenButton) {           // If we're in offscreen button press mode,
+                        AbsMouse5.press(MOUSE_RIGHT);               // Press the right mouse button
+                        offscreenBShot = true;                      // Set that we have indeed sent an offscreen button shot command.
+                        buttonPressed = true;                       // Set that we have pressed a button so we don't process this again.
+                    } else {                                        // ...Or, if we're not in offscreen button mode,
+                        AbsMouse5.press(MOUSE_LEFT);                // Use the left mouse instead.
+                        buttonPressed = true;                       // Sticky buttons be bad m'kay.
+                    }// There seems to be a bug in AbsMouse that won't register clicks when there's no points seen, but Keyboard inputs are okay apparently? RIP Music GunGun lovers ig.
                 }
                 if(rumbleActivated) {                               // Only activate if the rumble switch is enabled!
                     if(!rumbleHappened && !triggerHeld) {           // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
@@ -1118,11 +1080,11 @@ void ExecRunMode()
         } else {                                                    // ...Or we just didn't press the trigger this cycle.
             triggerHeld = false;                                    // Disable the holding function
             if(buttonPressed) {                                     // ONLY process if we've pressed a button before.
-                if(offscreenButton && offscreenBShot) {             // If we fired off screen with the offscreenButton set,
+                if(offscreenBShot) {                                // If we fired off screen with the offscreenButton set,
                     AbsMouse5.release(MOUSE_RIGHT);                 // We were pressing the right mouse, so release that.
                     offscreenBShot = false;                         // Set both of these bits off,
                     buttonPressed = false;                          // So that we can process a trigger click again.
-                } else if(!offscreenBShot) {                        // Or, if we haven't registered an offscreen shot,
+                } else {                                            // Or, if we aren't in offscreen button mode,
                     AbsMouse5.release(MOUSE_LEFT);                  // We were pressing the left mouse, so release that instead.
                     buttonPressed = false;                          // Set so we can process a left click again.
                 }
@@ -1190,6 +1152,11 @@ void ExecRunMode()
             digitalWrite(solenoidPin, LOW);
             digitalWrite(rumblePin, LOW);
             Keyboard.releaseAll();
+            if(offscreenButton) {                                   // Just in case someone (i.e. me) runs test code that accidentally makes the mouse buttons sticky,
+                AbsMouse5.release(MOUSE_RIGHT);                     // You're welcome ig?
+            } else {
+                AbsMouse5.release(MOUSE_LEFT);
+            delay(5);
             offscreenBShot = false;
             buttonPressed = false;
             triggerHeld = false;
