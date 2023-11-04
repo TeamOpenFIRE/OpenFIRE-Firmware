@@ -35,9 +35,11 @@
 #include <Keyboard.h>
 #include <Wire.h>
 #ifdef DOTSTAR_ENABLE
+#define LED_ENABLE
 #include <Adafruit_DotStar.h>
 #endif // DOTSTAR_ENABLE
 #ifdef NEOPIXEL_PIN
+#define LED_ENABLE
 #include <Adafruit_NeoPixel.h>
 #endif
 #ifdef SAMCO_FLASH_ENABLE
@@ -1377,11 +1379,13 @@ void SetModeWaitNoButtons(GunMode_e newMode, unsigned long maxWait)
 // only to be called during run mode since this will modify the LED colour
 void UpdateLastSeen() {
     if(lastSeen != mySamco.seen()) {
+        #ifdef LED_ENABLE
         if(!lastSeen && mySamco.seen()) {
             LedOff();
         } else if(lastSeen && !mySamco.seen()) {
             SetLedPackedColor(IRSeen0Color);
         }
+        #endif // LED_ENABLE
         lastSeen = mySamco.seen();
     }
 }
@@ -1425,7 +1429,9 @@ void SetMode(GunMode_e newMode)
         break;
     }
 
-    SetLedColorFromMode();
+    #ifdef LED_ENABLE
+        SetLedColorFromMode();
+    #endif // LED_ENABLE
 }
 
 // set new run mode and apply it to the selected profile
@@ -1845,8 +1851,10 @@ bool SelectCalProfile(unsigned int profile)
     if(profileData[profile].runMode < RunMode_Count) {
         SetRunMode((RunMode_e)profileData[profile].runMode);
     }
-
+ 
+    #ifdef LED_ENABLE
     SetLedColorFromMode();
+    #endif // LED_ENABLE
 
     // enable save to allow setting new default profile
     stateFlags |= StateFlag_SavePreferencesEn;
@@ -1904,6 +1912,7 @@ void ApplyCalToProfile()
     stateFlags |= StateFlag_PrintSelectedProfile;
 }
 
+#ifdef LED_ENABLE
 void SetLedPackedColor(uint32_t color)
 {
 #ifdef DOTSTAR_ENABLE
@@ -1950,13 +1959,16 @@ void SetLedColorFromMode()
         break;
     }
 }
+#endif // LED_ENABLE
 
 // ADDITIONS HERE:
 void OffscreenToggle() {
-    offscreenButton = !offscreenButton;                           // Toggle
+    offscreenButton = !offscreenButton;
     if(offscreenButton) {                                         // If we turned ON this mode,
         Serial.println("Enabled Offscreen Button!");
-        SetLedPackedColor(WikiColor::Ghost_white);                // Set a color,
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Ghost_white);            // Set a color,
+        #endif // LED_ENABLE
         digitalWrite(rumblePin, HIGH);                            // Set rumble on
         delay(125);                                               // For this long,
         digitalWrite(rumblePin, LOW);                             // Then flick it off,
@@ -1964,19 +1976,23 @@ void OffscreenToggle() {
         digitalWrite(rumblePin, HIGH);                            // Flick it back on
         delay(200);                                               // For a bit,
         digitalWrite(rumblePin, LOW);                             // and then turn it off,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     } else {                                                      // Or we're turning this OFF,
         Serial.println("Disabled Offscreen Button!");
-        SetLedPackedColor(WikiColor::Ghost_white);                // Just set a color,
-        delay(150);                                               // Keep it on,
-        LedOff();                                                 // Flicker it off
-        delay(100);                                               // for a bit,
-        SetLedPackedColor(WikiColor::Ghost_white);                // Flicker it back on
-        delay(150);                                               // for a bit,
-        LedOff();                                                 // And turn it back off
-        delay(200);                                               // for a bit,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Ghost_white);            // Just set a color,
+            delay(150);                                           // Keep it on,
+            LedOff();                                             // Flicker it off
+            delay(100);                                           // for a bit,
+            SetLedPackedColor(WikiColor::Ghost_white);            // Flicker it back on
+            delay(150);                                           // for a bit,
+            LedOff();                                             // And turn it back off
+            delay(200);                                           // for a bit,
+            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     }
 }
@@ -1996,7 +2012,9 @@ void AutofireSpeedToggle() {
             Serial.println("Autofire speed level 1.");
             break;
     }
-    SetLedPackedColor(WikiColor::Magenta);                        // Set a color,
+    #ifdef LED_ENABLE
+        SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
+    #endif // LED_ENABLE
     digitalWrite(solenoidPin, HIGH);                              // And demonstrate the new autofire factor three times!
     delay(solenoidFastInterval);
     digitalWrite(solenoidPin, LOW);
@@ -2008,7 +2026,9 @@ void AutofireSpeedToggle() {
     digitalWrite(solenoidPin, HIGH);
     delay(solenoidFastInterval);
     digitalWrite(solenoidPin, LOW);
-    SetLedPackedColor(profileDesc[selectedProfile].color);        // And reset the LED back to pause mode color
+    #ifdef LED_ENABLE
+        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+    #endif // LED_ENABLE
     return;
 }
 
@@ -2017,23 +2037,29 @@ void RumbleToggle() {
     rumbleActivated = !rumbleActivated;                           // Toggle
     if(rumbleActivated) {                                         // If we turned ON this mode,
         Serial.println("Rumble enabled!");
-        SetLedPackedColor(WikiColor::Salmon);                     // Set a color,
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
+        #endif // LED_ENABLE
         digitalWrite(rumblePin, HIGH);                            // Pulse the motor on to notify the user,
         delay(300);                                               // Hold that,
         digitalWrite(rumblePin, LOW);                             // Then turn off,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
         Serial.println("Rumble disabled!");
-        SetLedPackedColor(WikiColor::Salmon);                     // Set a color,
-        delay(150);                                               // Keep it on,
-        LedOff();                                                 // Flicker it off
-        delay(100);                                               // for a bit,
-        SetLedPackedColor(WikiColor::Salmon);                     // Flicker it back on
-        delay(150);                                               // for a bit,
-        LedOff();                                                 // And turn it back off
-        delay(200);                                               // for a bit,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
+            delay(150);                                           // Keep it on,
+            LedOff();                                             // Flicker it off
+            delay(100);                                           // for a bit,
+            SetLedPackedColor(WikiColor::Salmon);                 // Flicker it back on
+            delay(150);                                           // for a bit,
+            LedOff();                                             // And turn it back off
+            delay(200);                                           // for a bit,
+            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     }
 }
@@ -2042,7 +2068,9 @@ void SolenoidToggle() {
     solenoidActivated = !solenoidActivated;                       // Toggle
     if(solenoidActivated) {                                       // If we turned ON this mode,
         Serial.println("Solenoid enabled!");
-        SetLedPackedColor(WikiColor::Yellow);                     // Set a color,
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
+        #endif // LED_ENABLE
         digitalWrite(solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
         delay(300);                                               // Hold it that way for a bit,
         digitalWrite(solenoidPin, LOW);                           // Release it,
@@ -2050,19 +2078,21 @@ void SolenoidToggle() {
         return;
     } else {                                                      // Or if we're turning it OFF,
         Serial.println("Solenoid disabled!");
-        SetLedPackedColor(WikiColor::Yellow);                     // Set a color,
-        delay(150);                                               // Keep it on,
-        LedOff();                                                 // Flicker it off
-        delay(100);                                               // for a bit,
-        SetLedPackedColor(WikiColor::Yellow);                     // Flicker it back on
-        delay(150);                                               // for a bit,
-        LedOff();                                                 // And turn it back off
-        delay(200);                                               // for a bit,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
+            delay(150);                                           // Keep it on,
+            LedOff();                                             // Flicker it off
+            delay(100);                                           // for a bit,
+            SetLedPackedColor(WikiColor::Yellow);                 // Flicker it back on
+            delay(150);                                           // for a bit,
+            LedOff();                                             // And turn it back off
+            delay(200);                                           // for a bit,
+            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     }
 }
-#endif
+#endif // USES_SWITCHES
 
 void SolenoidActivation(int solenoidFinalInterval) {
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
