@@ -145,7 +145,8 @@ Introduced since v1.3 (Serious Intensity) is the ability to toggle hardware feat
 
 While in pause mode, the toggles are as follows (color indicating what the board's builtin LED lights up with):
 - Button C/Reload + Button A: **Offscreen Button Mode** (White) - For older games that only activate a reload function with a button press, this enables offscreen shots to send a right mouse click instead of a left click. If a working motor is installed, it will pulse on and off when enabled.
-- Button C/Reload + Button B: **Rapid Fire Speed** (Magenta) - Sets the speed of the rapid fire (when autofire is enabled) by cycling between three different levels. When toggled, the solenoid will fire three times with the selected setting.
+- Button C/Reload + Button B: **Rapid Fire Speed** (Magenta) - Sets the speed of the rapid fire (when autofire is enabled) by cycling between three different levels. When toggled, the solenoid will fire five times with the selected setting.
+- Button C/Reload + Button A + Button B: **Burst Fire Mode** (Orange) - Sets the solenoid to fire in three-shot bursts for every trigger pull. When toggled, the solenoid will quickly fire three times when on, or held once for off.
 - Left D-Pad: **Rumble Toggle** (Salmon) - Enables/disables the rumble functionality. When enabled, the motor will engage for a short period.
 - Right D-Pad: **Solenoid Toggle** (Yellow) - Enables/disables the solenoid force feedback. When enabled, the solenoid will engage for a short period.
 
