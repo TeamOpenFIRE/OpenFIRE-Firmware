@@ -63,6 +63,7 @@ For reference, the default schematic and (general) layout for the build and its 
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. Could make RGB LEDs react to events, i.e. trigger pulls.
+  * Would be easier to use external NeoPixels since we're running out of available pins, but generic four-pin RGB leds would be nice too.
 - Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but noting this regardless.
 - *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
 
