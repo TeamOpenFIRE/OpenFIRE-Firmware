@@ -6,7 +6,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 [![YouTube Demo](https://i.ytimg.com/vi/Y_AKmZJIwDY/maxresdefault.jpg)](https://youtu.be/Y_AKmZJIwDY "YouTube Demo (Click to view!)")
 
 ## PLUS Enhancements!
-- **Solenoid Support!** Get the authentic arcade feedback with every shot. Works when aiming *on-screen!*
+- **Solenoid Support!** Get the authentic arcade feedback with every shot, in either single shot, three-shot burst, or rapid fire modes. Intelligently works when aiming *on-screen!*
 - **Rumble Support!** Feel the subtle feedback of a motor, for those moments when you need to *shoot outside of the screen!*
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
 - **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
