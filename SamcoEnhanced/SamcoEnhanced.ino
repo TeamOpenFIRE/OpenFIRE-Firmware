@@ -74,29 +74,51 @@ void rp2040pwmIrq(void);
 
     // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
   // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
-#define USES_SWITCHES 1
-#ifdef USES_SWITCHES // If your build uses hardware switches,
-    // Here's where they should be defined!
+#define USES_SWITCHES
+#ifdef USES_SWITCHES // Here's where they should be defined!
     const byte autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
-    const byte rumbleSwitch = 19;                     // What's the pin number of the rumble switch? Digital.
-    const byte solenoidSwitch = 20;                   // What's the pin number of the solenoid switch? Digital.
-#endif
+#endif // USES_SWITCHES
 
-  // Set this to 1 if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
-//#define USES_TEMP 1
-#ifdef USES_TEMP    
-    const byte tempPin = A0;                          // What's the pin number of the temp sensor? Needs to be analog.
-    const byte tempNormal = 50;                       // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-    const byte tempWarning = 60;                      // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-#endif                                                // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+  // Leave this uncommented if your build uses a rumble motor; comment out to disable any references to rumble functionality.
+#define USES_RUMBLE
+#ifdef USES_RUMBLE
+    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
+    #ifdef USES_SWITCHES
+        const byte rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_SWITCHES
+#endif // USES_RUMBLE
+
+  // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
+#define USES_SOLENOID
+#ifdef USES_SOLENOID
+    bool solenoidActive = false;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_SWITCHES // If your build uses hardware switches,
+        const byte solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SWITCHES
+    
+  // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
+    //#define USES_TEMP
+    #ifdef USES_TEMP    
+        const byte tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
+        const byte tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        const byte tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+#endif // USES_SOLENOID
+
+  // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+  // TODO: actually finish this.
+//#define RUMBLE_FF
+#ifdef RUMBLE_FF
+    #ifdef USES_SOLENOID
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // USES_SOLENOID
+#endif // RUMBLE_FF
 
 
-  // Which extras should be activated? Set here if your build doesn't use toggle switches.
-bool solenoidActivated = false;                       // Are we allowed to use a solenoid? Default to off.
-bool autofireActivated = false;                       // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
-bool rumbleActivated = false;                         // Are we allowed to do rumble? Default to off.
+  // Which software extras should be activated? Set here if your build doesn't use toggle switches.
+bool autofireActive = false;                          // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
 bool offscreenButton = false;                         // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
-bool solenoidBurstFire = false;                       // Is the solenoid firing in burst fire mode? false = default, true = 3-shot burst firing mode
+bool burstFireActive = false;                         // Is the solenoid firing in burst fire mode? false = default, true = 3-shot burst firing mode
 
 
   // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
@@ -116,12 +138,16 @@ const byte btnPedal = 12;                             // If you're using a physi
 
 
   // Adjustable aspects:
-const byte rumbleMotorIntensity = 0;                  // This is actually inverted; 0 is 100%, 1 is roughly half power.
-const unsigned int rumbleInterval = 110;              // How long to wait for the whole rumble command, in ms.
-const unsigned int solenoidNormalInterval = 55;       // Interval for solenoid activation, in ms.
-const unsigned int solenoidFastInterval = 40;         // Interval for faster solenoid activation, in ms.
-const unsigned int solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
-byte autofireWaitFactor = 3;                          // This is the default factor of time to wait between rapid fire pulses (between 2-4)
+byte autofireWaitFactor = 3;                          // This is the default time to wait between rapid fire pulses (from 2-4)
+#ifdef USES_RUMBLE
+    const byte rumbleMotorIntensity = 0;                  // This is actually inverted; 0 is 100%, 1 is roughly half power.
+    const unsigned int rumbleInterval = 110;              // How long to wait for the whole rumble command, in ms.
+#endif // USES_RUMBLE
+#ifdef USES_SOLENOID
+    const unsigned int solenoidNormalInterval = 45;       // Interval for solenoid activation, in ms.
+    const unsigned int solenoidFastInterval = 30;         // Interval for faster solenoid activation, in ms.
+    const unsigned int solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
+#endif // USES_SOLENOID
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 // numbered index of buttons, must match ButtonDesc[] order
@@ -318,12 +344,14 @@ int conMoveYAxis = 0;
 
   // ADDITIONS HERE: the boring inits related to the things I added.
 // Boring values for the solenoid timing stuff:
-unsigned long previousMillisSol = 0;             // our timer (holds the last time since a successful interval pass)
-bool solenoidFirstShot = false;                  // default to off, but actually set this the first time we shoot.
-#ifdef USES_TEMP
-    int tempSensor;                              // Temp sensor changes over time, so just initialize the variable here ig.
-    const unsigned int solenoidWarningInterval = solenoidFastInterval * 3; // for if solenoid is getting toasty.
-#endif
+#ifdef USES_SOLENOID
+    unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
+    bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
+    #ifdef USES_TEMP
+        int tempSensor;                          // Temp sensor changes over time, so just initialize the variable here ig.
+        const unsigned int solenoidWarningInterval = solenoidFastInterval * 3; // for if solenoid is getting toasty.
+    #endif // USES_TEMP
+#endif // USES_SOLENOID
 
 // For burst firing stuff:
 byte burstFireCount = 0;                         // What shot are we on?
@@ -338,11 +366,13 @@ bool buttonPressed = false;                      // Sanity check.
 bool triggerHeld = false;                        // Trigger SHOULDN'T be being pulled by default, right?
 
 // For rumble:
-unsigned long previousMillisRumble = 0;          // our time for the rumble motor (two different timers? oh my!)
-unsigned long previousMillisRumbTot = 0;         // our time for each rumble command (yep, that's three timers now! joy)
-bool rumbleHappening = false;                    // To keep track on if this is a rumble command or not.
-bool rumbleHappened = false;                     // If we're holding, this marks we sent a rumble command already.
-// We need the rumbleHappening because we can be in a rumble command without the rumble state being on (emulating variable motor force)
+#ifdef USES_RUMBLE
+    unsigned long previousMillisRumble = 0;          // our time for the rumble motor (two different timers? oh my!)
+    unsigned long previousMillisRumbTot = 0;         // our time for each rumble command (yep, that's three timers now! joy)
+    bool rumbleHappening = false;                    // To keep track on if this is a rumble command or not.
+    bool rumbleHappened = false;                     // If we're holding, this marks we sent a rumble command already.
+    // We need the rumbleHappening because we can be in a rumble command without the rumble state being on (emulating variable motor force)
+#endif // USES_RUMBLE
 
 unsigned int lastSeen = 0;
 
@@ -853,11 +883,15 @@ void loop() {
             } else if(buttons.pressedReleased == EnterPauseModeProcessingBtnMask) { // A+B+C
                 BurstFireToggle();
             #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
-            } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
-                RumbleToggle();
-            } else if(buttons.pressedReleased == SolenoidToggleBtnMask) {
-                SolenoidToggle();
-            #endif
+                #ifdef USES_RUMBLE
+                    } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
+                        RumbleToggle();
+                #endif // USES_RUMBLE
+                #ifdef USES_SOLENOID
+                    } else if(buttons.pressedReleased == SolenoidToggleBtnMask) {
+                        SolenoidToggle();
+                #endif // USES_SOLENOID
+            #endif // ifndef USES_TOGGLES
             } else {
                 SelectCalProfileFromBtnMask(buttons.pressedReleased);
             }
@@ -939,17 +973,13 @@ void ExecRunMode()
     for(;;) {
         // ADDITIONS HERE: setting the state of our toggles, if used.
         #ifdef USES_SWITCHES
-            rumbleActivated = !digitalRead(rumbleSwitch);
-            solenoidActivated = !digitalRead(solenoidSwitch);
-            autofireActivated = !digitalRead(autofireSwitch);
-            #ifdef PRINT_VERBOSE
-                //Serial.print("Rumble state: ");
-                //Serial.println(rumbleActivated);
-                //Serial.print("Solenoid state: ");
-                //Serial.println(solenoidActivated);
-                //Serial.print("Autofire state: ");
-                //Serial.println(autofireActivated);
-            #endif
+            #ifdef USES_RUMBLE
+                rumbleActive = !digitalRead(rumbleSwitch);
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+                solenoidActive = !digitalRead(solenoidSwitch);
+            #endif // USES_SOLENOID
+            autofireActive = !digitalRead(autofireSwitch);
         #endif
         buttons.Poll(0);
 
@@ -1008,63 +1038,69 @@ void ExecRunMode()
                     buttonPressed = true;                               // Set this so we won't spam a repeat press event again.
                 }
                 if(!bitRead(buttons.debounced, 3) &&                    // Is the trigger being pulled WITHOUT pressing Start & Select?
-                !bitRead(buttons.debounced, 4)) {                     
-                    if(solenoidActivated) {                             // (Only activate when the solenoid switch is on!)
-                        if(!triggerHeld) {  // If this is the first time we're firing,
-                            if(solenoidBurstFire && !burstFiring) {  // Are we in burst firing mode?
-                                solenoidFirstShot = true;               // Set this so we use the instant solenoid fire path,
-                                SolenoidActivation(0);                  // Engage it,
-                                solenoidFirstShot = false;              // And disable the flag to mitigate confusion.
-                                burstFiring = true;                     // Set that we're in a burst fire event.
-                                burstFireCount = 1;                     // Set this as the first shot in a burst fire sequence,
-                                burstFireCountLast = 1;                 // And reset the stored counter,
-                            } else if(!solenoidBurstFire) { // Or, if we're in normal or rapid fire mode,
-                                solenoidFirstShot = true;               // Set the First Shot flag on.
-                                SolenoidActivation(0);                  // Just activate the Solenoid already!
-                                if(autofireActivated) {                 // If we are in auto mode,
-                                    solenoidFirstShot = false;          // Immediately set this bit off!
+                !bitRead(buttons.debounced, 4)) {
+                    #ifdef USES_SOLENOID
+                        if(solenoidActive) {                             // (Only activate when the solenoid switch is on!)
+                            if(!triggerHeld) {  // If this is the first time we're firing,
+                                if(burstFireActive && !burstFiring) {  // Are we in burst firing mode?
+                                    solenoidFirstShot = true;               // Set this so we use the instant solenoid fire path,
+                                    SolenoidActivation(0);                  // Engage it,
+                                    solenoidFirstShot = false;              // And disable the flag to mitigate confusion.
+                                    burstFiring = true;                     // Set that we're in a burst fire event.
+                                    burstFireCount = 1;                     // Set this as the first shot in a burst fire sequence,
+                                    burstFireCountLast = 1;                 // And reset the stored counter,
+                                } else if(!burstFireActive) {  // Or, if we're in normal or rapid fire mode,
+                                    solenoidFirstShot = true;               // Set the First Shot flag on.
+                                    SolenoidActivation(0);                  // Just activate the Solenoid already!
+                                    if(autofireActive) {          // If we are in auto mode,
+                                        solenoidFirstShot = false;          // Immediately set this bit off!
+                                    }
+                                }
+                            // Else, these below are all if we've been holding the trigger.
+                            } else if(burstFiring) {  // If we're in a burst firing sequence,
+                                BurstFire();                                // Process it.
+                            } else if(autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
+                            !burstFireActive) {          // (WITHOUT burst firing enabled)
+                                if(digitalRead(solenoidPin)) {              // Is the solenoid engaged?
+                                    SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
+                                } else {                                    // Or if it's not,
+                                    SolenoidActivation(solenoidFastInterval * autofireWaitFactor); // We're holding it for longer.
+                                }
+                            } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
+                                if(digitalRead(solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
+                                    unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
+                                    if(currentMillis - previousMillisSol >= solenoidNormalInterval) { // If we finally surpassed the wait threshold...
+                                        digitalWrite(solenoidPin, LOW);     // Let it go.
+                                    }
+                                } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
+                                    unsigned long currentMillis = millis(); // Initialize timer.
+                                    if(currentMillis - previousMillisSol >= solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
+                                        solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
+                                        SolenoidActivation(solenoidNormalInterval); // Process it now.
+                                    }
+                                }
+                            } else if(!burstFireActive) {                   // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
+                                if(digitalRead(solenoidPin)) {              // Are we engaged right now?
+                                    SolenoidActivation(solenoidNormalInterval); // Turn it off with this timer.
+                                } else {                                    // Or we're not engaged.
+                                    SolenoidActivation(solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
                                 }
                             }
-                        // Else, these below are all if we've been holding the trigger.
-                        } else if(burstFiring) {  // If we're in a burst firing sequence,
-                            BurstFire();                                // Process it.
-                        } else if(autofireActivated &&  // Else, if we've been holding the trigger, is the autofire switch active?
-                        !solenoidBurstFire) {           // (WITHOUT burst firing enabled)
-                            if(digitalRead(solenoidPin)) {              // Is the solenoid engaged?
-                                SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
-                            } else {                                    // Or if it's not,
-                                SolenoidActivation(solenoidFastInterval * autofireWaitFactor); // We're holding it for longer.
-                            }
-                        } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
-                            if(digitalRead(solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
-                                unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
-                                if(currentMillis - previousMillisSol >= solenoidNormalInterval) { // If we finally surpassed the wait threshold...
-                                    digitalWrite(solenoidPin, LOW);     // Let it go.
-                                }
-                            } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
-                                unsigned long currentMillis = millis(); // Initialize timer.
-                                if(currentMillis - previousMillisSol >= solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
-                                    solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
-                                    SolenoidActivation(solenoidNormalInterval); // Process it now.
-                                }
-                            }
-                        } else if(!solenoidBurstFire) {                 // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
-                            if(digitalRead(solenoidPin)) {              // Are we engaged right now?
-                                SolenoidActivation(solenoidNormalInterval); // Turn it off with this timer.
-                            } else {                                    // Or we're not engaged.
-                                SolenoidActivation(solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
-                            }
+                        } // We ain't using the solenoid, so just ignore all that.
+                    #elif RUMBLE_FF
+                        if(rumbleActive) {
+                            // TODO: actually make stuff here.
+                        } // We ain't using the motor, so just ignore all that.
+                    #endif // USES_SOLENOID/RUMBLE_FF
+                }
+                #ifdef USES_RUMBLE
+                    #ifndef RUMBLE_FF
+                        if(rumbleActive &&                     // Is rumble activated,
+                            rumbleHappening && triggerHeld) {  // AND we're in a rumbling command WHILE the trigger's held?
+                            RumbleActivation();                    // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
                         }
-                    } else {  // We ain't using the solenoid, so just ignore all that.
-                        #ifdef PRINT_VERBOSE
-                            Serial.println("Solenoid not allowed to go off; not reading, skipping!");
-                        #endif
-                    }
-                }
-                if(rumbleActivated &&              // Is rumble activated,
-                rumbleHappening && triggerHeld) {  // AND we're in a rumbling command WHILE the trigger's held?
-                    RumbleActivation();                            // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
-                }
+                    #endif // RUMBLE_FF
+                #endif // USES_RUMBLE
             } else {  // We're shooting outside of the screen boundaries!
                 #ifdef PRINT_VERBOSE
                     Serial.println("Shooting outside of the screen! RELOAD!");
@@ -1079,22 +1115,31 @@ void ExecRunMode()
                         buttonPressed = true;                      // Mark so we're not spamming these press events.
                     }
                 }
-                if(rumbleActivated) {  // Only activate if the rumble switch is enabled!
-                    if(!rumbleHappened && !triggerHeld) {  // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
-                        RumbleActivation();                        // Start a rumble command.
-                    } else if(rumbleHappening) {  // We are currently processing a rumble command.
-                        RumbleActivation();                        // Keep processing that command then.
-                    }  // Else, we rumbled already, so don't do anything to prevent infinite rumbling.
-                }
+                #ifdef USES_RUMBLE
+                    #ifndef RUMBLE_FF
+                        if(rumbleActive) {  // Only activate if the rumble switch is enabled!
+                            if(!rumbleHappened && !triggerHeld) {  // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
+                                RumbleActivation();                        // Start a rumble command.
+                            } else if(rumbleHappening) {  // We are currently processing a rumble command.
+                                RumbleActivation();                        // Keep processing that command then.
+                            }  // Else, we rumbled already, so don't do anything to prevent infinite rumbling.
+                        }
+                    #endif // RUMBLE_FF
+                #endif // USES_RUMBLE
                 if(burstFiring) {                                  // If we're in a burst firing sequence,
                     BurstFire();
-                } else if(digitalRead(solenoidPin) &&
-                !solenoidBurstFire) {                               // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
-                    unsigned long currentMillis = millis();         // Calibrate current time
-                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                        previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                        digitalWrite(solenoidPin, LOW);             // Turn it off already, dangit.
-                    }
+                #ifdef USES_SOLENOID
+                    } else if(digitalRead(solenoidPin) &&
+                    !burstFireActive) {                               // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
+                        unsigned long currentMillis = millis();         // Calibrate current time
+                        if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                            previousMillisSol = currentMillis;          // Timer calibration, yawn.
+                            digitalWrite(solenoidPin, LOW);             // Turn it off already, dangit.
+                        }
+                #elif RUMBLE_FF
+                    } else if(rumbleHappening && !burstFireActive) {
+                        // TODO: actually implement
+                #endif // USES_SOLENOID
                 }
             }
             triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
@@ -1110,24 +1155,28 @@ void ExecRunMode()
                     buttonPressed = false;
                 }
             }
-            if(solenoidActivated) {  // Has the solenoid remain engaged this cycle?
-                if(burstFiring) {    // Are we in a burst fire command?
-                    BurstFire();                                    // Continue processing it.
-                } else if(!solenoidBurstFire) { // Else, we're just processing a normal/rapid fire shot.
-                    solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
-                    unsigned long currentMillis = millis();         // Start the timer
-                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                        previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                        digitalWrite(solenoidPin, LOW);             // Make sure to turn it off.
+            #ifdef USES_SOLENOID
+                if(solenoidActive) {  // Has the solenoid remain engaged this cycle?
+                    if(burstFiring) {    // Are we in a burst fire command?
+                        BurstFire();                                    // Continue processing it.
+                    } else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
+                        solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
+                        unsigned long currentMillis = millis();         // Start the timer
+                        if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                            previousMillisSol = currentMillis;          // Timer calibration, yawn.
+                            digitalWrite(solenoidPin, LOW);             // Make sure to turn it off.
+                        }
                     }
                 }
-            }
-            if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs rumbleActivated)
-                RumbleActivation();                                 // Continue processing our rumble command.
-                // (This is to prevent making the lack of trigger pull actually activate a rumble command instead of skipping it like we should.)
-            } else if(rumbleHappened) {                             // If rumble has happened,
-                rumbleHappened = false;                             // well we're clear now that we've stopped holding.
-            }
+            #endif // USES_SOLENOID
+            #ifdef USES_RUMBLE
+                if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs rumbleActive)
+                    RumbleActivation();                                 // Continue processing our rumble command.
+                    // (This is to prevent making the lack of trigger pull actually activate a rumble command instead of skipping it like we should.)
+                } else if(rumbleHappened) {                             // If rumble has happened,
+                    rumbleHappened = false;                             // well we're clear now that we've stopped holding.
+                }
+            #endif // USES_RUMBLE
         }
 
         // Because LightgunButtons' handling of keyboard inputs are weird, we're just using it for debouncing,
@@ -1173,20 +1222,25 @@ void ExecRunMode()
 
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             // MAKE SURE EVERYTHING IS DISENGAGED:
-            digitalWrite(solenoidPin, LOW);
-            digitalWrite(rumblePin, LOW);
+            #ifdef USES_SOLENOID
+                digitalWrite(solenoidPin, LOW);
+                solenoidFirstShot = false;
+            #endif // USES_SOLENOID
+            #ifdef USES_RUMBLE
+                digitalWrite(rumblePin, LOW);
+                rumbleHappening = false;
+                rumbleHappened = false;
+            #endif // USES_RUMBLE
             Keyboard.releaseAll();
-            if(offscreenButton) {                                   // Just in case someone (i.e. me) runs test code that accidentally makes the mouse buttons sticky,
-                AbsMouse5.release(MOUSE_RIGHT);                     // You're welcome ig?
-            } else {
-                AbsMouse5.release(MOUSE_LEFT);
+            AbsMouse5.release(MOUSE_LEFT);
+            delay(5);
+            AbsMouse5.release(MOUSE_RIGHT);
             delay(5);
             offscreenBShot = false;
             buttonPressed = false;
             triggerHeld = false;
-            solenoidFirstShot = false;
-            rumbleHappening = false;
-            rumbleHappened = false;
+            burstFiring = false;
+            burstFireCount = 0;
             SetMode(GunMode_Pause);
             buttons.ReportDisable();
             return;
@@ -1656,30 +1710,34 @@ void PrintExtras() {
     } else {
         Serial.println("False");
     }
-    Serial.print("Rumble enabled: ");
-    if(rumbleActivated) {
-        Serial.println("True");
-    } else {
-        Serial.println("False");
-    }
-    Serial.print("Solenoid enabled: ");
-    if(solenoidActivated) {
-        Serial.println("True");
-        Serial.print("Rapid fire enabled: ");
-        if(autofireActivated) {
+    #ifdef USES_RUMBLE
+        Serial.print("Rumble enabled: ");
+        if(rumbleActive) {
             Serial.println("True");
         } else {
             Serial.println("False");
         }
-        Serial.print("Burst fire enabled: ");
-        if(solenoidBurstFire) {
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        Serial.print("Solenoid enabled: ");
+        if(solenoidActive) {
             Serial.println("True");
+            Serial.print("Rapid fire enabled: ");
+            if(autofireActive) {
+                Serial.println("True");
+            } else {
+                Serial.println("False");
+            }
+            Serial.print("Burst fire enabled: ");
+            if(burstFireActive) {
+                Serial.println("True");
+            } else {
+                Serial.println("False");
+            }
         } else {
             Serial.println("False");
         }
-    } else {
-        Serial.println("False");
-    }
+    #endif // USES_SOLENOID
     return;
 }
 
@@ -2005,13 +2063,17 @@ void OffscreenToggle() {
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Ghost_white);            // Set a color,
         #endif // LED_ENABLE
-        digitalWrite(rumblePin, HIGH);                            // Set rumble on
-        delay(125);                                               // For this long,
-        digitalWrite(rumblePin, LOW);                             // Then flick it off,
-        delay(150);                                               // wait a little,
-        digitalWrite(rumblePin, HIGH);                            // Flick it back on
-        delay(200);                                               // For a bit,
-        digitalWrite(rumblePin, LOW);                             // and then turn it off,
+        #ifdef USES_RUMBLE
+            digitalWrite(rumblePin, HIGH);                        // Set rumble on
+            delay(125);                                           // For this long,
+            digitalWrite(rumblePin, LOW);                         // Then flick it off,
+            delay(150);                                           // wait a little,
+            digitalWrite(rumblePin, HIGH);                        // Flick it back on
+            delay(200);                                           // For a bit,
+            digitalWrite(rumblePin, LOW);                         // and then turn it off,
+        #else
+            delay(450);
+        #endif // USES_RUMBLE
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
@@ -2051,25 +2113,27 @@ void AutofireSpeedToggle() {
     #ifdef LED_ENABLE
         SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
     #endif // LED_ENABLE
-    digitalWrite(solenoidPin, HIGH);                              // And demonstrate the new autofire factor five times!
-    delay(solenoidFastInterval);
-    digitalWrite(solenoidPin, LOW);
-    delay(solenoidFastInterval * autofireWaitFactor);
-    digitalWrite(solenoidPin, HIGH);
-    delay(solenoidFastInterval);
-    digitalWrite(solenoidPin, LOW);
-    delay(solenoidFastInterval * autofireWaitFactor);
-    digitalWrite(solenoidPin, HIGH);
-    delay(solenoidFastInterval);
-    digitalWrite(solenoidPin, LOW);
-    delay(solenoidFastInterval * autofireWaitFactor);
-    digitalWrite(solenoidPin, HIGH);
-    delay(solenoidFastInterval);
-    digitalWrite(solenoidPin, LOW);
-    delay(solenoidFastInterval * autofireWaitFactor);
-    digitalWrite(solenoidPin, HIGH);
-    delay(solenoidFastInterval);
-    digitalWrite(solenoidPin, LOW);
+    #ifdef USES_SOLENOID
+        digitalWrite(solenoidPin, HIGH);                          // And demonstrate the new autofire factor five times!
+        delay(solenoidFastInterval);
+        digitalWrite(solenoidPin, LOW);
+        delay(solenoidFastInterval * autofireWaitFactor);
+        digitalWrite(solenoidPin, HIGH);
+        delay(solenoidFastInterval);
+        digitalWrite(solenoidPin, LOW);
+        delay(solenoidFastInterval * autofireWaitFactor);
+        digitalWrite(solenoidPin, HIGH);
+        delay(solenoidFastInterval);
+        digitalWrite(solenoidPin, LOW);
+        delay(solenoidFastInterval * autofireWaitFactor);
+        digitalWrite(solenoidPin, HIGH);
+        delay(solenoidFastInterval);
+        digitalWrite(solenoidPin, LOW);
+        delay(solenoidFastInterval * autofireWaitFactor);
+        digitalWrite(solenoidPin, HIGH);
+        delay(solenoidFastInterval);
+        digitalWrite(solenoidPin, LOW);
+    #endif // USES_SOLENOID
     #ifdef LED_ENABLE
         SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
     #endif // LED_ENABLE
@@ -2077,23 +2141,25 @@ void AutofireSpeedToggle() {
 }
 
 void BurstFireToggle() {
-    solenoidBurstFire = !solenoidBurstFire;                       // Toggle burst fire mode.
-    if(solenoidBurstFire) {  // Did we flick it on?
+    burstFireActive = !burstFireActive;                           // Toggle burst fire mode.
+    if(burstFireActive) {  // Did we flick it on?
         Serial.println("Burst firing enabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Orange);
         #endif
-        digitalWrite(solenoidPin, HIGH);                          // Demonstrate it by flicking the solenoid on/off three times!
-        delay(solenoidFastInterval);                              // (at a fixed rate to distinguish it from autofire speed toggles)
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * 2);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * 2);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
+        #ifdef USES_SOLENOID
+            digitalWrite(solenoidPin, HIGH);                      // Demonstrate it by flicking the solenoid on/off three times!
+            delay(solenoidFastInterval);                          // (at a fixed rate to distinguish it from autofire speed toggles)
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * 2);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * 2);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+        #endif // USES_SOLENOID
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
@@ -2102,10 +2168,12 @@ void BurstFireToggle() {
         Serial.println("Burst firing disabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Orange);
-        #endif
-        digitalWrite(solenoidPin, HIGH);                          // Just hold it on for a second.
-        delay(300);
-        digitalWrite(solenoidPin, LOW);                           // Then off.
+        #endif // LED_ENABLE
+        #ifdef USES_SOLENOID
+            digitalWrite(solenoidPin, HIGH);                      // Just hold it on for a second.
+            delay(300);
+            digitalWrite(solenoidPin, LOW);                       // Then off.
+        #endif // USES_SOLENOID
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
@@ -2114,9 +2182,10 @@ void BurstFireToggle() {
 }
 
 #ifndef USES_SWITCHES
+#ifdef USES_RUMBLE
 void RumbleToggle() {
-    rumbleActivated = !rumbleActivated;                           // Toggle
-    if(rumbleActivated) {                                         // If we turned ON this mode,
+    rumbleActive = !rumbleActive;                                 // Toggle
+    if(rumbleActive) {                                            // If we turned ON this mode,
         Serial.println("Rumble enabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
@@ -2144,10 +2213,12 @@ void RumbleToggle() {
         return;
     }
 }
+#endif // USES_RUMBLE
 
+#ifdef USES_SOLENOID
 void SolenoidToggle() {
-    solenoidActivated = !solenoidActivated;                       // Toggle
-    if(solenoidActivated) {                                       // If we turned ON this mode,
+    solenoidActive = !solenoidActive;                             // Toggle
+    if(solenoidActive) {                                          // If we turned ON this mode,
         Serial.println("Solenoid enabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
@@ -2173,8 +2244,10 @@ void SolenoidToggle() {
         return;
     }
 }
+#endif // USES_SOLENOID
 #endif // USES_SWITCHES
 
+#ifdef USES_SOLENOID
 void SolenoidActivation(int solenoidFinalInterval) {
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
         unsigned long currentMillis = millis();                   // Initialize timer.
@@ -2226,71 +2299,76 @@ void SolenoidActivation(int solenoidFinalInterval) {
             digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
             return;                                               // Go away.
         }
-    #else                                                     // *The shorter version of this function if we're not using a temp sensor.
-        unsigned long currentMillis = millis();               // Start the timer.
+    #else                                                         // *The shorter version of this function if we're not using a temp sensor.
+        unsigned long currentMillis = millis();                   // Start the timer.
         if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
-            previousMillisSol = currentMillis;                // Since we've waited long enough, calibrate the timer
+            previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
             digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
-            return;                                           // Aaaand we're done here.
-        } else {                                              // If we failed the timer check, we're here too quick.
-            return;                                           // Get out of here, speedy mc loserpants.
+            return;                                               // Aaaand we're done here.
+        } else {                                                  // If we failed the timer check, we're here too quick.
+            return;                                               // Get out of here, speedy mc loserpants.
         }
     #endif
 }
+#endif // USES_SOLENOID
 
+#ifdef USES_RUMBLE
 void RumbleActivation() {
-    if(rumbleHappening) {                                     // Are we in a rumble command rn?
-        if(rumbleMotorIntensity > 0) {                        // Are we using anything but full blast? If so, must be using a higher (lower) value, so let's temper that motor a bit
-            if(digitalRead(rumblePin)) {                      // Is the motor on now? Must be, so let's flick it off now.
-                unsigned long currentMillis = millis();       // Start the timer.
+    if(rumbleHappening) {                                         // Are we in a rumble command rn?
+        if(rumbleMotorIntensity > 0) {                            // Are we using anything but full blast? If so, must be using a higher (lower) value, so let's temper that motor a bit
+            if(digitalRead(rumblePin)) {                          // Is the motor on now? Must be, so let's flick it off now.
+                unsigned long currentMillis = millis();           // Start the timer.
                 if(currentMillis - previousMillisRumble >= rumbleMotorIntensity) { // If we've waited long enough for this interval,
-                    previousMillisRumble = currentMillis;     // Since we've waited long enough, calibrate the timer
+                    previousMillisRumble = currentMillis;         // Since we've waited long enough, calibrate the timer
                     digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into an inverted state.
                 }
-            } else {                                          // I guess not, so let's flick it on for a set short interval.
-                unsigned long currentMillis = millis();       // Start the timer.
+            } else {                                              // I guess not, so let's flick it on for a set short interval.
+                unsigned long currentMillis = millis();           // Start the timer.
                 if(currentMillis - previousMillisRumble >= rumbleMotorIntensity * 1.2) { // If we've waited long enough for this interval,
-                    previousMillisRumble = currentMillis;     // Since we've waited long enough, calibrate the timer
+                    previousMillisRumble = currentMillis;         // Since we've waited long enough, calibrate the timer
                     digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into the state we've just inverted it to.
                 }
             }
         } // If the above didn't go off, guess we're at full blast, so just keep going.
 
-        unsigned long currentMillis = millis();               // Now a second timer to check how long we've been rumbling.
+        unsigned long currentMillis = millis();                   // Now a second timer to check how long we've been rumbling.
         if(currentMillis - previousMillisRumbTot >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
-            digitalWrite(rumblePin, LOW);                     // Make sure the rumble is OFF.
-            rumbleHappening = false;                          // This rumble command is done now.
-            rumbleHappened = true;                            // And just to make sure, to prevent holding == repeat rumble commands.
+            digitalWrite(rumblePin, LOW);                         // Make sure the rumble is OFF.
+            rumbleHappening = false;                              // This rumble command is done now.
+            rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
             #ifdef PRINT_VERBOSE
                 Serial.println("We stopped a rumblin'!");
             #endif
         }
-        return;                                               // Alright we done here (if we did this before already)
-    } else {                                                  // OR, we're rumbling for the first time.
-        previousMillisRumbTot = millis();                     // Mark this as the start of this rumble command.
-        digitalWrite(rumblePin, HIGH);                        // Make the rumble rumble.
-        rumbleHappening = true;                               // Mark that we're in a rumble command rn.
-        return;                                               // Now geddoutta here.
+        return;                                                   // Alright we done here (if we did this before already)
+    } else {                                                      // OR, we're rumbling for the first time.
+        previousMillisRumbTot = millis();                         // Mark this as the start of this rumble command.
+        digitalWrite(rumblePin, HIGH);                            // Make the rumble rumble.
+        rumbleHappening = true;                                   // Mark that we're in a rumble command rn.
+        return;                                                   // Now geddoutta here.
     }
 }
+#endif // USES_RUMBLE
 
 void BurstFire() {
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
-        if(!digitalRead(solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
-        (burstFireCount == burstFireCountLast)) {
-            burstFireCount++;                                 // Increment the counter.
-        }
-        if(!digitalRead(solenoidPin)) {  // Now, is the solenoid NOT on right now?
-            SolenoidActivation(solenoidFastInterval * 2);     // Hold it off a bit longer,
-        } else {                         // or if it IS on,
-            burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
-            SolenoidActivation(solenoidFastInterval);         // And start trying to activate the dingus.
-        }
-        return;                                               // Go on.
+        #ifdef USES_SOLENOID
+            if(!digitalRead(solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
+            (burstFireCount == burstFireCountLast)) {
+                burstFireCount++;                                 // Increment the counter.
+            }
+            if(!digitalRead(solenoidPin)) {  // Now, is the solenoid NOT on right now?
+                SolenoidActivation(solenoidFastInterval * 2);     // Hold it off a bit longer,
+            } else {                         // or if it IS on,
+                burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
+                SolenoidActivation(solenoidFastInterval);         // And start trying to activate the dingus.
+            }
+        #endif // USES_SOLENOID
+        return;                                                   // Go on.
     } else {  // If we're at three bullets fired,
-        burstFiring = false;                                  // Disable the currently firing tag,
-        burstFireCount = 0;                                   // And set the count off.
-        return;                                               // Let's go back.
+        burstFiring = false;                                      // Disable the currently firing tag,
+        burstFireCount = 0;                                       // And set the count off.
+        return;                                                   // Let's go back.
     }
 }
 
