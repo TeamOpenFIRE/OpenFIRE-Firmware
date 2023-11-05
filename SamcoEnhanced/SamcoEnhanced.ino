@@ -86,6 +86,15 @@ void rp2040pwmIrq(void);
     #ifdef USES_SWITCHES
         const byte rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
     #endif // USES_SWITCHES
+
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #ifdef RUMBLE_FF
+        #ifdef USES_SOLENOID
+            #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+        #endif // USES_SOLENOID
+    #endif // RUMBLE_FF
 #endif // USES_RUMBLE
 
   // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
@@ -104,15 +113,6 @@ void rp2040pwmIrq(void);
         const byte tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
     #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
 #endif // USES_SOLENOID
-
-  // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-  // TODO: actually finish this.
-//#define RUMBLE_FF
-#ifdef RUMBLE_FF
-    #ifdef USES_SOLENOID
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // USES_SOLENOID
-#endif // RUMBLE_FF
 
 
   // Which software extras should be activated? Set here if your build doesn't use toggle switches.
