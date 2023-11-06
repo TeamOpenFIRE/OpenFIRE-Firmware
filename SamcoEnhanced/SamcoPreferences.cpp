@@ -120,7 +120,9 @@ int SamcoPreferences::Save()
     for(unsigned int i = 0; i < sizeof(ProfileData_t) * preferences.profileCount; ++i) {
         EEPROM.write(5 + i, p[i]);
     }
-    EEPROM.commit();
+    #ifdef ARDUINO_ARCH_RP2040
+        EEPROM.commit();
+    #endif // ARDUINO_ARCH_RP2040
     return Error_Success;
 }
 
