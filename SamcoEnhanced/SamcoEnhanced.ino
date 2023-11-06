@@ -592,10 +592,12 @@ void setup() {
 #ifdef SAMCO_FLASH_ENABLE
     // init flash and load saved preferences
     nvAvailable = flash.begin();
-#elif SAMCO_EEPROM_ENABLE
-    // initialize EEPROM device. Arduino AVR has a 1k flash, so use that for compatibility.
+#else
+#if SAMCO_EEPROM_ENABLE && ARDUINO_ARCH_RP2040
+    // initialize 2040's emulated EEPROM device. Arduino AVR has a 1k flash, so use that.
     EEPROM.begin(1024); 
-#endif // SAMCO_FLASH_ENABLE/EEPROM_ENABLE
+#endif // SAMCO_EEPROM_ENABLE/RP2040
+#endif // SAMCO_FLASH_ENABLE
     
     if(nvAvailable) {
         LoadPreferences();
@@ -2226,7 +2228,9 @@ void SolenoidToggle() {
         digitalWrite(solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
         delay(300);                                               // Hold it that way for a bit,
         digitalWrite(solenoidPin, LOW);                           // Release it,
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #ifdef LED_ENABLE
+            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
         Serial.println("Solenoid disabled!");
