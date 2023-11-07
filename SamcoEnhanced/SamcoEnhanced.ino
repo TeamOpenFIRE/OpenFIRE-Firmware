@@ -67,6 +67,8 @@ void rp2040pwmIrq(void);
 //#define PRINT_VERBOSE 1
 //#define DEBUG_SERIAL 1
 //#define DEBUG_SERIAL 2
+// for testing RP2040 dual core functionality (only works w/ RP2040 boards). IF RUN INTO ISSUES, DISABLE THIS
+#define DUAL_CORE
 
 // extra position glitch filtering, 
 // not required after discoverving the DFRobotIRPositionEx atomic read technique
@@ -186,6 +188,19 @@ enum ButtonMask_e {
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
+#ifdef DUAL_CORE // ARDUINO_ARCH_RP2040
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 5, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 5, BTN_AG_MASK2, "A"},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 5, BTN_AG_MASK2, "B"},
+    {btnStart, LightgunButtons::ReportType_Keyboard, '1', 10, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Keyboard, '5', 10, BTN_AG_MASK2, "Select"},
+    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 10, BTN_AG_MASK2, "Up"},
+    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 10, BTN_AG_MASK2, "Down"},
+    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 10, BTN_AG_MASK2, "Left"},
+    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 5, BTN_AG_MASK2, "Reload"},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 5, BTN_AG_MASK2, "Pedal"}
+#else
     {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 5, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
     {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 5, BTN_AG_MASK2, "A"},
     {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 5, BTN_AG_MASK2, "B"},
@@ -197,6 +212,7 @@ const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
     {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 5, BTN_AG_MASK2, "Reload"},
     {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 5, BTN_AG_MASK2, "Pedal"}
+#endif // DUAL_CORE // ARDUINO_ARCH_RP2040
 };
 
 // button count constant
@@ -658,6 +674,12 @@ void setup() {
     SetMode(GunMode_Run);
 }
 
+#if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
+void setup1() {
+    // I think this is needed to init the second core?
+}
+#endif // ARDUINO_ARCH_RP2040
+
 void startIrCamTimer(int frequencyHz)
 {
 #if defined(SAMCO_SAMD21)
@@ -857,6 +879,62 @@ void NoHardwareTimerCamTickMillis()
 }
 #endif // SAMCO_NO_HW_TIMER
 
+#if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
+void loop1() {
+    while(gunMode == GunMode_Run) {
+        #ifdef USES_SWITCHES
+            #ifdef USES_RUMBLE
+                rumbleActive = !digitalRead(rumbleSwitch);
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+                solenoidActive = !digitalRead(solenoidSwitch);
+            #endif // USES_SOLENOID
+            autofireActive = !digitalRead(autofireSwitch);
+        #endif
+        buttons.Poll(0);
+        ButtonFire();
+
+        // Yeah so, for some reason, the other bitReads for the keyboard buttons make the main core come to a screeching halt and kills performance?
+        // In this case, we're relying on the LightgunButtons library to handle it for us.
+        // ...which, funnily, seems to work like how it was intended? Must be something with overhead in the main thread if it works properly here.
+        
+        if(buttons.pressedReleased == EscapeKeyBtnMask) {
+            Keyboard.releaseAll();                                  // Clear out keyboard keys (since Seong's default is pressing start, which is num1)
+            delay(5);                                               // Wait a bit. Required for the escape keypress to actually register.
+            Keyboard.press(KEY_ESC);                                // PUSH THE BUTTON.
+            delay(100);                                             // Wait another bit. Required for the escape keypress to actually register, and mitigate sticking.
+            Keyboard.release(KEY_ESC);                              // Aaaaand release.
+        }
+
+        if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+            // MAKE SURE EVERYTHING IS DISENGAGED:
+            #ifdef USES_SOLENOID
+                digitalWrite(solenoidPin, LOW);
+                solenoidFirstShot = false;
+            #endif // USES_SOLENOID
+            #ifdef USES_RUMBLE
+                digitalWrite(rumblePin, LOW);
+                rumbleHappening = false;
+                rumbleHappened = false;
+            #endif // USES_RUMBLE
+            Keyboard.releaseAll();
+            AbsMouse5.release(MOUSE_LEFT);
+            delay(5);
+            AbsMouse5.release(MOUSE_RIGHT);
+            delay(5);
+            offscreenBShot = false;
+            buttonPressed = false;
+            triggerHeld = false;
+            burstFiring = false;
+            burstFireCount = 0;
+            buttons.ReportDisable();
+            SetMode(GunMode_Pause);
+            // at this point, the other core should be stopping us now.
+        }
+    }
+}
+#endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
+
 void loop() {
     #ifdef SAMCO_NO_HW_TIMER
         SAMCO_NO_HW_TIMER_UPDATE();
@@ -979,6 +1057,8 @@ void ExecRunMode()
     moveIndex = 0;
     buttons.ReportEnable();
     for(;;) {
+        // If we're on RP2040, we offload the button polling to the second core.
+        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
         // setting the state of our toggles, if used.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
@@ -991,6 +1071,7 @@ void ExecRunMode()
         #endif
         buttons.Poll(0);
         ButtonFire();
+        #endif // ARDUINO_ARCH_RP2040
 
         #ifdef SAMCO_NO_HW_TIMER
             SAMCO_NO_HW_TIMER_UPDATE();
@@ -1053,7 +1134,9 @@ void ExecRunMode()
             #endif // DEBUG_SERIAL
         }
 
-        // Because LightgunButtons' handling of keyboard inputs are weird, we're just using it for debouncing,
+        // If using RP2040, we offload the button processing to the second core.
+        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+        // Because LightgunButtons' handling of keyboard inputs are weird (only on single core systems?), we're just using it for debouncing,
         // and handling the actual key signals here; it feels significantly better this way.
         if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
             Keyboard.press('1');
@@ -1119,6 +1202,11 @@ void ExecRunMode()
             buttons.ReportDisable();
             return;
         }
+        #else                                                       // if we're using dual cores,
+        if(gunMode != GunMode_Run) {                                // We just check if the gunmode has been changed by the other thread.
+            return;
+        }
+        #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
 
 
 #ifdef DEBUG_SERIAL
@@ -1766,6 +1854,11 @@ void PrintExtras() {
             Serial.println("False");
         }
     #endif // USES_SOLENOID
+    #ifdef DUAL_CORE
+        Serial.println("Running on dual cores.");
+    #else
+        Serial.println("Running on one core.");
+    #endif // DUAL_CORE
     return;
 }
 
