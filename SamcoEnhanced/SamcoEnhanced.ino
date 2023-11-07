@@ -189,29 +189,29 @@ enum ButtonMask_e {
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
 #ifdef DUAL_CORE // ARDUINO_ARCH_RP2040
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 5, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 5, BTN_AG_MASK2, "A"},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 5, BTN_AG_MASK2, "B"},
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 10, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 10, BTN_AG_MASK2, "A"},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 10, BTN_AG_MASK2, "B"},
     {btnStart, LightgunButtons::ReportType_Keyboard, '1', 10, BTN_AG_MASK2, "Start"},
     {btnSelect, LightgunButtons::ReportType_Keyboard, '5', 10, BTN_AG_MASK2, "Select"},
     {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 10, BTN_AG_MASK2, "Up"},
     {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 10, BTN_AG_MASK2, "Down"},
     {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 10, BTN_AG_MASK2, "Left"},
     {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 5, BTN_AG_MASK2, "Reload"},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 5, BTN_AG_MASK2, "Pedal"}
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 10, BTN_AG_MASK2, "Reload"},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 10, BTN_AG_MASK2, "Pedal"}
 #else
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 5, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 5, BTN_AG_MASK2, "A"},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 5, BTN_AG_MASK2, "B"},
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 10, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 10, BTN_AG_MASK2, "A"},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 10, BTN_AG_MASK2, "B"},
     {btnStart, LightgunButtons::ReportType_Internal, '1', 10, BTN_AG_MASK2, "Start"},
     {btnSelect, LightgunButtons::ReportType_Internal, '5', 10, BTN_AG_MASK2, "Select"},
     {btnGunUp, LightgunButtons::ReportType_Internal, KEY_UP_ARROW, 10, BTN_AG_MASK2, "Up"},
     {btnGunDown, LightgunButtons::ReportType_Internal, KEY_DOWN_ARROW, 10, BTN_AG_MASK2, "Down"},
     {btnGunLeft, LightgunButtons::ReportType_Internal, KEY_LEFT_ARROW, 10, BTN_AG_MASK2, "Left"},
     {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 5, BTN_AG_MASK2, "Reload"},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 5, BTN_AG_MASK2, "Pedal"}
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 10, BTN_AG_MASK2, "Reload"},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 10, BTN_AG_MASK2, "Pedal"}
 #endif // DUAL_CORE // ARDUINO_ARCH_RP2040
 };
 
