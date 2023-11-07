@@ -1122,22 +1122,25 @@ void ExecRunMode()
             }
 
             conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-            if(conMoveXAxis > 0 && conMoveXAxis < MouseMaxX) {
+            if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
                 offXAxis = true;
+            } else {
+                offXAxis = false;
             }
             conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-            if(conMoveYAxis > 0 && conMoveYAxis < MouseMaxY) {
+            if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
                 offYAxis = true;
+            } else {
+                offYAxis = false;
             }
 
             AbsMouse5.move(conMoveXAxis, conMoveYAxis);
 
-            if(offXAxis && offYAxis) {
+            if(offXAxis || offYAxis) {
                 offScreen = true;
             } else {
                 offScreen = false;
             }
-            offXAxis = false, offYAxis = false;
             
             #ifdef DEBUG_SERIAL
                 ++irPosCount;
@@ -1449,7 +1452,7 @@ void UpdateLastSeen() {
 }
 
 void ButtonFire() {                                             // If we pressed the trigger,
-    if(offScreen &&                                             // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+    if(!offScreen &&                                            // Check if the X or Y axis is in the screen's boundaries, i.e. not "off screen".
     !offscreenBShot) {                                          // And only as long as we haven't fired an off-screen shot,
         if(!buttonPressed) {
             AbsMouse5.press(MOUSE_LEFT);                        // We're handling the trigger button press ourselves for a reason.
