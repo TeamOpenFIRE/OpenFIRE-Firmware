@@ -39,11 +39,12 @@ If you're using Arduino IDE for the first time, the setup is relatively simple (
     and paste it in there. Click OK to confirm.
  5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager.*__
  6. Install the board files for the version of your choice:
-    * M0, M4 boards: Install `Adafruit SAMD Boards`
-    * RP2040: Install `Raspberry Pi Pico/RP 2040`
+    * M0, M4 boards: Install `Adafruit SAMD Boards` *(newest version)*
+    * RP2040: Install `Raspberry Pi Pico/RP 2040` **ver. 3.0.0**
+      * Note the version number: any newer version has conflicts with the basic Keyboard library and will fail to build!
  7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__, and install the following libraries for the board of your choice:
     * M0, M4 boards: `Adafruit DotStar` & `Adafruit SPI Flash`
-    * RP2040 boards: `Adafruit NeoPixel` & `Adafruit TinyUSB`
+    * RP2040 boards: `Adafruit NeoPixel`
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
     * **Most boards** should use the default `Arduino` USB stack; **for RP2040 users,** change the USB stack to `Adafruit TinyUSB`.
     * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
