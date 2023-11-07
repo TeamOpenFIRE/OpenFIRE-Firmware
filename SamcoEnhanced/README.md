@@ -19,6 +19,7 @@
    - [Processing Mode](#processing-mode)
  - [Technical Details & Assorted Errata](#technical-details--assorted-errata)
    - [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns)
+   - [Dual Core Mode](#dual-core-mode)
    - [Button Combo Masks](#button-combo-masks)
    - [Other Constants](#other-constants)
    - [Profile Array](#profile-array)
@@ -180,6 +181,15 @@ adafruit_itsybitsy.build.usb_product="ItsyBitsy 2040"
 Edit the lines to anything that's *different* from a USB ID that's already used; e.g., changing `0x80fd` to `0x80fe` for a second RP2040 gun (USB IDs are in hexidecimal/Base15, names are normal alphanumeric strings).
 
 **The only one that's necessary to change** is the __*vid/pid*__ pair, but you might also want to change what name they report as to differentiate between multiple gun devices in TP or RA. Unfortunately, *you will have to change this back and forth **every time** you're switching between guns* if you need to reflash the board. You might want to make a safe copy of the original `boards.txt` and make one or more copies of the file with the desired USB identifiers you want to use; switching between them each time before opening the IDE. If you do this often, this could be automated via script if so desired.
+
+### Dual Core Mode
+On compatible boards (atm, only the RP2040 provides two cores), the sketch will automatically split the processing load of button inputs onto the second core.
+
+As of now, the observed result is a nearly drastically improved responsiveness of camera updates, and the possibility of reducing button signal latency. However, there are some things to note:
+- For some reason, using the bit mask reading method of polling keyboard buttons (start/select, d-pad) on the second core caused the performance of the sketch to trash to the point that the camera updates were *literally seconds per frame.* But this doesn't seem to apply to reading the trigger?
+- Dual Core mode doesn't seem to have the same issue of not registering trigger presses when no LEDs are visible, whereas it is an issue in single-threaded mode. Music GunGun 2 players can rejoice?
+- Since it's a separate thread, we have to mark the gunmode from core 2 while the thread in core 1 has to check if it's changed every cycle to ensure that pause mode and etc. works.
+- ^ an extension to this, we only use the second core for inputs when in the main `runMode` - i.e., the gun is actually tracking and sending mouse input. Really don't think we need to use it for everything.
 
 ### Button Combo Masks
 Below the button definitions are a bunch of constants that configure the buttons to control the gun. For example, enter and exit pause mode, and changing various settings. See the comments above each value for details.
