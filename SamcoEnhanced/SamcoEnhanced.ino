@@ -511,7 +511,6 @@ unsigned int irPosUpdateTick = 0;
 //define SAMCO_NO_HW_TIMER_UPDATE() NoHardwareTimerCamTickMicros()
 
 #else
-#define SAMCO_NO_HW_TIMER_UPDATE()
 // timer will set this to 1 when the IR position can update
 volatile unsigned int irPosUpdateTick = 0;
 #endif // SAMCO_NO_HW_TIMER
@@ -854,7 +853,9 @@ void NoHardwareTimerCamTickMillis()
 #endif // SAMCO_NO_HW_TIMER
 
 void loop() {
-    SAMCO_NO_HW_TIMER_UPDATE();
+    #ifdef SAMCO_NO_HW_TIMER
+        SAMCO_NO_HW_TIMER_UPDATE();
+    #endif // SAMCO_NO_HW_TIMER
     
     // poll/update button states with 1ms interval so debounce mask is more effective
     buttons.Poll(1);
@@ -985,7 +986,9 @@ void ExecRunMode()
         #endif
         buttons.Poll(0);
 
-        SAMCO_NO_HW_TIMER_UPDATE();
+        #ifdef SAMCO_NO_HW_TIMER
+            SAMCO_NO_HW_TIMER_UPDATE();
+        #endif // SAMCO_NO_HW_TIMER
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
             GetPosition();
@@ -1271,7 +1274,9 @@ void ExecRunModeProcessing()
             return;
         }
 
-        SAMCO_NO_HW_TIMER_UPDATE();
+        #ifdef SAMCO_NO_HW_TIMER
+            SAMCO_NO_HW_TIMER_UPDATE();
+        #endif // SAMCO_NO_HW_TIMER
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
         
