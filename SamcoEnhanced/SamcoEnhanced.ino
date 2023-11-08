@@ -92,11 +92,9 @@ void rp2040pwmIrq(void);
     // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
     // TODO: actually finish this.
     //#define RUMBLE_FF
-    #ifdef RUMBLE_FF
-        #ifdef USES_SOLENOID
-            #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-        #endif // USES_SOLENOID
-    #endif // RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
 #endif // USES_RUMBLE
 
   // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
@@ -188,31 +186,17 @@ enum ButtonMask_e {
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
 const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-#ifdef DUAL_CORE // ARDUINO_ARCH_RP2040
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 10, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 10, BTN_AG_MASK2, "A"},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 10, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Keyboard, '1', 10, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Keyboard, '5', 10, BTN_AG_MASK2, "Select"},
-    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 10, BTN_AG_MASK2, "Up"},
-    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 10, BTN_AG_MASK2, "Down"},
-    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 10, BTN_AG_MASK2, "Left"},
-    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 10, BTN_AG_MASK2, "Reload"},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 10, BTN_AG_MASK2, "Pedal"}
-#else
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 10, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 10, BTN_AG_MASK2, "A"},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 10, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Internal, '1', 10, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Internal, '5', 10, BTN_AG_MASK2, "Select"},
-    {btnGunUp, LightgunButtons::ReportType_Internal, KEY_UP_ARROW, 10, BTN_AG_MASK2, "Up"},
-    {btnGunDown, LightgunButtons::ReportType_Internal, KEY_DOWN_ARROW, 10, BTN_AG_MASK2, "Down"},
-    {btnGunLeft, LightgunButtons::ReportType_Internal, KEY_LEFT_ARROW, 10, BTN_AG_MASK2, "Left"},
-    {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 10, BTN_AG_MASK2, "Right"},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 10, BTN_AG_MASK2, "Reload"},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 10, BTN_AG_MASK2, "Pedal"}
-#endif // DUAL_CORE // ARDUINO_ARCH_RP2040
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 15, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 15, BTN_AG_MASK2, "A"},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 15, BTN_AG_MASK2, "B"},
+    {btnStart, LightgunButtons::ReportType_Internal, '1', 30, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Internal, '5', 30, BTN_AG_MASK2, "Select"},
+    {btnGunUp, LightgunButtons::ReportType_Internal, KEY_UP_ARROW, 30, BTN_AG_MASK2, "Up"},
+    {btnGunDown, LightgunButtons::ReportType_Internal, KEY_DOWN_ARROW, 30, BTN_AG_MASK2, "Down"},
+    {btnGunLeft, LightgunButtons::ReportType_Internal, KEY_LEFT_ARROW, 30, BTN_AG_MASK2, "Left"},
+    {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 30, BTN_AG_MASK2, "Right"},
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 15, BTN_AG_MASK2, "Reload"},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 15, BTN_AG_MASK2, "Pedal"}
 };
 
 // button count constant
@@ -289,7 +273,7 @@ constexpr uint32_t IRSeen0Color = WikiColor::Amber;
 constexpr uint32_t CalModeColor = WikiColor::Red;
 
 // number of profiles
-constexpr unsigned int ProfileCount = 4;
+constexpr byte ProfileCount = 4;
 
 // run modes
 // note that this is a 5 bit value when stored in the profiles
@@ -388,12 +372,15 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 
 // For rumble:
 #ifdef USES_RUMBLE
-    unsigned long previousMillisRumble = 0;          // our time for the rumble motor (two different timers? oh my!)
-    unsigned long previousMillisRumbTot = 0;         // our time for each rumble command (yep, that's three timers now! joy)
-    bool rumbleHappening = false;                    // To keep track on if this is a rumble command or not.
-    bool rumbleHappened = false;                     // If we're holding, this marks we sent a rumble command already.
+    unsigned long previousMillisRumble = 0;      // our time for the rumble motor (two different timers? oh my!)
+    unsigned long previousMillisRumbTot = 0;     // our time for each rumble command (yep, that's three timers now! joy)
+    bool rumbleHappening = false;                // To keep track on if this is a rumble command or not.
+    bool rumbleHappened = false;                 // If we're holding, this marks we sent a rumble command already.
     // We need the rumbleHappening because we can be in a rumble command without the rumble state being on (emulating variable motor force)
 #endif // USES_RUMBLE
+
+// For button queuing:
+byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons we've held on (for btnStart through btnRight)
 
 unsigned int lastSeen = 0;
 
@@ -606,8 +593,10 @@ void setup() {
     Wire1.setSCL(3);
 #endif
 
-    // initialize buttons
+#if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+    // initialize buttons (on the main thread for single core systems)
     buttons.Begin();
+#endif // ARDUINO_ARCH_RP2040
 
 #ifdef SAMCO_FLASH_ENABLE
     // init flash and load saved preferences
@@ -675,8 +664,11 @@ void setup() {
 }
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
-void setup1() {
-    // I think this is needed to init the second core?
+void setup1()
+{
+    // Since we need this for the second core to activate, may as well give it something to do.
+    // initialize buttons (on the second core)
+    buttons.Begin();
 }
 #endif // ARDUINO_ARCH_RP2040
 
@@ -880,7 +872,8 @@ void NoHardwareTimerCamTickMillis()
 #endif // SAMCO_NO_HW_TIMER
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
-void loop1() {
+void loop1()
+{
     while(gunMode == GunMode_Run) {
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
@@ -892,23 +885,18 @@ void loop1() {
             autofireActive = !digitalRead(autofireSwitch);
         #endif
         buttons.Poll(0);
+        // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         if(bitRead(buttons.debounced, 0)) {                          // Check if we pressed the Trigger this run.
             ButtonFire();
         } else {                                                     // ...Or we aren't pressing the trigger.
             ButtonNotFire();
         }
-
-        // Yeah so, for some reason, the other bitReads for the keyboard buttons make the main core come to a screeching halt and kills performance?
-        // In this case, we're relying on the LightgunButtons library to handle it for us.
-        // ...which, funnily, seems to work like how it was intended? Must be something with overhead in the main thread if it works properly here.
+        // For processing the buttons tied to the keyboard.
+        ButtonsPush();
         
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
-            Keyboard.releaseAll();                                  // Clear out keyboard keys (since Seong's default is pressing start, which is num1)
-            delay(5);                                               // Wait a bit. Required for the escape keypress to actually register.
-            Keyboard.press(KEY_ESC);                                // PUSH THE BUTTON.
-            delay(100);                                             // Wait another bit. Required for the escape keypress to actually register, and mitigate sticking.
-            Keyboard.release(KEY_ESC);                              // Aaaaand release.
+            SendEscapeKey();
         }
 
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
@@ -940,7 +928,8 @@ void loop1() {
 }
 #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
 
-void loop() {
+void loop()
+{
     #ifdef SAMCO_NO_HW_TIMER
         SAMCO_NO_HW_TIMER_UPDATE();
     #endif // SAMCO_NO_HW_TIMER
@@ -1075,12 +1064,15 @@ void ExecRunMode()
             autofireActive = !digitalRead(autofireSwitch);
         #endif
         buttons.Poll(0);
+        // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         if(bitRead(buttons.debounced, 0)) {                             // Check if we pressed the Trigger this run.
             ButtonFire();
         } else {                                                        // ...Or we aren't pressing the trigger.
             ButtonNotFire();
         }
+        // For processing the buttons tied to the keyboard.
+        ButtonsPush();
         #endif // ARDUINO_ARCH_RP2040
 
         #ifdef SAMCO_NO_HW_TIMER
@@ -1149,45 +1141,8 @@ void ExecRunMode()
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        // Because LightgunButtons' handling of keyboard inputs are weird (only on single core systems?), we're just using it for debouncing,
-        // and handling the actual key signals here; it feels significantly better this way.
-        if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
-            Keyboard.press('1');
-        } else {
-            Keyboard.release('1');
-        }
-        if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
-            Keyboard.press('5');
-        } else {
-            Keyboard.release('5');
-        }
-        if(bitRead(buttons.debounced, 5)) {
-            Keyboard.press(KEY_UP_ARROW);
-        } else {
-            Keyboard.release(KEY_UP_ARROW);
-        }
-        if(bitRead(buttons.debounced, 6)) {
-            Keyboard.press(KEY_DOWN_ARROW);
-        } else {
-            Keyboard.release(KEY_DOWN_ARROW);
-        }
-        if(bitRead(buttons.debounced, 7)) {
-            Keyboard.press(KEY_LEFT_ARROW);
-        } else {
-            Keyboard.release(KEY_LEFT_ARROW);
-        }
-        if(bitRead(buttons.debounced, 8)) {
-            Keyboard.press(KEY_RIGHT_ARROW);
-        } else {
-            Keyboard.release(KEY_RIGHT_ARROW);
-        }
-
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
-            Keyboard.releaseAll();                                  // Clear out keyboard keys (since Seong's default is pressing start, which is num1)
-            delay(5);                                               // Wait a bit. Required for the escape keypress to actually register.
-            Keyboard.press(KEY_ESC);                                // PUSH THE BUTTON.
-            delay(100);                                             // Wait another bit. Required for the escape keypress to actually register, and mitigate sticking.
-            Keyboard.release(KEY_ESC);                              // Aaaaand release.
+            SendEscapeKey();
         }
 
         if(buttons.pressedReleased == EnterPauseModeBtnMask) {
@@ -1438,7 +1393,8 @@ void SetModeWaitNoButtons(GunMode_e newMode, unsigned long maxWait)
 
 // update the last seen value
 // only to be called during run mode since this will modify the LED colour
-void UpdateLastSeen() {
+void UpdateLastSeen()
+{
     if(lastSeen != mySamco.seen()) {
         #ifdef LED_ENABLE
         if(!lastSeen && mySamco.seen()) {
@@ -1451,7 +1407,8 @@ void UpdateLastSeen() {
     }
 }
 
-void ButtonFire() {                                             // If we pressed the trigger,
+void ButtonFire()                                               // If we pressed the trigger,
+{
     if(!offScreen &&                                            // Check if the X or Y axis is in the screen's boundaries, i.e. not "off screen".
     !offscreenBShot) {                                          // And only as long as we haven't fired an off-screen shot,
         if(!buttonPressed) {
@@ -1566,7 +1523,8 @@ void ButtonFire() {                                             // If we pressed
     triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
 }
 
-void ButtonNotFire() {                                      // ...Or we just didn't press the trigger this cycle.                                  
+void ButtonNotFire()                                        // ...Or we just didn't press the trigger this cycle.   
+{
     triggerHeld = false;                                    // Disable the holding function
     if(buttonPressed) {
         if(offscreenBShot) {                                // If we fired off screen with the offscreenButton set,
@@ -1600,6 +1558,126 @@ void ButtonNotFire() {                                      // ...Or we just did
             rumbleHappened = false;                             // well we're clear now that we've stopped holding.
         }
     #endif // USES_RUMBLE
+}
+
+void ButtonsPush()
+{
+    // So it turns out, the Keyboard library's inputs get "lost in traffic" when the camera's actively tracking, especially on fast uCs.
+    // Because of that, we're using LightgunButtons to debounce the button, then use that debounced output to
+    // SPAM THE CRAP out of whatever button we send, until it's finally sent. This goes for both press and release events, btw.
+    // Doing this gets our speed back on single core boards while still debouncing, with the downside of the SLIGHT chance of
+    // camera jitter when pausing with a button press/release; in theory, the slower the microcontroller, the more noticeable the pause is.
+    // These values are picked to reduce the pause as much as possible on slow boards, while still being effective on faster ones; i.e. dual core.
+ 
+    if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
+        if(!bitRead(buttonsHeld, 0)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press('1');
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 0, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release('1');
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 0, 0);
+    }
+
+    if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
+        if(!bitRead(buttonsHeld, 1)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press('5');
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 1, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release('5');
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 1, 0);
+    }
+
+    if(bitRead(buttons.debounced, 5)) {
+        if(!bitRead(buttonsHeld, 2)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press(KEY_UP_ARROW);
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 2, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 5) && bitRead(buttonsHeld, 2)) {
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release(KEY_UP_ARROW);
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 2, 0);
+    }
+
+    if(bitRead(buttons.debounced, 6)) {
+        if(!bitRead(buttonsHeld, 3)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press(KEY_DOWN_ARROW);
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 3, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 6) && bitRead(buttonsHeld, 3)) {
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release(KEY_DOWN_ARROW);
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 3, 0);
+    }
+
+    if(bitRead(buttons.debounced, 7)) {
+        if(!bitRead(buttonsHeld, 4)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press(KEY_LEFT_ARROW);
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 4, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 7) && bitRead(buttonsHeld, 4)) {
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release(KEY_LEFT_ARROW);
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 4, 0);
+    }
+
+    if(bitRead(buttons.debounced, 8)) {
+        if(!bitRead(buttonsHeld, 5)) {
+            for(byte i = 0; i < 6; i++) {
+                Keyboard.press(KEY_RIGHT_ARROW);
+                delay(1);
+            }
+            bitWrite(buttonsHeld, 5, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 8) && bitRead(buttonsHeld, 5)){
+        for(byte i = 0; i < 6; i++) {
+            Keyboard.release(KEY_RIGHT_ARROW);
+            delay(1);
+        }
+        bitWrite(buttonsHeld, 5, 0);
+    }
+}
+
+void SendEscapeKey()
+{
+    // We're basically spamming through ESC key signals blindly until it gets through to the system,
+    for(byte i = 0; i < 6; i++) {
+        Keyboard.press(KEY_ESC);                            // PUSH THE BUTTON.
+        delay(1);                                           // Wait a bit.
+    }
+    delay(20);                                              // Delay to ensure the command gets sent.
+    for(byte i = 0; i < 6; i++) {                           // And now we're just spamming a release signal.
+        Keyboard.release(KEY_ESC);                          // Aaaaand release.
+        delay(1);                                           // Wait a bit.
+    }
 }
 
 void SetMode(GunMode_e newMode)
@@ -1831,7 +1909,8 @@ void PrintNVPrefsError()
     }
 }
 
-void PrintExtras() {
+void PrintExtras()
+{
     Serial.print("Offscreen button mode enabled: ");
     if(offscreenButton) {
         Serial.println("True");
@@ -1865,13 +1944,13 @@ void PrintExtras() {
         } else {
             Serial.println("False");
         }
-    #endif // USES_SOLENOID
+    #ifdef ARDUINO_ARCH_RP2040
     #ifdef DUAL_CORE
         Serial.println("Running on dual cores.");
     #else
         Serial.println("Running on one core.");
     #endif // DUAL_CORE
-    return;
+    #endif // ARDUINO_ARCH_RP2040
 }
 
 void LoadPreferences()
@@ -2189,7 +2268,8 @@ void SetLedColorFromMode()
 #endif // LED_ENABLE
 
 // ADDITIONS HERE:
-void OffscreenToggle() {
+void OffscreenToggle()
+{
     offscreenButton = !offscreenButton;
     if(offscreenButton) {                                         // If we turned ON this mode,
         Serial.println("Enabled Offscreen Button!");
@@ -2228,7 +2308,8 @@ void OffscreenToggle() {
     }
 }
 
-void AutofireSpeedToggle() {
+void AutofireSpeedToggle()
+{
     switch (autofireWaitFactor) {
         case 2:
             autofireWaitFactor = 3;
@@ -2273,7 +2354,8 @@ void AutofireSpeedToggle() {
     return;
 }
 
-void BurstFireToggle() {
+void BurstFireToggle()
+{
     burstFireActive = !burstFireActive;                           // Toggle burst fire mode.
     if(burstFireActive) {  // Did we flick it on?
         Serial.println("Burst firing enabled!");
@@ -2316,7 +2398,8 @@ void BurstFireToggle() {
 
 #ifndef USES_SWITCHES
 #ifdef USES_RUMBLE
-void RumbleToggle() {
+void RumbleToggle()
+{
     rumbleActive = !rumbleActive;                                 // Toggle
     if(rumbleActive) {                                            // If we turned ON this mode,
         Serial.println("Rumble enabled!");
@@ -2349,7 +2432,8 @@ void RumbleToggle() {
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
-void SolenoidToggle() {
+void SolenoidToggle()
+{
     solenoidActive = !solenoidActive;                             // Toggle
     if(solenoidActive) {                                          // If we turned ON this mode,
         Serial.println("Solenoid enabled!");
@@ -2383,7 +2467,8 @@ void SolenoidToggle() {
 #endif // USES_SWITCHES
 
 #ifdef USES_SOLENOID
-void SolenoidActivation(int solenoidFinalInterval) {
+void SolenoidActivation(int solenoidFinalInterval)
+{
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
         unsigned long currentMillis = millis();                   // Initialize timer.
         previousMillisSol = currentMillis;                        // Calibrate the timer for future calcs.
@@ -2448,7 +2533,8 @@ void SolenoidActivation(int solenoidFinalInterval) {
 #endif // USES_SOLENOID
 
 #ifdef USES_RUMBLE
-void RumbleActivation() {
+void RumbleActivation()
+{
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
         if(rumbleMotorIntensity > 0) {                            // Are we using anything but full blast? If so, must be using a higher (lower) value, so let's temper that motor a bit
             if(digitalRead(rumblePin)) {                          // Is the motor on now? Must be, so let's flick it off now.
@@ -2485,7 +2571,8 @@ void RumbleActivation() {
 }
 #endif // USES_RUMBLE
 
-void BurstFire() {
+void BurstFire()
+{
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
         #ifdef USES_SOLENOID
             if(!digitalRead(solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
