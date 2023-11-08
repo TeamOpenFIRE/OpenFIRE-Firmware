@@ -11,11 +11,12 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
 - **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
 - **Toggleable Extras!** Aside from the option for using hardware switches baked in, the extras can all be individually toggled mid-game in pause mode (Button C + Select)!
-- **Dual Core Support! (WIP)** If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs while noticeably improving camera tracking smoothness!
+- **Dual Core Support! (WIP)** If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency!
+- Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in replacement for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
 - Remains forever open source, with *compatibility for GUN4IR parts!* Can use the same community resources of parts and tutorials for easier assembly of a complete build.
-- Clearer labeling in the sketch for user readability. Ain't nobody got time to read!
+- Clearer labeling in the sketch for user readability, to streamline configuration as much as possible!
 - Fully cross-platform solution, all initial hardware configuration done using the open-source Arduino IDE and profiles are saved on the board!
 - Made out of at least 49% passion and 49% stubbornness (and 2% friendly spite)!
 
@@ -52,13 +53,10 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## Known Issues (want to fix sooner rather than later):
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
-- Mouse buttons don't activate when no IR points are seen (not to be confused with *aiming off-screen* while still tracking); might be more of a feature than a bug.
-  * Does *not* seem to affect dual core mode, but then the start/select buttons will activate their keys even when in a pause mode button combo.
 
 ***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
-- RP2040 has dual core support, which needs to be finished; any other boards that have dual cores?
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
@@ -68,6 +66,8 @@ For reference, the default schematic and (general) layout for the build and its 
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. Could make RGB LEDs react to events, i.e. trigger pulls.
   * Would be easier to use external NeoPixels since we're running out of available pins, but generic four-pin RGB leds would be nice too.
+- RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
+  * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
 - Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but noting this regardless.
 - Could the tracking be improved more? We have a slight but still somewhat noticeable amount of cursor drift when aiming from extreme angles at screen corners on a 50" display with fisheye lenses.
 - *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
