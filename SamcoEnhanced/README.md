@@ -30,19 +30,19 @@
 The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
 ### Arduino Setup & Libraries
-If you're using Arduino IDE for the first time, the setup is relatively simple (*applies to the 'Legacy' 1.8.x version!):
+If you're using Arduino IDE for the first time, the setup is relatively simple:
  1. [Install the Arduino IDE for your system](https://www.arduino.cc/en/software) (or for Linux users, from your system's package manager)
     * *Windows users, install the USB drivers when prompted.*
  3. Once installed, open Arduino, and from the top bar, click on __*File -> Preferences.*__
  4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
     `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
     and paste it in there. Click OK to confirm.
- 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager.*__
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) 
  6. Install the board files for the version of your choice:
     * M0, M4 boards: Install `Adafruit SAMD Boards` *(newest version)*
     * RP2040: Install `Raspberry Pi Pico/RP 2040` **ver. 3.0.0**
       * Note the version number: any newer version has conflicts with the basic Keyboard library and will fail to build!
- 7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__, and install the following libraries for the board of your choice:
+ 7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install the following libraries for the board of your choice:
     * M0, M4 boards: `Adafruit DotStar` & `Adafruit SPI Flash`
     * RP2040 boards: `Adafruit NeoPixel`
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
@@ -61,7 +61,7 @@ The sketch is configured for a [SAMCO 2.0](https://www.ebay.com/itm/184699412596
 A0 is reserved for an optional temperature sensor if you plan to use a solenoid - it is recommended if you use a weaker/smaller solenoid or intend to run it in autofire mode for extended periods of time, as the sketch will temper activation at higher temperature thresholds (that are configurable!), but will function without.
 
 ### Define Buttons & Timers
-Refer to Line 119 for the pins of the tactile extras (rumble, solenoid, hardware switches if need be) and the adjustable settings (solenoid activation, rumble event length, etc.), and Line 140-onwards for the button constants.
+Refer to Line 79 for the pins of the tactile extras (rumble, solenoid, hardware switches if need be) and the adjustable settings (solenoid activation, rumble event length, etc.), and Line 127-onwards for the button constants.
 
 Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work. All the other Adafruit boards don't have this discrepancy.
 ![Itsybitsy RP2040 Back](https://cdn-learn.adafruit.com/assets/assets/000/101/909/original/adafruit_products_ItsyRP_pinouts_back.jpg)
@@ -122,8 +122,7 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 6. Pull the **Trigger** for horizontal calibration.
 7. The mouse should lock to the horizontal axis. Use the **A**/**B** buttons (can be held down) to adjust the mouse horizontal range. **A** will increase and **B** will decrease. Track the pointer at the left and right edges of the screen while adjusting.
 8. Pull the **Trigger** to finish and return to run mode. Values will apply to the currently selected profile in memory.
-9. Recommended (for ATmega users): After confirming the calibration is good, enter pause mode and press Start and Select to save the calibration to non-volatile memory.
-   * Else, for **RP2040 users:** Open serial monitor and update the `xCenter`, `yCenter`, `xScale`, and `yScale` values in the profile data array in the sketch.
+9. After confirming the calibration is good, enter pause mode and press Start and Select to save the calibration to non-volatile memory. These will be saved, as well as the active profile, to be restored on replug/reboot.
  
 Calibration can be cancelled during any step by pressing **Reload** or **Start** or **Select**. The gun will return to pause mode if you cancel the calibration.
 
@@ -183,12 +182,12 @@ Edit the lines to anything that's *different* from a USB ID that's already used;
 
 **The only one that's necessary to change** is the __*vid/pid*__ pair, but you might also want to change what name they report as to differentiate between multiple gun devices in TP or RA. Unfortunately, *you will have to change this back and forth **every time** you're switching between guns* if you need to reflash the board. You might want to make a safe copy of the original `boards.txt` and make one or more copies of the file with the desired USB identifiers you want to use; switching between them each time before opening the IDE. If you do this often, this could be automated via script if so desired.
 
+*...or at least, this *used* to apply to older versions of the RP2040 core, as updating to 3.0 of the core in my testing has irreversibly changed the product ID of my main testing gun to `cafe`. The manufacturer/product labels are still changed, though. Your guess is as good as mine...
+
 ### Dual Core Mode
 On compatible boards (atm, only the RP2040 provides two cores), the sketch will automatically split the processing load of button inputs onto the second core.
 
-As of now, the observed result is a nearly drastically improved responsiveness of camera updates, and the possibility of reducing button signal latency. However, there are some things to note:
-- For some reason, using the bit mask reading method of polling keyboard buttons (start/select, d-pad) on the second core caused the performance of the sketch to trash to the point that the camera updates were *literally seconds per frame.* But this doesn't seem to apply to reading the trigger?
-- Dual Core mode doesn't seem to have the same issue of not registering trigger presses when no LEDs are visible, whereas it is an issue in single-threaded mode. Music GunGun 2 players can rejoice?
+As of now, the performance of single and dual core modes on the RP2040 are similar, with the possibility of reducing button signal latency when input polling is on its own thread. Note:
 - Since it's a separate thread, we have to mark the gunmode from core 2 while the thread in core 1 has to check if it's changed every cycle to ensure that pause mode and etc. works.
 - ^ an extension to this, we only use the second core for inputs when in the main `runMode` - i.e., the gun is actually tracking and sending mouse input. Really don't think we need to use it for everything.
 
