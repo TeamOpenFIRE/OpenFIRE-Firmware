@@ -563,13 +563,21 @@ AbsMouse5_ AbsMouse5(1);
 
 void setup() {
     // ADDITIONS HERE
-    pinMode(rumblePin, OUTPUT);
-    pinMode(solenoidPin, OUTPUT);
+    #ifdef USES_RUMBLE
+        pinMode(rumblePin, OUTPUT);
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        pinMode(solenoidPin, OUTPUT);
+    #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
+        #ifdef USES_RUMBLE
+            pinMode(rumbleSwitch, INPUT_PULLUP);
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+            pinMode(solenoidSwitch, INPUT_PULLUP);
+        #endif // USES_SOLENOID
         pinMode(autofireSwitch, INPUT_PULLUP);
-        pinMode(rumbleSwitch, INPUT_PULLUP);
-        pinMode(solenoidSwitch, INPUT_PULLUP);
-    #endif
+    #endif // USES_SWITCHES
 
     // init DotStar and/or NeoPixel to red during setup()
 #ifdef DOTSTAR_ENABLE
@@ -883,7 +891,7 @@ void loop1()
                 solenoidActive = !digitalRead(solenoidSwitch);
             #endif // USES_SOLENOID
             autofireActive = !digitalRead(autofireSwitch);
-        #endif
+        #endif // USES_SWITCHES
         buttons.Poll(0);
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
