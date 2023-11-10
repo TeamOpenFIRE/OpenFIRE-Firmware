@@ -68,7 +68,6 @@ For reference, the default schematic and (general) layout for the build and its 
   * Would be easier to use external NeoPixels since we're running out of available pins, but generic four-pin RGB leds would be nice too.
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
   * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
-- Rumble probably should have better variability aside from just "full blast" and "half-blast". The two settings should be enough for most, but noting this regardless.
 - Could the tracking be improved more? We have a slight but still somewhat noticeable amount of cursor drift when aiming from extreme angles at screen corners on a 50" display with fisheye lenses.
 - *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
   * A lot of games have problems with this, though. Not sure if that's desirable with the implied caveats.
