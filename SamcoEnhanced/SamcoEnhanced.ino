@@ -388,16 +388,19 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-    bool serialSignaled = false;                     // Have we received a pulse from the serial line this cycle? So that we only run serial feedback when we received a pulse, instead of every cycle.
-    unsigned long previousSerialHeartbeat = 0;       // The timestamp of the last serial command, for the automatic fallback timeout.
-    unsigned long serialPulsesLastUpdate = 0;        // The timestamp of the last serial-invoked pulse rumble we updated.
-    int serialPulsesLength = 200;                    // How long each stage of a serial-invoked pulse rumble is.
+//    unsigned long previousSerialHeartbeat = 0;     // The timestamp of the last serial command, for the automatic fallback timeout.
+    unsigned long serialRumbPulsesLastUpdate = 0;    // The timestamp of the last serial-invoked pulse rumble we updated.
+    unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
+    int serialRumbPulsesLength = 60;                 // How long each stage of a serial-invoked pulse rumble is.
     // TODO: how long are "pulses" exactly???
-    byte serialPulseStage = 0;                       // 0 = start/lowest, 1 = rising, 2 = peak/strongest, 3 = falling
+    byte serialRumbPulseStage = 0;                   // 0 = start/rising, 1 = peak, 2 = falling, 3 = reset to start
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
     byte serialPWM = 0;                              // For the LED, how strong should it be?
-    byte serialPulses = 0;                           // If rumble is commanded to do pulse responses, how many?
-    byte serialPulsesLast = 0;                       // Counter of how many pulse rumbles we did so far.
+    byte serialRumbPulses = 0;                       // If rumble is commanded to do pulse responses, how many?
+    byte serialRumbPulsesLast = 0;                   // Counter of how many pulse rumbles we did so far.
+    byte serialSolPulses = 0;                        // How many solenoid pulses are we being told to do?
+    byte serialSolPulsesLast = 0;                    // What solenoid pulse we've processed last.
+    int serialSolPulsesLength = 45;                  // How long to wait between each solenoid event in a pulse.
 #endif // MAMEHOOKER
 
 unsigned int lastSeen = 0;
@@ -652,7 +655,8 @@ void setup() {
     usbHid.begin();
 #endif
 
-    Serial.begin(115200);
+    Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
+    Serial.setTimeout(1);    // This is to avoid any potential hangups when reading rumble pulse values.
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
    
@@ -943,19 +947,7 @@ void loop1()
             }
             
             if(serialMode) {  // Are we in serial processing mode?
-                if(serialSignaled) {  // If so, have we gotten a signal? (i.e. just processed a serial command this cycle)
-                    SerialHandling();                                   // If so, process the force feedback.
-                    serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
-                } // While that might seem a bit slow to only process queued FF when we get a serial signal,
-                  // to be fair, 9600 baud is around 1ms long, so everything's still accurate within a millisecond!
-  /*              unsigned long currentMillis = millis();                 // Calibrate timer.
-                if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
-                    serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
-                    serialQueue = 0b00000000;                           // Unset the queue entirely.
-                    digitalWrite(solenoidPin, LOW);
-                    digitalWrite(rumblePin, LOW);
-                    Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
-                }*/ // this timeout is more trouble than it's worth, so disabling for now.
+                SerialHandling();                                   // If so, process the force feedback.
             }
         #endif // MAMEHOOKER
         
@@ -973,11 +965,6 @@ void loop1()
                 digitalWrite(rumblePin, LOW);
                 rumbleHappening = false;
                 rumbleHappened = false;
-                #ifdef MAMEHOOKER
-                    serialPulses = 0;
-                    serialPulsesLast = 0;
-                    serialPulseStage = 0;
-                #endif // MAMEHOOKER
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
@@ -1167,19 +1154,7 @@ void ExecRunMode()
             }
             
             if(serialMode) {  // Are we in serial processing mode?
-                if(serialSignaled) {  // If so, have we gotten a signal? (i.e. just processed a serial command this cycle)
-                    SerialHandling();                                   // If so, process the force feedback.
-                    serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
-                }
-     /*
-                unsigned long currentMillis = millis();                 // Calibrate timer.
-                if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
-                    serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
-                    serialQueue = 0b00000000;                           // Unset the queue entirely.
-                    digitalWrite(solenoidPin, LOW);
-                    digitalWrite(rumblePin, LOW);
-                    Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
-                }*/ // this timeout is more trouble than it's worth, so disabling for now.
+                SerialHandling();                                   // If so, process the force feedback.
             }
         #endif // MAMEHOOKER
         #endif // ARDUINO_ARCH_RP2040
@@ -1264,11 +1239,6 @@ void ExecRunMode()
                 digitalWrite(rumblePin, LOW);
                 rumbleHappening = false;
                 rumbleHappened = false;
-                #ifdef MAMEHOOKER
-                    serialPulses = 0;
-                    serialPulsesLast = 0;
-                    serialPulseStage = 0;
-                #endif // MAMEHOOKER
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
@@ -1691,8 +1661,7 @@ void SerialProcessing()                                         // Reading the i
     //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
     // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
-    previousSerialHeartbeat = millis(); // Set when we last had a serial command sent.
-    serialSignaled = true;
+//    previousSerialHeartbeat = millis(); // Set when we last had a serial command sent.
             
     char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
 
@@ -1724,25 +1693,31 @@ void SerialProcessing()                                         // Reading the i
         if(serialInput == '0') { // Is it 0 (Sole) or 1 (Rumb)?
             serialInput = Serial.read();  // nomf the x since it's meaningless.
             serialInput = Serial.read();  // Read the next number.
-            if(serialInput == '1' || serialInput == '2') { // Is it a non-zero value? (For solenoids, they're the same effectively)
+            if(serialInput == '1') { // Is it a 1 value?)
                 bitWrite(serialQueue, 0, 1); // Queue the solenoid on bit.
+            } else if(serialInput == '2') { 
+                bitWrite(serialQueue, 1, 1);
+                serialInput = Serial.read();
+                String serialInputS = Serial.readStringUntil('x');
+                serialSolPulses = serialInputS.toInt();
+                serialSolPulsesLast = 0;
             } else {
-                bitWrite(serialQueue, 0, 0); // Queue the solenoid off bit.
+                bitWrite(serialQueue, 0, 0);
             }
         } else if(serialInput == '1') {  // it's rumble then?
             serialInput = Serial.read(); // nomf the x since it's meaningless.
             serialInput = Serial.read(); // read the next number.
             if(serialInput == '1') {  // Is it an on signal?
-                bitWrite(serialQueue, 1, 1); // Queue the rumble on bit.
+                bitWrite(serialQueue, 2, 1); // Queue the rumble on bit.
             } else if(serialInput == '2') { // Is it a pulsed on signal?
-                bitWrite(serialQueue, 2, 1); // Set the rumble pulsed bit.
+                bitWrite(serialQueue, 3, 1); // Set the rumble pulsed bit.
                 String serialInputS = Serial.readStringUntil('x'); // Read the rest up until the x padding bit, since it could be either 1 or three characters long.
              // TODO: is it always "x"? Or is it a period? We can only do one or the other. :x
-                serialPulses = serialInputS.toInt(); // This is the amount of rumble pulses queued.
-                serialPulsesLast = 0;        // Reset the serialPulsesLast count.
+                serialRumbPulses = serialInputS.toInt(); // This is the amount of rumble pulses queued.
+                serialRumbPulsesLast = 0;        // Reset the serialPulsesLast count.
             } else {  // Else, it's a rumble off signal.
-                bitWrite(serialQueue, 1, 0); // Queue both the rumble off bit... 
-                bitWrite(serialQueue, 2, 0); // And the rumble pulsed bit.
+                bitWrite(serialQueue, 2, 0); // Queue the rumble off bit... 
+                //bitWrite(serialQueue, 3, 0); // Should we turn off pulse bits if we also get a rumble off bit?
             }
         }
     }
@@ -1754,58 +1729,72 @@ void SerialHandling()                               // Where we let the serial i
   // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
 
   // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
-  #ifdef USES_SOLENOID
+    #ifdef USES_SOLENOID
     if(bitRead(serialQueue, 0)) {  // If the solenoid bit is on,
         digitalWrite(solenoidPin, HIGH);            // Make it go!
+    } else if(bitRead(serialQueue, 1)) {
+        if(!serialSolPulsesLast) {
+            digitalWrite(solenoidPin, HIGH);
+            serialSolPulsesLast = 1;
+        } else if(serialSolPulsesLast <= serialSolPulses) {
+            unsigned long currentMillis = millis();
+            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) {
+                if(digitalRead(solenoidPin)) {
+                    digitalWrite(solenoidPin, LOW);
+                    serialSolPulsesLast++;
+                    serialSolPulsesLastUpdate = millis();
+                } else {
+                    digitalWrite(solenoidPin, HIGH);
+                    serialSolPulsesLastUpdate = millis();
+                }
+            }
+        } else {
+            digitalWrite(solenoidPin, LOW);
+            bitWrite(serialQueue, 1, 0);
+        }
     } else {  // or if it's not,
         digitalWrite(solenoidPin, LOW);             // turn it off!
     }
-  #endif // USES_SOLENOID
-  #ifdef USES_RUMBLE
-    if(bitRead(serialQueue, 1)) {                   // Is the rumble on bit set?
+    #endif // USES_SOLENOID
+    #ifdef USES_RUMBLE
+    if(bitRead(serialQueue, 2)) {                   // Is the rumble on bit set?
         digitalWrite(rumblePin, HIGH);              // turn/keep it on.
-        bitWrite(serialQueue, 2, 0);                // If we set a rumble bit on, I guess it should override the rumble pulse bit?
-    } else if(bitRead(serialQueue, 2)) {  // of if the rumble pulse bit is set,
-        if(!serialPulsesLast) {  // is the pulses last bit set to off?
-            analogWrite(rumblePin, 115);            // we're starting fresh, so use the stage 0 value.
-            serialPulseStage = 0;                   // Set that we're at stage 0.
-            serialPulsesLast = 1;                   // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
-        } else if(serialPulsesLast <= serialPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
+        //bitWrite(serialQueue, 3, 0);                // If we set a rumble bit on, I guess it should override the rumble pulse bit?
+    } else if(bitRead(serialQueue, 3)) {  // of if the rumble pulse bit is set,
+        if(!serialRumbPulsesLast) {  // is the pulses last bit set to off?
+            analogWrite(rumblePin, 75);             // we're starting fresh, so use the stage 0 value.
+            serialRumbPulseStage = 0;                   // Set that we're at stage 0.
+            serialRumbPulsesLast = 1;                   // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
+        } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
             unsigned long currentMillis = millis();  // Calibrate the timer.
-            if(currentMillis - serialPulsesLastUpdate > serialPulsesLength) { // have we waited enough time between pulse stages?
-                switch(serialPulseStage) {           // If so, let's start processing.
+            if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
+                switch(serialRumbPulseStage) {          // If so, let's start processing.
                     case 0:                         // Basically, each case
-                        analogWrite(rumblePin, 175);// bumps up the intensity, (lowest to rising)
-                        serialPulseStage++;         // and increments the stage of the pulse.
+                        analogWrite(rumblePin, 255);// bumps up the intensity, (lowest to rising)
+                        serialRumbPulseStage++;         // and increments the stage of the pulse.
+                        serialRumbPulsesLastUpdate = millis(); // and timestamps when we've had updated this last.
                         break;                      // Then quits the switch.
                     case 1:
-                        analogWrite(rumblePin, 255);// (rising to peak)
-                        serialPulseStage++;
+                        analogWrite(rumblePin, 120);// (rising to peak)
+                        serialRumbPulseStage++;
+                        serialRumbPulsesLastUpdate = millis();
                         break;
                     case 2:
-                        analogWrite(rumblePin, 160);// (peak to falling,)
-                        serialPulseStage++;
-                        break;
-                    case 3:
-                        analogWrite(rumblePin, 120); // (falling to rest,)
-                        serialPulseStage++;
-                        break;
-                    case 4:                         // For the final case,
-                        analogWrite(rumblePin, 110); // we've set the rumble pin back to the starting value, stage 0.
-                        serialPulseStage = 0;       // Reset the counter back to stage 0.
-                        serialPulsesLast++;          // We've done a full pulse, so increment the amount we've done so far.
+                        analogWrite(rumblePin, 75);// (peak to falling,)
+                        serialRumbPulseStage = 0;
+                        serialRumbPulsesLast++;
+                        serialRumbPulsesLastUpdate = millis();
                         break;
                 }
             }
         } else {  // ...or the pulses count is complete.
             digitalWrite(rumblePin, LOW); // turn off the motor,
-            bitWrite(serialQueue, 2, 0);  // and set the rumble pulses bit off, now that we've completed it.
+            bitWrite(serialQueue, 3, 0);  // and set the rumble pulses bit off, now that we've completed it.
         }
     } else {  // ...or we're being told to turn it off outright.
         digitalWrite(rumblePin, LOW);
     }
     #endif // USES_RUMBLE
-    Serial.println(serialQueue, BIN);
 }
 
 void TriggerFireSimple()
