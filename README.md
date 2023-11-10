@@ -57,11 +57,11 @@ For reference, the default schematic and (general) layout for the build and its 
 ***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
+- Implement [MAMEHOOKER](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) support! Discussed in [#1](../../issues/1)
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
-- Implement [MAMEHOOKER](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) support! Discussed in [#1](../../issues/1)
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. Could make RGB LEDs react to events, i.e. trigger pulls.
