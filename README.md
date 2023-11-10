@@ -60,7 +60,7 @@ For reference, the default schematic and (general) layout for the build and its 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
   * If someone could help me get this working and provide the needed INIs so I could make this easier for the rest of the community, *please* get in touch!
-  * So far we only support S (start, ignoring the bit), E (end), M1x3 (offscreen mode - offscreen button mode only), F0 (solenoid feedback) and F1 (rumble feedback w/ pulse)
+  * So far we only support S (start, ignoring the bit), E (end), M1x3 (offscreen mode - offscreen button mode only), F0 (solenoid feedback w/ auto) and F1 (rumble feedback w/ pulse)
   * Want to implement F2/3/4 (R/G/B LED color and intensity) by using the onboard LED on supported Adafruit boards, maybe external NeoPixels in the future.
   * How many of the other modes do we need? What about the padding bits, are those only x's or should they be periods?
   * How long should a rumble "pulse" actually be?
