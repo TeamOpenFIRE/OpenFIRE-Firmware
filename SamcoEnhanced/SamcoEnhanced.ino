@@ -140,13 +140,13 @@ const byte btnPedal = 12;                             // If you're using a physi
   // Adjustable aspects:
 byte autofireWaitFactor = 3;                          // This is the default time to wait between rapid fire pulses (from 2-4)
 #ifdef USES_RUMBLE
-    const byte rumbleMotorIntensity = 0;                  // This is actually inverted; 0 is 100%, 1 is roughly half power.
-    const unsigned int rumbleInterval = 110;              // How long to wait for the whole rumble command, in ms.
+    const byte rumbleIntensity = 255;                 // The strength of the rumble motor, 0=off to 255=maxPower.
+    const unsigned int rumbleInterval = 110;          // How long to wait for the whole rumble command, in ms.
 #endif // USES_RUMBLE
 #ifdef USES_SOLENOID
-    const unsigned int solenoidNormalInterval = 45;       // Interval for solenoid activation, in ms.
-    const unsigned int solenoidFastInterval = 30;         // Interval for faster solenoid activation, in ms.
-    const unsigned int solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
+    const unsigned int solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    const unsigned int solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    const unsigned int solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
 
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -372,11 +372,10 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 
 // For rumble:
 #ifdef USES_RUMBLE
-    unsigned long previousMillisRumble = 0;      // our time for the rumble motor (two different timers? oh my!)
-    unsigned long previousMillisRumbTot = 0;     // our time for each rumble command (yep, that's three timers now! joy)
+    unsigned long previousMillisRumble = 0;      // our time since the rumble motor event started
     bool rumbleHappening = false;                // To keep track on if this is a rumble command or not.
     bool rumbleHappened = false;                 // If we're holding, this marks we sent a rumble command already.
-    // We need the rumbleHappening because we can be in a rumble command without the rumble state being on (emulating variable motor force)
+    // We need the rumbleHappening because of the variable nature of the PWM controlling the motor.
 #endif // USES_RUMBLE
 
 // For button queuing:
@@ -2544,35 +2543,16 @@ void SolenoidActivation(int solenoidFinalInterval)
 void RumbleActivation()
 {
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
-        if(rumbleMotorIntensity > 0) {                            // Are we using anything but full blast? If so, must be using a higher (lower) value, so let's temper that motor a bit
-            if(digitalRead(rumblePin)) {                          // Is the motor on now? Must be, so let's flick it off now.
-                unsigned long currentMillis = millis();           // Start the timer.
-                if(currentMillis - previousMillisRumble >= rumbleMotorIntensity) { // If we've waited long enough for this interval,
-                    previousMillisRumble = currentMillis;         // Since we've waited long enough, calibrate the timer
-                    digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into an inverted state.
-                }
-            } else {                                              // I guess not, so let's flick it on for a set short interval.
-                unsigned long currentMillis = millis();           // Start the timer.
-                if(currentMillis - previousMillisRumble >= rumbleMotorIntensity * 1.2) { // If we've waited long enough for this interval,
-                    previousMillisRumble = currentMillis;         // Since we've waited long enough, calibrate the timer
-                    digitalWrite(rumblePin, !digitalRead(rumblePin)); // run the motor into the state we've just inverted it to.
-                }
-            }
-        } // If the above didn't go off, guess we're at full blast, so just keep going.
-
-        unsigned long currentMillis = millis();                   // Now a second timer to check how long we've been rumbling.
-        if(currentMillis - previousMillisRumbTot >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
+        unsigned long currentMillis = millis();                   // Calibrate a timer to set how long we've been rumbling.
+        if(currentMillis - previousMillisRumble >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
             digitalWrite(rumblePin, LOW);                         // Make sure the rumble is OFF.
             rumbleHappening = false;                              // This rumble command is done now.
             rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
-            #ifdef PRINT_VERBOSE
-                Serial.println("We stopped a rumblin'!");
-            #endif
         }
         return;                                                   // Alright we done here (if we did this before already)
     } else {                                                      // OR, we're rumbling for the first time.
-        previousMillisRumbTot = millis();                         // Mark this as the start of this rumble command.
-        digitalWrite(rumblePin, HIGH);                            // Make the rumble rumble.
+        previousMillisRumble = millis();                          // Mark this as the start of this rumble command.
+        analogWrite(rumblePin, rumbleIntensity);                  // Set the motor on.
         rumbleHappening = true;                                   // Mark that we're in a rumble command rn.
         return;                                                   // Now geddoutta here.
     }
