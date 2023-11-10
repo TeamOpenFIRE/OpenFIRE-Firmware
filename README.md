@@ -11,7 +11,8 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
 - **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
 - **Toggleable Extras!** Aside from the option for using hardware switches baked in, the extras can all be individually toggled mid-game in pause mode (Button C + Select)!
-- **Dual Core Support! (WIP)** If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency!
+- **Dual Core Support!** If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency!
+- **MAMEHooker Support! (INCREDIBLY WIP)** {insert blurb here about furthering my own goals or smth}
 - Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in replacement for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
@@ -57,7 +58,12 @@ For reference, the default schematic and (general) layout for the build and its 
 ***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
-- Implement [MAMEHOOKER](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) support! Discussed in [#1](../../issues/1)
+- Finish MAMEHooker support.
+  * If someone could help me get this working and provide the needed INIs so I could make this easier for the rest of the community, *please* get in touch!
+  * So far we only support S (start, ignoring the bit), E (end), M1x3 (offscreen mode - offscreen button mode only), F0 (solenoid feedback) and F1 (rumble feedback w/ pulse)
+  * Want to implement F2/3/4 (R/G/B LED color and intensity) by using the onboard LED on supported Adafruit boards, maybe external NeoPixels in the future.
+  * How many of the other modes do we need? What about the padding bits, are those only x's or should they be periods?
+  * How long should a rumble "pulse" actually be?
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
