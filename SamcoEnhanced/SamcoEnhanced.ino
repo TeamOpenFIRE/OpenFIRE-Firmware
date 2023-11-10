@@ -948,14 +948,14 @@ void loop1()
                     serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
                 } // While that might seem a bit slow to only process queued FF when we get a serial signal,
                   // to be fair, 9600 baud is around 1ms long, so everything's still accurate within a millisecond!
-                unsigned long currentMillis = millis();                 // Calibrate timer.
+  /*              unsigned long currentMillis = millis();                 // Calibrate timer.
                 if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
                     serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
                     serialQueue = 0b00000000;                           // Unset the queue entirely.
                     digitalWrite(solenoidPin, LOW);
                     digitalWrite(rumblePin, LOW);
                     Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
-                }
+                }*/ // this timeout is more trouble than it's worth, so disabling for now.
             }
         #endif // MAMEHOOKER
         
@@ -1171,6 +1171,7 @@ void ExecRunMode()
                     SerialHandling();                                   // If so, process the force feedback.
                     serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
                 }
+     /*
                 unsigned long currentMillis = millis();                 // Calibrate timer.
                 if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
                     serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
@@ -1178,7 +1179,7 @@ void ExecRunMode()
                     digitalWrite(solenoidPin, LOW);
                     digitalWrite(rumblePin, LOW);
                     Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
-                }
+                }*/ // this timeout is more trouble than it's worth, so disabling for now.
             }
         #endif // MAMEHOOKER
         #endif // ARDUINO_ARCH_RP2040
