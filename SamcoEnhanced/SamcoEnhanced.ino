@@ -75,6 +75,10 @@ void rp2040pwmIrq(void);
 //#define EXTRA_POS_GLITCH_FILTER
 
     // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
+  // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
+  // TODO: implement LEDs control? Might take a bit more work tho.
+//#define MAMEHOOKER
+
   // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
 #define USES_SWITCHES
 #ifdef USES_SWITCHES // Here's where they should be defined!
@@ -380,6 +384,21 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 
 // For button queuing:
 byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons we've held on (for btnStart through btnRight)
+
+#ifdef MAMEHOOKER
+// For serial mode:
+    bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
+    bool serialSignaled = false;                     // Have we received a pulse from the serial line this cycle? So that we only run serial feedback when we received a pulse, instead of every cycle.
+    unsigned long previousSerialHeartbeat = 0;       // The timestamp of the last serial command, for the automatic fallback timeout.
+    unsigned long serialPulsesLastUpdate = 0;        // The timestamp of the last serial-invoked pulse rumble we updated.
+    int serialPulsesLength = 200;                    // How long each stage of a serial-invoked pulse rumble is.
+    // TODO: how long are "pulses" exactly???
+    byte serialPulseStage = 0;                       // 0 = start/lowest, 1 = rising, 2 = peak/strongest, 3 = falling
+    byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
+    byte serialPWM = 0;                              // For the LED, how strong should it be?
+    byte serialPulses = 0;                           // If rumble is commanded to do pulse responses, how many?
+    byte serialPulsesLast = 0;                       // Counter of how many pulse rumbles we did so far.
+#endif // MAMEHOOKER
 
 unsigned int lastSeen = 0;
 
@@ -894,13 +913,51 @@ void loop1()
         buttons.Poll(0);
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-        if(bitRead(buttons.debounced, 0)) {                          // Check if we pressed the Trigger this run.
-            ButtonFire();
-        } else {                                                     // ...Or we aren't pressing the trigger.
-            ButtonNotFire();
-        }
+        #ifdef MAMEHOOKER
+            if(!serialMode) {   // Have we released a serial signal pulse? If not,
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFire();                                          // Handle button events and feedback ourselves.
+                } else {   // Or we haven't pressed the trigger.
+                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                }
+            } else {   // This is if we've received a serial signal pulse in the last n millis.
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
+                } else {   // Or if we haven't pressed the trigger,
+                    TriggerNotFireSimple();                                 // Release button inputs.
+                }
+            }
+        #else
+            if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                TriggerFire();                                          // Handle button events and feedback ourselves.
+            } else {   // Or we haven't pressed the trigger.
+                TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+            }
+        #endif // MAMEHOOKER
         // For processing the buttons tied to the keyboard.
         ButtonsPush();
+
+        #ifdef MAMEHOOKER
+            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
+                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
+            }
+            
+            if(serialMode) {  // Are we in serial processing mode?
+                if(serialSignaled) {  // If so, have we gotten a signal? (i.e. just processed a serial command this cycle)
+                    SerialHandling();                                   // If so, process the force feedback.
+                    serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
+                } // While that might seem a bit slow to only process queued FF when we get a serial signal,
+                  // to be fair, 9600 baud is around 1ms long, so everything's still accurate within a millisecond!
+                unsigned long currentMillis = millis();                 // Calibrate timer.
+                if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
+                    serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
+                    serialQueue = 0b00000000;                           // Unset the queue entirely.
+                    digitalWrite(solenoidPin, LOW);
+                    digitalWrite(rumblePin, LOW);
+                    Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
+                }
+            }
+        #endif // MAMEHOOKER
         
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
             SendEscapeKey();
@@ -916,6 +973,11 @@ void loop1()
                 digitalWrite(rumblePin, LOW);
                 rumbleHappening = false;
                 rumbleHappened = false;
+                #ifdef MAMEHOOKER
+                    serialPulses = 0;
+                    serialPulsesLast = 0;
+                    serialPulseStage = 0;
+                #endif // MAMEHOOKER
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
@@ -1070,16 +1132,55 @@ void ExecRunMode()
             #endif // USES_SOLENOID
             autofireActive = !digitalRead(autofireSwitch);
         #endif
+
+     
         buttons.Poll(0);
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-        if(bitRead(buttons.debounced, 0)) {                             // Check if we pressed the Trigger this run.
-            ButtonFire();
-        } else {                                                        // ...Or we aren't pressing the trigger.
-            ButtonNotFire();
-        }
+        #ifdef MAMEHOOKER
+            if(!serialMode) {   // Have we released a serial signal pulse? If not,
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFire();                                          // Handle button events and feedback ourselves.
+                } else {   // Or we haven't pressed the trigger.
+                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                }
+            } else {   // This is if we've received a serial signal pulse in the last n millis.
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
+                } else {   // Or if we haven't pressed the trigger,
+                    TriggerNotFireSimple();                                 // Release button inputs.
+                }
+            }
+        #else
+            if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                TriggerFire();                                          // Handle button events and feedback ourselves.
+            } else {   // Or we haven't pressed the trigger.
+                TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+            }
+        #endif // MAMEHOOKER
         // For processing the buttons tied to the keyboard.
         ButtonsPush();
+
+        #ifdef MAMEHOOKER
+            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
+                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
+            }
+            
+            if(serialMode) {  // Are we in serial processing mode?
+                if(serialSignaled) {  // If so, have we gotten a signal? (i.e. just processed a serial command this cycle)
+                    SerialHandling();                                   // If so, process the force feedback.
+                    serialSignaled = false;                             // Set this to false now until the next batch of serial commands are received.
+                }
+                unsigned long currentMillis = millis();                 // Calibrate timer.
+                if(currentMillis - previousSerialHeartbeat > 10000) {   // If we haven't received a serial signal for at least ten seconds,
+                    serialMode = false, serialSignaled = false;         // Forcibly disable serial mode, it must've crashed or something.
+                    serialQueue = 0b00000000;                           // Unset the queue entirely.
+                    digitalWrite(solenoidPin, LOW);
+                    digitalWrite(rumblePin, LOW);
+                    Serial.println("Haven't received a signal command in 10000 ms, releasing FF override.");
+                }
+            }
+        #endif // MAMEHOOKER
         #endif // ARDUINO_ARCH_RP2040
 
         #ifdef SAMCO_NO_HW_TIMER
@@ -1162,6 +1263,11 @@ void ExecRunMode()
                 digitalWrite(rumblePin, LOW);
                 rumbleHappening = false;
                 rumbleHappened = false;
+                #ifdef MAMEHOOKER
+                    serialPulses = 0;
+                    serialPulsesLast = 0;
+                    serialPulseStage = 0;
+                #endif // MAMEHOOKER
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
@@ -1414,7 +1520,7 @@ void UpdateLastSeen()
     }
 }
 
-void ButtonFire()                                               // If we pressed the trigger,
+void TriggerFire()                                               // If we pressed the trigger,
 {
     if(!offScreen &&                                            // Check if the X or Y axis is in the screen's boundaries, i.e. not "off screen".
     !offscreenBShot) {                                          // And only as long as we haven't fired an off-screen shot,
@@ -1530,7 +1636,7 @@ void ButtonFire()                                               // If we pressed
     triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
 }
 
-void ButtonNotFire()                                        // ...Or we just didn't press the trigger this cycle.   
+void TriggerNotFire()                                        // ...Or we just didn't press the trigger this cycle.   
 {
     triggerHeld = false;                                    // Disable the holding function
     if(buttonPressed) {
@@ -1566,6 +1672,167 @@ void ButtonNotFire()                                        // ...Or we just did
         }
     #endif // USES_RUMBLE
 }
+
+#ifdef MAMEHOOKER
+void SerialProcessing()                                         // Reading the input from the serial buffer.
+{
+    // So, APPARENTLY there is a map of what the serial commands are, at least wrt gun controllers.
+    // "Sx" is a start command, the x being a number from 0-6 (0=sol, 1=motor, 2-4=led colors, 6=everything) but this is more a formal suggestion than anything.
+    // "E" is an end command, which is the cue to hand control over back to the sketch's force feedback.
+    // "M" sets parameters for how the gun should be handled when the game starts:
+    //  - M3 is fullscreen or 4:3, which we don't do so ignore this
+    //  - M5 is auto reload(?). How do we use this?
+    //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
+    //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
+    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
+    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
+    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
+    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
+    // These commands are all sent as one clump of data, with the letter being the distinguisher.
+    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
+    previousSerialHeartbeat = millis(); // Set when we last had a serial command sent.
+    serialSignaled = true;
+            
+    char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
+
+    if(serialInput == 'S') {  // Does the command start with an S? (Start)
+        serialMode = true;
+        Serial.println("Received serial start pulse, overriding force feedback!");
+        #ifdef USES_RUMBLE
+            digitalWrite(rumblePin, LOW);
+            rumbleHappened = false;
+            rumbleHappening = false;
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+            digitalWrite(solenoidPin, LOW);
+            solenoidFirstShot = false;
+        #endif // USES_SOLENOID
+        triggerHeld = false;
+        burstFiring = false;
+        burstFireCount = 0;
+    } else if(serialInput == 'M') {  // Does the command start with an M? (Mode)
+        serialInput = Serial.read();      // Read the second bit.
+        if(serialInput == '1') {  // Is it M1? (Offscreen button mode)
+            offscreenButton = true;       // Set that if so.
+        }
+    } else if(serialInput == 'E') {  // Is it an E command? (End)
+            serialMode = false;           // Turn off serial mode then.
+            Serial.println("Received end serial pulse, releasing FF override.");
+    } else if(serialInput == 'F') { // Does the command start with an F (force feedback)?
+        serialInput = Serial.read();  // Alright, read the next bit.
+        if(serialInput == '0') { // Is it 0 (Sole) or 1 (Rumb)?
+            serialInput = Serial.read();  // nomf the x since it's meaningless.
+            serialInput = Serial.read();  // Read the next number.
+            if(serialInput == '1' || serialInput == '2') { // Is it a non-zero value? (For solenoids, they're the same effectively)
+                bitWrite(serialQueue, 0, 1); // Queue the solenoid on bit.
+            } else {
+                bitWrite(serialQueue, 0, 0); // Queue the solenoid off bit.
+            }
+        } else if(serialInput == '1') {  // it's rumble then?
+            serialInput = Serial.read(); // nomf the x since it's meaningless.
+            serialInput = Serial.read(); // read the next number.
+            if(serialInput == '1') {  // Is it an on signal?
+                bitWrite(serialQueue, 1, 1); // Queue the rumble on bit.
+            } else if(serialInput == '2') { // Is it a pulsed on signal?
+                bitWrite(serialQueue, 2, 1); // Set the rumble pulsed bit.
+                String serialInputS = Serial.readStringUntil('x'); // Read the rest up until the x padding bit, since it could be either 1 or three characters long.
+             // TODO: is it always "x"? Or is it a period? We can only do one or the other. :x
+                serialPulses = serialInputS.toInt(); // This is the amount of rumble pulses queued.
+                serialPulsesLast = 0;        // Reset the serialPulsesLast count.
+            } else {  // Else, it's a rumble off signal.
+                bitWrite(serialQueue, 1, 0); // Queue both the rumble off bit... 
+                bitWrite(serialQueue, 2, 0); // And the rumble pulsed bit.
+            }
+        }
+    }
+}
+
+void SerialHandling()                               // Where we let the serial in stream handle things.
+{ // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
+  // So all we have to do is just read and process what it sends us at face value.
+  // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
+
+  // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
+  #ifdef USES_SOLENOID
+    if(bitRead(serialQueue, 0)) {  // If the solenoid bit is on,
+        digitalWrite(solenoidPin, HIGH);            // Make it go!
+    } else {  // or if it's not,
+        digitalWrite(solenoidPin, LOW);             // turn it off!
+    }
+  #endif // USES_SOLENOID
+  #ifdef USES_RUMBLE
+    if(bitRead(serialQueue, 1)) {                   // Is the rumble on bit set?
+        digitalWrite(rumblePin, HIGH);              // turn/keep it on.
+        bitWrite(serialQueue, 2, 0);                // If we set a rumble bit on, I guess it should override the rumble pulse bit?
+    } else if(bitRead(serialQueue, 2)) {  // of if the rumble pulse bit is set,
+        if(!serialPulsesLast) {  // is the pulses last bit set to off?
+            analogWrite(rumblePin, 115);            // we're starting fresh, so use the stage 0 value.
+            serialPulseStage = 0;                   // Set that we're at stage 0.
+            serialPulsesLast = 1;                   // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
+        } else if(serialPulsesLast <= serialPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
+            unsigned long currentMillis = millis();  // Calibrate the timer.
+            if(currentMillis - serialPulsesLastUpdate > serialPulsesLength) { // have we waited enough time between pulse stages?
+                switch(serialPulseStage) {           // If so, let's start processing.
+                    case 0:                         // Basically, each case
+                        analogWrite(rumblePin, 175);// bumps up the intensity, (lowest to rising)
+                        serialPulseStage++;         // and increments the stage of the pulse.
+                        break;                      // Then quits the switch.
+                    case 1:
+                        analogWrite(rumblePin, 255);// (rising to peak)
+                        serialPulseStage++;
+                        break;
+                    case 2:
+                        analogWrite(rumblePin, 160);// (peak to falling,)
+                        serialPulseStage++;
+                        break;
+                    case 3:
+                        analogWrite(rumblePin, 120); // (falling to rest,)
+                        serialPulseStage++;
+                        break;
+                    case 4:                         // For the final case,
+                        analogWrite(rumblePin, 110); // we've set the rumble pin back to the starting value, stage 0.
+                        serialPulseStage = 0;       // Reset the counter back to stage 0.
+                        serialPulsesLast++;          // We've done a full pulse, so increment the amount we've done so far.
+                        break;
+                }
+            }
+        } else {  // ...or the pulses count is complete.
+            digitalWrite(rumblePin, LOW); // turn off the motor,
+            bitWrite(serialQueue, 2, 0);  // and set the rumble pulses bit off, now that we've completed it.
+        }
+    } else {  // ...or we're being told to turn it off outright.
+        digitalWrite(rumblePin, LOW);
+    }
+    #endif // USES_RUMBLE
+    Serial.println(serialQueue, BIN);
+}
+
+void TriggerFireSimple()
+{
+    if(!buttonPressed &&                             // Have we not fired the last cycle,
+    offscreenButton && offScreen) {                  // and are pointing the gun off screen WITH the offScreen button mode set?
+        AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
+        offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
+        buttonPressed = true;                        // Mark so we're not spamming these press events.
+    } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
+        AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
+        buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
+    }
+}
+
+void TriggerNotFireSimple()
+{
+    if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
+        if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
+            AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
+            offscreenBShot = false;                  // And set it off.
+        } else {                                     // Else,
+            AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
+        }
+        buttonPressed = false;                       // Unset the button pressed bit.
+    }
+}
+#endif // MAMEHOOKER
 
 void ButtonsPush()
 {
@@ -1951,6 +2218,7 @@ void PrintExtras()
         } else {
             Serial.println("False");
         }
+    #endif // USES_SOLENOID
     #ifdef ARDUINO_ARCH_RP2040
     #ifdef DUAL_CORE
         Serial.println("Running on dual cores.");
