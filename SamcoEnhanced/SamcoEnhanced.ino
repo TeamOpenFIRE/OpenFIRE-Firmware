@@ -406,9 +406,10 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
     unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
-    byte serialSolPulses = 0;                        // How many solenoid pulses are we being told to do?
-    byte serialSolPulsesLast = 0;                    // What solenoid pulse we've processed last.
-    int serialSolPulsesLength = 45;                  // How long to wait between each solenoid event in a pulse.
+    bool serialSolPulseOn = false;                   // Because we can't just read it normally, is the solenoid getting PWM high output now?
+    int serialSolPulses = 0;                         // How many solenoid pulses are we being told to do?
+    int serialSolPulsesLast = 0;                     // What solenoid pulse we've processed last.
+    int serialSolPulsesLength = 80;                  // How long to wait between each solenoid event in a pulse.
     #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
@@ -1790,7 +1791,7 @@ void SerialProcessing()                                         // Reading the i
 void SerialHandling()                               // Where we let the serial in stream handle things.
 { // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
   // So all we have to do is just read and process what it sends us at face value.
-  // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
+  // The only exceptions are solenoid and rumble PULSE bits, where we do actually need to manage those ourselves.
 
   // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
     #ifdef USES_SOLENOID
@@ -1798,23 +1799,30 @@ void SerialHandling()                               // Where we let the serial i
         digitalWrite(solenoidPin, HIGH);            // Make it go!
     } else if(bitRead(serialQueue, 1)) {
         if(!serialSolPulsesLast) {
-            digitalWrite(solenoidPin, HIGH);
+            analogWrite(solenoidPin, 178);
+            serialSolPulseOn = true;
             serialSolPulsesLast = 1;
+            serialSolPulses++; // cheating a bit hehe
         } else if(serialSolPulsesLast <= serialSolPulses) {
             unsigned long currentMillis = millis();
             if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) {
-                if(digitalRead(solenoidPin)) {
-                    digitalWrite(solenoidPin, LOW);
+                if(serialSolPulseOn) {
+                    analogWrite(solenoidPin, 122);
+                    serialSolPulseOn = false;
                     serialSolPulsesLast++;
                     serialSolPulsesLastUpdate = millis();
                 } else {
-                    digitalWrite(solenoidPin, HIGH);
+                    analogWrite(solenoidPin, 178);
+                    serialSolPulseOn = true;
                     serialSolPulsesLastUpdate = millis();
                 }
             }
-        } else {
-            digitalWrite(solenoidPin, LOW);
-            bitWrite(serialQueue, 1, 0);
+        } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
+            unsigned long currentMillis = millis();
+            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) {
+                digitalWrite(solenoidPin, LOW);
+                bitWrite(serialQueue, 1, 0);
+            }
         }
     } else {  // or if it's not,
         digitalWrite(solenoidPin, LOW);             // turn it off!
