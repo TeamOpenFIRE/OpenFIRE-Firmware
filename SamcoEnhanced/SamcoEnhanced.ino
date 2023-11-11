@@ -390,7 +390,12 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
-    byte serialPWM = 0;                              // For the LED, how strong should it be?
+    #ifdef LED_ENABLE
+    bool serialLEDChange = false;                    // Set on if we set an LED command this cycle.
+    byte serialLEDR = 0;                             // For the LED, how strong should it be?
+    byte serialLEDG = 0;                             // Each channel is defined as three brightness values
+    byte serialLEDB = 0;                             // So yeah.
+    #endif // LED_ENABLE
     #ifdef USES_RUMBLE
     unsigned long serialRumbPulsesLastUpdate = 0;    // The timestamp of the last serial-invoked pulse rumble we updated.
     int serialRumbPulsesLength = 60;                 // How long each stage of a serial-invoked pulse rumble is.
@@ -1458,7 +1463,9 @@ void GetPosition()
         finalY = mySamco.y();
 #endif // EXTRA_POS_GLITCH_FILTER
 
-        UpdateLastSeen();
+        if(!serialMode) {
+            UpdateLastSeen();
+        }
 #if DEBUG_SERIAL == 2
         Serial.print(finalX);
         Serial.print(' ');
@@ -1697,6 +1704,12 @@ void SerialProcessing()                                         // Reading the i
     } else if(serialInput == 'E') {  // Is it an E command? (End)
             serialMode = false;           // Turn off serial mode then.
             offscreenButtonSerial = false;// And this one too.
+            #ifdef LED_ENABLE
+                serialLEDR = 0;
+                serialLEDG = 0;
+                serialLEDB = 0;
+                LedOff();
+            #endif // LED_ENABLE
             Serial.println("Received end serial pulse, releasing FF override.");
     } else if(serialInput == 'F') { // Does the command start with an F (force feedback)?
         serialInput = Serial.read();  // Alright, read the next bit.
@@ -1729,6 +1742,47 @@ void SerialProcessing()                                         // Reading the i
                 bitWrite(serialQueue, 2, 0); // Queue the rumble off bit... 
                 //bitWrite(serialQueue, 3, 0); // Should we turn off pulse bits if we also get a rumble off bit?
             }
+        #ifdef LED_ENABLE
+        } else if(serialInput == '2') {  // It's an LED R bit?
+            serialLEDChange = true;
+            serialInput = Serial.read(); // nomf the x since it's meaningless.
+            serialInput = Serial.read(); // Read the next number
+            if(serialInput == '1') {
+                bitWrite(serialQueue, 4, 1);
+                serialInput = Serial.read(); // nomf the x
+                String serialInputS = Serial.readStringUntil('x');
+                serialLEDR = serialInputS.toInt();
+            } else {
+                bitWrite(serialQueue, 4, 0);
+                serialLEDR = 0;
+            }
+        } else if(serialInput == '3') {  // It's an LED G bit?
+            serialLEDChange = true;
+            serialInput = Serial.read(); // nomf the x since it's meaningless.
+            serialInput = Serial.read(); // Read the next number
+            if(serialInput == '1') {
+                bitWrite(serialQueue, 5, 1);
+                serialInput = Serial.read(); // nomf the x
+                String serialInputS = Serial.readStringUntil('x');
+                serialLEDG = serialInputS.toInt();
+            } else {
+                bitWrite(serialQueue, 5, 0);
+                serialLEDG = 0;
+            }
+        } else if(serialInput == '4') {  // It's an LED B bit?
+            serialLEDChange = true;
+            serialInput = Serial.read(); // nomf the x since it's meaningless.
+            serialInput = Serial.read(); // Read the next number
+            if(serialInput == '1') {
+                bitWrite(serialQueue, 6, 1);
+                serialInput = Serial.read(); // nomf the x
+                String serialInputS = Serial.readStringUntil('x');
+                serialLEDB = serialInputS.toInt();
+            } else {
+                bitWrite(serialQueue, 6, 0);
+                serialLEDB = 0;
+            }
+        #endif // LED_ENABLE
         }
     }
 }
@@ -1805,6 +1859,25 @@ void SerialHandling()                               // Where we let the serial i
         digitalWrite(rumblePin, LOW);
     }
     #endif // USES_RUMBLE
+    #ifdef LED_ENABLE
+    if(serialLEDChange) {
+        if(bitRead(serialQueue, 4) ||
+        bitRead(serialQueue, 5) ||
+        bitRead(serialQueue, 6)) {
+            #ifdef DOTSTAR_ENABLE
+                dotstar.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
+                dotstar.show();
+            #endif // DOTSTAR_ENABLE
+            #ifdef NEOPIXEL_PIN
+                neopixel.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
+                neopixel.show();
+            #endif // NEOPIXEL_PIN
+        } else {
+            LedOff();
+        }
+        serialLEDChange = false;
+    }
+    #endif // LED_ENABLE
 }
 
 void TriggerFireSimple()
