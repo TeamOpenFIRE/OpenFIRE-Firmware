@@ -20,7 +20,11 @@
 
 #include <Arduino.h>
 #include <AbsMouse5.h>
+#ifdef ARDUINO_ARCH_RP2040
+#include <TinyUSB_Keyboard.h>
+#else
 #include <Keyboard.h>
+#endif // ARDUINO_ARCH_RP2040
 #include "LightgunButtons.h"
 
 LightgunButtons::LightgunButtons(Data_t _data, unsigned int _count) :
