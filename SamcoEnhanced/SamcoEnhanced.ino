@@ -388,19 +388,23 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-//    unsigned long previousSerialHeartbeat = 0;     // The timestamp of the last serial command, for the automatic fallback timeout.
+    bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
+    byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
+    byte serialPWM = 0;                              // For the LED, how strong should it be?
+    #ifdef USES_RUMBLE
     unsigned long serialRumbPulsesLastUpdate = 0;    // The timestamp of the last serial-invoked pulse rumble we updated.
-    unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
     int serialRumbPulsesLength = 60;                 // How long each stage of a serial-invoked pulse rumble is.
     // TODO: how long are "pulses" exactly???
     byte serialRumbPulseStage = 0;                   // 0 = start/rising, 1 = peak, 2 = falling, 3 = reset to start
-    byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
-    byte serialPWM = 0;                              // For the LED, how strong should it be?
     byte serialRumbPulses = 0;                       // If rumble is commanded to do pulse responses, how many?
     byte serialRumbPulsesLast = 0;                   // Counter of how many pulse rumbles we did so far.
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+    unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
     byte serialSolPulses = 0;                        // How many solenoid pulses are we being told to do?
     byte serialSolPulsesLast = 0;                    // What solenoid pulse we've processed last.
     int serialSolPulsesLength = 45;                  // How long to wait between each solenoid event in a pulse.
+    #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
 unsigned int lastSeen = 0;
@@ -968,7 +972,6 @@ void loop1()
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
-            delay(5);
             AbsMouse5.release(MOUSE_RIGHT);
             delay(5);
             offscreenBShot = false;
@@ -980,6 +983,8 @@ void loop1()
             SetMode(GunMode_Pause);
             // at this point, the other core should be stopping us now.
         }
+        // we may be going so fast that it causes crashes w/ serial connection, so just wait 1ms.
+        delay(1);
     }
 }
 #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -1242,7 +1247,6 @@ void ExecRunMode()
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
-            delay(5);
             AbsMouse5.release(MOUSE_RIGHT);
             delay(5);
             offscreenBShot = false;
@@ -1260,6 +1264,8 @@ void ExecRunMode()
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
 
+        // we may be going so fast that it causes crashes w/ serial connection, so just wait 1ms.
+        delay(1);
 
 #ifdef DEBUG_SERIAL
         ++frameCount;
@@ -1661,7 +1667,6 @@ void SerialProcessing()                                         // Reading the i
     //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
     // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
-//    previousSerialHeartbeat = millis(); // Set when we last had a serial command sent.
             
     char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
 
@@ -1682,11 +1687,16 @@ void SerialProcessing()                                         // Reading the i
         burstFireCount = 0;
     } else if(serialInput == 'M') {  // Does the command start with an M? (Mode)
         serialInput = Serial.read();      // Read the second bit.
-        if(serialInput == '1') {  // Is it M1? (Offscreen button mode)
-            offscreenButton = true;       // Set that if so.
+        if(serialInput == '1') {  // Is it M1? (Gun "offscreen mode" set)?
+            serialInput = Serial.read();  // Nomf the padding bit.
+            serialInput = Serial.read();  // Read the next.
+            if(serialInput == '2') {      // Is it the offscreen button mode bit?
+                offscreenButtonSerial = true; // Set that if so.
+            }
         }
     } else if(serialInput == 'E') {  // Is it an E command? (End)
             serialMode = false;           // Turn off serial mode then.
+            offscreenButtonSerial = false;// And this one too.
             Serial.println("Received end serial pulse, releasing FF override.");
     } else if(serialInput == 'F') { // Does the command start with an F (force feedback)?
         serialInput = Serial.read();  // Alright, read the next bit.
@@ -1800,7 +1810,7 @@ void SerialHandling()                               // Where we let the serial i
 void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
-    offscreenButton && offScreen) {                  // and are pointing the gun off screen WITH the offScreen button mode set?
+    offscreenButtonSerial && offScreen) {            // and are pointing the gun off screen WITH the offScreen button mode set?
         AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
