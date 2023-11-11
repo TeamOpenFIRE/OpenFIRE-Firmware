@@ -660,7 +660,7 @@ void setup() {
 #endif
 
     Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
-    Serial.setTimeout(1);    // This is to avoid any potential hangups when reading rumble pulse values.
+    Serial.setTimeout(0);    // This is to avoid any potential hangups when reading rumble pulse values.
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
    
