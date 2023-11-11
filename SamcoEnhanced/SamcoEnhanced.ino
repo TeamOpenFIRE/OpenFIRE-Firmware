@@ -32,7 +32,12 @@
 #include <HID.h>
 #endif
 
+#ifdef ARDUINO_ARCH_RP2040
+// we need to change this as the new (3.1.0+) earle philhower cores break the Arduino keyboard library.
+#include <TinyUSB_Keyboard.h>
+#else
 #include <Keyboard.h>
+#endif // ARDUINO_ARCH_RP2040
 #include <Wire.h>
 #ifdef DOTSTAR_ENABLE
 #define LED_ENABLE
@@ -665,6 +670,10 @@ void setup() {
     usbHid.begin();
 #endif
 
+    #ifdef ARDUINO_ARCH_RP2040
+  // Since we use a separate keyboard library, we need to initialize it too.
+    Keyboard.begin();
+    #endif // ARDUINO_ARCH_RP2040
     Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
     Serial.setTimeout(0);    // This is to avoid any potential hangups when reading rumble pulse values.
     
