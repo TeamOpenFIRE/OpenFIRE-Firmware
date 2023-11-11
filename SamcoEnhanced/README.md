@@ -38,10 +38,7 @@ If you're using Arduino IDE for the first time, the setup is relatively simple:
  4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
     `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
     and paste it in there. Click OK to confirm.
- 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the board files for the version of your choice:
-    * M0, M4 boards: Install `Adafruit SAMD Boards` *(newest version)*
-    * RP2040: Install `Raspberry Pi Pico/RP 2040` **ver. 3.0.0**
-      * Note the version number: any newer version has conflicts with the basic Keyboard library and will fail to build!
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP 2040`
  7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install `Adafruit DotStar`, `Adafruit NeoPixel`, & `Adafruit SPI Flash`.
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
     * **Most boards** should use the default `Arduino` USB stack; **for RP2040 users,** change the USB stack to `Adafruit TinyUSB`.
