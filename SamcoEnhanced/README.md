@@ -1,4 +1,4 @@
-# SAMCO Prow Enhanced+ - The Enclosed Instruction Book!
+# GUN4ALL - The Enclosed Instruction Book!
 
 ## Table of Contents:
  - [Setup Guide](#setup-guide)
@@ -18,6 +18,7 @@
    - [Saving settings to non-volatile memory](#saving-settings-to-non-volatile-memory)
    - [Processing Mode](#processing-mode)
  - [Technical Details & Assorted Errata](#technical-details--assorted-errata)
+   - [Serial Handoff (Mame Hooker) Mode](#serial-handoff-mame-hooker-mode)
    - [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns)
    - [Dual Core Mode](#dual-core-mode)
    - [Button Combo Masks](#button-combo-masks)
@@ -37,14 +38,11 @@ If you're using Arduino IDE for the first time, the setup is relatively simple:
  4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
     `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
     and paste it in there. Click OK to confirm.
- 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) 
- 6. Install the board files for the version of your choice:
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the board files for the version of your choice:
     * M0, M4 boards: Install `Adafruit SAMD Boards` *(newest version)*
     * RP2040: Install `Raspberry Pi Pico/RP 2040` **ver. 3.0.0**
       * Note the version number: any newer version has conflicts with the basic Keyboard library and will fail to build!
- 7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install the following libraries for the board of your choice:
-    * M0, M4 boards: `Adafruit DotStar` & `Adafruit SPI Flash`
-    * RP2040 boards: `Adafruit NeoPixel`
+ 7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install `Adafruit DotStar`, `Adafruit NeoPixel`, & `Adafruit SPI Flash`.
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
     * **Most boards** should use the default `Arduino` USB stack; **for RP2040 users,** change the USB stack to `Adafruit TinyUSB`.
     * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
@@ -124,7 +122,7 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 8. Pull the **Trigger** to finish and return to run mode. Values will apply to the currently selected profile in memory.
 9. After confirming the calibration is good, enter pause mode and press Start and Select to save the calibration to non-volatile memory. These will be saved, as well as the active profile, to be restored on replug/reboot.
  
-Calibration can be cancelled during any step by pressing **Reload** or **Start** or **Select**. The gun will return to pause mode if you cancel the calibration.
+Calibration can be cancelled during any step by pressing **Button C/Reload** or **Start** or **Select**. The gun will return to pause mode if you cancel the calibration.
 
 #### Advanced calibration
 - During center calibration, press **A** to skip this step and proceed to the vertical calibration
@@ -142,7 +140,7 @@ A sign that the IR sensitivity is too high is if the pointer jumps around errati
 The sketch is configured with 4 profiles available (with up to 8 possible if desired, correlating to the d-pad). Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select).
 
 ### Software Toggles
-Introduced since v1.3 (Serious Intensity) is the ability to toggle hardware features at runtime, even without hardware switches!
+Introduced since v1.3 *(Serious Intensity)* is the ability to toggle hardware features at runtime, even without hardware switches!
 
 While in pause mode, the toggles are as follows (color indicating what the board's builtin LED lights up with):
 - Button C/Reload + Button A: **Offscreen Button Mode** (White) - For older games that only activate a reload function with a button press, this enables offscreen shots to send a right mouse click instead of a left click. If a working motor is installed, it will pulse on and off when enabled.
@@ -162,6 +160,13 @@ For ItsyBitsy M0 and M4 boards, the external on-board SPI flash memory is used; 
 The Processing mode is intended for use with the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Download [Processing](processing.org) and the 4IR processing sketch. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
 
 ## Technical Details & Assorted Errata
+
+### Serial Handoff (Mame Hooker) Mode
+Introduced in v{$versionNumber} *(That Heart, That Power)*, the gun will automatically hand off control to an instance of Mame Hooker that's connected once a start code has been detected! If available, the onboard LED will change to a mid-intensity white to signal serial handoff mode (unless any LED events trigger it to change, which will follow those thereafter). As if now, it reacts to M1x2 (offscreen button toggle for that game), F0 solenoid feedback, F1 rumble feedback, and F2/3/4 LED feedback.
+
+If you aren't already familiar with Mame Hooker, you'll **need compatible inis for each game you play** and **the gun's COM port should be set to match the player number** (COM1 for P1, COM2 for P2, etc.)! COM port assignment can be done in Windows via the Device Manager, or Linux via settings in the Wine registry of the prefix your game/Mame Hooker is started in ([instructions from WineHQ here](https://wiki.winehq.org/Wine_User%27s_Guide#Serial_and_Parallel_Ports), note that Arduino COM ports are indeed `ttyACM#`).
+
+This can be disabled (and any other references to serial handoff mode) by commenting out `#define MAMEHOOKER` in the beginning of the sketch (after the initial defines & directly above the hardware configuration).
 
 ### Change USB ID for Multiple Guns
 If you intend to use multiple SAMCO guns, the Arduino software does not have an immediately intuitive way of distinguishing different boards of the same type; ergo, if you have two RP2040 guns, they will both be `Adafruit ItsyBitsy RP2040 Mouse/Keyboard` with the same USB identifier. This will confuse RetroArch and/or TeknoParrot (or other apps that directly addresses individual mice) which won't be fun for play; or you might just want to change the name for flare. All good!
