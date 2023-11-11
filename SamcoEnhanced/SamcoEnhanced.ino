@@ -988,8 +988,6 @@ void loop1()
             SetMode(GunMode_Pause);
             // at this point, the other core should be stopping us now.
         }
-        // we may be going so fast that it causes crashes w/ serial connection, so just wait 1ms.
-        delay(1);
     }
 }
 #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -1269,9 +1267,6 @@ void ExecRunMode()
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
 
-        // we may be going so fast that it causes crashes w/ serial connection, so just wait 1ms.
-        delay(1);
-
 #ifdef DEBUG_SERIAL
         ++frameCount;
         PrintDebugSerial();
@@ -1463,9 +1458,14 @@ void GetPosition()
         finalY = mySamco.y();
 #endif // EXTRA_POS_GLITCH_FILTER
 
+        #ifdef MAMEHOOKER
         if(!serialMode) {
             UpdateLastSeen();
         }
+        #else
+        UpdateLastSeen();
+        #endif // MAMEHOOKER
+     
 #if DEBUG_SERIAL == 2
         Serial.print(finalX);
         Serial.print(' ');
