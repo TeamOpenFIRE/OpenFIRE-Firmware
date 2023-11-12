@@ -1,4 +1,4 @@
-# GUN4ALL - An Expanded Arduino-powered Light Gun System 
+# IR-GUN4ALL - An Expanded Arduino-powered Light Gun System 
 ##### Original/more accurate title: SAMCO Enhanced+ (Plus, now with added pew-pews!)
 
 Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
@@ -36,7 +36,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 
 ## Requirements
 - An Arduino-compatible microcontroller based on a **Cortex-M0/M0+**, **Cortex-M4**, or **RP2040**. *(ATmega32U4 boards don't have enough codespace at this point.)*
-  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, globally available)* Adafruit [Keeboar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro compatible)* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(more pins, compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596) for drop-in compatibility with Namco Guncon hardware!)*
+  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, globally available)* Adafruit [Keeboar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor)* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(more pins, compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596) for drop-in compatibility with Namco Guncon hardware!)*
   * Keep in mind the differences in pinouts, as it will always be different between builds and boards!
 - **DFRobot IR Positioning Camera SEN0158:** [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html)
 - **4 IR LED emitters:** regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
