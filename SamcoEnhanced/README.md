@@ -1,4 +1,4 @@
-# GUN4ALL - The Enclosed Instruction Book!
+# IR-GUN4ALL - The Enclosed Instruction Book!
 
 ## Table of Contents:
  - [Setup Guide](#setup-guide)
@@ -40,8 +40,7 @@ If you're using Arduino IDE for the first time, the setup is relatively simple:
     and paste it in there. Click OK to confirm.
  5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP 2040`
  7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install `Adafruit DotStar`, `Adafruit NeoPixel`, & `Adafruit SPI Flash`.
- 8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)`
-    * **Most boards** should use the default `Arduino` USB stack; **for RP2040 users,** change the USB stack to `Adafruit TinyUSB`.
+ 8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)` and set the USB stack to `(Adafruit) TinyUSB`.
     * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
    
 Extract the `SamcoEnhanced` and `libraries` folders from the source repository/releases into your Arduino sketches folder. Defaults are:
