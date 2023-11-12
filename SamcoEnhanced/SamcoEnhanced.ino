@@ -949,9 +949,10 @@ void loop1()
             } else {   // This is if we've received a serial signal pulse in the last n millis.
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
-                } else {   // Or if we haven't pressed the trigger,
+                } else if(!serialBusy) {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                                 // Release button inputs.
                 }
+             delay(1);
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1155,6 +1156,7 @@ void ExecRunMode()
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                                 // Release button inputs.
                 }
+                delay(1);
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1225,7 +1227,9 @@ void ExecRunMode()
             } else {
                 offScreen = false;
             }
-            
+
+            delay(1);
+         
             #ifdef DEBUG_SERIAL
                 ++irPosCount;
             #endif // DEBUG_SERIAL
