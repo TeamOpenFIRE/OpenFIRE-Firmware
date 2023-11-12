@@ -395,6 +395,9 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
+    #ifdef DUAL_CORE
+    bool serialBusy = false;                         // Locking bit to prevent second core from rushing while the queue is being processed.
+    #endif // DUAL_CORE
     #ifdef LED_ENABLE
     bool serialLEDChange = false;                    // Set on if we set an LED command this cycle.
     byte serialLEDR = 0;                             // For the LED, how strong should it be?
@@ -961,11 +964,9 @@ void loop1()
         ButtonsPush();
 
         #ifdef MAMEHOOKER
-            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
-                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
-            }
-            
-            if(serialMode) {  // Are we in serial processing mode?
+            // Multicores causes race conditions if we let the second core handle processing, so let the main loop handle that for us.
+            if(serialMode && // Are we in serial processing mode?
+             !serialBusy) {  // And also NOT processing a queue right now?
                 SerialHandling();                                   // If so, process the force feedback.
             }
         #endif // MAMEHOOKER
@@ -988,7 +989,6 @@ void loop1()
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
             AbsMouse5.release(MOUSE_RIGHT);
-            delay(5);
             offscreenBShot = false;
             buttonPressed = false;
             triggerHeld = false;
@@ -1165,16 +1165,6 @@ void ExecRunMode()
         #endif // MAMEHOOKER
         // For processing the buttons tied to the keyboard.
         ButtonsPush();
-
-        #ifdef MAMEHOOKER
-            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
-                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
-            }
-            
-            if(serialMode) {  // Are we in serial processing mode?
-                SerialHandling();                                   // If so, process the force feedback.
-            }
-        #endif // MAMEHOOKER
         #endif // ARDUINO_ARCH_RP2040
 
         #ifdef SAMCO_NO_HW_TIMER
@@ -1241,6 +1231,21 @@ void ExecRunMode()
             #endif // DEBUG_SERIAL
         }
 
+        #ifdef MAMEHOOKER
+        // For stability, we only parse the serial line on the single core, as it seems to be clashing with the camera/mouse feed.
+            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
+                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
+            }
+            // but we CAN split off the actual queue we processed to the second core, so do that if available.
+            if(serialMode) {  // Are we in serial processing mode?
+            #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+                SerialHandling();                                       // If so, process the force feedback.
+            #else // since this comes after processing, set the busy bit off when in serial handoff mode so the second core can handle the queue sent.
+                serialBusy = false;
+            #endif // ARDUINO_ARCH_RP2040
+            }
+        #endif // MAMEHOOKER
+
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
@@ -1261,7 +1266,6 @@ void ExecRunMode()
             Keyboard.releaseAll();
             AbsMouse5.release(MOUSE_LEFT);
             AbsMouse5.release(MOUSE_RIGHT);
-            delay(5);
             offscreenBShot = false;
             buttonPressed = false;
             triggerHeld = false;
@@ -1684,6 +1688,11 @@ void SerialProcessing()                                         // Reading the i
     //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
     // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
+
+    #ifdef DUAL_CORE
+    // Because the second core outpaces the main core's processing, set this bit so it won't touch the queue until it's done.
+    serialBusy = true;
+    #endif // DUAL_CORE
             
     char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
 
