@@ -55,7 +55,7 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues (want to fix sooner rather than later):
-- Prolonged serial communication may or may not cause faster boards to spontaneously crash? Should be fixed by now, but do report an issue if it happens!
+- Serial communication (Mamehook or debug output) done on the same cycle as an input event or camera tracking update may cause a crash! Being actively investigated.
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 
 ***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
@@ -63,9 +63,8 @@ For reference, the default schematic and (general) layout for the build and its 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
   * If someone could help me get this working and provide the needed INIs so I could make this easier for the rest of the community, *please* get in touch!
-  * So far we only support S (start, ignoring the bit), E (end), M1x3 (offscreen mode - offscreen button mode only), F0 (solenoid feedback w/ auto), F1 (rumble feedback w/ pulse), and F2-4 (R/G/B LED color off/set, missing pulse support)
-  * How many of the other modes do we need? What about the padding bits, are those only x's or should they be periods?
-  * How long should a rumble "pulse" actually be?
+  * So far we only support `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode only), `F0` (solenoid feedback w/ auto), `F1` (rumble feedback w/ pulse), and `F2`/`F3`/`F4` (R/G/B LED color off/set, missing pulse support)
+  * How long should a rumble or solenoid "pulse" actually be?
   * Open a wiki page with real notes about this, so no one else has to suffer like I did.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
