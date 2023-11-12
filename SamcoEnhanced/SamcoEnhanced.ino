@@ -191,12 +191,12 @@ const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 15, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
     {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 15, BTN_AG_MASK2, "A"},
     {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 15, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Internal, '1', 30, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Internal, '5', 30, BTN_AG_MASK2, "Select"},
-    {btnGunUp, LightgunButtons::ReportType_Internal, KEY_UP_ARROW, 30, BTN_AG_MASK2, "Up"},
-    {btnGunDown, LightgunButtons::ReportType_Internal, KEY_DOWN_ARROW, 30, BTN_AG_MASK2, "Down"},
-    {btnGunLeft, LightgunButtons::ReportType_Internal, KEY_LEFT_ARROW, 30, BTN_AG_MASK2, "Left"},
-    {btnGunRight, LightgunButtons::ReportType_Internal, KEY_RIGHT_ARROW, 30, BTN_AG_MASK2, "Right"},
+    {btnStart, LightgunButtons::ReportType_Internal, '1', 20, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Internal, '5', 20, BTN_AG_MASK2, "Select"},
+    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 20, BTN_AG_MASK2, "Up"},
+    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 20, BTN_AG_MASK2, "Down"},
+    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 20, BTN_AG_MASK2, "Left"},
+    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 20, BTN_AG_MASK2, "Right"},
     {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 15, BTN_AG_MASK2, "Reload"},
     {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 15, BTN_AG_MASK2, "Pedal"}
 };
@@ -1911,122 +1911,35 @@ void TriggerNotFireSimple()
 
 void ButtonsPush()
 {
-    // So it turns out, the Keyboard library's inputs get "lost in traffic" when the camera's actively tracking, especially on fast uCs.
-    // Because of that, we're using LightgunButtons to debounce the button, then use that debounced output to
-    // SPAM THE CRAP out of whatever button we send, until it's finally sent. This goes for both press and release events, btw.
-    // Doing this gets our speed back on single core boards while still debouncing, with the downside of the SLIGHT chance of
-    // camera jitter when pausing with a button press/release; in theory, the slower the microcontroller, the more noticeable the pause is.
-    // These values are picked to reduce the pause as much as possible on slow boards, while still being effective on faster ones; i.e. dual core.
+    // TinyUSB Devices' handling should be slightly more stable than the old Keyboard library across the board,
+    // so we only handle Start and Select differently to not conflict with hotkeys.
  
     if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 0)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press('1');
-                delay(1);
-            }
+            Keyboard.press('1');
             bitWrite(buttonsHeld, 0, 1);
         }
     } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release('1');
-            delay(1);
-        }
+        Keyboard.release('1');
         bitWrite(buttonsHeld, 0, 0);
     }
 
     if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 1)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press('5');
-                delay(1);
-            }
+            Keyboard.press('5');
             bitWrite(buttonsHeld, 1, 1);
         }
     } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release('5');
-            delay(1);
-        }
+        Keyboard.release('5');
         bitWrite(buttonsHeld, 1, 0);
-    }
-
-    if(bitRead(buttons.debounced, 5)) {
-        if(!bitRead(buttonsHeld, 2)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press(KEY_UP_ARROW);
-                delay(1);
-            }
-            bitWrite(buttonsHeld, 2, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 5) && bitRead(buttonsHeld, 2)) {
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release(KEY_UP_ARROW);
-            delay(1);
-        }
-        bitWrite(buttonsHeld, 2, 0);
-    }
-
-    if(bitRead(buttons.debounced, 6)) {
-        if(!bitRead(buttonsHeld, 3)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press(KEY_DOWN_ARROW);
-                delay(1);
-            }
-            bitWrite(buttonsHeld, 3, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 6) && bitRead(buttonsHeld, 3)) {
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release(KEY_DOWN_ARROW);
-            delay(1);
-        }
-        bitWrite(buttonsHeld, 3, 0);
-    }
-
-    if(bitRead(buttons.debounced, 7)) {
-        if(!bitRead(buttonsHeld, 4)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press(KEY_LEFT_ARROW);
-                delay(1);
-            }
-            bitWrite(buttonsHeld, 4, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 7) && bitRead(buttonsHeld, 4)) {
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release(KEY_LEFT_ARROW);
-            delay(1);
-        }
-        bitWrite(buttonsHeld, 4, 0);
-    }
-
-    if(bitRead(buttons.debounced, 8)) {
-        if(!bitRead(buttonsHeld, 5)) {
-            for(byte i = 0; i < 6; i++) {
-                Keyboard.press(KEY_RIGHT_ARROW);
-                delay(1);
-            }
-            bitWrite(buttonsHeld, 5, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 8) && bitRead(buttonsHeld, 5)){
-        for(byte i = 0; i < 6; i++) {
-            Keyboard.release(KEY_RIGHT_ARROW);
-            delay(1);
-        }
-        bitWrite(buttonsHeld, 5, 0);
     }
 }
 
 void SendEscapeKey()
 {
-    // We're basically spamming through ESC key signals blindly until it gets through to the system,
-    for(byte i = 0; i < 6; i++) {
-        Keyboard.press(KEY_ESC);                            // PUSH THE BUTTON.
-        delay(1);                                           // Wait a bit.
-    }
-    delay(20);                                              // Delay to ensure the command gets sent.
-    for(byte i = 0; i < 6; i++) {                           // And now we're just spamming a release signal.
-        Keyboard.release(KEY_ESC);                          // Aaaaand release.
-        delay(1);                                           // Wait a bit.
-    }
+    Keyboard.press(KEY_ESC);
+    delay(5);  // wait a bit so it registers on the PC.
+    Keyboard.release(KEY_ESC);
 }
 
 void SetMode(GunMode_e newMode)
