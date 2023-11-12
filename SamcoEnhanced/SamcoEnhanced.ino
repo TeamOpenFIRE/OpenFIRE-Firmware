@@ -666,7 +666,7 @@ void setup() {
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
-    usbHid.setPollInterval(2);
+    usbHid.setPollInterval(1);
     usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     //usb_hid.setStringDescriptor("TinyUSB HID Composite");
 
@@ -952,7 +952,7 @@ void loop1()
                 } else if(!serialBusy) {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                                 // Release button inputs.
                 }
-             delay(1);
+             //delay(1);
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1156,7 +1156,7 @@ void ExecRunMode()
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                                 // Release button inputs.
                 }
-                delay(1);
+                //delay(1);
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
