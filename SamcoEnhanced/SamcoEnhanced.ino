@@ -1,7 +1,6 @@
 /*!
  * @file SamcoEnhanced.ino
- * @brief SAMCO Enhanced +(plus) - 4IR LED Lightgun sketch w/ support for Rumble motor, Solenoid force feedback,
- * and hardware switches.
+ * @brief IR-GUN4ALL - 4IR LED Lightgun sketch w/ support for force feedback and other features.
  * Based on Prow's Enhanced Fork from https://github.com/Prow7/ir-light-gun,
  * Which in itself is based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/samuelballantyne/IR-Light-Gun
  *
@@ -26,18 +25,13 @@
 #if defined(USE_TINYUSB)
 #include <Adafruit_TinyUSB.h>
 #elif defined(CFG_TUSB_MCU)
-#error Incompatible USB stack. Use Arduino or Adafruit TinyUSB.
+#error Incompatible USB stack. Use Adafruit TinyUSB.
 #else
-// Arduino USB stack
+// Arduino USB stack (currently not supported, will not build)
 #include <HID.h>
 #endif
 
-#ifdef ARDUINO_ARCH_RP2040
-// we need to change this as the new (3.1.0+) earle philhower cores break the Arduino keyboard library.
-#include <TinyUSB_Keyboard.h>
-#else
-#include <Keyboard.h>
-#endif // ARDUINO_ARCH_RP2040
+#include <TinyUSB_Devices.h>
 #include <Wire.h>
 #ifdef DOTSTAR_ENABLE
 #define LED_ENABLE
@@ -52,7 +46,6 @@
 #elif SAMCO_EEPROM_ENABLE
 #include <EEPROM.h>
 #endif // SAMCO_FLASH_ENABLE/EEPROM_ENABLE
-#include <AbsMouse5.h>
 #include <DFRobotIRPositionEx.h>
 #include <LightgunButtons.h>
 #include <SamcoPositionEnhanced.h>
@@ -579,19 +572,6 @@ enum HID_RID_e{
   HID_RID_MOUSE
 };
 
-// HID report descriptor using TinyUSB's template
-uint8_t const desc_hid_report[] = {
-  TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
-  TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE))
-};
-
-Adafruit_USBD_HID usbHid;
-
-int __USBGetKeyboardReportID()
-{
-    return HID_RID_KEYBOARD;
-}
-
 // AbsMouse5 instance
 AbsMouse5_ AbsMouse5(HID_RID_MOUSE);
 
@@ -666,17 +646,9 @@ void setup() {
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
-    usbHid.setPollInterval(1);
-    usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
-    //usb_hid.setStringDescriptor("TinyUSB HID Composite");
-
-    usbHid.begin();
+    Keyboard.begin();
 #endif
 
-    #ifdef ARDUINO_ARCH_RP2040
-  // Since we use a separate keyboard library, we need to initialize it too.
-    Keyboard.begin();
-    #endif // ARDUINO_ARCH_RP2040
     Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
     Serial.setTimeout(0);    // This is to avoid any potential hangups when reading rumble pulse values.
     
