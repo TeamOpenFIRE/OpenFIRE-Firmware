@@ -12,7 +12,7 @@
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V1.4
+ * @version V2.0
  * @date 2023
  */
 
