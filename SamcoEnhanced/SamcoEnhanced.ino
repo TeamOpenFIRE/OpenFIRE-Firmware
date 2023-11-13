@@ -934,7 +934,7 @@ void loop1()
                 }
             }
             // Multicores causes race conditions if we let the second core handle processing, so let the main loop handle that for us.
-            if(serialMode) { // Are we in serial processing mode?
+            if(serialMode && !serialBusy) { // Are we in serial processing mode?
                 SerialHandling();                                   // If so, process the force feedback.
             }
         #else
@@ -1112,8 +1112,9 @@ void ExecRunMode()
                 solenoidActive = !digitalRead(solenoidSwitch);
             #endif // USES_SOLENOID
             autofireActive = !digitalRead(autofireSwitch);
-        #endif
-
+        #endif // USES_SWITCHES
+        #endif // DUAL_CORE
+        
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         #ifdef MAMEHOOKER
@@ -1121,7 +1122,9 @@ void ExecRunMode()
             while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
                 SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
             }
-
+        #endif // MAMEHOOKER
+        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+        #ifdef MAMEHOOKER
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
                 buttons.Poll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
