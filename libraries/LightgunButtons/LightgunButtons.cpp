@@ -184,6 +184,116 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
     return pressed;
 }
 
+uint32_t LightgunButtons::SerialPoll(unsigned long minTicks)
+{
+    unsigned long m = millis();
+    unsigned long ticks = m - lastMillis;
+    uint32_t bitMask;
+
+    // reset pressed and released from last poll
+    pressed = 0;
+    released = 0;
+    pressedReleased = 0;
+
+    if(ticks < minTicks) {
+        return 0;
+    }
+    lastMillis = m;
+
+    if(debouncing && ticks) {
+        bitMask = 1;
+        for(unsigned int i = 0; i < count; ++i, bitMask <<= 1) {
+            const Desc_t& btn = ButtonDesc[i];
+            if(debounceCount[i]) {
+                if(ticks < debounceCount[i]) {
+                    debounceCount[i] -= ticks;
+                } else {
+                    debounceCount[i] = 0;
+                    debouncing &= ~bitMask;
+                }
+            }
+        }
+    }
+
+    bitMask = 1;
+    for(unsigned int i = 0; i < count; ++i, bitMask <<= 1) {
+        const Desc_t& btn = ButtonDesc[i];
+
+        // if not debouncing
+        if(!debounceCount[i]) {
+            // read the pin, expected to return 0 or 1
+            uint32_t state = digitalRead(btn.pin);
+
+            // if a state fifo mask is defined
+            if(btn.debounceFifoMask) {
+                // add the state to the fifo
+                stateFifo[i] <<= 1;
+                stateFifo[i] |= state;
+
+                // apply the mask and check the value
+                uint32_t m = stateFifo[i] & btn.debounceFifoMask;
+                if(!m) {
+                    state = 0;
+                } else if(m == btn.debounceFifoMask) {
+                    // use the bit mask for this button
+                    state = bitMask;
+                } else {
+                    // button is bouncing, continue to next button
+                    continue;
+                }
+            } else {
+                // no fifo, so change high state into bit mask
+                if(state) {
+                    state = bitMask;
+                }
+            }
+
+            // if existing pin state does not match new state
+            if((pinState & bitMask) != state) {
+                // update the pin state
+                pinState = (pinState & ~bitMask) | state;
+
+                // set the debounce counter and set the flag
+                debounceCount[i] = btn.debounceTicks;
+                debouncing |= bitMask;
+
+                if(!state) {
+                    // state is low, button is pressed
+                    // if reporting is enabled for the button
+                    if(report & bitMask) {
+                        reportedPressed |= bitMask;
+                    }
+                    // button is debounced pressed and add it to the pressed/released combo
+                    debounced |= bitMask;
+                    pressed |= bitMask;
+                    internalPressedReleased |= bitMask;
+                } else {
+                    // state high, button is not pressed
+
+                    // if the button press was reported then report the release
+                    // note that the report flag is ignored here to avoid stuck buttons
+                    // in case the reporting is disabled while button(s) are pressed
+                    if(reportedPressed & bitMask) {
+                        reportedPressed &= ~bitMask;
+                    }
+
+                    // clear the debounced state and button is released
+                    debounced &= ~bitMask;
+                    released |= bitMask;
+
+                    // if all buttons released
+                    if(!debounced) {
+                        // report the combination pressed/released state
+                        pressedReleased = internalPressedReleased;
+                        internalPressedReleased = 0;
+                    }
+                }
+            }
+        }
+    }
+    return pressed;
+}
+
 uint32_t LightgunButtons::Repeat()
 {
     unsigned long m = millis();

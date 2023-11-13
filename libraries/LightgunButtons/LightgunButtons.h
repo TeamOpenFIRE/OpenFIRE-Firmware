@@ -68,6 +68,12 @@ public:
     /// @return The pressed value.
     uint32_t Poll(unsigned long minTicks = 0);
 
+    /// @brief Poll button state without sending signals, for Serial.
+    /// @details This will reset pressed, released, and pressedReleased.
+    /// @param[in] minTicks Minimum number of ticks for poll to update.
+    /// @return The pressed value.
+    uint32_t SerialPoll(unsigned long minTicks = 0);
+
     /// @brief Update the internal repeat value.
     /// @details Call after Poll() if the repeat value is required.
     /// @return The repeat value.
