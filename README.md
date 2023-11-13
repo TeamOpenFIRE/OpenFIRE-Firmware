@@ -12,8 +12,8 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
 - **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
 - **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in pause mode (Button C + Select)!
-- **Dual Core Support!** If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency!
-- **Mame Hooker Support!** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs (WIP) *for event aware feedbacks for even more immersive gameplay!*
+- Dual Core Support; If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency.
+- Mame Hooker Support! **(Experimental!)** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs (WIP) *for event aware feedbacks for even more immersive gameplay!*
 - Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in upgrade for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
@@ -29,7 +29,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - Faster IIC clock option for IR camera (DFRobotIRPositionEx library)
 - Optional averaging modes can be enabled to slightly reduce mouse position jitter
 - Enhanced button debouncing and handling (LightgunButtons library)
-- Modified AbsMouse to be a 5 button device (AbsMouse5 library)
+- Modified AbsMouse to be a 5 button device (`AbsMouse5` library, now part of `TinyUSB_Devices`)
 - Multiple calibration profiles
 - Save settings and calibration profiles to flash memory (SAMD) or EEPROM (RP2040)
 - Built in Processing mode for use with the SAMCO Processing sketch
@@ -55,16 +55,17 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues (want to fix sooner rather than later):
-- Serial communication (Mamehook or debug output) done on the same cycle as an input event or camera tracking update may cause a crash! Being actively investigated.
+- Serial communication (Mamehook or debug output) can randomly crash while camera is being tracked. (Still) being actively investigated.
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 
 ***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
-  * If someone could help me get this working and provide the needed INIs so I could make this easier for the rest of the community, *please* get in touch!
-  * So far we only support `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode only), `F0` (solenoid feedback w/ auto), `F1` (rumble feedback w/ pulse), and `F2`/`F3`/`F4` (R/G/B LED color off/set, missing pulse support)
+  * If someone could help provide the needed INIs compatible with GUN4IR so I could make this easier for the rest of the community, *please* get in touch/raise an issue!
+  * So far we only support `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ auto), `F1` (rumble feedback w/ pulse), and `F2`/`F3`/`F4` (R/G/B LED color off/set, missing pulse support)
   * How long should a rumble or solenoid "pulse" actually be?
+  * Why the FLIP does it still boardcrash randomly???
   * Open a wiki page with real notes about this, so no one else has to suffer like I did.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
