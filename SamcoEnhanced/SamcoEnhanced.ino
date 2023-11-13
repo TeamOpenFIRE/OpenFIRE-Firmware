@@ -917,6 +917,8 @@ void loop1()
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
                 }
+                // For processing Start & Select.
+                ButtonsPush();
             } else {   // This is if we've received a serial signal pulse in the last n millis.
                 buttons.SerialPoll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
