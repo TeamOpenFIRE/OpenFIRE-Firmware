@@ -386,11 +386,10 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
+    bool serialBusy = false;                         // Locking bit to prevent second core from rushing while the queue is being processed.
+    byte serialButtonsHeld = 0b00000000;             // Bitmask of what buttons we've held on (for btnA/B/C)
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
-    #ifdef DUAL_CORE
-    bool serialBusy = false;                         // Locking bit to prevent second core from rushing while the queue is being processed.
-    #endif // DUAL_CORE
     #ifdef LED_ENABLE
     bool serialLEDChange = false;                    // Set on if we set an LED command this cycle.
     byte serialLEDR = 0;                             // For the LED, how strong should it be?
@@ -908,23 +907,33 @@ void loop1()
             #endif // USES_SOLENOID
             autofireActive = !digitalRead(autofireSwitch);
         #endif // USES_SWITCHES
-        buttons.Poll(0);
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         #ifdef MAMEHOOKER
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
+                buttons.Poll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFire();                                          // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
                 }
             } else {   // This is if we've received a serial signal pulse in the last n millis.
+                buttons.SerialPoll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
                 } else if(!serialBusy) {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                                 // Release button inputs.
                 }
-             //delay(1);
+                if(irPosUpdateTick) {
+                    // For processing most of the buttons.
+                    SerialButtons();
+                    // For processing Start & Select.
+                    ButtonsPush();
+                }
+            }
+            // Multicores causes race conditions if we let the second core handle processing, so let the main loop handle that for us.
+            if(serialMode) { // Are we in serial processing mode?
+                SerialHandling();                                   // If so, process the force feedback.
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -932,16 +941,8 @@ void loop1()
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
             }
-        #endif // MAMEHOOKER
-        // For processing the buttons tied to the keyboard.
-        ButtonsPush();
-
-        #ifdef MAMEHOOKER
-            // Multicores causes race conditions if we let the second core handle processing, so let the main loop handle that for us.
-            if(serialMode && // Are we in serial processing mode?
-             !serialBusy) {  // And also NOT processing a queue right now?
-                SerialHandling();                                   // If so, process the force feedback.
-            }
+            // For processing Start & Select.
+            ButtonsPush();
         #endif // MAMEHOOKER
         
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
@@ -1111,40 +1112,48 @@ void ExecRunMode()
             autofireActive = !digitalRead(autofireSwitch);
         #endif
 
-     
-        buttons.Poll(0);
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         #ifdef MAMEHOOKER
+            // For stability, we only parse the serial line on the single core, as it seems to be clashing with the camera/mouse feed.
+            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
+                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
+            }
+
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
+                buttons.Poll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                          // Handle button events and feedback ourselves.
+                    TriggerFire();                                      // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                    TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
                 }
-            } else {   // This is if we've received a serial signal pulse in the last n millis.
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
-                } else {   // Or if we haven't pressed the trigger,
-                    TriggerNotFireSimple();                                 // Release button inputs.
-                }
-                //delay(1);
+                // For processing the buttons tied to the keyboard.
+                ButtonsPush();
+            } else {
+                buttons.SerialPoll(0);
+                delayMicroseconds(500); // pls let this work just let me have this one ;-;
+                SerialHandling();                                       // If so, process the force feedback.
             }
         #else
+            buttons.Poll(0);
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                 TriggerFire();                                          // Handle button events and feedback ourselves.
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
             }
+            // For processing the buttons tied to the keyboard.
+            ButtonsPush();
         #endif // MAMEHOOKER
-        // For processing the buttons tied to the keyboard.
-        ButtonsPush();
         #endif // ARDUINO_ARCH_RP2040
 
         #ifdef SAMCO_NO_HW_TIMER
             SAMCO_NO_HW_TIMER_UPDATE();
         #endif // SAMCO_NO_HW_TIMER
+        #ifdef MAMEHOOKER
+        if(irPosUpdateTick && !serialBusy) {
+        #else
         if(irPosUpdateTick) {
+        #endif // MAMEHOOKER
             irPosUpdateTick = 0;
             GetPosition();
             
@@ -1191,7 +1200,21 @@ void ExecRunMode()
             } else {
                 offYAxis = false;
             }
-
+         
+            #if defined(MAMEHOOKER) && !defined(DUAL_CORE)
+                if(serialMode) {
+                    if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                        TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
+                    } else {   // Or if we haven't pressed the trigger,
+                        TriggerNotFireSimple();                         // Release button inputs.
+                    }
+                    // For processing the rest of the buttons.
+                    SerialButtons();
+                    // For processing start & select.
+                    ButtonsPush();
+                }
+            #endif // MAMEHOOKER
+         
             AbsMouse5.move(conMoveXAxis, conMoveYAxis);
 
             if(offXAxis || offYAxis) {
@@ -1206,21 +1229,6 @@ void ExecRunMode()
                 ++irPosCount;
             #endif // DEBUG_SERIAL
         }
-
-        #ifdef MAMEHOOKER
-        // For stability, we only parse the serial line on the single core, as it seems to be clashing with the camera/mouse feed.
-            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
-                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
-            }
-            // but we CAN split off the actual queue we processed to the second core, so do that if available.
-            if(serialMode) {  // Are we in serial processing mode?
-            #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-                SerialHandling();                                       // If so, process the force feedback.
-            #else // since this comes after processing, set the busy bit off when in serial handoff mode so the second core can handle the queue sent.
-                serialBusy = false;
-            #endif // ARDUINO_ARCH_RP2040
-            }
-        #endif // MAMEHOOKER
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
@@ -1256,6 +1264,9 @@ void ExecRunMode()
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
+        #ifdef MAMEHOOKER
+            serialBusy = false;
+        #endif // MAMEHOOKER
 
 #ifdef DEBUG_SERIAL
         ++frameCount;
@@ -1665,10 +1676,8 @@ void SerialProcessing()                                         // Reading the i
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
     // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
 
-    #ifdef DUAL_CORE
-    // Because the second core outpaces the main core's processing, set this bit so it won't touch the queue until it's done.
+    // Set this bit for safety reasons, to mitigate potential race conditions as much as possible.
     serialBusy = true;
-    #endif // DUAL_CORE
             
     char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
 
@@ -1905,6 +1914,80 @@ void TriggerNotFireSimple()
             AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
+    }
+}
+
+void SerialButtons()
+{
+    // Button A
+    if(bitRead(buttons.debounced, 1)) {
+        if(!bitRead(serialButtonsHeld, 0)) {
+            AbsMouse5.press(MOUSE_RIGHT);
+            bitWrite(serialButtonsHeld, 0, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 1) && bitRead(serialButtonsHeld, 0)) {
+        AbsMouse5.release(MOUSE_RIGHT);
+        bitWrite(serialButtonsHeld, 0, 0);
+    }
+    // Button B
+    if(bitRead(buttons.debounced, 2)) {
+        if(!bitRead(serialButtonsHeld, 1)) {
+            AbsMouse5.press(MOUSE_MIDDLE);
+            bitWrite(serialButtonsHeld, 1, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 2) && bitRead(serialButtonsHeld, 1)) {
+        AbsMouse5.release(MOUSE_MIDDLE);
+        bitWrite(serialButtonsHeld, 1, 0);
+    }
+    // Button C
+    if(bitRead(buttons.debounced, 9)) {
+        if(!bitRead(serialButtonsHeld, 2)) {
+            AbsMouse5.press(MOUSE_BUTTON4);
+            bitWrite(serialButtonsHeld, 2, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 9) && bitRead(serialButtonsHeld, 2)) {
+        AbsMouse5.release(MOUSE_BUTTON4);
+        bitWrite(serialButtonsHeld, 2, 0);
+    }
+    // D-Pad Up
+    if(bitRead(buttons.debounced, 5)) {
+        if(!bitRead(serialButtonsHeld, 3)) {
+            Keyboard.press(KEY_UP_ARROW);
+            bitWrite(serialButtonsHeld, 3, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 5) && bitRead(serialButtonsHeld, 3)) {
+        Keyboard.release(KEY_UP_ARROW);
+        bitWrite(serialButtonsHeld, 3, 0);
+    }
+    // D-Pad Down
+    if(bitRead(buttons.debounced, 6)) {
+        if(!bitRead(serialButtonsHeld, 4)) {
+            Keyboard.press(KEY_DOWN_ARROW);
+            bitWrite(serialButtonsHeld, 4, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 6) && bitRead(serialButtonsHeld, 4)) {
+        Keyboard.release(KEY_DOWN_ARROW);
+        bitWrite(serialButtonsHeld, 4, 0);
+    }
+    // D-Pad Left
+    if(bitRead(buttons.debounced, 7)) {
+        if(!bitRead(serialButtonsHeld, 5)) {
+            Keyboard.press(KEY_LEFT_ARROW);
+            bitWrite(serialButtonsHeld, 5, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 7) && bitRead(serialButtonsHeld, 5)) {
+        Keyboard.release(KEY_LEFT_ARROW);
+        bitWrite(serialButtonsHeld, 5, 0);
+    }
+    // D-Pad Right
+    if(bitRead(buttons.debounced, 8)) {
+        if(!bitRead(serialButtonsHeld, 6)) {
+            Keyboard.press(KEY_RIGHT_ARROW);
+            bitWrite(serialButtonsHeld, 6, 1);
+        }
+    } else if(!bitRead(buttons.debounced, 8) && bitRead(serialButtonsHeld, 6)) {
+        Keyboard.release(KEY_RIGHT_ARROW);
+        bitWrite(serialButtonsHeld, 6, 0);
     }
 }
 #endif // MAMEHOOKER
