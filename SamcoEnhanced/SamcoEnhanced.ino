@@ -1151,7 +1151,6 @@ void ExecRunMode()
                 ButtonsPush();
             } else {
                 buttons.SerialPoll(0);
-                delayMicroseconds(500); // pls let this work just let me have this one ;-;
                 SerialHandling();                                       // If so, process the force feedback.
             }
         #else
@@ -1919,10 +1918,12 @@ void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
     offscreenButtonSerial && offScreen) {            // and are pointing the gun off screen WITH the offScreen button mode set?
+        delay(1);
         AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
     } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
+        delay(1);
         AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
         buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
     }
@@ -1932,9 +1933,11 @@ void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
+            delay(1);
             AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
             offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
+            delay(1);
             AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
