@@ -1723,6 +1723,7 @@ void SerialProcessing()                                         // Reading the i
     } else if(serialInput == 'F') { // Does the command start with an F (force feedback)?
         serialInput = Serial.read();  // Alright, read the next bit.
         if(serialInput == '0') { // Is it 0 (Sole) or 1 (Rumb)?
+            #ifdef USES_SOLENOID
             serialInput = Serial.read();  // nomf the x since it's meaningless.
             serialInput = Serial.read();  // Read the next number.
             if(serialInput == '1') { // Is it a 1 value?)
@@ -1736,7 +1737,9 @@ void SerialProcessing()                                         // Reading the i
             } else {
                 bitWrite(serialQueue, 0, 0);
             }
+            #endif // USES_SOLENOID
         } else if(serialInput == '1') {  // it's rumble then?
+            #ifdef USES_RUMBLE
             serialInput = Serial.read(); // nomf the x since it's meaningless.
             serialInput = Serial.read(); // read the next number.
             if(serialInput == '1') {  // Is it an on signal?
@@ -1751,6 +1754,7 @@ void SerialProcessing()                                         // Reading the i
                 bitWrite(serialQueue, 2, 0); // Queue the rumble off bit... 
                 //bitWrite(serialQueue, 3, 0); // Should we turn off pulse bits if we also get a rumble off bit?
             }
+            #endif // USES_RUMBLE
         #ifdef LED_ENABLE
         } else if(serialInput == '2') {  // It's an LED R bit?
             serialLEDChange = true;
