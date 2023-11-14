@@ -66,15 +66,23 @@ void rp2040pwmIrq(void);
 //#define DEBUG_SERIAL 1
 //#define DEBUG_SERIAL 2
 // for testing RP2040 dual core functionality (only works w/ RP2040 boards). IF RUN INTO ISSUES, DISABLE THIS
-#define DUAL_CORE
+//#define DUAL_CORE
 
 // extra position glitch filtering, 
 // not required after discoverving the DFRobotIRPositionEx atomic read technique
 //#define EXTRA_POS_GLITCH_FILTER
 
     // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
+  // Here we define the Manufacturer Name/Device Name/PID:VID of the gun as will be displayed by the operating system.
+  // For multiplayer, different guns need different IDs!
+  // If confused or if only using one gun, just leave these at their defaults!
+#define MANUFACTURER_NAME "3DP"
+#define DEVICE_NAME "GUN4ALL-Con"
+#define DEVICE_VID 0x0920
+#define DEVICE_PID 0x1998
+
   // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
-  // TODO: implement LEDs control? Might take a bit more work tho.
+  // WARNING: WILL CRASH on prolonged play sessions (at least on RP2040) - only enable for now if debugging!
 //#define MAMEHOOKER
 
   // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
@@ -580,7 +588,14 @@ AbsMouse5_ AbsMouse5(1);
 #endif
 
 void setup() {
-    // ADDITIONS HERE
+    // ADDITIONS HERE:
+    // We're setting our custom USB identifiers, as defined in the configuration area!
+    #ifdef USE_TINYUSB
+    TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
+    TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
+    TinyUSBDevice.setID(DEVICE_VID, DEVICE_PID);
+    #endif // USE_TINYUSB
+ 
     #ifdef USES_RUMBLE
         pinMode(rumblePin, OUTPUT);
     #endif // USES_RUMBLE
