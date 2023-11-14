@@ -74,6 +74,7 @@ For reference, the default schematic and (general) layout for the build and its 
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
+  * Maybe consider using [FastLED](https://github.com/FastLED/FastLED) instead, to simplify LEDs use?
   * Would be easier to use external NeoPixels since we're running out of available pins, but generic four-pin RGB leds would be nice too.
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
   * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
