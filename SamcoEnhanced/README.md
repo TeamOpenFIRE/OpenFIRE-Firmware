@@ -57,7 +57,7 @@ A0 is reserved for an optional temperature sensor if you plan to use a solenoid 
 ### Define Buttons & Timers
 Refer to Line 79 for the pins of the tactile extras (rumble, solenoid, hardware switches if need be) and the adjustable settings (solenoid activation, rumble event length, etc.), and Line 127-onwards for the button constants.
 
-Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work. All the other Adafruit boards don't have this discrepancy.
+Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work and map as expected if used in lieu of GPIO numbers. All the other Adafruit boards don't have this discrepancy.
 ![Itsybitsy RP2040 Back](https://cdn-learn.adafruit.com/assets/assets/000/101/909/original/adafruit_products_ItsyRP_pinouts_back.jpg)
 The default button:pins layout used is as follows (aside from the power pins and the camera, you may deviate from this as much as desired so long as that's reflected in the sketch!):
 ![Schematic](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
@@ -69,7 +69,7 @@ The light gun operates as an absolute positioning mouse (like a stylus!) until t
 
 Note that the buttons in pause mode (and to enter pause mode) activate when the last button of the combination releases. This is used to detect and differentiate button combinations vs a single button press.
 
-* Note: The mouse position updates at 209Hz, so it is extremely responsive.
+* Note: At its peak, the mouse position updates at 209Hz, or roughly every ~4.8ms, so it is extremely responsive.
 
 ### Run modes
 The gun has the following modes of operation:
@@ -158,32 +158,27 @@ The Processing mode is intended for use with the [SAMCO Processing sketch](https
 ## Technical Details & Assorted Errata
 
 ### Serial Handoff (Mame Hooker) Mode
-Introduced in v{$versionNumber} *(That Heart, That Power)*, the gun will automatically hand off control to an instance of Mame Hooker that's connected once a start code has been detected! If available, the onboard LED will change to a mid-intensity white to signal serial handoff mode (unless any LED events trigger it to change, which will follow those thereafter). As if now, it reacts to M1x2 (offscreen button toggle for that game), F0 solenoid feedback, F1 rumble feedback, and F2/3/4 LED feedback.
+Introduced in v2.0 *(That Heart, That Power)*, when enabled, the gun will automatically hand off control to an instance of Mame Hooker that's connected once a start code has been detected! If available, the onboard LED will change to a mid-intensity white to signal serial handoff mode (unless any LED events trigger it to change, which will follow those thereafter). As if now, it reacts to M1x2 (offscreen button toggle for that game), F0 solenoid feedback, F1 rumble feedback, and F2/3/4 LED feedback.
 
 If you aren't already familiar with Mame Hooker, you'll **need compatible inis for each game you play** and **the gun's COM port should be set to match the player number** (COM1 for P1, COM2 for P2, etc.)! COM port assignment can be done in Windows via the Device Manager, or Linux via settings in the Wine registry of the prefix your game/Mame Hooker is started in ([instructions from WineHQ here](https://wiki.winehq.org/Wine_User%27s_Guide#Serial_and_Parallel_Ports), note that Arduino COM ports are indeed `ttyACM#`).
 
 This can be disabled (and any other references to serial handoff mode) by commenting out `#define MAMEHOOKER` in the beginning of the sketch (after the initial defines & directly above the hardware configuration).
 
 ### Change USB ID for Multiple Guns
-If you intend to use multiple SAMCO guns, the Arduino software does not have an immediately intuitive way of distinguishing different boards of the same type; ergo, if you have two RP2040 guns, they will both be `Adafruit ItsyBitsy RP2040 Mouse/Keyboard` with the same USB identifier. This will confuse RetroArch and/or TeknoParrot (or other apps that directly addresses individual mice) which won't be fun for play; or you might just want to change the name for flare. All good!
+If you intend to use multiple GUN4ALLs, you'll want to change what the board reports itself as.
 
-To change this, go to the Arduino system directory (NOT the same directory as where your libraries and sketches go):
-* Windows: `%LOCALAPPDATA%\Arduino15\packages\{adafruit|rp2040}\hardware\$boardFamily\$versionNumber`
-* Linux: `~/.arduino15/packages/{adafruit|rp2040}/hardware/$boardFamily/$versionNumber`
+These are known as the **USB Implementer's Forum (USB-IF) identifiers**, and if multiple devices share a common display name and/or Product/Vendor ID, apps like RetroArch and TeknoParrot that read individual mouse devices will get VERY confused.
 
-Edit `boards.txt`. Taking the RP2040 as the example, the lines you're looking for should look something like:
+Thankfully, since v2.0-rev1 *(That Heart, That Power)*, these parameters are easily found and can be redefined in the sketch configuration area - just above all the other peripheral defines!
+
 ```
-adafruit_itsybitsy.build.vid=0x239a
-adafruit_itsybitsy.build.pid=0x80fd
-adafruit_itsybitsy.build.usb_manufacturer="Adafruit"
-adafruit_itsybitsy.build.usb_product="ItsyBitsy 2040"
-// The 'build' part is VERY important, as this is the one that determines what the board will be flashed into!
+#define MANUFACTURER_NAME "3DP"
+#define DEVICE_NAME "GUN4ALL-Con"
+#define DEVICE_VID 0x0920
+#define DEVICE_PID 0x1998
 ```
-Edit the lines to anything that's *different* from a USB ID that's already used; e.g., changing `0x80fd` to `0x80fe` for a second RP2040 gun (USB IDs are in hexidecimal/Base15, names are normal alphanumeric strings).
 
-**The only one that's necessary to change** is the __*vid/pid*__ pair, but you might also want to change what name they report as to differentiate between multiple gun devices in TP or RA. Unfortunately, *you will have to change this back and forth **every time** you're switching between guns* if you need to reflash the board. You might want to make a safe copy of the original `boards.txt` and make one or more copies of the file with the desired USB identifiers you want to use; switching between them each time before opening the IDE. If you do this often, this could be automated via script if so desired.
-
-*...or at least, this *used* to apply to older versions of the RP2040 core, as updating to 3.0 of the core in my testing has irreversibly changed the product ID of my main testing gun to `cafe`. The manufacturer/product labels are still changed, though. Your guess is as good as mine...
+You may change these to suit whatever your heart desires - though the only parts *necessary to change for multiplayer* are the `DEVICE_VID` and `DEVICE_PID` pairs. Then, just reflash the board!
 
 ### Dual Core Mode
 On compatible boards (atm, only the RP2040 provides two cores), the sketch will automatically split the processing load of button inputs onto the second core.
