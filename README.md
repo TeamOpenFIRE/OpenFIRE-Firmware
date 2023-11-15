@@ -14,6 +14,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in pause mode (Button C + Select)!
 - Dual Core Support; If using a board powered by the RP2040, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency.
 - Mame Hooker Support! **(Experimental!)** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs (WIP) *for event aware feedbacks for even more immersive gameplay!*
+- Multiple Guns Support; easily set the gun to use binds for P1-4 with a single setting, and change the USB identifier for each unique board without modifying deep rooted Arduino files!
 - Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in upgrade for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
@@ -63,9 +64,7 @@ For reference, the default schematic and (general) layout for the build and its 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
   * If someone could help provide the needed INIs compatible with GUN4IR so I could make this easier for the rest of the community, *please* get in touch/raise an issue!
-  * So far we only support `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ auto), `F1` (rumble feedback w/ pulse), and `F2`/`F3`/`F4` (R/G/B LED color off/set, missing pulse support)
-  * How long should a rumble or solenoid "pulse" actually be?
-  * Why the FLIP does it still boardcrash randomly???
+  * So far, we support and recognize `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ pulse+amount), `F1` (rumble feedback w/ pulse+amount), and `F2`/`F3`/`F4` (R/G/B LED color off/set, and per-color pulse/amount)
   * Open a wiki page with real notes about this, so no one else has to suffer like I did.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
