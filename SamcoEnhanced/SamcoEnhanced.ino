@@ -419,26 +419,32 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     byte serialButtonsHeld = 0b00000000;             // Bitmask of what buttons we've held on (for btnA/B/C)
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
+    // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.
     #ifdef LED_ENABLE
+    unsigned long serialLEDPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked LED pulse update we iterated.
+    unsigned int serialLEDPulsesLength = 2;          // How long each stage of a serial-invoked pulse rumble is, in ms.
     bool serialLEDChange = false;                    // Set on if we set an LED command this cycle.
+    bool serialLEDPulseRising = true;                // In LED pulse events, is it rising now? True to indicate rising, false to indicate falling; default to on for very first pulse.
+    byte serialLEDPulses = 0;                        // How many LED pulses are we being told to do?
+    byte serialLEDPulsesLast = 0;                    // What LED pulse we've processed last.
     byte serialLEDR = 0;                             // For the LED, how strong should it be?
     byte serialLEDG = 0;                             // Each channel is defined as three brightness values
     byte serialLEDB = 0;                             // So yeah.
+    byte serialLEDPulseColorMap = 0b00000000;        // The map of what LEDs should be pulsing (we use the rightmost three of this bitmask for R, G, or B).
     #endif // LED_ENABLE
     #ifdef USES_RUMBLE
     unsigned long serialRumbPulsesLastUpdate = 0;    // The timestamp of the last serial-invoked pulse rumble we updated.
-    int serialRumbPulsesLength = 60;                 // How long each stage of a serial-invoked pulse rumble is.
-    // TODO: how long are "pulses" exactly???
+    unsigned int serialRumbPulsesLength = 60;        // How long each stage of a serial-invoked pulse rumble is, in ms.
     byte serialRumbPulseStage = 0;                   // 0 = start/rising, 1 = peak, 2 = falling, 3 = reset to start
     byte serialRumbPulses = 0;                       // If rumble is commanded to do pulse responses, how many?
     byte serialRumbPulsesLast = 0;                   // Counter of how many pulse rumbles we did so far.
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
     unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
+    unsigned int serialSolPulsesLength = 80;         // How long to wait between each solenoid event in a pulse, in ms.
     bool serialSolPulseOn = false;                   // Because we can't just read it normally, is the solenoid getting PWM high output now?
     int serialSolPulses = 0;                         // How many solenoid pulses are we being told to do?
     int serialSolPulsesLast = 0;                     // What solenoid pulse we've processed last.
-    int serialSolPulsesLength = 80;                  // How long to wait between each solenoid event in a pulse.
     #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
@@ -1707,216 +1713,257 @@ void SerialProcessing()                                         // Reading the i
     //  - M5 is auto reload(?). How do we use this?
     //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
     //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
-    // "Fx" is the type of force feedback command being received (periods or 'x' are used interchangeably as padding bits for readibility):
-    //  - F0.x.y = solenoid: 0=off, 1=on, 2=pulse (where Y is the number of "pulses" it does)
-    //  - F1.x.y = rumble motor: 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
-    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED: 0=off, 1=on, 2=pulse (where Y is the strength of the LED, or the number of "pulses" it does)
+    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
+    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
+    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
+    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
-    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is at least four (the command, a padding bit, and the value).
-
-    // Set this bit for safety reasons, to mitigate potential race conditions as much as possible.
+    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit of some kind, and the value).
+    
+    // Because the second core outpaces the main core's processing, set this bit so it won't touch the queue until it's done.
     serialBusy = true;
-            
-    char serialInput = Serial.read(); // Read the serial input one byte at a time (we'll read more later)
 
-    if(serialInput == 'S') {  // Does the command start with an S? (Start)
-        serialMode = true;
+    char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
+
+    if(serialInput == 'S') {                 // Does the command start with an S? (Start)
+        serialMode = true;                                         // Set it on, then!
         Serial.println("Received serial start pulse, overriding force feedback!");
         #ifdef USES_RUMBLE
-            digitalWrite(rumblePin, LOW);
+            digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
             rumbleHappened = false;
             rumbleHappening = false;
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-            digitalWrite(solenoidPin, LOW);
+            digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
             solenoidFirstShot = false;
         #endif // USES_SOLENOID
-        triggerHeld = false;
+        triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
         burstFiring = false;
         burstFireCount = 0;
-    } else if(serialInput == 'M') {  // Does the command start with an M? (Mode)
-        serialInput = Serial.read();      // Read the second bit.
-        if(serialInput == '1') {  // Is it M1? (Gun "offscreen mode" set)?
-            serialInput = Serial.read();  // Nomf the padding bit.
-            serialInput = Serial.read();  // Read the next.
-            if(serialInput == '2') {      // Is it the offscreen button mode bit?
-                offscreenButtonSerial = true; // Set that if so.
+        offscreenBShot = false;
+        #ifdef LED_ENABLE
+            // Set the RGB LED to a mid-intense white.
+            // The onboard pins on Adafruits are RGB (no W), FWIW.
+            #ifdef DOTSTAR_ENABLE
+                dotstar.setPixelColor(0, 127, 127, 127);
+                dotstar.show();
+            #endif // DOTSTAR_ENABLE
+            #ifdef NEOPIXEL_PIN
+                neopixel.setPixelColor(0, 127, 127, 127);
+                neopixel.show();
+            #endif // NEOPIXEL_PIN
+        #endif // LED_ENABLE
+    } else if(serialInput == 'M') {          // Does the command start with an M? (Mode)
+        serialInput = Serial.read();                               // Read the second bit.
+        if(serialInput == '1') {             // Is it M1? (Gun "offscreen mode" set)?
+            serialInput = Serial.read();                           // Nomf the padding bit.
+            serialInput = Serial.read();                           // Read the next.
+            if(serialInput == '2') {         // Is it the offscreen button mode bit?
+                offscreenButtonSerial = true;                      // Set that if so.
             }
         }
-    } else if(serialInput == 'E') {  // Is it an E command? (End)
-            serialMode = false;           // Turn off serial mode then.
-            offscreenButtonSerial = false;// And this one too.
+    } else if(serialInput == 'E') {          // Is it an E command? (End)
+            serialMode = false;                                    // Turn off serial mode then.
+            offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
             #ifdef LED_ENABLE
-                serialLEDR = 0;
+                serialLEDR = 0;                                    // Clear stale serial LED values.
                 serialLEDG = 0;
                 serialLEDB = 0;
-                LedOff();
+                LedOff();                                          // Turn it off, and let lastSeen handle it from here.
             #endif // LED_ENABLE
             Serial.println("Received end serial pulse, releasing FF override.");
-    } else if(serialInput == 'F') { // Does the command start with an F (force feedback)?
-        serialInput = Serial.read();  // Alright, read the next bit.
-        if(serialInput == '0') { // Is it 0 (Sole) or 1 (Rumb)?
+    } else if(serialInput == 'F') {          // Does the command start with an F (force feedback)?
+        serialInput = Serial.read();                               // Alright, read the next bit.
+        if(serialInput == '0') {             // Is it a solenoid bit?
             #ifdef USES_SOLENOID
-            serialInput = Serial.read();  // nomf the x since it's meaningless.
-            serialInput = Serial.read();  // Read the next number.
-            if(serialInput == '1') { // Is it a 1 value?)
-                bitWrite(serialQueue, 0, 1); // Queue the solenoid on bit.
-            } else if(serialInput == '2') { 
-                bitWrite(serialQueue, 1, 1);
-                serialInput = Serial.read();
-                String serialInputS = Serial.readStringUntil('x');
-                serialSolPulses = serialInputS.toInt();
-                serialSolPulsesLast = 0;
-            } else {
-                bitWrite(serialQueue, 0, 0);
+            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+            serialInput = Serial.read();                           // Read the next number.
+            if(serialInput == '1') {         // Is it a solenoid "on" command?)
+                bitWrite(serialQueue, 0, 1);                       // Queue the solenoid on bit.
+            } else if(serialInput == '2' &&  // Is it a solenoid pulse command?
+            !bitRead(serialQueue, 1)) {      // (and we aren't already pulsing?)
+                bitWrite(serialQueue, 1, 1);                       // Set the solenoid pulsing bit!
+                serialInput = Serial.read();                       // nomf the padding bit.
+                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit.
+                serialSolPulses = serialInputS.toInt();            // Import the amount of pulses we're being told to do.
+                serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
+            } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
+                bitWrite(serialQueue, 0, 0);                       // Disable the solenoid off bit!
             }
             #endif // USES_SOLENOID
-        } else if(serialInput == '1') {  // it's rumble then?
+        } else if(serialInput == '1') {      // it's rumble then?
             #ifdef USES_RUMBLE
-            serialInput = Serial.read(); // nomf the x since it's meaningless.
-            serialInput = Serial.read(); // read the next number.
-            if(serialInput == '1') {  // Is it an on signal?
-                bitWrite(serialQueue, 2, 1); // Queue the rumble on bit.
-            } else if(serialInput == '2') { // Is it a pulsed on signal?
-                bitWrite(serialQueue, 3, 1); // Set the rumble pulsed bit.
-                String serialInputS = Serial.readStringUntil('x'); // Read the rest up until the x padding bit, since it could be either 1 or three characters long.
-             // TODO: in theory, X's should just get ignored and thrown out, while periods are included but will be recognized as a whole number... I hope.
-                serialRumbPulses = serialInputS.toInt(); // This is the amount of rumble pulses queued.
-                serialRumbPulsesLast = 0;        // Reset the serialPulsesLast count.
-            } else {  // Else, it's a rumble off signal.
-                bitWrite(serialQueue, 2, 0); // Queue the rumble off bit... 
-                //bitWrite(serialQueue, 3, 0); // Should we turn off pulse bits if we also get a rumble off bit?
+            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+            serialInput = Serial.read();                           // read the next number.
+            if(serialInput == '1') {         // Is it an on signal?
+                bitWrite(serialQueue, 2, 1);                       // Queue the rumble on bit.
+            } else if(serialInput == '2' &&  // Is it a pulsed on signal?
+            !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
+                bitWrite(serialQueue, 3, 1);                       // Set the rumble pulsed bit.
+                serialInput = Serial.read();                       // nomf the x
+                String serialInputS = Serial.readStringUntil('x'); // Read the rest - any padding bits get ignored on the way.
+                serialRumbPulses = serialInputS.toInt();           // This is the amount of rumble pulses queued.
+                serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
+            } else if(serialInput == '0') {  // Else, it's a rumble off signal.
+                bitWrite(serialQueue, 2, 0);                       // Queue the rumble off bit... 
+                //bitWrite(serialQueue, 3, 0); // And the rumble pulsed bit.
+                // TODO: do we want to set this off if we get a rumble off bit?
             }
             #endif // USES_RUMBLE
         #ifdef LED_ENABLE
-        } else if(serialInput == '2') {  // It's an LED R bit?
-            serialLEDChange = true;
-            serialInput = Serial.read(); // nomf the x since it's meaningless.
-            serialInput = Serial.read(); // Read the next number
-            if(serialInput == '1') {
-                bitWrite(serialQueue, 4, 1);
-                serialInput = Serial.read(); // nomf the x
-                String serialInputS = Serial.readStringUntil('x');
-                serialLEDR = serialInputS.toInt();
-            } else {
-                bitWrite(serialQueue, 4, 0);
-                serialLEDR = 0;
+        } else if(serialInput == '2') {      // It's an LED R bit?
+            serialLEDChange = true;                                // Set that we've changed an LED here!
+            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+            serialInput = Serial.read();                           // Read the next number
+            if(serialInput == '1') {         // is it an "on" command?
+                bitWrite(serialQueue, 4, 1);                       // set that here!
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Grab the value of the RGB that's requested,
+                serialLEDR = serialInputS.toInt();                 // And set that here!
+            } else if(serialInput == '2' &&
+            !bitRead(serialQueue, 7)) {      // else, is it a pulse command?
+                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
+                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                serialLEDPulsesLast = 0;                           // reset the pulses done count.
+            } else if(serialInput == '0') {  // else, it's an off command.
+                bitWrite(serialQueue, 4, 0);                       // Set the R bit off.
+                serialLEDR = 0;                                    // Clear the R value.
             }
-        } else if(serialInput == '3') {  // It's an LED G bit?
-            serialLEDChange = true;
-            serialInput = Serial.read(); // nomf the x since it's meaningless.
-            serialInput = Serial.read(); // Read the next number
-            if(serialInput == '1') {
-                bitWrite(serialQueue, 5, 1);
-                serialInput = Serial.read(); // nomf the x
-                String serialInputS = Serial.readStringUntil('x');
-                serialLEDG = serialInputS.toInt();
-            } else {
-                bitWrite(serialQueue, 5, 0);
-                serialLEDG = 0;
+        } else if(serialInput == '3') {      // It's an LED G bit?
+            serialLEDChange = true;                                // Set that we've changed an LED here!
+            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+            serialInput = Serial.read();                           // Read the next number
+            if(serialInput == '1') {         // is it an "on" command?
+                bitWrite(serialQueue, 5, 1);                       // set that here!
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Grab the strength of the G light that's requested,
+                serialLEDG = serialInputS.toInt();                 // And set that here!
+            } else if(serialInput == '2' &&  // else, is it a pulse command?
+            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
+                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
+                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                serialLEDPulsesLast = 0;                           // reset the pulses done count.
+            } else if(serialInput == '0') {  // else, it's an off command.
+                bitWrite(serialQueue, 5, 0);                       // Set the G bit off.
+                serialLEDG = 0;                                    // Clear the G value.
             }
-        } else if(serialInput == '4') {  // It's an LED B bit?
-            serialLEDChange = true;
-            serialInput = Serial.read(); // nomf the x since it's meaningless.
-            serialInput = Serial.read(); // Read the next number
-            if(serialInput == '1') {
-                bitWrite(serialQueue, 6, 1);
-                serialInput = Serial.read(); // nomf the x
-                String serialInputS = Serial.readStringUntil('x');
-                serialLEDB = serialInputS.toInt();
-            } else {
-                bitWrite(serialQueue, 6, 0);
-                serialLEDB = 0;
+        } else if(serialInput == '4') {      // It's an LED B bit?
+            serialLEDChange = true;                                // Set that we've changed an LED here!
+            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+            serialInput = Serial.read();                           // Read the next number
+            if(serialInput == '1') {         // is it an "on" command?
+                bitWrite(serialQueue, 6, 1);                       // set that here!
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Grab the strength of the B light that's requested,
+                serialLEDB = serialInputS.toInt();                 // And set that here!
+            } else if(serialInput == '2' &&  // else, is it a pulse command?
+            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
+                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
+                serialInput = Serial.read();                       // nomf the padding
+                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
+                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                serialLEDPulsesLast = 0;                           // reset the pulses done count.
+            } else if(serialInput == '0') {  // else, it's an off command.
+                bitWrite(serialQueue, 6, 0);                       // Set the B bit off.
+                serialLEDB = 0;                                    // Clear the G value.
             }
         #endif // LED_ENABLE
         }
     }
 }
 
-void SerialHandling()                               // Where we let the serial in stream handle things.
+void SerialHandling()                                              // Where we let the serial in stream handle things.
 { // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
   // So all we have to do is just read and process what it sends us at face value.
-  // The only exceptions are solenoid and rumble PULSE bits, where we do actually need to manage those ourselves.
+  // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
 
   // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
-    #ifdef USES_SOLENOID
-    if(bitRead(serialQueue, 0)) {  // If the solenoid bit is on,
-        digitalWrite(solenoidPin, HIGH);            // Make it go!
-    } else if(bitRead(serialQueue, 1)) {
-        if(!serialSolPulsesLast) {
-            analogWrite(solenoidPin, 178);
-            serialSolPulseOn = true;
-            serialSolPulsesLast = 1;
-            serialSolPulses++; // cheating a bit hehe
-        } else if(serialSolPulsesLast <= serialSolPulses) {
-            unsigned long currentMillis = millis();
-            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) {
-                if(serialSolPulseOn) {
-                    analogWrite(solenoidPin, 122);
-                    serialSolPulseOn = false;
-                    serialSolPulsesLast++;
-                    serialSolPulsesLastUpdate = millis();
-                } else {
-                    analogWrite(solenoidPin, 178);
-                    serialSolPulseOn = true;
-                    serialSolPulsesLastUpdate = millis();
+  #ifdef USES_SOLENOID
+    if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
+        digitalWrite(solenoidPin, HIGH);                           // Make it go!
+    } else if(bitRead(serialQueue, 1)) {                      // if the solenoid pulse bit is on,
+        if(!serialSolPulsesLast) {                            // Have we started pulsing?
+            analogWrite(solenoidPin, 178);                         // Start pulsing it on!
+            serialSolPulseOn = true;                               // Set that the pulse cycle is in on.
+            serialSolPulsesLast = 1;                               // Start the sequence.
+            serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
+        } else if(serialSolPulsesLast <= serialSolPulses) {   //
+            unsigned long currentMillis = millis();                // Calibrate timer.
+            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we passed the set interval length between stages?
+                if(serialSolPulseOn) {                        // If we're currently pulsing on,
+                    analogWrite(solenoidPin, 122);                 // Start pulsing it off.
+                    serialSolPulseOn = false;                      // Set that we're in off.
+                    serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
+                    serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                } else {                                      // Or if we're pulsing offm
+                    analogWrite(solenoidPin, 178);                 // Start pulsing it on.
+                    serialSolPulseOn = true;                       // Set that we're in on.
+                    serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                 }
             }
         } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
-            unsigned long currentMillis = millis();
-            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) {
-                digitalWrite(solenoidPin, LOW);
-                bitWrite(serialQueue, 1, 0);
+            unsigned long currentMillis = millis();                // Calibrate timer.
+            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
+                digitalWrite(solenoidPin, LOW);                    // Finally shut it off for good.
+                bitWrite(serialQueue, 1, 0);                       // Set the pulse bit as off.
             }
         }
     } else {  // or if it's not,
-        digitalWrite(solenoidPin, LOW);             // turn it off!
+        digitalWrite(solenoidPin, LOW);                            // turn it off!
     }
-    #endif // USES_SOLENOID
-    #ifdef USES_RUMBLE
-    if(bitRead(serialQueue, 2)) {                   // Is the rumble on bit set?
-        digitalWrite(rumblePin, HIGH);              // turn/keep it on.
-        //bitWrite(serialQueue, 3, 0);                // If we set a rumble bit on, I guess it should override the rumble pulse bit?
-    } else if(bitRead(serialQueue, 3)) {  // of if the rumble pulse bit is set,
-        if(!serialRumbPulsesLast) {  // is the pulses last bit set to off?
-            analogWrite(rumblePin, 75);             // we're starting fresh, so use the stage 0 value.
-            serialRumbPulseStage = 0;                   // Set that we're at stage 0.
-            serialRumbPulsesLast = 1;                   // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
+  #endif // USES_SOLENOID
+  #ifdef USES_RUMBLE
+    if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
+        digitalWrite(rumblePin, HIGH);                             // turn/keep it on.
+        //bitWrite(serialQueue, 3, 0);
+    } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
+        if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
+            analogWrite(rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
+            serialRumbPulseStage = 0;                              // Set that we're at stage 0.
+            serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
         } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
-            unsigned long currentMillis = millis();  // Calibrate the timer.
+            unsigned long currentMillis = millis();                // Calibrate the timer.
             if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
-                switch(serialRumbPulseStage) {          // If so, let's start processing.
-                    case 0:                         // Basically, each case
-                        analogWrite(rumblePin, 255);// bumps up the intensity, (lowest to rising)
-                        serialRumbPulseStage++;         // and increments the stage of the pulse.
-                        serialRumbPulsesLastUpdate = millis(); // and timestamps when we've had updated this last.
-                        break;                      // Then quits the switch.
+                switch(serialRumbPulseStage) {                     // If so, let's start processing.
+                    case 0:                                        // Basically, each case
+                        analogWrite(rumblePin, 255);               // bumps up the intensity, (lowest to rising)
+                        serialRumbPulseStage++;                    // and increments the stage of the pulse.
+                        serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
+                        break;                                     // Then quits the switch.
                     case 1:
-                        analogWrite(rumblePin, 120);// (rising to peak)
+                        analogWrite(rumblePin, 120);               // (rising to peak)
                         serialRumbPulseStage++;
                         serialRumbPulsesLastUpdate = millis();
                         break;
                     case 2:
-                        analogWrite(rumblePin, 75);// (peak to falling,)
+                        analogWrite(rumblePin, 75);                // (peak to falling,)
                         serialRumbPulseStage = 0;
                         serialRumbPulsesLast++;
                         serialRumbPulsesLastUpdate = millis();
                         break;
                 }
             }
-        } else {  // ...or the pulses count is complete.
-            digitalWrite(rumblePin, LOW); // turn off the motor,
-            bitWrite(serialQueue, 3, 0);  // and set the rumble pulses bit off, now that we've completed it.
+        } else {                                              // ...or the pulses count is complete.
+            digitalWrite(rumblePin, LOW);                          // turn off the motor,
+            bitWrite(serialQueue, 3, 0);                           // and set the rumble pulses bit off, now that we've completed it.
         }
-    } else {  // ...or we're being told to turn it off outright.
-        digitalWrite(rumblePin, LOW);
+    } else {                                                  // ...or we're being told to turn it off outright.
+        digitalWrite(rumblePin, LOW);                              // Do that then.
     }
     #endif // USES_RUMBLE
     #ifdef LED_ENABLE
-    if(serialLEDChange) {
-        if(bitRead(serialQueue, 4) ||
-        bitRead(serialQueue, 5) ||
-        bitRead(serialQueue, 6)) {
+    if(serialLEDChange) {                                     // Has the LED command state changed?
+        if(bitRead(serialQueue, 4) ||                         // Are either the R,
+        bitRead(serialQueue, 5) ||                            // G,
+        bitRead(serialQueue, 6)) {                            // OR B digital bits set to on?
+            // Command the LED to change/turn on with the values serialProcessing set for us.
             #ifdef DOTSTAR_ENABLE
                 dotstar.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
                 dotstar.show();
@@ -1925,10 +1972,88 @@ void SerialHandling()                               // Where we let the serial i
                 neopixel.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
                 neopixel.show();
             #endif // NEOPIXEL_PIN
-        } else {
-            LedOff();
+            serialLEDChange = false;                               // Set the bit to off.
+        } else if(bitRead(serialQueue, 7)) {                  // Or is it an LED pulse command?
+            if(!serialLEDPulsesLast) {                        // Are we just starting?
+                serialLEDPulsesLast = 1;                           // Set that we have started.
+                serialLEDPulseRising = true;                       // Set the LED cycle to rising.
+                // Reset all the LEDs to zero, the color map will tell us which one to focus on.
+                serialLEDR = 0;
+                serialLEDG = 0;
+                serialLEDB = 0;
+            } else if(serialLEDPulsesLast <= serialLEDPulses) { // Else, have we not reached the number of pulses requested?
+                unsigned long currentMillis = millis();            // Calibrate the timer.
+                if(currentMillis - serialLEDPulsesLastUpdate > serialLEDPulsesLength) { // have we waited enough time between pulse stages?
+                    if(serialLEDPulseRising) {                // If we're in the rising stage,
+                        switch(serialLEDPulseColorMap) {           // Check the color map
+                            case 0b00000001:                       // Basically for R, G, or B,
+                                serialLEDR += 3;                   // Set the LED value up by three (it's easiest to do blindly like this without over/underflowing tbh)
+                                if(serialLEDR == 255) {       // If we've reached the max value,
+                                    serialLEDPulseRising = false;  // Set that we're in the falling state now.
+                                }
+                                serialLEDPulsesLastUpdate = millis(); // Timestamp this event.
+                                break;                             // And get out.
+                            case 0b00000010:
+                                serialLEDG += 3;
+                                if(serialLEDG == 255) {
+                                    serialLEDPulseRising = false;
+                                }
+                                serialLEDPulsesLastUpdate = millis();
+                                break;
+                            case 0b00000100:
+                                serialLEDB += 3;
+                                if(serialLEDB == 255) {
+                                    serialLEDPulseRising = false;
+                                }
+                                serialLEDPulsesLastUpdate = millis();
+                                break;
+                        }
+                    } else {                                  // Or, we're in the falling stage.
+                        switch(serialLEDPulseColorMap) {           // Check the color map.
+                            case 0b00000001:                       // Then here, for the set color,
+                                serialLEDR -= 3;                   // Decrement the value.
+                                if(serialLEDR == 0) {         // If the LED value has reached the lowest point,
+                                    serialLEDPulseRising = true;   // Set that we should be in the rising part of a new cycle.
+                                    serialLEDPulsesLast++;         // This was a pulse cycle, so increment that.
+                                }
+                                serialLEDPulsesLastUpdate = millis(); // Timestamp this event.
+                                break;                             // Get outta here.
+                            case 0b00000010:
+                                serialLEDG -= 3;
+                                if(serialLEDG == 0) {
+                                    serialLEDPulseRising = true;
+                                    serialLEDPulsesLast++;
+                                }
+                                serialLEDPulsesLastUpdate = millis();
+                                break;
+                            case 0b00000100:
+                                serialLEDB -= 3;
+                                if(serialLEDB == 0) {
+                                    serialLEDPulseRising = true;
+                                    serialLEDPulsesLast++;
+                                }
+                                serialLEDPulsesLastUpdate = millis();
+                                break;
+                        }
+                    }
+                    // Then, commit the changed value.
+                    #ifdef DOTSTAR_ENABLE
+                        dotstar.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
+                        dotstar.show();
+                    #endif // DOTSTAR_ENABLE
+                    #ifdef NEOPIXEL_PIN
+                        neopixel.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
+                        neopixel.show();
+                    #endif // NEOPIXEL_PIN
+                }
+            } else {                                       // Or, we're done with the amount of pulse commands.
+                serialLEDPulseColorMap = 0b00000000;               // Clear the now-stale pulse color map,
+                bitWrite(serialQueue, 7, 0);                       // And flick the pulse command bit off.
+            }
+        } else {                                           // Or, all the LED bits are off, so we should be setting it off entirely.
+            LedOff();                                              // Turn it off.
+            serialLEDChange = false;                               // We've done the change, so set it off to reduce redundant LED updates.
         }
-        serialLEDChange = false;
     }
     #endif // LED_ENABLE
 }
