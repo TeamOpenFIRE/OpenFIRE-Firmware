@@ -81,8 +81,12 @@ void rp2040pwmIrq(void);
 #define DEVICE_VID 0x0920
 #define DEVICE_PID 0x1998
 
+  // Set what player this board is mapped to (1-4). This will change keyboard mappings appropriate for the respective player.
+  // If unsure, just leave this at 1.
+#define PLAYER_NUMBER 1
+
   // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
-  // WARNING: WILL CRASH on prolonged play sessions (at least on RP2040) - only enable for now if debugging!
+  // WARNING: Has a chance to CRASH on prolonged play sessions (at least on RP2040) - only enable for now if debugging!
 //#define MAMEHOOKER
 
   // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
@@ -160,6 +164,23 @@ byte autofireWaitFactor = 3;                          // This is the default tim
 #endif // USES_SOLENOID
 
 //--------------------------------------------------------------------------------------------------------------------------------------
+// Sanity checks and assignments for player number -> common keyboard assignments
+#if PLAYER_NUMBER == 1
+    #define PLAYER_STARTBTN '1'
+    #define PLAYER_SELECTBTN '5'
+#elif PLAYER_NUMBER == 2
+    #define PLAYER_STARTBTN '2'
+    #define PLAYER_SELECTBTN '6'
+#elif PLAYER_NUMBER == 3
+    #define PLAYER_STARTBTN '3'
+    #define PLAYER_SELECTBTN '7'
+#elif PLAYER_NUMBER == 4
+    #define PLAYER_STARTBTN '4'
+    #define PLAYER_SELECTBTN '8'
+#else
+    #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
+#endif // PLAYER_NUMBER
+
 // numbered index of buttons, must match ButtonDesc[] order
 enum ButtonIndex_e {
     BtnIdx_Trigger = 0,
@@ -199,8 +220,8 @@ const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 15, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
     {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 15, BTN_AG_MASK2, "A"},
     {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 15, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Internal, '1', 20, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Internal, '5', 20, BTN_AG_MASK2, "Select"},
+    {btnStart, LightgunButtons::ReportType_Internal, PLAYER_STARTBTN, 20, BTN_AG_MASK2, "Start"},
+    {btnSelect, LightgunButtons::ReportType_Internal, PLAYER_SELECTBTN, 20, BTN_AG_MASK2, "Select"},
     {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 20, BTN_AG_MASK2, "Up"},
     {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 20, BTN_AG_MASK2, "Down"},
     {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 20, BTN_AG_MASK2, "Left"},
@@ -1686,12 +1707,12 @@ void SerialProcessing()                                         // Reading the i
     //  - M5 is auto reload(?). How do we use this?
     //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
     //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
-    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
-    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
-    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
-    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
+    // "Fx" is the type of force feedback command being received (periods or 'x' are used interchangeably as padding bits for readibility):
+    //  - F0.x.y = solenoid: 0=off, 1=on, 2=pulse (where Y is the number of "pulses" it does)
+    //  - F1.x.y = rumble motor: 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
+    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED: 0=off, 1=on, 2=pulse (where Y is the strength of the LED, or the number of "pulses" it does)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
-    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit x, and the value).
+    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is at least four (the command, a padding bit, and the value).
 
     // Set this bit for safety reasons, to mitigate potential race conditions as much as possible.
     serialBusy = true;
@@ -1759,7 +1780,7 @@ void SerialProcessing()                                         // Reading the i
             } else if(serialInput == '2') { // Is it a pulsed on signal?
                 bitWrite(serialQueue, 3, 1); // Set the rumble pulsed bit.
                 String serialInputS = Serial.readStringUntil('x'); // Read the rest up until the x padding bit, since it could be either 1 or three characters long.
-             // TODO: is it always "x"? Or is it a period? We can only do one or the other. :x
+             // TODO: in theory, X's should just get ignored and thrown out, while periods are included but will be recognized as a whole number... I hope.
                 serialRumbPulses = serialInputS.toInt(); // This is the amount of rumble pulses queued.
                 serialRumbPulsesLast = 0;        // Reset the serialPulsesLast count.
             } else {  // Else, it's a rumble off signal.
@@ -1944,6 +1965,9 @@ void TriggerNotFireSimple()
 
 void SerialButtons()
 {
+    // SerialButtonsHeld is a button bitmask for all the buttons that aren't trigger (handled in TriggerFireSimple()/TriggerNotFireSimple() ),
+    // Or Start or Select (handled in ButtonsPush() ), specific to serial mode because of using buttons.SerialPoll() instead of normal polling.
+
     // Button A
     if(bitRead(buttons.debounced, 1)) {
         if(!bitRead(serialButtonsHeld, 0)) {
@@ -2020,25 +2044,25 @@ void SerialButtons()
 void ButtonsPush()
 {
     // TinyUSB Devices' handling should be slightly more stable than the old Keyboard library across the board,
-    // so we only handle Start and Select differently to not conflict with hotkeys.
+    // so we only handle Start and Select differently to not conflict with the Pause Mode button combo.
  
     if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 0)) {
-            Keyboard.press('1');
+            Keyboard.press(PLAYER_STARTBTN);
             bitWrite(buttonsHeld, 0, 1);
         }
     } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
-        Keyboard.release('1');
+        Keyboard.release(PLAYER_STARTBTN);
         bitWrite(buttonsHeld, 0, 0);
     }
 
     if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 1)) {
-            Keyboard.press('5');
+            Keyboard.press(PLAYER_SELECTBTN);
             bitWrite(buttonsHeld, 1, 1);
         }
     } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
-        Keyboard.release('5');
+        Keyboard.release(PLAYER_SELECTBTN);
         bitWrite(buttonsHeld, 1, 0);
     }
 }
