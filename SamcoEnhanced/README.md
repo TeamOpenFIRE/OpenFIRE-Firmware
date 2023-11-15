@@ -57,6 +57,8 @@ A0 is reserved for an optional temperature sensor if you plan to use a solenoid 
 ### Define Buttons & Timers
 Refer to Line 79 for the pins of the tactile extras (rumble, solenoid, hardware switches if need be) and the adjustable settings (solenoid activation, rumble event length, etc.), and Line 127-onwards for the button constants.
 
+If your gun is going to be player 1/2/3/4, change `#define PLAYER_NUMBER` to 1, 2, 3, or 4 depending on what keys you want the Start/Select buttons to correlate to. See [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns) for more info on multiplayer!
+
 Remember that the sketch uses the Arduino GPIO pin numbers; on the Adafruit Itsybitsy RP2040, these are the silkscreen labels on the **underside** of the microcontroller (marked GP00-29). Also note that this does not apply to the analog pins (A0-A3), which does work and map as expected if used in lieu of GPIO numbers. All the other Adafruit boards don't have this discrepancy.
 ![Itsybitsy RP2040 Back](https://cdn-learn.adafruit.com/assets/assets/000/101/909/original/adafruit_products_ItsyRP_pinouts_back.jpg)
 The default button:pins layout used is as follows (aside from the power pins and the camera, you may deviate from this as much as desired so long as that's reflected in the sketch!):
@@ -169,7 +171,7 @@ If you intend to use multiple GUN4ALLs, you'll want to change what the board rep
 
 These are known as the **USB Implementer's Forum (USB-IF) identifiers**, and if multiple devices share a common display name and/or Product/Vendor ID, apps like RetroArch and TeknoParrot that read individual mouse devices will get VERY confused.
 
-Thankfully, since v2.0-rev1 *(That Heart, That Power)*, these parameters are easily found and can be redefined in the sketch configuration area - just above all the other peripheral defines!
+Thankfully, since v2.0-rev1 *(That Heart, That Power)*, these parameters are easily found and can be redefined in the sketch configuration area - just above the `PLAYER_NUMBER` indicator!
 
 ```
 #define MANUFACTURER_NAME "3DP"
