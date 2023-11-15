@@ -961,23 +961,10 @@ void loop1()
                 }
                 // For processing Start & Select.
                 ButtonsPush();
-            } else {   // This is if we've received a serial signal pulse in the last n millis.
+            } else {   // This is if we've received a serial signal pulse in the last cycle over on the main core
+                // For safety reasons, we're just using the second core for polling, and the main core for sending signals entirely. Too much a headache otherwise. =w='
                 buttons.SerialPoll(0);
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFireSimple();                                    // Since serial is handling our devices, we're just handling button events.
-                } else if(!serialBusy) {   // Or if we haven't pressed the trigger,
-                    TriggerNotFireSimple();                                 // Release button inputs.
-                }
-                if(irPosUpdateTick) {
-                    // For processing most of the buttons.
-                    SerialButtons();
-                    // For processing Start & Select.
-                    ButtonsPush();
-                }
-            }
-            // Multicores causes race conditions if we let the second core handle processing, so let the main loop handle that for us.
-            if(serialMode && !serialBusy) { // Are we in serial processing mode?
-                SerialHandling();                                   // If so, process the force feedback.
+                SerialHandling();                                       // Process the force feedback.
             }
         #else
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1255,7 +1242,7 @@ void ExecRunMode()
                 offScreen = false;
             }
 
-            #if defined(MAMEHOOKER) && !defined(DUAL_CORE)
+            #ifdef MAMEHOOKER
                 if(serialMode) {
                     if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                         TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
