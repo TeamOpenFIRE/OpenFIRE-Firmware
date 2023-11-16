@@ -448,6 +448,15 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
+#ifdef USE_TINYUSB
+    // CDC FIFO size of TX and RX
+    #define CFG_TUD_CDC_RX_BUFSIZE 512
+    #define CFG_TUD_CDC_TX_BUFSIZE 512
+    // Vendor FIFO size of TX and RX
+    #define CFG_TUD_VENDOR_RX_BUFSIZE 128
+    #define CFG_TUD_VENDOR_TX_BUFSIZE 128
+#endif // USE_TINYUSB
+
 unsigned int lastSeen = 0;
 
 #ifdef EXTRA_POS_GLITCH_FILTER00
