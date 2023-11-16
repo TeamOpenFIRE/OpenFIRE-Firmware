@@ -449,6 +449,11 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #endif // MAMEHOOKER
 
 #ifdef USE_TINYUSB
+    // Unset defines!
+    #undef CFG_TUD_CDC_RX_BUFSIZE
+    #undef CFG_TUD_CDC_TX_BUFSIZE
+    #undef CFG_TUD_VENDOR_RX_BUFSIZE
+    #undef CFG_TUD_VENDOR_TX_BUFSIZE
     // CDC FIFO size of TX and RX
     #define CFG_TUD_CDC_RX_BUFSIZE 512
     #define CFG_TUD_CDC_TX_BUFSIZE 512
@@ -1766,12 +1771,37 @@ void SerialProcessing()                                         // Reading the i
     } else if(serialInput == 'E') {          // Is it an E command? (End)
             serialMode = false;                                    // Turn off serial mode then.
             offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
+            serialButtonsHeld = 0b00000000;                        // Clear the stale queues.
+            serialQueue = 0b00000000;
             #ifdef LED_ENABLE
+                serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
+                serialLEDPulses = 0;
+                serialLEDPulsesLast = 0;
+                serialLEDPulseRising = true;
                 serialLEDR = 0;                                    // Clear stale serial LED values.
                 serialLEDG = 0;
                 serialLEDB = 0;
                 LedOff();                                          // Turn it off, and let lastSeen handle it from here.
             #endif // LED_ENABLE
+            #ifdef USES_RUMBLE
+                digitalWrite(rumblePin, LOW);
+                serialRumbPulseStage = 0;
+                serialRumbPulses = 0;
+                serialRumbPulsesLast = 0;
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+                digitalWrite(solenoidPin, LOW);
+                serialSolPulseOn = false;
+                serialSolPulses = 0;
+                serialSolPulsesLast = 0;
+            #endif // USES_SOLENOID
+            AbsMouse5.release(MOUSE_LEFT);
+            AbsMouse5.release(MOUSE_RIGHT);
+            AbsMouse5.release(MOUSE_MIDDLE);
+            AbsMouse5.release(MOUSE_BUTTON4);
+            AbsMouse5.release(MOUSE_BUTTON5);
+            Keyboard.releaseAll();
+            delay(5);
             Serial.println("Received end serial pulse, releasing FF override.");
     } else if(serialInput == 'F') {          // Does the command start with an F (force feedback)?
         serialInput = Serial.read();                               // Alright, read the next bit.
