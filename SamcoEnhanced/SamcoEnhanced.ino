@@ -1242,7 +1242,12 @@ void ExecRunMode()
             } else {
                 offYAxis = false;
             }
-         
+
+            #ifdef MAMEHOOKER
+            if(serialMode) {
+                delay(1);
+            }
+            #endif // MAMEHOOKER
             AbsMouse5.move(conMoveXAxis, conMoveYAxis);
 
             if(offXAxis || offYAxis) {
