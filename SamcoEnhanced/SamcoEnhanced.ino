@@ -2127,70 +2127,84 @@ void SerialButtons()
     // Button A
     if(bitRead(buttons.debounced, 1)) {
         if(!bitRead(serialButtonsHeld, 0)) {
+            delay(2);
             AbsMouse5.press(MOUSE_RIGHT);
             bitWrite(serialButtonsHeld, 0, 1);
         }
     } else if(!bitRead(buttons.debounced, 1) && bitRead(serialButtonsHeld, 0)) {
+        delay(2);
         AbsMouse5.release(MOUSE_RIGHT);
         bitWrite(serialButtonsHeld, 0, 0);
     }
     // Button B
     if(bitRead(buttons.debounced, 2)) {
         if(!bitRead(serialButtonsHeld, 1)) {
+            delay(2);
             AbsMouse5.press(MOUSE_MIDDLE);
             bitWrite(serialButtonsHeld, 1, 1);
         }
     } else if(!bitRead(buttons.debounced, 2) && bitRead(serialButtonsHeld, 1)) {
+        delay(2);
         AbsMouse5.release(MOUSE_MIDDLE);
         bitWrite(serialButtonsHeld, 1, 0);
     }
     // Button C
     if(bitRead(buttons.debounced, 9)) {
         if(!bitRead(serialButtonsHeld, 2)) {
+            delay(2);
             AbsMouse5.press(MOUSE_BUTTON4);
             bitWrite(serialButtonsHeld, 2, 1);
         }
     } else if(!bitRead(buttons.debounced, 9) && bitRead(serialButtonsHeld, 2)) {
+        delay(2);
         AbsMouse5.release(MOUSE_BUTTON4);
         bitWrite(serialButtonsHeld, 2, 0);
     }
     // D-Pad Up
     if(bitRead(buttons.debounced, 5)) {
         if(!bitRead(serialButtonsHeld, 3)) {
+            delay(1);
             Keyboard.press(KEY_UP_ARROW);
             bitWrite(serialButtonsHeld, 3, 1);
         }
     } else if(!bitRead(buttons.debounced, 5) && bitRead(serialButtonsHeld, 3)) {
+        delay(1);
         Keyboard.release(KEY_UP_ARROW);
         bitWrite(serialButtonsHeld, 3, 0);
     }
     // D-Pad Down
     if(bitRead(buttons.debounced, 6)) {
         if(!bitRead(serialButtonsHeld, 4)) {
+            delay(1);
             Keyboard.press(KEY_DOWN_ARROW);
             bitWrite(serialButtonsHeld, 4, 1);
         }
     } else if(!bitRead(buttons.debounced, 6) && bitRead(serialButtonsHeld, 4)) {
+        delay(1);
         Keyboard.release(KEY_DOWN_ARROW);
         bitWrite(serialButtonsHeld, 4, 0);
     }
     // D-Pad Left
     if(bitRead(buttons.debounced, 7)) {
         if(!bitRead(serialButtonsHeld, 5)) {
+            delay(1);
             Keyboard.press(KEY_LEFT_ARROW);
             bitWrite(serialButtonsHeld, 5, 1);
         }
     } else if(!bitRead(buttons.debounced, 7) && bitRead(serialButtonsHeld, 5)) {
+        delay(1);
         Keyboard.release(KEY_LEFT_ARROW);
         bitWrite(serialButtonsHeld, 5, 0);
     }
     // D-Pad Right
     if(bitRead(buttons.debounced, 8)) {
         if(!bitRead(serialButtonsHeld, 6)) {
+            delay(1);
             Keyboard.press(KEY_RIGHT_ARROW);
             bitWrite(serialButtonsHeld, 6, 1);
         }
     } else if(!bitRead(buttons.debounced, 8) && bitRead(serialButtonsHeld, 6)) {
+        delay(1);
         Keyboard.release(KEY_RIGHT_ARROW);
         bitWrite(serialButtonsHeld, 6, 0);
     }
