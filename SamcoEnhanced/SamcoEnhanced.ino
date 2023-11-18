@@ -448,20 +448,6 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
     #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
-#ifdef USE_TINYUSB
-    // Unset defines!
-    #undef CFG_TUD_CDC_RX_BUFSIZE
-    #undef CFG_TUD_CDC_TX_BUFSIZE
-    #undef CFG_TUD_VENDOR_RX_BUFSIZE
-    #undef CFG_TUD_VENDOR_TX_BUFSIZE
-    // CDC FIFO size of TX and RX
-    #define CFG_TUD_CDC_RX_BUFSIZE 512
-    #define CFG_TUD_CDC_TX_BUFSIZE 512
-    // Vendor FIFO size of TX and RX
-    #define CFG_TUD_VENDOR_RX_BUFSIZE 128
-    #define CFG_TUD_VENDOR_TX_BUFSIZE 128
-#endif // USE_TINYUSB
-
 unsigned int lastSeen = 0;
 
 #ifdef EXTRA_POS_GLITCH_FILTER00
@@ -1181,7 +1167,14 @@ void ExecRunMode()
                 ButtonsPush();
             } else {
                 buttons.SerialPoll(0);
-                SerialHandling();                                       // If so, process the force feedback.
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
+                } else {   // Or if we haven't pressed the trigger,
+                    TriggerNotFireSimple();                             // Release button inputs.
+                }
+                SerialButtons();                                        // For the other buttons not handled by the trigger methods.
+                ButtonsPush();                                          // For processing start & select.
+                SerialHandling();                                       // Process the force feedback from the current queue.
             }
         #else
             buttons.Poll(0);
@@ -1250,11 +1243,6 @@ void ExecRunMode()
                 offYAxis = false;
             }
 
-            #ifdef MAMEHOOKER
-            if(serialMode) {
-                delay(1);
-            }
-            #endif // MAMEHOOKER
             AbsMouse5.move(conMoveXAxis, conMoveYAxis);
 
             if(offXAxis || offYAxis) {
@@ -1262,20 +1250,6 @@ void ExecRunMode()
             } else {
                 offScreen = false;
             }
-
-            #ifdef MAMEHOOKER
-                if(serialMode) {
-                    if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                        TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
-                    } else {   // Or if we haven't pressed the trigger,
-                        TriggerNotFireSimple();                         // Release button inputs.
-                    }
-                    // For processing the rest of the buttons.
-                    SerialButtons();
-                    // For processing start & select.
-                    ButtonsPush();
-                }
-            #endif // MAMEHOOKER
          
             #ifdef DEBUG_SERIAL
                 ++irPosCount;
@@ -2135,14 +2109,16 @@ void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
     offscreenButtonSerial && offScreen) {            // and are pointing the gun off screen WITH the offScreen button mode set?
-        delay(2);
+        delay(1);
         AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
+        delay(1);
     } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
-        delay(2);
+        delay(1);
         AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
         buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
+        delay(1);
     }
 }
 
@@ -2150,14 +2126,15 @@ void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            delay(2);
+            delay(1);
             AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
             offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
-            delay(2);
+            delay(1);
             AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
+        delay(1);
     }
 }
 
@@ -2169,38 +2146,44 @@ void SerialButtons()
     // Button A
     if(bitRead(buttons.debounced, 1)) {
         if(!bitRead(serialButtonsHeld, 0)) {
-            delay(2);
+            delay(1);
             AbsMouse5.press(MOUSE_RIGHT);
             bitWrite(serialButtonsHeld, 0, 1);
+            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 1) && bitRead(serialButtonsHeld, 0)) {
-        delay(2);
+        delay(1);
         AbsMouse5.release(MOUSE_RIGHT);
         bitWrite(serialButtonsHeld, 0, 0);
+        delay(1);
     }
     // Button B
     if(bitRead(buttons.debounced, 2)) {
         if(!bitRead(serialButtonsHeld, 1)) {
-            delay(2);
+            delay(1);
             AbsMouse5.press(MOUSE_MIDDLE);
             bitWrite(serialButtonsHeld, 1, 1);
+            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 2) && bitRead(serialButtonsHeld, 1)) {
-        delay(2);
+        delay(1);
         AbsMouse5.release(MOUSE_MIDDLE);
         bitWrite(serialButtonsHeld, 1, 0);
+        delay(1);
     }
     // Button C
     if(bitRead(buttons.debounced, 9)) {
         if(!bitRead(serialButtonsHeld, 2)) {
-            delay(2);
+            delay(1);
             AbsMouse5.press(MOUSE_BUTTON4);
             bitWrite(serialButtonsHeld, 2, 1);
+            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 9) && bitRead(serialButtonsHeld, 2)) {
-        delay(2);
+        delay(1);
         AbsMouse5.release(MOUSE_BUTTON4);
         bitWrite(serialButtonsHeld, 2, 0);
+        delay(1);
     }
     // D-Pad Up
     if(bitRead(buttons.debounced, 5)) {
