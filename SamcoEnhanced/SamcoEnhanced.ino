@@ -701,7 +701,9 @@ void setup() {
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
-    Keyboard.begin();
+    // Despite the name, this is just initializing the USB devices,
+    // and passing desired USB polling rate
+    Keyboard.begin(2);
 #endif
 
     Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
