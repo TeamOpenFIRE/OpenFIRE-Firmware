@@ -191,7 +191,7 @@ extern AbsMouse5_ AbsMouse5;
     void sendReport(KeyReport* keys);
   public:
     Keyboard_(void);
-    void begin(void);
+    void begin(byte polRate);
     void end(void);
     size_t write(uint8_t k);
     size_t write(const uint8_t *buffer, size_t size);

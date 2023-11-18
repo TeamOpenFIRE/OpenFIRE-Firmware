@@ -140,9 +140,9 @@ Adafruit_USBD_HID usbHid;
   Keyboard_::Keyboard_(void) {
   }
   
-  void Keyboard_::begin(void)
+  void Keyboard_::begin(byte polRate)
   {
-    usbHid.setPollInterval(1);
+    usbHid.setPollInterval(polRate);
     usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     //usb_hid.setStringDescriptor("TinyUSB HID Composite");
 
