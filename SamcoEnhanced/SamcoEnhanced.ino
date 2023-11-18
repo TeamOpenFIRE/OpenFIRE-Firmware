@@ -1730,6 +1730,7 @@ void SerialProcessing()                                         // Reading the i
     serialBusy = true;
 
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
+    char serialInputS[3] = {0, 0, 0};
 
     if(serialInput == 'S') {                 // Does the command start with an S? (Start)
         serialMode = true;                                         // Set it on, then!
@@ -1781,6 +1782,7 @@ void SerialProcessing()                                         // Reading the i
                 serialLEDR = 0;                                    // Clear stale serial LED values.
                 serialLEDG = 0;
                 serialLEDB = 0;
+                serialLEDChange = false;
                 LedOff();                                          // Turn it off, and let lastSeen handle it from here.
             #endif // LED_ENABLE
             #ifdef USES_RUMBLE
@@ -1815,8 +1817,13 @@ void SerialProcessing()                                         // Reading the i
             !bitRead(serialQueue, 1)) {      // (and we aren't already pulsing?)
                 bitWrite(serialQueue, 1, 1);                       // Set the solenoid pulsing bit!
                 serialInput = Serial.read();                       // nomf the padding bit.
-                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit.
-                serialSolPulses = serialInputS.toInt();            // Import the amount of pulses we're being told to do.
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
                 serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
             } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
                 bitWrite(serialQueue, 0, 0);                       // Disable the solenoid off bit!
@@ -1832,13 +1839,16 @@ void SerialProcessing()                                         // Reading the i
             !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
                 bitWrite(serialQueue, 3, 1);                       // Set the rumble pulsed bit.
                 serialInput = Serial.read();                       // nomf the x
-                String serialInputS = Serial.readStringUntil('x'); // Read the rest - any padding bits get ignored on the way.
-                serialRumbPulses = serialInputS.toInt();           // This is the amount of rumble pulses queued.
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialRumbPulses = atoi(serialInputS);             // and set as the amount of rumble pulses queued.
                 serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
             } else if(serialInput == '0') {  // Else, it's a rumble off signal.
                 bitWrite(serialQueue, 2, 0);                       // Queue the rumble off bit... 
-                //bitWrite(serialQueue, 3, 0); // And the rumble pulsed bit.
-                // TODO: do we want to set this off if we get a rumble off bit?
             }
             #endif // USES_RUMBLE
         #ifdef LED_ENABLE
@@ -1849,15 +1859,25 @@ void SerialProcessing()                                         // Reading the i
             if(serialInput == '1') {         // is it an "on" command?
                 bitWrite(serialQueue, 4, 1);                       // set that here!
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Grab the value of the RGB that's requested,
-                serialLEDR = serialInputS.toInt();                 // And set that here!
-            } else if(serialInput == '2' &&
-            !bitRead(serialQueue, 7)) {      // else, is it a pulse command?
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDR = atoi(serialInputS);                   // And set that as the strength of the red value that's requested!
+            } else if(serialInput == '2' &&  // else, is it a pulse command?
+            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                 bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
                 serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
-                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                 serialLEDPulsesLast = 0;                           // reset the pulses done count.
             } else if(serialInput == '0') {  // else, it's an off command.
                 bitWrite(serialQueue, 4, 0);                       // Set the R bit off.
@@ -1870,15 +1890,25 @@ void SerialProcessing()                                         // Reading the i
             if(serialInput == '1') {         // is it an "on" command?
                 bitWrite(serialQueue, 5, 1);                       // set that here!
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Grab the strength of the G light that's requested,
-                serialLEDG = serialInputS.toInt();                 // And set that here!
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDG = atoi(serialInputS);                   // And set that here!
             } else if(serialInput == '2' &&  // else, is it a pulse command?
             !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                 bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
                 serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
-                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                 serialLEDPulsesLast = 0;                           // reset the pulses done count.
             } else if(serialInput == '0') {  // else, it's an off command.
                 bitWrite(serialQueue, 5, 0);                       // Set the G bit off.
@@ -1891,15 +1921,25 @@ void SerialProcessing()                                         // Reading the i
             if(serialInput == '1') {         // is it an "on" command?
                 bitWrite(serialQueue, 6, 1);                       // set that here!
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Grab the strength of the B light that's requested,
-                serialLEDB = serialInputS.toInt();                 // And set that here!
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDB = atoi(serialInputS);                   // And set that as the strength requested here!
             } else if(serialInput == '2' &&  // else, is it a pulse command?
             !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                 bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
                 serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
                 serialInput = Serial.read();                       // nomf the padding
-                String serialInputS = Serial.readStringUntil('x'); // Read the value up until the padding bit,
-                serialLEDPulses = serialInputS.toInt();            // and set that as the amount of pulses requested
+                for(byte n = 0; n < 3; n++) {                      // For three runs,
+                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        break;
+                    }
+                }
+                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                 serialLEDPulsesLast = 0;                           // reset the pulses done count.
             } else if(serialInput == '0') {  // else, it's an off command.
                 bitWrite(serialQueue, 6, 0);                       // Set the B bit off.
