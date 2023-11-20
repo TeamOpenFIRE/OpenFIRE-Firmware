@@ -12,7 +12,7 @@
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V2.0
+ * @version V2.1
  * @date 2023
  */
 
@@ -61,21 +61,16 @@
 void rp2040pwmIrq(void);
 #endif
 
-// enable extra serial debug during run mode
-//#define PRINT_VERBOSE 1
-//#define DEBUG_SERIAL 1
-//#define DEBUG_SERIAL 2
-// for testing RP2040 dual core functionality (only works w/ RP2040 boards). IF RUN INTO ISSUES, DISABLE THIS
-//#define DUAL_CORE
-
-// extra position glitch filtering, 
-// not required after discoverving the DFRobotIRPositionEx atomic read technique
-//#define EXTRA_POS_GLITCH_FILTER
 
     // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
+  // Enables input processing on the second core, if available. Currently exclusive to Raspberry Pi Pico, or boards based on the RP2040.
+  // Isn't necessarily faster, but might make responding to force feedback more consistent.
+  // If unsure, leave this commented.
+//#define DUAL_CORE
+
   // Here we define the Manufacturer Name/Device Name/PID:VID of the gun as will be displayed by the operating system.
   // For multiplayer, different guns need different IDs!
-  // If confused or if only using one gun, just leave these at their defaults!
+  // If unsure, or are only using one gun, just leave these at their defaults!
 #define MANUFACTURER_NAME "3DP"
 #define DEVICE_NAME "GUN4ALL-Con"
 #define DEVICE_VID 0x0920
@@ -86,7 +81,9 @@ void rp2040pwmIrq(void);
 #define PLAYER_NUMBER 1
 
   // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
-  // WARNING: Has a chance to CRASH on prolonged play sessions (at least on RP2040) - only enable for now if debugging!
+  // WARNING: Has a chance of making the board lock up if TinyUSB hasn't been patched to fix serial-related lockups.
+  // Currently fixed only for RP2040 using the fixed core as provided in the instruction manual. Consider this option potentially dangerous for other boards.
+  // If unsure, or you don't plan to use MAMEHOOKER, leave this commented.
 //#define MAMEHOOKER
 
   // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
@@ -180,6 +177,15 @@ byte autofireWaitFactor = 3;                          // This is the default tim
 #else
     #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
 #endif // PLAYER_NUMBER
+
+// enable extra serial debug during run mode
+//#define PRINT_VERBOSE 1
+//#define DEBUG_SERIAL 1
+//#define DEBUG_SERIAL 2
+
+// extra position glitch filtering, 
+// not required after discoverving the DFRobotIRPositionEx atomic read technique
+//#define EXTRA_POS_GLITCH_FILTER
 
 // numbered index of buttons, must match ButtonDesc[] order
 enum ButtonIndex_e {
@@ -415,12 +421,6 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-    unsigned long serialTimer = 0;                   // The timestamp of the last time we read from the serial.
-    byte serialTimerInterval = 5;                    // How long since serialTimer to wait to read the serial interface, in ms.
-    bool serialProcessed = false;                    // Locking bit to ensure we don't check serial more than once per serial->usb cycle.
-    bool serialProcessedPassover = false;            // Are we allowed to check if we can send signals?
-    bool serialProcessedWaiting = false;             // Are we allowed to unlatch the serial locking bit?
-    byte serialButtonsHeld = 0b00000000;             // Bitmask of what buttons we've held on (for btnA/B/C)
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
     // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.
@@ -691,13 +691,13 @@ void setup() {
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
-    // Despite the name, this is just initializing the USB devices,
+    // Despite the name, this is initializing both USB devices,
     // and passing desired USB polling rate
     Keyboard.begin(2);
 #endif
 
-    Serial.begin(9600); // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
-    Serial.setTimeout(0);    // This is to avoid any potential hangups when reading rumble pulse values.
+    Serial.begin(9600);      // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
+    Serial.setTimeout(0);    // This is to avoid any potential hangups when reading FF pulse values.
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
    
@@ -954,22 +954,33 @@ void loop1()
                 solenoidActive = !digitalRead(solenoidSwitch);
             #endif // USES_SOLENOID
             autofireActive = !digitalRead(autofireSwitch);
-        #endif // USES_SWITCHES
+        #endif
+
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        buttons.Poll(0);
+
         #ifdef MAMEHOOKER
+            while(Serial.available()) {
+                SerialProcessing();
+            }
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
-                buttons.Poll(0);
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                          // Handle button events and feedback ourselves.
+                    TriggerFire();                                      // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                    TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
                 }
                 // For processing Start & Select.
                 ButtonsPush();
-            } else {   // This is if we've received a serial signal pulse in the last cycle over on the main core
+            } else {   // This is if we've received a serial signal pulse in the last n millis.
                 // For safety reasons, we're just using the second core for polling, and the main core for sending signals entirely. Too much a headache otherwise. =w='
-                buttons.SerialPoll(0);
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
+                } else {   // Or if we haven't pressed the trigger,
+                    TriggerNotFireSimple();                             // Release button inputs.
+                }
+                // For processing start & select.
+                ButtonsPush();
                 SerialHandling();                                       // Process the force feedback.
             }
         #else
@@ -978,7 +989,7 @@ void loop1()
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
             }
-            // For processing Start & Select.
+            // For processing the buttons tied to the keyboard.
             ButtonsPush();
         #endif // MAMEHOOKER
         
@@ -997,9 +1008,6 @@ void loop1()
                 rumbleHappening = false;
                 rumbleHappened = false;
             #endif // USES_RUMBLE
-            Keyboard.releaseAll();
-            AbsMouse5.release(MOUSE_LEFT);
-            AbsMouse5.release(MOUSE_RIGHT);
             offscreenBShot = false;
             buttonPressed = false;
             triggerHeld = false;
@@ -1138,7 +1146,7 @@ void ExecRunMode()
     for(;;) {
         // If we're on RP2040, we offload the button polling to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        // setting the state of our toggles, if used.
+        // ADDITIONS HERE: setting the state of our toggles, if used.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
                 rumbleActive = !digitalRead(rumbleSwitch);
@@ -1149,274 +1157,114 @@ void ExecRunMode()
             autofireActive = !digitalRead(autofireSwitch);
         #endif // USES_SWITCHES
         #endif // DUAL_CORE
-        
+
+        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+        buttons.Poll(0);
+
         // The main gunMode loop: here it splits off to different paths,
         // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
         #ifdef MAMEHOOKER
+            while(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
+                SerialProcessing();                                 // Run through the serial processing method (repeatedly, if there's leftover bits)
+            }
             if(!serialMode) {  // Normal (gun-handled) mode
-                buttons.Poll(0);
-
                 // For processing the trigger specifically.
                 // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
                 // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                          // Handle button events and feedback ourselves.
+                    TriggerFire();                                  // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                    TriggerNotFire();                               // Releasing button inputs and sending stop signals to feedback devices.
                 }
                 // For processing the buttons tied to the keyboard.
                 ButtonsPush();
-
-                #ifdef SAMCO_NO_HW_TIMER
-                    SAMCO_NO_HW_TIMER_UPDATE();
-                #endif // SAMCO_NO_HW_TIMER
-
-                if(irPosUpdateTick) {
-                    irPosUpdateTick = 0;
-                    GetPosition();
-            
-                    int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-                    moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-                    halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-                    moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
-
-                    switch(runMode) {
-                    case RunMode_Average:
-                        // 2 position moving average
-                        moveIndex ^= 1;
-                        moveXAxisArr[moveIndex] = moveXAxis;
-                        moveYAxisArr[moveIndex] = moveYAxis;
-                        moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                        moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                        break;
-                    case RunMode_Average2:
-                        // weighted average of current position and previous 2
-                        if(moveIndex < 2) {
-                            ++moveIndex;
-                        } else {
-                            moveIndex = 0;
-                        }
-                        moveXAxisArr[moveIndex] = moveXAxis;
-                        moveYAxisArr[moveIndex] = moveYAxis;
-                        moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                        moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                        break;
-                    case RunMode_Normal:
-                    default:
-                        break;
-                    }
-
-                    conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-                    if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-                        offXAxis = true;
-                    } else {
-                        offXAxis = false;
-                    }
-                    conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-                    if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-                        offYAxis = true;
-                    } else {
-                        offYAxis = false;
-                    }
-
-                    AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-
-                    if(offXAxis || offYAxis) {
-                        offScreen = true;
-                    } else {
-                        offScreen = false;
-                    }
-                }
-
-                // Just do a basic check if we get serial input and process it.
-                // If we do get moved to serialMode, the next cycle (after switching to that branch) will set the necessary flags.
-                if(!serialProcessed) {
-                    while(Serial.available()) {                         // Have we received serial input? (This is cleared after we've read from it in full.)
-                        SerialProcessing();                             // Run through the serial processing method (repeatedly, if there's leftover bits)
-                    }
-                }
             } else {  // Serial handoff mode
-                // Poll for buttons, but don't activate them; we'll do that on the appropriate cycle.
-                buttons.SerialPoll(0);
-
-                // So, here's what we settled on:
-                // Read serial -> block Xms, release processing
-                // position/button signal updates -> block Xms, release serial ->
-                // Read serial...
-                if(!serialProcessed) {
-                    while(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
-                        SerialProcessing();                                 // Run through the serial processing method (repeatedly, if there's leftover bits)
-                    }
-                    serialProcessed = true;
-                    serialTimer = millis();
-                } else {
-                    unsigned long currentMillis = millis();
-                    if(currentMillis - serialTimer > serialTimerInterval) {
-                        serialProcessedPassover = true;
-                        serialTimer = currentMillis;
-                    }
+                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                    TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
+                } else {   // Or if we haven't pressed the trigger,
+                    TriggerNotFireSimple();                         // Release button inputs.
                 }
-                SerialHandling();                                       // Process the force feedback from the current queue.
-
-                #ifdef SAMCO_NO_HW_TIMER
-                    SAMCO_NO_HW_TIMER_UPDATE();
-                #endif // SAMCO_NO_HW_TIMER
-
-                if(irPosUpdateTick) {
-                    irPosUpdateTick = 0;
-                    GetPosition();
-            
-                    int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-                    moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-                    halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-                    moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
-
-                    switch(runMode) {
-                    case RunMode_Average:
-                        // 2 position moving average
-                        moveIndex ^= 1;
-                        moveXAxisArr[moveIndex] = moveXAxis;
-                        moveYAxisArr[moveIndex] = moveYAxis;
-                        moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                        moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                        break;
-                    case RunMode_Average2:
-                        // weighted average of current position and previous 2
-                        if(moveIndex < 2) {
-                            ++moveIndex;
-                        } else {
-                            moveIndex = 0;
-                        }
-                        moveXAxisArr[moveIndex] = moveXAxis;
-                        moveYAxisArr[moveIndex] = moveYAxis;
-                        moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                        moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                        break;
-                    case RunMode_Normal:
-                    default:
-                        break;
-                    }
-
-                    conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-                    if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-                        offXAxis = true;
-                    } else {
-                        offXAxis = false;
-                    }
-                    conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-                    if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-                        offYAxis = true;
-                    } else {
-                        offYAxis = false;
-                    }
-
-                    if(offXAxis || offYAxis) {
-                        offScreen = true;
-                    } else {
-                        offScreen = false;
-                    }
-                }
-
-                if(serialProcessedPassover) {
-                    AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-                    if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                        TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
-                    } else {   // Or if we haven't pressed the trigger,
-                        TriggerNotFireSimple();                             // Release button inputs.
-                    }
-                    SerialButtons();                                        // For the other buttons not handled by the trigger methods.
-                    ButtonsPush();                                          // For processing start & select.
-                    serialProcessedPassover = false;
-                    serialProcessedWaiting = true;
-                    serialTimer = millis();
-                }
-
-                if(serialProcessedWaiting) {
-                    unsigned long currentMillis = millis();
-                    if(currentMillis - serialTimer > serialTimerInterval) {
-                        serialProcessed = false;
-                        serialProcessedWaiting = false;
-                    }
-                }
+                ButtonsPush();                                      // For processing start & select.
+                SerialHandling();                                   // Process the force feedback from the current queue.
             }
         #else
-            buttons.Poll(0);
-
             // For processing the trigger specifically.
             // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
             // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                TriggerFire();                                          // Handle button events and feedback ourselves.
+                TriggerFire();                                      // Handle button events and feedback ourselves.
             } else {   // Or we haven't pressed the trigger.
-                TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
+                TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
             }
             // For processing the buttons tied to the keyboard.
             ButtonsPush();
-
-            #ifdef SAMCO_NO_HW_TIMER
-                SAMCO_NO_HW_TIMER_UPDATE();
-            #endif // SAMCO_NO_HW_TIMER
-
-            if(irPosUpdateTick) {
-                irPosUpdateTick = 0;
-                GetPosition();
-            
-                int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-                moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-                halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-                moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
-
-                switch(runMode) {
-                case RunMode_Average:
-                    // 2 position moving average
-                    moveIndex ^= 1;
-                    moveXAxisArr[moveIndex] = moveXAxis;
-                    moveYAxisArr[moveIndex] = moveYAxis;
-                    moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                    moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                    break;
-                case RunMode_Average2:
-                    // weighted average of current position and previous 2
-                    if(moveIndex < 2) {
-                        ++moveIndex;
-                    } else {
-                        moveIndex = 0;
-                    }
-                    moveXAxisArr[moveIndex] = moveXAxis;
-                    moveYAxisArr[moveIndex] = moveYAxis;
-                    moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                    moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                    break;
-                case RunMode_Normal:
-                default:
-                    break;
-                }
-
-                conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-                if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-                    offXAxis = true;
-                } else {
-                    offXAxis = false;
-                }
-                conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-                if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-                    offYAxis = true;
-                } else {
-                    offYAxis = false;
-                }
-
-                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-
-                if(offXAxis || offYAxis) {
-                    offScreen = true;
-                } else {
-                    offScreen = false;
-                }
-            }
         #endif // MAMEHOOKER
+        #endif // DUAL_CORE
+
+        #ifdef SAMCO_NO_HW_TIMER
+            SAMCO_NO_HW_TIMER_UPDATE();
+        #endif // SAMCO_NO_HW_TIMER
+
+        if(irPosUpdateTick) {
+            irPosUpdateTick = 0;
+            GetPosition();
+            
+            int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+            moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+            halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+            moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
+
+            switch(runMode) {
+            case RunMode_Average:
+                // 2 position moving average
+                moveIndex ^= 1;
+                moveXAxisArr[moveIndex] = moveXAxis;
+                moveYAxisArr[moveIndex] = moveYAxis;
+                moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                break;
+            case RunMode_Average2:
+                // weighted average of current position and previous 2
+                if(moveIndex < 2) {
+                    ++moveIndex;
+                } else {
+                    moveIndex = 0;
+                }
+                moveXAxisArr[moveIndex] = moveXAxis;
+                moveYAxisArr[moveIndex] = moveYAxis;
+                moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                break;
+            case RunMode_Normal:
+            default:
+                break;
+            }
+
+            conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
+            if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
+                offXAxis = true;
+            } else {
+                offXAxis = false;
+            }
+            conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
+            if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
+                offYAxis = true;
+            } else {
+                offYAxis = false;
+            }
+
+            AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+
+            if(offXAxis || offYAxis) {
+                offScreen = true;
+            } else {
+                offScreen = false;
+            }
+        }
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
             SendEscapeKey();
         }
@@ -1446,6 +1294,9 @@ void ExecRunMode()
         }
         #else                                                       // if we're using dual cores,
         if(gunMode != GunMode_Run) {                                // We just check if the gunmode has been changed by the other thread.
+            Keyboard.releaseAll();
+            AbsMouse5.release(MOUSE_LEFT);
+            AbsMouse5.release(MOUSE_RIGHT);
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -1901,7 +1752,6 @@ void SerialProcessing()                                         // Reading the i
     } else if(serialInput == 'E') {          // Is it an E command? (End)
             serialMode = false;                                    // Turn off serial mode then.
             offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-            serialButtonsHeld = 0b00000000;                        // Clear the stale queues.
             serialQueue = 0b00000000;
             #ifdef LED_ENABLE
                 serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -2080,85 +1930,93 @@ void SerialProcessing()                                         // Reading the i
 }
 
 void SerialHandling()                                              // Where we let the serial in stream handle things.
-{ // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
-  // So all we have to do is just read and process what it sends us at face value.
-  // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
+{   // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
+    // So all we have to do is just read and process what it sends us at face value.
+    // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
 
-  // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
-  #ifdef USES_SOLENOID
-    if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
-        digitalWrite(solenoidPin, HIGH);                           // Make it go!
-    } else if(bitRead(serialQueue, 1)) {                      // if the solenoid pulse bit is on,
-        if(!serialSolPulsesLast) {                            // Have we started pulsing?
-            analogWrite(solenoidPin, 178);                         // Start pulsing it on!
-            serialSolPulseOn = true;                               // Set that the pulse cycle is in on.
-            serialSolPulsesLast = 1;                               // Start the sequence.
-            serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
-        } else if(serialSolPulsesLast <= serialSolPulses) {   //
-            unsigned long currentMillis = millis();                // Calibrate timer.
-            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we passed the set interval length between stages?
-                if(serialSolPulseOn) {                        // If we're currently pulsing on,
-                    analogWrite(solenoidPin, 122);                 // Start pulsing it off.
-                    serialSolPulseOn = false;                      // Set that we're in off.
-                    serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
-                    serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
-                } else {                                      // Or if we're pulsing offm
-                    analogWrite(solenoidPin, 178);                 // Start pulsing it on.
-                    serialSolPulseOn = true;                       // Set that we're in on.
-                    serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
-                }
-            }
-        } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
-            unsigned long currentMillis = millis();                // Calibrate timer.
-            if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
-                digitalWrite(solenoidPin, LOW);                    // Finally shut it off for good.
-                bitWrite(serialQueue, 1, 0);                       // Set the pulse bit as off.
-            }
-        }
-    } else {  // or if it's not,
-        digitalWrite(solenoidPin, LOW);                            // turn it off!
-    }
+    // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
+    #ifdef USES_SOLENOID
+      if(solenoidActive) {
+          if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
+              digitalWrite(solenoidPin, HIGH);                           // Make it go!
+          } else if(bitRead(serialQueue, 1)) {                      // if the solenoid pulse bit is on,
+              if(!serialSolPulsesLast) {                            // Have we started pulsing?
+                  analogWrite(solenoidPin, 178);                         // Start pulsing it on!
+                  serialSolPulseOn = true;                               // Set that the pulse cycle is in on.
+                  serialSolPulsesLast = 1;                               // Start the sequence.
+                  serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
+              } else if(serialSolPulsesLast <= serialSolPulses) {   // Have we met the pulses quota?
+                  unsigned long currentMillis = millis();                // Calibrate timer.
+                  if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we passed the set interval length between stages?
+                      if(serialSolPulseOn) {                        // If we're currently pulsing on,
+                          analogWrite(solenoidPin, 122);                 // Start pulsing it off.
+                          serialSolPulseOn = false;                      // Set that we're in off.
+                          serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
+                          serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                      } else {                                      // Or if we're pulsing off,
+                          analogWrite(solenoidPin, 178);                 // Start pulsing it on.
+                          serialSolPulseOn = true;                       // Set that we're in on.
+                          serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                      }
+                  }
+              } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
+                  unsigned long currentMillis = millis();                // Calibrate timer.
+                  if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
+                      digitalWrite(solenoidPin, LOW);                    // Finally shut it off for good.
+                      bitWrite(serialQueue, 1, 0);                       // Set the pulse bit as off.
+                  }
+              }
+          } else {  // or if it's not,
+              digitalWrite(solenoidPin, LOW);                            // turn it off!
+          }
+      } else {
+          digitalWrite(solenoidPin, LOW);
+      }
   #endif // USES_SOLENOID
   #ifdef USES_RUMBLE
-    if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
-        digitalWrite(rumblePin, HIGH);                             // turn/keep it on.
-        //bitWrite(serialQueue, 3, 0);
-    } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
-        if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
-            analogWrite(rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
-            serialRumbPulseStage = 0;                              // Set that we're at stage 0.
-            serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
-        } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
-            unsigned long currentMillis = millis();                // Calibrate the timer.
-            if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
-                switch(serialRumbPulseStage) {                     // If so, let's start processing.
-                    case 0:                                        // Basically, each case
-                        analogWrite(rumblePin, 255);               // bumps up the intensity, (lowest to rising)
-                        serialRumbPulseStage++;                    // and increments the stage of the pulse.
-                        serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
-                        break;                                     // Then quits the switch.
-                    case 1:
-                        analogWrite(rumblePin, 120);               // (rising to peak)
-                        serialRumbPulseStage++;
-                        serialRumbPulsesLastUpdate = millis();
-                        break;
-                    case 2:
-                        analogWrite(rumblePin, 75);                // (peak to falling,)
-                        serialRumbPulseStage = 0;
-                        serialRumbPulsesLast++;
-                        serialRumbPulsesLastUpdate = millis();
-                        break;
-                }
-            }
-        } else {                                              // ...or the pulses count is complete.
-            digitalWrite(rumblePin, LOW);                          // turn off the motor,
-            bitWrite(serialQueue, 3, 0);                           // and set the rumble pulses bit off, now that we've completed it.
-        }
-    } else {                                                  // ...or we're being told to turn it off outright.
-        digitalWrite(rumblePin, LOW);                              // Do that then.
-    }
-    #endif // USES_RUMBLE
-    #ifdef LED_ENABLE
+      if(rumbleActive) {
+          if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
+              digitalWrite(rumblePin, HIGH);                             // turn/keep it on.
+              //bitWrite(serialQueue, 3, 0);
+          } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
+              if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
+                  analogWrite(rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
+                  serialRumbPulseStage = 0;                              // Set that we're at stage 0.
+                  serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
+              } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
+                  unsigned long currentMillis = millis();                // Calibrate the timer.
+                  if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
+                      switch(serialRumbPulseStage) {                     // If so, let's start processing.
+                          case 0:                                        // Basically, each case
+                              analogWrite(rumblePin, 255);               // bumps up the intensity, (lowest to rising)
+                              serialRumbPulseStage++;                    // and increments the stage of the pulse.
+                              serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
+                              break;                                     // Then quits the switch.
+                          case 1:
+                              analogWrite(rumblePin, 120);               // (rising to peak)
+                              serialRumbPulseStage++;
+                              serialRumbPulsesLastUpdate = millis();
+                              break;
+                          case 2:
+                              analogWrite(rumblePin, 75);                // (peak to falling,)
+                              serialRumbPulseStage = 0;
+                              serialRumbPulsesLast++;
+                              serialRumbPulsesLastUpdate = millis();
+                              break;
+                      }
+                  }
+              } else {                                              // ...or the pulses count is complete.
+                  digitalWrite(rumblePin, LOW);                          // turn off the motor,
+                  bitWrite(serialQueue, 3, 0);                           // and set the rumble pulses bit off, now that we've completed it.
+              }
+          } else {                                                  // ...or we're being told to turn it off outright.
+              digitalWrite(rumblePin, LOW);                              // Do that then.
+          }
+      } else {
+          digitalWrite(rumblePin, LOW);
+      }
+  #endif // USES_RUMBLE
+  #ifdef LED_ENABLE
     if(serialLEDChange) {                                     // Has the LED command state changed?
         if(bitRead(serialQueue, 4) ||                         // Are either the R,
         bitRead(serialQueue, 5) ||                            // G,
@@ -2281,83 +2139,6 @@ void TriggerNotFireSimple()
             AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
-    }
-}
-
-void SerialButtons()
-{
-    // SerialButtonsHeld is a button bitmask for all the buttons that aren't trigger (handled in TriggerFireSimple()/TriggerNotFireSimple() ),
-    // Or Start or Select (handled in ButtonsPush() ), specific to serial mode because of using buttons.SerialPoll() instead of normal polling.
-
-    // Button A
-    if(bitRead(buttons.debounced, 1)) {
-        if(!bitRead(serialButtonsHeld, 0)) {
-            AbsMouse5.press(MOUSE_RIGHT);
-            bitWrite(serialButtonsHeld, 0, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 1) && bitRead(serialButtonsHeld, 0)) {
-        AbsMouse5.release(MOUSE_RIGHT);
-        bitWrite(serialButtonsHeld, 0, 0);
-    }
-    // Button B
-    if(bitRead(buttons.debounced, 2)) {
-        if(!bitRead(serialButtonsHeld, 1)) {
-            AbsMouse5.press(MOUSE_MIDDLE);
-            bitWrite(serialButtonsHeld, 1, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 2) && bitRead(serialButtonsHeld, 1)) {
-        AbsMouse5.release(MOUSE_MIDDLE);
-        bitWrite(serialButtonsHeld, 1, 0);
-    }
-    // Button C
-    if(bitRead(buttons.debounced, 9)) {
-        if(!bitRead(serialButtonsHeld, 2)) {
-            AbsMouse5.press(MOUSE_BUTTON4);
-            bitWrite(serialButtonsHeld, 2, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 9) && bitRead(serialButtonsHeld, 2)) {
-        AbsMouse5.release(MOUSE_BUTTON4);
-        bitWrite(serialButtonsHeld, 2, 0);
-    }
-    // D-Pad Up
-    if(bitRead(buttons.debounced, 5)) {
-        if(!bitRead(serialButtonsHeld, 3)) {
-            Keyboard.press(KEY_UP_ARROW);
-            bitWrite(serialButtonsHeld, 3, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 5) && bitRead(serialButtonsHeld, 3)) {
-        Keyboard.release(KEY_UP_ARROW);
-        bitWrite(serialButtonsHeld, 3, 0);
-    }
-    // D-Pad Down
-    if(bitRead(buttons.debounced, 6)) {
-        if(!bitRead(serialButtonsHeld, 4)) {
-            Keyboard.press(KEY_DOWN_ARROW);
-            bitWrite(serialButtonsHeld, 4, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 6) && bitRead(serialButtonsHeld, 4)) {
-        Keyboard.release(KEY_DOWN_ARROW);
-        bitWrite(serialButtonsHeld, 4, 0);
-    }
-    // D-Pad Left
-    if(bitRead(buttons.debounced, 7)) {
-        if(!bitRead(serialButtonsHeld, 5)) {
-            Keyboard.press(KEY_LEFT_ARROW);
-            bitWrite(serialButtonsHeld, 5, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 7) && bitRead(serialButtonsHeld, 5)) {
-        Keyboard.release(KEY_LEFT_ARROW);
-        bitWrite(serialButtonsHeld, 5, 0);
-    }
-    // D-Pad Right
-    if(bitRead(buttons.debounced, 8)) {
-        if(!bitRead(serialButtonsHeld, 6)) {
-            Keyboard.press(KEY_RIGHT_ARROW);
-            bitWrite(serialButtonsHeld, 6, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 8) && bitRead(serialButtonsHeld, 6)) {
-        Keyboard.release(KEY_RIGHT_ARROW);
-        bitWrite(serialButtonsHeld, 6, 0);
     }
 }
 #endif // MAMEHOOKER
