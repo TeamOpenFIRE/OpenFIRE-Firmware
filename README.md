@@ -25,11 +25,11 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 
 ## Original Prow's Fork Enhancements
 - Increased precision for maths and mouse pointer position
-- Glitch-free DFRobot positioning (DFRobotIRPositionEx library)
-- IR camera sensitivity adjustment (DFRobotIRPositionEx library)
-- Faster IIC clock option for IR camera (DFRobotIRPositionEx library)
+- Glitch-free DFRobot positioning (`DFRobotIRPositionEx` library)
+- IR camera sensitivity adjustment (`DFRobotIRPositionEx` library)
+- Faster IIC clock option for IR camera (`DFRobotIRPositionEx` library)
 - Optional averaging modes can be enabled to slightly reduce mouse position jitter
-- Enhanced button debouncing and handling (LightgunButtons library)
+- Enhanced button debouncing and handling (`LightgunButtons` library)
 - Modified AbsMouse to be a 5 button device (`AbsMouse5` library, now part of `TinyUSB_Devices`)
 - Multiple calibration profiles
 - Save settings and calibration profiles to flash memory (SAMD) or EEPROM (RP2040)
@@ -46,7 +46,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
    * Optional: **Any 5V gamepad rumble motor,** w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
    * Optional: **Any 2-way SPDT switches,** to adjust state of rumble/solenoid/rapid fire in hardware *(can be adjusted in software from pause mode if not available!)*
 
-The Pico/RP2040 is the most performant microcontroller for the cheapest price, and future proofs builds significantly, but the M0 and M4 should still work well!
+The Pico/RP2040 is the most performant microcontroller for the cheapest price, and is the reference board that GUN4ALL is designed around, but the M0 and M4 should still work well!
 
 ## Additional information
 [Check out the enclosed instruction book!](SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
@@ -65,7 +65,7 @@ For reference, the default schematic and (general) layout for the build and its 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
   * If someone could help provide the needed INIs compatible with GUN4IR so I could make this easier for the rest of the community, *please* get in touch/raise an issue!
-  * So far, we support and recognize `S` (start, ignoring the bit), `E` (end), `M1x3` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ pulse+amount), `F1` (rumble feedback w/ pulse+amount), and `F2`/`F3`/`F4` (R/G/B LED color off/set, and per-color pulse/amount)
+  * So far, we support and recognize `S` (start, ignoring the bit), `E` (end), `M1x2` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ pulse+amount), `F1` (rumble feedback w/ pulse+amount), and `F2`/`F3`/`F4` (R/G/B LED color off/set, and per-color pulse/amount)
   * Fix LED pulses "flickering" when receiving many pulse requests mid-pulse sequence.
   * Open a wiki page with real notes about this, so no one else has to suffer like I did.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
