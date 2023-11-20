@@ -59,7 +59,8 @@ For reference, the default schematic and (general) layout for the build and its 
 - Serial communication (Mamehook or debug output) can randomly lock up operation when not using a core that has a patched TinyUSB *(refer to the enclosed instruction book)*. See https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 
-***NOTE:*** Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
+> [!NOTE]
+> Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
 - Finish MAMEHooker support.
