@@ -36,9 +36,9 @@ If you're using Arduino IDE for the first time, the setup is relatively simple:
     * *Windows users, install the USB drivers when prompted.*
  3. Once installed, open Arduino, and from the top bar, click on __*File -> Preferences.*__
  4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
-    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`
+    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/SeongGino/arduino-pico/releases/download/3.2.2-tri2/package_rp2040_tri_index.json`
     and paste it in there. Click OK to confirm.
- 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP 2040`
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP 2040 (TRI)`
  7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install `Adafruit DotStar`, `Adafruit NeoPixel`, & `Adafruit SPI Flash`.
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)` and set the USB stack to `(Adafruit) TinyUSB`.
     * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
@@ -164,7 +164,10 @@ Introduced in v2.0 *(That Heart, That Power)*, when enabled, the gun will automa
 
 If you aren't already familiar with Mame Hooker, you'll **need compatible inis for each game you play** and **the gun's COM port should be set to match the player number** (COM1 for P1, COM2 for P2, etc.)! COM port assignment can be done in Windows via the Device Manager, or Linux via settings in the Wine registry of the prefix your game/Mame Hooker is started in ([instructions from WineHQ here](https://wiki.winehq.org/Wine_User%27s_Guide#Serial_and_Parallel_Ports), note that Arduino COM ports are indeed `ttyACM#`).
 
-This can be disabled (and any other references to serial handoff mode) by commenting out `#define MAMEHOOKER` in the beginning of the sketch (after the initial defines & directly above the hardware configuration).
+> [!WARNING]
+> Serial Handoff mode will cause INSTABILITY if using an Arduino core without a patched TinyUSB - as of writing, upstream has a fatal bug where a large amount of serial data causes the board to unpredictably lock up, requiring physically unplugging from the PC. This has been fixed in the RP2040 core linked in this manual, but can't speak to others. For more information, see https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
+
+This can be disabled (and any other references to serial handoff mode) by commenting out `#define MAMEHOOKER` in the beginning of the sketch.
 
 ### Change USB ID for Multiple Guns
 If you intend to use multiple GUN4ALLs, you'll want to change what the board reports itself as.
