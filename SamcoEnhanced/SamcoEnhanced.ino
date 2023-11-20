@@ -415,7 +415,11 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-    bool serialBusy = false;                         // Locking bit to prevent second core from rushing while the queue is being processed.
+    unsigned long serialTimer = 0;                   // The timestamp of the last time we read from the serial.
+    byte serialTimerInterval = 5;                    // How long since serialTimer to wait to read the serial interface, in ms.
+    bool serialProcessed = false;                    // Locking bit to ensure we don't check serial more than once per serial->usb cycle.
+    bool serialProcessedPassover = false;            // Are we allowed to check if we can send signals?
+    bool serialProcessedWaiting = false;             // Are we allowed to unlatch the serial locking bit?
     byte serialButtonsHeld = 0b00000000;             // Bitmask of what buttons we've held on (for btnA/B/C)
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
@@ -1146,38 +1150,201 @@ void ExecRunMode()
         #endif // USES_SWITCHES
         #endif // DUAL_CORE
         
-        // For processing the trigger specifically.
-        // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        // The main gunMode loop: here it splits off to different paths,
+        // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
         #ifdef MAMEHOOKER
-            // For stability, we only parse the serial line on the single core, as it seems to be clashing with the camera/mouse feed.
-            while(Serial.available()) {                                 // Have we received serial input? (This is cleared after we've read from it in full.)
-                SerialProcessing();                                     // Run through the serial processing method (repeatedly, if there's leftover bits)
-            }
-        #endif // MAMEHOOKER
-        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        #ifdef MAMEHOOKER
-            if(!serialMode) {   // Have we released a serial signal pulse? If not,
+            if(!serialMode) {  // Normal (gun-handled) mode
                 buttons.Poll(0);
+
+                // For processing the trigger specifically.
+                // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
+                // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                      // Handle button events and feedback ourselves.
+                    TriggerFire();                                          // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
+                    TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
                 }
                 // For processing the buttons tied to the keyboard.
                 ButtonsPush();
-            } else {
-                buttons.SerialPoll(0);
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
-                } else {   // Or if we haven't pressed the trigger,
-                    TriggerNotFireSimple();                             // Release button inputs.
+
+                #ifdef SAMCO_NO_HW_TIMER
+                    SAMCO_NO_HW_TIMER_UPDATE();
+                #endif // SAMCO_NO_HW_TIMER
+
+                if(irPosUpdateTick) {
+                    irPosUpdateTick = 0;
+                    GetPosition();
+            
+                    int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+                    moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+                    halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+                    moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
+
+                    switch(runMode) {
+                    case RunMode_Average:
+                        // 2 position moving average
+                        moveIndex ^= 1;
+                        moveXAxisArr[moveIndex] = moveXAxis;
+                        moveYAxisArr[moveIndex] = moveYAxis;
+                        moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                        moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                        break;
+                    case RunMode_Average2:
+                        // weighted average of current position and previous 2
+                        if(moveIndex < 2) {
+                            ++moveIndex;
+                        } else {
+                            moveIndex = 0;
+                        }
+                        moveXAxisArr[moveIndex] = moveXAxis;
+                        moveYAxisArr[moveIndex] = moveYAxis;
+                        moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                        moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                        break;
+                    case RunMode_Normal:
+                    default:
+                        break;
+                    }
+
+                    conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
+                    if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
+                        offXAxis = true;
+                    } else {
+                        offXAxis = false;
+                    }
+                    conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
+                    if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
+                        offYAxis = true;
+                    } else {
+                        offYAxis = false;
+                    }
+
+                    AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+
+                    if(offXAxis || offYAxis) {
+                        offScreen = true;
+                    } else {
+                        offScreen = false;
+                    }
                 }
-                SerialButtons();                                        // For the other buttons not handled by the trigger methods.
-                ButtonsPush();                                          // For processing start & select.
+
+                // Just do a basic check if we get serial input and process it.
+                // If we do get moved to serialMode, the next cycle (after switching to that branch) will set the necessary flags.
+                if(!serialProcessed) {
+                    while(Serial.available()) {                         // Have we received serial input? (This is cleared after we've read from it in full.)
+                        SerialProcessing();                             // Run through the serial processing method (repeatedly, if there's leftover bits)
+                    }
+                }
+            } else {  // Serial handoff mode
+                // Poll for buttons, but don't activate them; we'll do that on the appropriate cycle.
+                buttons.SerialPoll(0);
+
+                // So, here's what we settled on:
+                // Read serial -> block Xms, release processing
+                // position/button signal updates -> block Xms, release serial ->
+                // Read serial...
+                if(!serialProcessed) {
+                    while(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
+                        SerialProcessing();                                 // Run through the serial processing method (repeatedly, if there's leftover bits)
+                    }
+                    serialProcessed = true;
+                    serialTimer = millis();
+                } else {
+                    unsigned long currentMillis = millis();
+                    if(currentMillis - serialTimer > serialTimerInterval) {
+                        serialProcessedPassover = true;
+                        serialTimer = currentMillis;
+                    }
+                }
                 SerialHandling();                                       // Process the force feedback from the current queue.
+
+                #ifdef SAMCO_NO_HW_TIMER
+                    SAMCO_NO_HW_TIMER_UPDATE();
+                #endif // SAMCO_NO_HW_TIMER
+
+                if(irPosUpdateTick) {
+                    irPosUpdateTick = 0;
+                    GetPosition();
+            
+                    int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+                    moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+                    halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+                    moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
+
+                    switch(runMode) {
+                    case RunMode_Average:
+                        // 2 position moving average
+                        moveIndex ^= 1;
+                        moveXAxisArr[moveIndex] = moveXAxis;
+                        moveYAxisArr[moveIndex] = moveYAxis;
+                        moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                        moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                        break;
+                    case RunMode_Average2:
+                        // weighted average of current position and previous 2
+                        if(moveIndex < 2) {
+                            ++moveIndex;
+                        } else {
+                            moveIndex = 0;
+                        }
+                        moveXAxisArr[moveIndex] = moveXAxis;
+                        moveYAxisArr[moveIndex] = moveYAxis;
+                        moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                        moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                        break;
+                    case RunMode_Normal:
+                    default:
+                        break;
+                    }
+
+                    conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
+                    if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
+                        offXAxis = true;
+                    } else {
+                        offXAxis = false;
+                    }
+                    conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
+                    if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
+                        offYAxis = true;
+                    } else {
+                        offYAxis = false;
+                    }
+
+                    if(offXAxis || offYAxis) {
+                        offScreen = true;
+                    } else {
+                        offScreen = false;
+                    }
+                }
+
+                if(serialProcessedPassover) {
+                    AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+                    if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                        TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
+                    } else {   // Or if we haven't pressed the trigger,
+                        TriggerNotFireSimple();                             // Release button inputs.
+                    }
+                    SerialButtons();                                        // For the other buttons not handled by the trigger methods.
+                    ButtonsPush();                                          // For processing start & select.
+                    serialProcessedPassover = false;
+                    serialProcessedWaiting = true;
+                    serialTimer = millis();
+                }
+
+                if(serialProcessedWaiting) {
+                    unsigned long currentMillis = millis();
+                    if(currentMillis - serialTimer > serialTimerInterval) {
+                        serialProcessed = false;
+                        serialProcessedWaiting = false;
+                    }
+                }
             }
         #else
             buttons.Poll(0);
+
+            // For processing the trigger specifically.
+            // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
+            // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
             if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                 TriggerFire();                                          // Handle button events and feedback ourselves.
             } else {   // Or we haven't pressed the trigger.
@@ -1185,76 +1352,68 @@ void ExecRunMode()
             }
             // For processing the buttons tied to the keyboard.
             ButtonsPush();
-        #endif // MAMEHOOKER
-        #endif // ARDUINO_ARCH_RP2040
 
-        #ifdef SAMCO_NO_HW_TIMER
-            SAMCO_NO_HW_TIMER_UPDATE();
-        #endif // SAMCO_NO_HW_TIMER
-        #ifdef MAMEHOOKER
-        if(irPosUpdateTick && !serialBusy) {
-        #else
-        if(irPosUpdateTick) {
-        #endif // MAMEHOOKER
-            irPosUpdateTick = 0;
-            GetPosition();
+            #ifdef SAMCO_NO_HW_TIMER
+                SAMCO_NO_HW_TIMER_UPDATE();
+            #endif // SAMCO_NO_HW_TIMER
+
+            if(irPosUpdateTick) {
+                irPosUpdateTick = 0;
+                GetPosition();
             
-            int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-            moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-            halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-            moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
+                int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+                moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+                halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+                moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
 
-            switch(runMode) {
-            case RunMode_Average:
-                // 2 position moving average
-                moveIndex ^= 1;
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                break;
-            case RunMode_Average2:
-                // weighted average of current position and previous 2
-                if(moveIndex < 2) {
-                    ++moveIndex;
-                } else {
-                    moveIndex = 0;
+                switch(runMode) {
+                case RunMode_Average:
+                    // 2 position moving average
+                    moveIndex ^= 1;
+                    moveXAxisArr[moveIndex] = moveXAxis;
+                    moveYAxisArr[moveIndex] = moveYAxis;
+                    moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                    moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                    break;
+                case RunMode_Average2:
+                    // weighted average of current position and previous 2
+                    if(moveIndex < 2) {
+                        ++moveIndex;
+                    } else {
+                        moveIndex = 0;
+                    }
+                    moveXAxisArr[moveIndex] = moveXAxis;
+                    moveYAxisArr[moveIndex] = moveYAxis;
+                    moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                    moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                    break;
+                case RunMode_Normal:
+                default:
+                    break;
                 }
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                break;
-            case RunMode_Normal:
-            default:
-                break;
-            }
 
-            conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-            if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-                offXAxis = true;
-            } else {
-                offXAxis = false;
-            }
-            conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-            if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-                offYAxis = true;
-            } else {
-                offYAxis = false;
-            }
+                conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
+                if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
+                    offXAxis = true;
+                } else {
+                    offXAxis = false;
+                }
+                conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
+                if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
+                    offYAxis = true;
+                } else {
+                    offYAxis = false;
+                }
 
-            AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
 
-            if(offXAxis || offYAxis) {
-                offScreen = true;
-            } else {
-                offScreen = false;
+                if(offXAxis || offYAxis) {
+                    offScreen = true;
+                } else {
+                    offScreen = false;
+                }
             }
-         
-            #ifdef DEBUG_SERIAL
-                ++irPosCount;
-            #endif // DEBUG_SERIAL
-        }
+        #endif // MAMEHOOKER
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
@@ -1290,9 +1449,6 @@ void ExecRunMode()
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
-        #ifdef MAMEHOOKER
-            serialBusy = false;
-        #endif // MAMEHOOKER
 
 #ifdef DEBUG_SERIAL
         ++frameCount;
@@ -1701,9 +1857,6 @@ void SerialProcessing()                                         // Reading the i
     //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
     // These commands are all sent as one clump of data, with the letter being the distinguisher.
     // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit of some kind, and the value).
-    
-    // Because the second core outpaces the main core's processing, set this bit so it won't touch the queue until it's done.
-    serialBusy = true;
 
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
     char serialInputS[3] = {0, 0, 0};
@@ -2109,16 +2262,12 @@ void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
     offscreenButtonSerial && offScreen) {            // and are pointing the gun off screen WITH the offScreen button mode set?
-        delay(1);
         AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
-        delay(1);
     } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
-        delay(1);
         AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
         buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
-        delay(1);
     }
 }
 
@@ -2126,15 +2275,12 @@ void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            delay(1);
             AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
             offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
-            delay(1);
             AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
-        delay(1);
     }
 }
 
@@ -2146,90 +2292,70 @@ void SerialButtons()
     // Button A
     if(bitRead(buttons.debounced, 1)) {
         if(!bitRead(serialButtonsHeld, 0)) {
-            delay(1);
             AbsMouse5.press(MOUSE_RIGHT);
             bitWrite(serialButtonsHeld, 0, 1);
-            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 1) && bitRead(serialButtonsHeld, 0)) {
-        delay(1);
         AbsMouse5.release(MOUSE_RIGHT);
         bitWrite(serialButtonsHeld, 0, 0);
-        delay(1);
     }
     // Button B
     if(bitRead(buttons.debounced, 2)) {
         if(!bitRead(serialButtonsHeld, 1)) {
-            delay(1);
             AbsMouse5.press(MOUSE_MIDDLE);
             bitWrite(serialButtonsHeld, 1, 1);
-            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 2) && bitRead(serialButtonsHeld, 1)) {
-        delay(1);
         AbsMouse5.release(MOUSE_MIDDLE);
         bitWrite(serialButtonsHeld, 1, 0);
-        delay(1);
     }
     // Button C
     if(bitRead(buttons.debounced, 9)) {
         if(!bitRead(serialButtonsHeld, 2)) {
-            delay(1);
             AbsMouse5.press(MOUSE_BUTTON4);
             bitWrite(serialButtonsHeld, 2, 1);
-            delay(1);
         }
     } else if(!bitRead(buttons.debounced, 9) && bitRead(serialButtonsHeld, 2)) {
-        delay(1);
         AbsMouse5.release(MOUSE_BUTTON4);
         bitWrite(serialButtonsHeld, 2, 0);
-        delay(1);
     }
     // D-Pad Up
     if(bitRead(buttons.debounced, 5)) {
         if(!bitRead(serialButtonsHeld, 3)) {
-            delay(1);
             Keyboard.press(KEY_UP_ARROW);
             bitWrite(serialButtonsHeld, 3, 1);
         }
     } else if(!bitRead(buttons.debounced, 5) && bitRead(serialButtonsHeld, 3)) {
-        delay(1);
         Keyboard.release(KEY_UP_ARROW);
         bitWrite(serialButtonsHeld, 3, 0);
     }
     // D-Pad Down
     if(bitRead(buttons.debounced, 6)) {
         if(!bitRead(serialButtonsHeld, 4)) {
-            delay(1);
             Keyboard.press(KEY_DOWN_ARROW);
             bitWrite(serialButtonsHeld, 4, 1);
         }
     } else if(!bitRead(buttons.debounced, 6) && bitRead(serialButtonsHeld, 4)) {
-        delay(1);
         Keyboard.release(KEY_DOWN_ARROW);
         bitWrite(serialButtonsHeld, 4, 0);
     }
     // D-Pad Left
     if(bitRead(buttons.debounced, 7)) {
         if(!bitRead(serialButtonsHeld, 5)) {
-            delay(1);
             Keyboard.press(KEY_LEFT_ARROW);
             bitWrite(serialButtonsHeld, 5, 1);
         }
     } else if(!bitRead(buttons.debounced, 7) && bitRead(serialButtonsHeld, 5)) {
-        delay(1);
         Keyboard.release(KEY_LEFT_ARROW);
         bitWrite(serialButtonsHeld, 5, 0);
     }
     // D-Pad Right
     if(bitRead(buttons.debounced, 8)) {
         if(!bitRead(serialButtonsHeld, 6)) {
-            delay(1);
             Keyboard.press(KEY_RIGHT_ARROW);
             bitWrite(serialButtonsHeld, 6, 1);
         }
     } else if(!bitRead(buttons.debounced, 8) && bitRead(serialButtonsHeld, 6)) {
-        delay(1);
         Keyboard.release(KEY_RIGHT_ARROW);
         bitWrite(serialButtonsHeld, 6, 0);
     }
