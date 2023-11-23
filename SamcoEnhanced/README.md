@@ -36,9 +36,9 @@ If you're using Arduino IDE for the first time, the setup is relatively simple:
     * *Windows users, install the USB drivers when prompted.*
  3. Once installed, open Arduino, and from the top bar, click on __*File -> Preferences.*__
  4. In the Preferences window, the *Additional Boards Manager URLs* path should be empty. Copy and paste this string:
-    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/SeongGino/arduino-pico/releases/download/3.2.2-tri2/package_rp2040_tri_index.json`
+    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,https://github.com/SeongGino/arduino-pico/releases/download/3.6.1-fix/package_rp2040_fix_index.json`
     and paste it in there. Click OK to confirm.
- 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP 2040 (TRI)`
+ 5. Back in the main window, go to __*Tools -> Board: {some board name} -> Boards Manager*__ (IDE 1.8.x) || select __*Board Manager*__ from the sidebar (IDE 2.x) and install the latest version of `Adafruit SAMD Boards` (for M0/M4) and `Raspberry Pi Pico/RP2040 (Fix)`
  7. **For Adafruit users:** go to __*Tools -> Manage Libraries...*__ (IDE 1.8.x) || select __*Library Manager*__ (IDE 2.x), and install `Adafruit DotStar`, `Adafruit NeoPixel`, & `Adafruit SPI Flash`.
  8. Under __*Tools*__, make sure to select your board of choice, and set the compiler optimize level to `Faster (-O3)`/`Optimize Even More (-O3)` and set the USB stack to `(Adafruit) TinyUSB`.
     * *Linux users should have their user in the `uucp` group. If not, add oneself to it (`sudo usermod -a -G uucp username`), then relogin to see the board's serial port.*
