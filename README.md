@@ -67,12 +67,15 @@ For reference, the default schematic and (general) layout for the build and its 
   * If someone could help provide the needed INIs compatible with GUN4IR so I could make this easier for the rest of the community, *please* get in touch/raise an issue!
   * So far, we support and recognize `S` (start, ignoring the bit), `E` (end), `M1x2` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ pulse+amount), `F1` (rumble feedback w/ pulse+amount), and `F2`/`F3`/`F4` (R/G/B LED color off/set, and per-color pulse/amount)
   * Fix LED pulses "flickering" when receiving many pulse requests mid-pulse sequence.
-  * Open a wiki page with real notes about this, so no one else has to suffer like I did.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
+- A Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
+  * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
+  * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
+  * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - Document and implement separate RGB LED support?
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
   * Maybe consider using [FastLED](https://github.com/FastLED/FastLED) instead, to simplify LEDs use?
