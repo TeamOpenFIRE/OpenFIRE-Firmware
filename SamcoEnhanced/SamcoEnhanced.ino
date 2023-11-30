@@ -471,7 +471,7 @@ constexpr int BadMoveThreshold = 49 * CamToMouseMult;
 unsigned int selectedProfile = 0;
 
 // IR positioning camera
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+#ifdef ARDUINO_ARCH_RP2040
 DFRobotIRPositionEx dfrIRPos(Wire1);
 #else
 //DFRobotIRPosition myDFRobotIRPosition;
@@ -659,7 +659,7 @@ void setup() {
     neopixel.show();
 #endif // NEOPIXEL_PIN
 
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+#ifdef ARDUINO_ARCH_RP2040
     // ensure Wire1 SDA and SCL are correct
     Wire1.setSDA(2);
     Wire1.setSCL(3);
