@@ -57,16 +57,19 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## Known Issues (want to fix sooner rather than later):
 - Serial communication (Mamehook or debug output) can randomly lock up operation when not using a core that has a patched TinyUSB *(refer to the enclosed instruction book)*. See https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
+  * If having issues, reducing the baud rate of the serial port in the sketch and the config files might help. Do report if you're still having issues!
+- MAMEHooker supports the main force feedback/lamp outputs and the offscreen modeset, but is missing and will not react to the screen ratio modesets.
+  * Are there games that have issues with this? It really should be resolved by the game/emulator, not the gun.
+  * LED pulses sent rapidly may reset at the ON-falling position, but the effect looks kind of good actually. Is this really a bug?
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 
 > [!NOTE]
 > Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
-- Finish MAMEHooker support.
-  * If someone could help provide the needed INIs compatible with GUN4IR so I could make this easier for the rest of the community, *please* get in touch/raise an issue!
-  * So far, we support and recognize `S` (start, ignoring the bit), `E` (end), `M1x2` (offscreen mode - offscreen button mode toggle only), `F0` (solenoid feedback w/ pulse+amount), `F1` (rumble feedback w/ pulse+amount), and `F2`/`F3`/`F4` (R/G/B LED color off/set, and per-color pulse/amount)
-  * Fix LED pulses "flickering" when receiving many pulse requests mid-pulse sequence.
+- Implement Analog stick as another form of keyboard-cursor.
+  * Will probably default to ports A1-A2 for stick signals (to account for temp sensor), but two sticks will have to choose between that or temp sensor support.
+  * Keyboard cursor keys should be fine? Or the numpad if P2. There really aren't that many games (especially multiplayer) that use directional input.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
