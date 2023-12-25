@@ -70,20 +70,27 @@ For reference, the default schematic and (general) layout for the build and its 
 - Implement Analog stick as another form of keyboard-cursor.
   * Will probably default to ports A1-A2 for stick signals (to account for temp sensor), but two sticks will have to choose between that or temp sensor support.
   * Keyboard cursor keys should be fine? Or the numpad if P2. There really aren't that many games (especially multiplayer) that use directional input.
+- Implement separate RGB LED support.
+  * Generic four-pin LEDs will be implemented first as it doesn't depend on any library.
+  * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
+  * Switch to [FastLED](https://github.com/FastLED/FastLED) for smart LEDs; waiting on compiling conflicts on RP2040 with optimization flags. See https://github.com/earlephilhower/arduino-pico/discussions/1649
+- Output as a gamepad.
+  * Will be useful for PCSX2-nightly in particular, as it's unclear if/when Linux multi-mice support will be implemented.
+  * Planning to make this toggleable through a serial signal from the PC mainly, or some sort of button combo.
+- Ability to dynamically set Start/Select buttons mapping on-the-fly, for multiplayer.
+  * Would have to rely on a script on the PC sending these commands over serial.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
-- A Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
-  * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
-  * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
+- A more streamlined graphical interface specific for IR-GUN4ALL that doesn't require the Arduino IDE setup.
+  * The idea is to have an interface for both flashing the board (like GUN4IR, but supporting Linux as well as Windows) and configuring the gun (ideally in real-time, without having to re-flash to adjust e.g. solenoid settings or mappings).
+    - Should use a native toolkit i.e. QT for Linux, though someone else would have to work on Windows support.
+  * Failing this, maybe have a Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
+    * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
+    * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
-- Document and implement separate RGB LED support?
-  * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
-  * Maybe consider using [FastLED](https://github.com/FastLED/FastLED) instead, to simplify LEDs use?
-    * Tested with an internal build; works, but currently has compiling conflicts on RP2040 with optimization flags. See https://github.com/earlephilhower/arduino-pico/discussions/1649
-  * Would be easier to use external NeoPixels since we're running out of available pins, but generic four-pin RGB leds would be nice too.
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
   * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
 - Could the tracking be improved more? We have a slight but still somewhat noticeable amount of cursor drift when aiming from extreme angles at screen corners on a 50" display with fisheye lenses.
