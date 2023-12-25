@@ -89,6 +89,7 @@ For reference, the default schematic and (general) layout for the build and its 
   * Failing this, maybe have a Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
     * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
     * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
+  * Either one of these GUI options will necessitate moving away from pre-processor definitions/constants in-sketch to variables and stored in/pulled from EEPROM/SPI storage.
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
