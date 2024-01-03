@@ -35,18 +35,21 @@ public:
     enum ReportType_e {
         ReportType_Mouse = 0,
         ReportType_Keyboard = 1,
-        ReportType_Internal = 2
-        // ReportType_Gamepad
+        ReportType_Internal = 2,
+        ReportType_Gamepad = 3
     };
 
     /// @brief Descriptor.
     typedef struct Desc_s {
-        const int pin;                      ///< Arduino defiuned pin to read.
-        const uint8_t reportType;           ///< Report type. See ReportType_e.
-        const uint8_t reportCode;           ///< Report code. Mouse or key press depending on report type.
-        const uint8_t debounceTicks;        ///< Number of millis() to wait after the button state changes.
-        const uint32_t debounceFifoMask;    ///< Mask checked to ensure button state is consistent (0 to disable)
-        const char* label;                  ///< informational label
+        int pin;                      ///< Arduino defined pin to read.
+        uint8_t reportType;           ///< Report type. See ReportType_e.
+        uint8_t reportCode;           ///< Report code. Mouse or key press depending on report type.
+        uint8_t reportType2;          ///< Report type 2, for offscreen presses
+        uint8_t reportCode2;          ///< Report code type 2, for offscreen presses
+        uint8_t reportType3;
+        uint8_t reportCode3;
+        uint8_t debounceTicks;        ///< Number of millis() to wait after the button state changes.
+        uint32_t debounceFifoMask;    ///< Mask checked to ensure button state is consistent (0 to disable)
     } Desc_t;
 
     /// @brief Runtime debouncing state data.
@@ -68,19 +71,13 @@ public:
     /// @return The pressed value.
     uint32_t Poll(unsigned long minTicks = 0);
 
-    /// @brief Poll button state without sending signals, for Serial.
-    /// @details This will reset pressed, released, and pressedReleased.
-    /// @param[in] minTicks Minimum number of ticks for poll to update.
-    /// @return The pressed value.
-    uint32_t SerialPoll(unsigned long minTicks = 0);
-
     /// @brief Update the internal repeat value.
     /// @details Call after Poll() if the repeat value is required.
     /// @return The repeat value.
     uint32_t Repeat();
 
     /// @brief The buttons that must be defined in the sketch.
-    static const Desc_t ButtonDesc[];
+    static Desc_t ButtonDesc[];
 
     /// @brief Bit mask of newly pressed buttons from last poll, 1 if pressed.
     /// @details Resets on each Poll().
@@ -119,6 +116,12 @@ public:
     /// @brief Disable reporting for all buttons. Clear report to 0.
     void ReportDisable() { report = 0; }
 
+    /// @brief Flag that determines if we're shooting off-screen.
+    bool offScreen;
+
+    /// @brief Flag that determines analog output mode.
+    bool analogOutput;
+
     /// @brief Test if pressed button(s) in comibination with already held buttons match given values.
     /// @details Test the pressed buttons equals a given value along with a modifer bit mask
     /// match with the debounced value.
@@ -154,6 +157,9 @@ private:
 
     /// @brief Button debounce count array.
     uint8_t* debounceCount;
+
+    /// @brief Tracked buttons that are offscreen.
+    uint32_t internalOffscreenMask;
 
     /// @brief Number of buttons.
     const unsigned int count;
