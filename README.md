@@ -10,11 +10,12 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Solenoid Support!** Get the authentic arcade feedback with every shot, in either single shot, three-shot burst, or rapid fire modes. Intelligently works when aiming *on-screen!*
 - **Rumble Support!** Feel the subtle feedback of a motor, for those moments when you need to *shoot outside of the screen!*
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
-- **Offscreen Button Support!** An optional setting for older games, the gun will send a different button input (right click) when shooting off-screen if enabled!
+- **Offscreen Button Support!** The gun can distinguish between on- and off-screen aiming and *report different buttons* depending on screen detection! An optional setting is also available for older games that allows the trigger to send left or right-clicks when shooting off-screen.
+- **Gamepad Output Support!** GUN4ALL reports as a five-button mouse, keyboard, *and gamepad* with ability to output the position as a joystick. The first open source lightgun system that's fully compatible with PCSX2 nightly on all platforms for multiplayer!
 - **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in pause mode (Button C + Select)!
 - **Mame Hooker Support!** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs (WIP) *for event aware feedbacks for even more immersive gameplay!*
 - Dual Core Support; if using a board powered by the **RP2040**, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency.
-- Multiple Guns Support; easily set the gun to use binds for P1-4 with a single setting, and change the USB identifier for each unique board without modifying deep rooted Arduino files!
+- Multiple Guns Support; easily set the gun to use binds for P1-4 with a single setting, swap player position on-the-fly, and change the USB identifier for each unique board without modifying deep rooted Arduino files!
 - Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in upgrade for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
