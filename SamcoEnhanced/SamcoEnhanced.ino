@@ -76,8 +76,8 @@ void rp2040pwmIrq(void);
 #define DEVICE_VID 0x0920
 #define DEVICE_PID 0x1998
 
-  // Set what player this board is mapped to (1-4). This will change keyboard mappings appropriate for the respective player.
-  // If unsure, just leave this at 1.
+  // Set what player this board is mapped to by default (1-4). This will change keyboard mappings appropriate for the respective player.
+  // If unsure, just leave this at 1 - the mapping can be changed at runtime by sending an 'XR#' command over Serial, where # = player number
 #define PLAYER_NUMBER 1
 
   // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
@@ -1806,9 +1806,16 @@ void SerialProcessing()                                         // Reading the i
         if(serialInput == 'A') {
             buttons.analogOutput = !buttons.analogOutput;
             if(buttons.analogOutput) {
+                AbsMouse5.release(MOUSE_LEFT);
+                AbsMouse5.release(MOUSE_RIGHT);
+                AbsMouse5.release(MOUSE_MIDDLE);
+                AbsMouse5.release(MOUSE_BUTTON4);
+                AbsMouse5.release(MOUSE_BUTTON5);
+                Keyboard.releaseAll();
                 Serial.println("Switched to Analog Output mode!");
             } else {
                 Gamepad16.releaseAll();
+                Keyboard.releaseAll();
                 Serial.println("Switched to Mouse Output mode!");
             }
         // Toggle Processing/Run Mode
@@ -1847,11 +1854,39 @@ void SerialProcessing()                                         // Reading the i
             }
             // Force the mouse to center, in case the signal gets dropped by the next camera update
             AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-        Serial.println("Press the trigger to center");
         // Save current profile
         } else if(serialInput == 'S') {
             Serial.println("Saving preferences...");
             SavePreferences();
+        // Remap player numbers
+        } else if(serialInput == 'R') {
+            serialInput = Serial.read();
+            switch(serialInput) {
+                case '1':
+                  playerStartBtn = '1';
+                  playerSelectBtn = '5';
+                  Serial.println("Remapping to player slot 1.");
+                  break;
+                case '2':
+                  playerStartBtn = '2';
+                  playerSelectBtn = '6';
+                  Serial.println("Remapping to player slot 2.");
+                  break;
+                case '3':
+                  playerStartBtn = '3';
+                  playerSelectBtn = '7';
+                  Serial.println("Remapping to player slot 3.");
+                  break;
+                case '4':
+                  playerStartBtn = '4';
+                  playerSelectBtn = '8';
+                  Serial.println("Remapping to player slot 4.");
+                  break;
+                default:
+                  Serial.println("ERROR: No slot number declared!");
+                  break;
+            }
+            UpdateBindings();
         // Optional: Switch to profile number if detected
         } else if(serialInput == '1' || serialInput == '2' || serialInput == '3' || serialInput == '4') {
             byte profileNum = serialInput - '0';
@@ -3160,6 +3195,29 @@ void BurstFire()
         burstFiring = false;                                      // Disable the currently firing tag,
         burstFireCount = 0;                                       // And set the count off.
         return;                                                   // Let's go back.
+    }
+}
+
+// Updates the button array with new bindings, if any.
+// VERY hacky workaround, but seems to work?
+void UpdateBindings()
+{
+    LightgunButtons::Desc_t ButtonDescReplacement[] = {
+        {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
+        {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+        {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
+        {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
+        {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
+        {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
+        {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
+        {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
+        {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
+        {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
+        {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2}
+    };
+
+    for(byte n = 0; n < ButtonCount; n++) {
+        LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
     }
 }
 
