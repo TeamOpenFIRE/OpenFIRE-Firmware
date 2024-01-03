@@ -471,9 +471,10 @@ constexpr int BadMoveThreshold = 49 * CamToMouseMult;
 unsigned int selectedProfile = 0;
 
 // IR positioning camera
-#ifdef ARDUINO_ARCH_RP2040
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+// ItsyBitsy RP2040 only exposes I2C1 pins on the board
 DFRobotIRPositionEx dfrIRPos(Wire1);
-#else
+#else // Pico et al does not have this limitation
 //DFRobotIRPosition myDFRobotIRPosition;
 DFRobotIRPositionEx dfrIRPos(Wire);
 #endif
@@ -659,11 +660,14 @@ void setup() {
     neopixel.show();
 #endif // NEOPIXEL_PIN
 
-#ifdef ARDUINO_ARCH_RP2040
-    // ensure Wire1 SDA and SCL are correct
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+    // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040
     Wire1.setSDA(2);
     Wire1.setSCL(3);
 #endif
+// Wire (0) should be defaulting to and using GPIO 4 & 5, but in case you need it:
+// Wire.setSDA(4);
+// Wire.setSCL(5);
 
 #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
     // initialize buttons (on the main thread for single core systems)
