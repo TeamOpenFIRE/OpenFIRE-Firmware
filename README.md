@@ -36,8 +36,8 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - Built in Processing mode for use with the SAMCO Processing sketch
 
 ## Requirements
-- An Arduino-compatible microcontroller based on a **Cortex-M0/M0+**, **Cortex-M4**, or **RP2040**. *(ATmega32U4 boards don't have enough codespace at this point.)*
-  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, globally available)* Adafruit [Keeboar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor)* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(more pins, compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596) for drop-in compatibility with Namco Guncon hardware!)*
+- An Arduino-compatible microcontroller based on an **RP2040**, **Cortex-M0/M0+**, or **Cortex-M4**. *(ATmega32U4 boards don't have enough codespace at this point.)*
+  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, most pins available)* Adafruit [Keeboar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor)* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596) for drop-in compatibility with Namco Guncon hardware!)*
   * Keep in mind the differences in pinouts, as it will always be different between builds and boards!
 - **DFRobot IR Positioning Camera SEN0158:** [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html) | [Mirrors list](https://octopart.com/sen0158-dfrobot-81833633)
 - **4 IR LED emitters:** regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
@@ -74,11 +74,6 @@ For reference, the default schematic and (general) layout for the build and its 
   * Generic four-pin LEDs will be implemented first as it doesn't depend on any library.
   * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
   * Switch to [FastLED](https://github.com/FastLED/FastLED) for smart LEDs; waiting on compiling conflicts on RP2040 with optimization flags. See https://github.com/earlephilhower/arduino-pico/discussions/1649
-- Output as a gamepad.
-  * Will be useful for PCSX2-nightly in particular, as it's unclear if/when Linux multi-mice support will be implemented.
-  * Planning to make this toggleable through a serial signal from the PC mainly, or some sort of button combo.
-- Ability to dynamically set Start/Select buttons mapping on-the-fly, for multiplayer.
-  * Would have to rely on a script on the PC sending these commands over serial.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
