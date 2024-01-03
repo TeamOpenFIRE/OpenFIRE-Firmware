@@ -1034,6 +1034,9 @@ void loop()
     // poll/update button states with 1ms interval so debounce mask is more effective
     buttons.Poll(1);
     buttons.Repeat();
+    while(Serial.available()) {                             // So we can process serial requests while in Pause Mode.
+        SerialProcessing();
+    }
 
     switch(gunMode) {
         case GunMode_Pause:
@@ -1788,6 +1791,56 @@ void SerialProcessing()                                         // Reading the i
             Keyboard.releaseAll();
             delay(5);
             Serial.println("Received end serial pulse, releasing FF override.");
+    } else if(serialInput == 'X') {                               // owo SPECIAL SETUP EH?
+        serialInput = Serial.read();
+        // Toggle Processing/Run Mode
+        if(serialInput == 'T') {
+            if(gunMode != GunMode_Run) {
+                Serial.println("Exiting back to normal run mode...");
+                SetMode(GunMode_Run);
+            } else {
+                Serial.println("Entering Processing Sketch mode...");
+                SetRunMode(RunMode_Processing);
+            }
+        // Toggle Pause/Run Mode
+        } else if(serialInput == 'P') {
+            if(gunMode != GunMode_Run) {
+                Serial.println("Exiting back to normal run mode...");
+                SetMode(GunMode_Run);
+            } else {
+                Serial.println("Entering pause mode...");
+                SetMode(GunMode_Pause);
+            }
+        // Enter Calibration mode (optional: switch to cal profile if detected)
+        } else if(serialInput == 'C') {
+            serialInput = Serial.read();
+            if(serialInput == '1' || serialInput == '2' || serialInput == '3' || serialInput == '4') {
+                // Converting char to its real respective number
+                byte profileNum = serialInput - '0';
+                SelectCalProfile(profileNum-1);
+                Serial.print("Now calibrating selected profile: ");
+                Serial.println(profileDesc[selectedProfile].profileLabel);
+                SetMode(GunMode_CalCenter);
+            } else {
+                // Eh, just set the current profile to calibrate.
+                Serial.print("Called for calibration without valid profile number, so calibrating current profile: ");
+                Serial.println(profileDesc[selectedProfile].profileLabel);
+                SetMode(GunMode_CalCenter);
+            }
+            // Force the mouse to center, in case the signal gets dropped by the next camera update
+            AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
+        Serial.println("Press the trigger to center");
+        // Save current profile
+        } else if(serialInput == 'S') {
+            Serial.println("Saving preferences...");
+            SavePreferences();
+        // Optional: Switch to profile number if detected
+        } else if(serialInput == '1' || serialInput == '2' || serialInput == '3' || serialInput == '4') {
+            byte profileNum = serialInput - '0';
+            SelectCalProfile(profileNum-1);
+            Serial.print("Switching to selected profile: ");
+            Serial.println(profileDesc[selectedProfile].profileLabel);
+        }
     } else if(serialInput == 'F') {          // Does the command start with an F (force feedback)?
         serialInput = Serial.read();                               // Alright, read the next bit.
         if(serialInput == '0') {             // Is it a solenoid bit?
