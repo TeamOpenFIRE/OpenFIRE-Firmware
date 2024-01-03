@@ -163,17 +163,17 @@ byte autofireWaitFactor = 3;                          // This is the default tim
 //--------------------------------------------------------------------------------------------------------------------------------------
 // Sanity checks and assignments for player number -> common keyboard assignments
 #if PLAYER_NUMBER == 1
-    #define PLAYER_STARTBTN '1'
-    #define PLAYER_SELECTBTN '5'
+    char playerStartBtn = '1';
+    char playerSelectBtn = '5';
 #elif PLAYER_NUMBER == 2
-    #define PLAYER_STARTBTN '2'
-    #define PLAYER_SELECTBTN '6'
+    char playerStartBtn = '2';
+    char playerSelectBtn = '6';
 #elif PLAYER_NUMBER == 3
-    #define PLAYER_STARTBTN '3'
-    #define PLAYER_SELECTBTN '7'
+    char playerStartBtn = '3';
+    char playerSelectBtn = '7';
 #elif PLAYER_NUMBER == 4
-    #define PLAYER_STARTBTN '4'
-    #define PLAYER_SELECTBTN '8'
+    char playerStartBtn = '4';
+    char playerSelectBtn = '8';
 #else
     #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
 #endif // PLAYER_NUMBER
@@ -221,19 +221,19 @@ enum ButtonMask_e {
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
 // see LightgunButtons::Desc_t, format is: 
-// {pin, report type, report code (ignored for internal), debounce time, debounce mask, label}
-const LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, 15, BTN_AG_MASK, "Trigger"}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, 15, BTN_AG_MASK2, "A"},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, 15, BTN_AG_MASK2, "B"},
-    {btnStart, LightgunButtons::ReportType_Internal, PLAYER_STARTBTN, 20, BTN_AG_MASK2, "Start"},
-    {btnSelect, LightgunButtons::ReportType_Internal, PLAYER_SELECTBTN, 20, BTN_AG_MASK2, "Select"},
-    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, 20, BTN_AG_MASK2, "Up"},
-    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, 20, BTN_AG_MASK2, "Down"},
-    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, 20, BTN_AG_MASK2, "Left"},
-    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, 20, BTN_AG_MASK2, "Right"},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, 15, BTN_AG_MASK2, "Reload"},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, 15, BTN_AG_MASK2, "Pedal"}
+// {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
+LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
+    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
+    {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
+    {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
+    {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
+    {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
+    {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
+    {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
+    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2}
 };
 
 // button count constant
@@ -381,7 +381,7 @@ int conMoveYAxis = 0;
 
   // ADDITIONS HERE: the boring inits related to the things I added.
 // Offscreen bits:
-bool offScreen = false;                          // To tell if we're off-screen, if offXAxis & offYAxis are true.
+//bool offScreen = false;                        // To tell if we're off-screen, if offXAxis & offYAxis are true. Part of LightgunButtons now.
 bool offXAxis = false;                           // Supercedes the inliner every trigger pull, we just check each axis individually.
 bool offYAxis = false;
 
@@ -604,16 +604,8 @@ static unsigned long irPosCount = 0;
 unsigned long lastPrintMillis = 0;
 
 #ifdef USE_TINYUSB
-
-// USB HID Report ID
-enum HID_RID_e{
-  HID_RID_KEYBOARD = 1,
-  HID_RID_MOUSE
-};
-
-// AbsMouse5 instance
-AbsMouse5_ AbsMouse5(HID_RID_MOUSE);
-
+// AbsMouse5 instance (this is hardcoded as the second definition, so weh)
+AbsMouse5_ AbsMouse5(2);
 #else
 // AbsMouse5 instance
 AbsMouse5_ AbsMouse5(1);
@@ -695,9 +687,8 @@ void setup() {
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
-    // Despite the name, this is initializing both USB devices,
-    // and passing desired USB polling rate
-    Keyboard.begin(2);
+    // Initializing the USB devices chunk.
+    TinyUSBDevices.begin(1);
 #endif
 
     Serial.begin(9600);      // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
@@ -1034,9 +1025,11 @@ void loop()
     // poll/update button states with 1ms interval so debounce mask is more effective
     buttons.Poll(1);
     buttons.Repeat();
+    #ifdef MAMEHOOKER
     while(Serial.available()) {                             // So we can process serial requests while in Pause Mode.
         SerialProcessing();
     }
+    #endif // MAMEHOOKER
 
     switch(gunMode) {
         case GunMode_Pause:
@@ -1260,12 +1253,16 @@ void ExecRunMode()
                 offYAxis = false;
             }
 
-            AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+            if(buttons.analogOutput) {
+                Gamepad16.move(conMoveXAxis, conMoveYAxis);
+            } else {
+                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+            }
 
             if(offXAxis || offYAxis) {
-                offScreen = true;
+                buttons.offScreen = true;
             } else {
-                offScreen = false;
+                buttons.offScreen = false;
             }
         }
 
@@ -1547,13 +1544,17 @@ void UpdateLastSeen()
 
 void TriggerFire()                                               // If we pressed the trigger,
 {
-    if(!offScreen &&                                            // Check if the X or Y axis is in the screen's boundaries, i.e. not "off screen".
-    !offscreenBShot) {                                          // And only as long as we haven't fired an off-screen shot,
+    if(!buttons.offScreen &&                                     // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+    !offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
         if(!buttonPressed) {
-            AbsMouse5.press(MOUSE_LEFT);                        // We're handling the trigger button press ourselves for a reason.
-            buttonPressed = true;                               // Set this so we won't spam a repeat press event again.
+            if(buttons.analogOutput) {
+                Gamepad16.press(0);                              // No reason to handle this ourselves here, but eh.
+            } else {
+                AbsMouse5.press(MOUSE_LEFT);                     // We're handling the trigger button press ourselves for a reason.
+            }
+            buttonPressed = true;                                // Set this so we won't spam a repeat press event again.
         }
-        if(!bitRead(buttons.debounced, 3) &&                    // Is the trigger being pulled WITHOUT pressing Start & Select?
+        if(!bitRead(buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
         !bitRead(buttons.debounced, 4)) {
             #ifdef USES_SOLENOID
                 if(solenoidActive) {                             // (Only activate when the solenoid switch is on!)
@@ -1627,7 +1628,11 @@ void TriggerFire()                                               // If we presse
                     offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
                     buttonPressed = true;                      // Mark so we're not spamming these press events.
                 } else {  // Or if we're not in offscreen button mode,
-                    AbsMouse5.press(MOUSE_LEFT);               // Press the left one.
+                    if(buttons.analogOutput) {
+                        Gamepad16.press(0);
+                    } else {
+                        AbsMouse5.press(MOUSE_LEFT);           // Press the left one.
+                    }
                     buttonPressed = true;                      // Mark so we're not spamming these press events.
                 }
             }
@@ -1670,7 +1675,11 @@ void TriggerNotFire()                                        // ...Or we just di
             offscreenBShot = false;
             buttonPressed = false;
         } else {                                            // Or if not,
-            AbsMouse5.release(MOUSE_LEFT);                  // We were pressing the left mouse, so release that instead.
+            if(buttons.analogOutput) {
+                Gamepad16.release(0);
+            } else {
+                AbsMouse5.release(MOUSE_LEFT);                  // We were pressing the left mouse, so release that instead.
+            }
             buttonPressed = false;
         }
     }
@@ -1793,8 +1802,17 @@ void SerialProcessing()                                         // Reading the i
             Serial.println("Received end serial pulse, releasing FF override.");
     } else if(serialInput == 'X') {                               // owo SPECIAL SETUP EH?
         serialInput = Serial.read();
+        // Toggle Gamepad Output Mode
+        if(serialInput == 'A') {
+            buttons.analogOutput = !buttons.analogOutput;
+            if(buttons.analogOutput) {
+                Serial.println("Switched to Analog Output mode!");
+            } else {
+                Gamepad16.releaseAll();
+                Serial.println("Switched to Mouse Output mode!");
+            }
         // Toggle Processing/Run Mode
-        if(serialInput == 'T') {
+        } else if(serialInput == 'T') {
             if(gunMode != GunMode_Run) {
                 Serial.println("Exiting back to normal run mode...");
                 SetMode(GunMode_Run);
@@ -2176,7 +2194,7 @@ void SerialHandling()                                              // Where we l
 void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
-    offscreenButtonSerial && offScreen) {            // and are pointing the gun off screen WITH the offScreen button mode set?
+    offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?
         AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
@@ -2204,24 +2222,40 @@ void ButtonsPush()
 {
     // TinyUSB Devices' handling should be slightly more stable than the old Keyboard library across the board,
     // so we only handle Start and Select differently to not conflict with the Pause Mode button combo.
- 
+
     if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 0)) {
-            Keyboard.press(PLAYER_STARTBTN);
+            if(buttons.analogOutput) {
+                Gamepad16.press(5);
+            } else {
+                Keyboard.press(playerStartBtn);
+            }
             bitWrite(buttonsHeld, 0, 1);
         }
     } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
-        Keyboard.release(PLAYER_STARTBTN);
+        if(buttons.analogOutput) {
+            Gamepad16.release(5);
+        } else {
+            Keyboard.release(playerStartBtn);
+        }
         bitWrite(buttonsHeld, 0, 0);
     }
 
     if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
         if(!bitRead(buttonsHeld, 1)) {
-            Keyboard.press(PLAYER_SELECTBTN);
+            if(buttons.analogOutput) {
+                Gamepad16.press(6);
+            } else {
+                Keyboard.press(playerSelectBtn);
+            }
             bitWrite(buttonsHeld, 1, 1);
         }
     } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
-        Keyboard.release(PLAYER_SELECTBTN);
+        if(buttons.analogOutput) {
+            Gamepad16.release(6);
+        } else {
+            Keyboard.release(playerSelectBtn);
+        }
         bitWrite(buttonsHeld, 1, 0);
     }
 }
