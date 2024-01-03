@@ -13,26 +13,38 @@
 
 #include "TinyUSB_Devices.h"
 
-// USB HID Report ID
+/*****************************
+ *   GLOBAL SECTION
+ *****************************/
+Adafruit_USBD_HID usbHid;
+
 enum HID_RID_e{
-  HID_RID_KEYBOARD = 1,
-  HID_RID_MOUSE
+    HID_RID_KEYBOARD = 1,
+    HID_RID_MOUSE,
+    HID_RID_GAMEPAD
+};
+byte KeyboardReportID = HID_RID_KEYBOARD;
+
+uint8_t desc_hid_report[] = {
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
+    TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE)),
+    TUD_HID_REPORT_DESC_GAMEPAD16(HID_REPORT_ID(HID_RID_GAMEPAD))
 };
 
-// HID report descriptor using TinyUSB's template
-uint8_t const desc_hid_report[] = {
-  TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
-  TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE))
-};
-
-int __USBGetKeyboardReportID()
-{
-    return HID_RID_KEYBOARD;
+TinyUSBDevices_::TinyUSBDevices_(void) {
 }
+
+void TinyUSBDevices_::begin(byte polRate) {
+    usbHid.setPollInterval(polRate);
+    usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
+    usbHid.begin();
+}
+
+TinyUSBDevices_ TinyUSBDevices;
   
 /*****************************
  *   MOUSE SECTION
- *****************************/ 
+ *****************************/
 
 #if defined(_USING_HID)
 static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
@@ -135,22 +147,7 @@ void AbsMouse5_::release(uint8_t button)
  *   KEYBOARD SECTION
  *****************************/ 
 
-Adafruit_USBD_HID usbHid;
-
   Keyboard_::Keyboard_(void) {
-  }
-  
-  void Keyboard_::begin(byte polRate)
-  {
-    usbHid.setPollInterval(polRate);
-    usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
-    //usb_hid.setStringDescriptor("TinyUSB HID Composite");
-
-    usbHid.begin();
-  }
-  
-  void Keyboard_::end(void)
-  {
   }
   
   void Keyboard_::sendReport(KeyReport* keys)
@@ -159,8 +156,7 @@ Adafruit_USBD_HID usbHid;
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
-    usbHid.keyboardReport(__USBGetKeyboardReportID(),keys->modifiers,keys->keys);
-    delay(2);
+    usbHid.keyboardReport(KeyboardReportID,keys->modifiers,keys->keys);
   }
   
   #define SHIFT 0x80
@@ -409,3 +405,45 @@ Adafruit_USBD_HID usbHid;
     return n;
   }
   Keyboard_ Keyboard;//create an instance of the Keyboard object
+
+/*****************************
+ *   GAMEPAD SECTION
+ *****************************/
+  Gamepad16_::Gamepad16_(void) {
+  }
+
+  void Gamepad16_::move(uint16_t origX, uint16_t origY) {
+    // add shit ass
+    // yes I hardcoded the mousemaxx/y values, eat me
+    gamepad16Report.X = map(origX, 0, 4095, 0, 65535);
+    gamepad16Report.Y = map(origY, 0, 3071, 0, 65535);
+    report();
+  }
+
+  void Gamepad16_::press(uint8_t buttonNum) {
+    bitWrite(gamepad16Report.buttons, buttonNum, 1);
+    report();
+  }
+
+  void Gamepad16_::release(uint8_t buttonNum) {
+    bitWrite(gamepad16Report.buttons, buttonNum, 0);
+    report();
+  }
+
+  void Gamepad16_::report() {
+    if ( USBDevice.suspended() )  {
+      USBDevice.remoteWakeup();
+    }
+    while(!usbHid.ready()) delay(1);
+    tud_hid_report(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
+  }
+
+  void Gamepad16_::releaseAll() {
+    gamepad16Report.buttons = 0;
+    gamepad16Report.X = 32767;
+    gamepad16Report.Y = 32767;
+    report();
+  }
+
+
+  Gamepad16_ Gamepad16;

@@ -44,6 +44,17 @@
 #include <Arduino.h>
 
 /*****************************
+ *   GLOBAL SECTION
+ *****************************/
+
+class TinyUSBDevices_ {
+public:
+  TinyUSBDevices_(void);
+  void begin(byte polRate);
+};
+extern TinyUSBDevices_ TinyUSBDevices;
+
+/*****************************
  *   MOUSE SECTION
  *****************************/ 
 #ifndef _ABSMOUSE5_H_
@@ -88,6 +99,31 @@
 	0x81, 0x02, \
 	0xC0, \
 	0xC0
+
+#define TUD_HID_REPORT_DESC_GAMEPAD16(...) \
+          0x05, 0x01, \
+			0x09, 0x05, \
+			0xa1, 0x01, \
+              0xa1, 0x00, \
+              0x85, 0x03, \
+              0x05, 0x09, \
+              0x19, 0x01, \
+              0x29, 0x08, \
+              0x15, 0x00, \
+              0x25, 0x01, \
+              0x75, 0x01, \
+              0x95, 0x10, \
+              0x81, 0x02, \
+			0x05, 0x01, \
+              0x09, 0x30, \
+              0x09, 0x31, \
+              0x15, 0x00, \
+              0x27, 0xFF, 0xFF, 0x00, 0x00, \
+              0x75, 0x10, \
+              0x95, 0x02, \
+              0x81, 0x02, \
+              0xc0,       \
+			0xc0
 #endif // USE_TINYUSB
 
 // 5 button absolute mouse
@@ -191,8 +227,6 @@ extern AbsMouse5_ AbsMouse5;
     void sendReport(KeyReport* keys);
   public:
     Keyboard_(void);
-    void begin(byte polRate);
-    void end(void);
     size_t write(uint8_t k);
     size_t write(const uint8_t *buffer, size_t size);
     size_t press(uint8_t k);
@@ -200,3 +234,26 @@ extern AbsMouse5_ AbsMouse5;
     void releaseAll(void);
   };
 extern Keyboard_ Keyboard;
+
+/*****************************
+ *   GAMEPAD SECTION
+ *****************************/
+
+typedef struct {
+        uint16_t buttons;     // button bitmask
+		uint16_t X = 32767;
+        uint16_t Y = 32767;
+} gamepad16Report_s;
+
+class Gamepad16_ {
+private:
+  gamepad16Report_s gamepad16Report;
+public:
+  Gamepad16_(void);
+  void move(uint16_t origX, uint16_t origY);
+  void press(uint8_t buttonNum);
+  void release(uint8_t buttonNum);
+  void report(void);
+  void releaseAll(void);
+};
+extern Gamepad16_ Gamepad16;
