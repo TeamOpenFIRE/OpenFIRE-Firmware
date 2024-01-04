@@ -3224,7 +3224,7 @@ void UpdateBindings()
 {
     LightgunButtons::Desc_t ButtonDescReplacement[] = {
         {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
-        {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+        {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
         {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
         {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
         {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
