@@ -1857,7 +1857,19 @@ void SerialProcessing()                                         // Reading the i
         // Save current profile
         } else if(serialInput == 'S') {
             Serial.println("Saving preferences...");
+            // We actually need to flick to Pause Mode to save configs.
+            bool wasPaused;
+            if(gunMode != GunMode_Pause) {
+                wasPaused = false;
+                SetMode(GunMode_Pause);
+            } else {
+                wasPaused = true;
+            }
+            SetMode(GunMode_Pause);
             SavePreferences();
+            if(!wasPaused) {
+                SetMode(GunMode_Run);
+            }
         // Remap player numbers
         } else if(serialInput == 'R') {
             serialInput = Serial.read();
