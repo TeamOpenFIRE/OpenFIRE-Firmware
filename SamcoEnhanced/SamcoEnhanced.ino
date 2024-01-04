@@ -454,6 +454,8 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 
 unsigned int lastSeen = 0;
 
+bool justBooted = true;                              // For ops we need to do on initial boot (just joystick centering atm)
+
 #ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
 int badMoveTick = 0;
@@ -1143,6 +1145,12 @@ void ExecRunMode()
 #endif
     moveIndex = 0;
     buttons.ReportEnable();
+    if(justBooted) {
+        // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
+        delay(54);  // The absolute minimum it seems that we have to wait to center the analog stick.
+        Gamepad16.move(MouseMaxX / 2, MouseMaxY / 2);
+        justBooted = false;
+    }
     for(;;) {
         // If we're on RP2040, we offload the button polling to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
