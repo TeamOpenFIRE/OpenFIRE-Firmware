@@ -1632,14 +1632,18 @@ void TriggerFire()                                               // If we presse
             #endif
             if(!buttonPressed) {  // If we haven't pressed a trigger key yet,
                 if(!triggerHeld && offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
-                    AbsMouse5.press(MOUSE_RIGHT);              // Press the right mouse button
+                    if(buttons.analogOutput) {
+                        Gamepad16.press(1);
+                    } else {
+                        AbsMouse5.press(MOUSE_RIGHT);
+                    }
                     offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
                     buttonPressed = true;                      // Mark so we're not spamming these press events.
                 } else {  // Or if we're not in offscreen button mode,
                     if(buttons.analogOutput) {
                         Gamepad16.press(0);
                     } else {
-                        AbsMouse5.press(MOUSE_LEFT);           // Press the left one.
+                        AbsMouse5.press(MOUSE_LEFT);
                     }
                     buttonPressed = true;                      // Mark so we're not spamming these press events.
                 }
@@ -1674,19 +1678,23 @@ void TriggerFire()                                               // If we presse
     triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
 }
 
-void TriggerNotFire()                                        // ...Or we just didn't press the trigger this cycle.   
+void TriggerNotFire()                                       // ...Or we just didn't press the trigger this cycle.   
 {
     triggerHeld = false;                                    // Disable the holding function
     if(buttonPressed) {
         if(offscreenBShot) {                                // If we fired off screen with the offscreenButton set,
-            AbsMouse5.release(MOUSE_RIGHT);                 // We were pressing the right mouse, so release that.
+            if(buttons.analogOutput) {
+                Gamepad16.release(1);
+            } else {
+                AbsMouse5.release(MOUSE_RIGHT);             // We were pressing the right mouse, so release that.
+            }
             offscreenBShot = false;
             buttonPressed = false;
         } else {                                            // Or if not,
             if(buttons.analogOutput) {
                 Gamepad16.release(0);
             } else {
-                AbsMouse5.release(MOUSE_LEFT);                  // We were pressing the left mouse, so release that instead.
+                AbsMouse5.release(MOUSE_LEFT);              // We were pressing the left mouse, so release that instead.
             }
             buttonPressed = false;
         }
