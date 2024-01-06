@@ -1850,6 +1850,7 @@ void SerialProcessing()                                         // Reading the i
                 SetMode(GunMode_Run);
             } else {
                 Serial.println("Entering pause mode...");
+                buttons.ReportDisable();
                 SetMode(GunMode_Pause);
             }
         // Enter Calibration mode (optional: switch to cal profile if detected)
