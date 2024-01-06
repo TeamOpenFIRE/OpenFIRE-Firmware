@@ -163,7 +163,7 @@ byte autofireWaitFactor = 3;                          // This is the default tim
 // Menu options:
 bool simpleMenu = false;                              // Flag that determines if Pause Mode will be a simple scrolling menu; else, relies on hotkeys.
 bool holdToPause = false;                             // Flag that determines if Pause Mode is invoked by a button combo hold (EnterPauseModeHoldBtnMask) when pointing offscreen; else, relies on EnterPauseModeBtnMask hotkey.
-unsigned int pauseHoldLength = 10000;                 // How long the combo should be held for, in ms.
+unsigned int pauseHoldLength = 4000;                  // How long the combo should be held for, in ms.
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 // Sanity checks and assignments for player number -> common keyboard assignments
@@ -276,6 +276,9 @@ uint32_t EnterPauseModeProcessingBtnMask = BtnMask_A | BtnMask_B | BtnMask_Reloa
 
 // button combo to exit pause mode back to run mode
 uint32_t ExitPauseModeBtnMask = BtnMask_Reload;
+
+// press and hold any button to exit simple pause menu (this is not a button combo)
+uint32_t ExitPauseModeHoldBtnMask = BtnMask_A | BtnMask_B;
 
 // press any button to cancel the calibration (this is not a button combo)
 uint32_t CancelCalBtnMask = BtnMask_Reload | BtnMask_Start | BtnMask_Select;
@@ -518,7 +521,7 @@ enum PauseModeSelection_e {
     #endif // USES_SWITCHES
     PauseMode_BurstFireToggle,
     #endif // USES_SOLENOID
-    PauseMode_Exit
+    PauseMode_EscapeSignal
 };
 // Selector for which option in the simple pause menu you're scrolled on.
 byte pauseModeSelection = 0;
@@ -530,6 +533,7 @@ bool pauseModeSelectingProfile = false;
 // Timestamp of when we started holding a buttons combo.
 unsigned long pauseHoldStartstamp;
 bool pauseHoldStarted = false;
+bool pauseExitHoldStarted = false;
 
 // run mode
 RunMode_e runMode = RunMode_Normal;
@@ -1052,9 +1056,6 @@ void loop1()
                         rumbleHappening = false;
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
-                    Keyboard.releaseAll();
-                    AbsMouse5.release(MOUSE_LEFT);
-                    AbsMouse5.release(MOUSE_RIGHT);
                     offscreenBShot = false;
                     buttonPressed = false;
                     triggerHeld = false;
@@ -1062,7 +1063,6 @@ void loop1()
                     burstFireCount = 0;
                     SetMode(GunMode_Pause);
                     buttons.ReportDisable();
-                    return;
                 }
             }
         } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
@@ -1111,12 +1111,13 @@ void loop()
             digitalWrite(rumblePin, LOW);
         #endif // USES_RUMBLE
         while(buttons.debounced != 0) {
-            Serial.println("Release the buttons, pls.");
+            // Should release the buttons to continue, pls.
             buttons.Poll(1);
             buttons.Repeat();
         }
         pauseHoldStarted = false;
         pauseModeSelection = PauseMode_Calibrate;
+        pauseModeSelectingProfile = false;
     }
 
     switch(gunMode) {
@@ -1139,9 +1140,6 @@ void loop()
                         Serial.println("Exiting profile selection.");
                         pauseModeSelectingProfile = false;
                         pauseModeSelection = PauseMode_Calibrate;
-                        #ifdef LED_ENABLE
-                            SetLedPackedColor(profileDesc[selectedProfile].color);
-                        #endif // LED_ENABLE
                     }
                 } else if(buttons.pressedReleased == BtnMask_A) {
                     SetPauseModeSelection(false);
@@ -1159,6 +1157,10 @@ void loop()
                           Serial.print("Current profile in use: ");
                           Serial.println(profileDesc[selectedProfile].profileLabel);
                           pauseModeSelectingProfile = true;
+                          profileModeSelection = selectedProfile;
+                          #ifdef LED_ENABLE
+                              SetLedPackedColor(profileDesc[profileModeSelection].color);
+                          #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
                           Serial.println("Saving...");
@@ -1184,7 +1186,10 @@ void loop()
                           BurstFireToggle();
                           break;
                         #endif // USES_SOLENOID
-                        case PauseMode_Exit:
+                        case PauseMode_EscapeSignal:
+                          SendEscapeKey();
+                          break;
+                        /*case PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
                           if(runMode == RunMode_Processing) {
                               switch(profileData[selectedProfile].runMode) {
@@ -1203,6 +1208,7 @@ void loop()
                           }
                           SetMode(GunMode_Run);
                           break;
+                        */
                         default:
                           Serial.println("Oops, somethnig went wrong.");
                           break;
@@ -1210,6 +1216,48 @@ void loop()
                 } else if(buttons.pressedReleased == BtnMask_Reload) {
                     Serial.println("Exiting pause mode...");
                     SetMode(GunMode_Run);
+                }
+                if(pauseExitHoldStarted &&
+                (buttons.debounced & ExitPauseModeHoldBtnMask)) {
+                    unsigned long t = millis();
+                    if(t - pauseHoldStartstamp > (pauseHoldLength / 2)) {
+                        Serial.println("Exiting pause mode via hold...");
+                        if(runMode == RunMode_Processing) {
+                            switch(profileData[selectedProfile].runMode) {
+                                case RunMode_Normal:
+                                  SetRunMode(RunMode_Normal);
+                                  break;
+                                case RunMode_Average:
+                                  SetRunMode(RunMode_Average);
+                                  break;
+                                case RunMode_Average2:
+                                  SetRunMode(RunMode_Average2);
+                                  break;
+                                default:
+                                  break;
+                            }
+                        }
+                        SetMode(GunMode_Run);
+                        #ifdef USES_RUMBLE
+                            for(byte i = 0; i < 3; i++) {
+                                analogWrite(rumblePin, rumbleIntensity);
+                                delay(80);
+                                digitalWrite(rumblePin, LOW);
+                                delay(50);
+                            }
+                        #endif // USES_RUMBLE
+                        while(buttons.debounced != 0) {
+                            //lol
+                            buttons.Poll(1);
+                            buttons.Repeat();
+                        }
+                        pauseExitHoldStarted = false;
+                    }
+                } else if(buttons.debounced & ExitPauseModeHoldBtnMask) {
+                    pauseExitHoldStarted = true;
+                    pauseHoldStartstamp = millis();
+                } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask) {
+                    pauseExitHoldStarted = false;
                 }
             } else if(buttons.pressedReleased == ExitPauseModeBtnMask) {
                 SetMode(GunMode_Run);
@@ -1323,7 +1371,7 @@ void ExecRunMode()
     buttons.ReportEnable();
     if(justBooted) {
         // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
-        delay(54);  // The absolute minimum it seems that we have to wait to center the analog stick.
+        delay(100);  // Exact time needed to wait seems to vary, so make a safe assumption here.
         Gamepad16.move(MouseMaxX / 2, MouseMaxY / 2);
         justBooted = false;
     }
@@ -1458,15 +1506,8 @@ void ExecRunMode()
         }
 
         if(holdToPause) {
-            if((buttons.debounced == EnterPauseModeHoldBtnMask)
-            && buttons.offScreen && !pauseHoldStarted) {
-                pauseHoldStarted = true;
-                pauseHoldStartstamp = millis();
-                Serial.println("Started holding pause mode signal buttons!");
-            } else if(buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen) {
-                pauseHoldStarted = false;
-                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
-            } else if(pauseHoldStarted) {
+            if(pauseHoldStarted &&
+            (buttons.debounced == EnterPauseModeHoldBtnMask) && buttons.offScreen) {
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
@@ -1480,6 +1521,7 @@ void ExecRunMode()
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
                     Keyboard.releaseAll();
+                    delay(1);
                     AbsMouse5.release(MOUSE_LEFT);
                     AbsMouse5.release(MOUSE_RIGHT);
                     offscreenBShot = false;
@@ -1491,6 +1533,13 @@ void ExecRunMode()
                     buttons.ReportDisable();
                     return;
                 }
+            } else if((buttons.debounced == EnterPauseModeHoldBtnMask) && buttons.offScreen) {
+                pauseHoldStarted = true;
+                pauseHoldStartstamp = millis();
+                Serial.println("Started holding pause mode signal buttons!");
+            } else if(buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen) {
+                pauseHoldStarted = false;
+                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
             }
         } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             // MAKE SURE EVERYTHING IS DISENGAGED:
@@ -1504,6 +1553,7 @@ void ExecRunMode()
                 rumbleHappened = false;
             #endif // USES_RUMBLE
             Keyboard.releaseAll();
+            delay(1);
             AbsMouse5.release(MOUSE_LEFT);
             AbsMouse5.release(MOUSE_RIGHT);
             offscreenBShot = false;
@@ -1518,6 +1568,7 @@ void ExecRunMode()
         #else                                                       // if we're using dual cores,
         if(gunMode != GunMode_Run) {                                // We just check if the gunmode has been changed by the other thread.
             Keyboard.releaseAll();
+            delay(1);
             AbsMouse5.release(MOUSE_LEFT);
             AbsMouse5.release(MOUSE_RIGHT);
             return;
@@ -2625,14 +2676,14 @@ void SetRunMode(RunMode_e newMode)
 void SetPauseModeSelection(bool isIncrement)
 {
     if(isIncrement) {
-        if(pauseModeSelection == PauseMode_Exit) {
+        if(pauseModeSelection == PauseMode_EscapeSignal) {
             pauseModeSelection = PauseMode_Calibrate;
         } else {
             pauseModeSelection++;
         }
     } else {
         if(pauseModeSelection == PauseMode_Calibrate) {
-            pauseModeSelection = PauseMode_Exit;
+            pauseModeSelection = PauseMode_EscapeSignal;
         } else {
             pauseModeSelection--;
         }
@@ -2664,9 +2715,13 @@ void SetPauseModeSelection(bool isIncrement)
           Serial.println("Selecting: Toggle burst-firing mode");
           break;
         #endif // USES_SOLENOID
-        case PauseMode_Exit:
+        case PauseMode_EscapeSignal:
+          Serial.println("Selecting: Send Escape key signal");
+          break;
+        /*case PauseMode_Exit:
           Serial.println("Selecting: Exit pause mode");
           break;
+        */
         default:
           Serial.println("YOU'RE NOT SUPPOSED TO BE SEEING THIS");
           break;
