@@ -160,6 +160,11 @@ byte autofireWaitFactor = 3;                          // This is the default tim
     const unsigned int solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
 
+// Menu options:
+bool simpleMenu = false;                              // Flag that determines if Pause Mode will be a simple scrolling menu; else, relies on hotkeys.
+bool holdToPause = false;                             // Flag that determines if Pause Mode is invoked by a button combo hold (EnterPauseModeHoldBtnMask) when pointing offscreen; else, relies on EnterPauseModeBtnMask hotkey.
+unsigned int pauseHoldLength = 10000;                 // How long the combo should be held for, in ms.
+
 //--------------------------------------------------------------------------------------------------------------------------------------
 // Sanity checks and assignments for player number -> common keyboard assignments
 #if PLAYER_NUMBER == 1
@@ -258,56 +263,59 @@ typedef struct PauseModeFnEntry_s {
 */
 
 // button combo to send an escape keypress
-constexpr uint32_t EscapeKeyBtnMask = BtnMask_Reload | BtnMask_Start;
+uint32_t EscapeKeyBtnMask = BtnMask_Reload | BtnMask_Start;
 
 // button combo to enter pause mode
-constexpr uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
+uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
+
+// button combo to enter pause mode (holding ver)
+uint32_t EnterPauseModeHoldBtnMask = BtnMask_Trigger | BtnMask_A;
 
 // press any button to enter pause mode from Processing mode (this is not a button combo)
-constexpr uint32_t EnterPauseModeProcessingBtnMask = BtnMask_A | BtnMask_B | BtnMask_Reload;
+uint32_t EnterPauseModeProcessingBtnMask = BtnMask_A | BtnMask_B | BtnMask_Reload;
 
 // button combo to exit pause mode back to run mode
-constexpr uint32_t ExitPauseModeBtnMask = BtnMask_Reload;
+uint32_t ExitPauseModeBtnMask = BtnMask_Reload;
 
 // press any button to cancel the calibration (this is not a button combo)
-constexpr uint32_t CancelCalBtnMask = BtnMask_Reload | BtnMask_Start | BtnMask_Select;
+uint32_t CancelCalBtnMask = BtnMask_Reload | BtnMask_Start | BtnMask_Select;
 
 // button combo to skip the center calibration step
-constexpr uint32_t SkipCalCenterBtnMask = BtnMask_A;
+uint32_t SkipCalCenterBtnMask = BtnMask_A;
 
 // button combo to save preferences to non-volatile memory
-constexpr uint32_t SaveBtnMask = BtnMask_Start | BtnMask_Select;
+uint32_t SaveBtnMask = BtnMask_Start | BtnMask_Select;
 
 // button combo to increase IR sensitivity
-constexpr uint32_t IRSensitivityUpBtnMask = BtnMask_B | BtnMask_Up;
+uint32_t IRSensitivityUpBtnMask = BtnMask_B | BtnMask_Up;
 
 // button combo to decrease IR sensitivity
-constexpr uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
+uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
 
 // button combinations to select a run mode
-constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
-constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
-constexpr uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
+uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
+uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
+uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
 
 // button combination to toggle offscreen button mode in software:
-constexpr uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
+uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
 
 // button combination to toggle offscreen button mode in software:
-constexpr uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
+uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
 
 #ifndef USES_SWITCHES
 // button combination to toggle rumble in software:
-constexpr uint32_t RumbleToggleBtnMask = BtnMask_Left;
+uint32_t RumbleToggleBtnMask = BtnMask_Left;
 
 // button combination to toggle solenoid in software:
-constexpr uint32_t SolenoidToggleBtnMask = BtnMask_Right;
+uint32_t SolenoidToggleBtnMask = BtnMask_Right;
 #endif
 
 // colour when no IR points are seen
-constexpr uint32_t IRSeen0Color = WikiColor::Amber;
+uint32_t IRSeen0Color = WikiColor::Amber;
 
 // colour when calibrating
-constexpr uint32_t CalModeColor = WikiColor::Red;
+uint32_t CalModeColor = WikiColor::Red;
 
 // number of profiles
 constexpr byte ProfileCount = 4;
@@ -494,6 +502,34 @@ enum GunMode_e {
     GunMode_Pause = 4
 };
 GunMode_e gunMode = GunMode_Init;   // initial mode
+
+enum PauseModeSelection_e {
+    PauseMode_Calibrate = 0,
+    PauseMode_ProfileSelect,
+    PauseMode_Save,
+    #ifndef USES_SWITCHES
+    #ifdef USES_RUMBLE
+    PauseMode_RumbleToggle,
+    #endif // USES_RUMBLE
+    #endif // USES_SWITCHES
+    #ifdef USES_SOLENOID
+    #ifndef USES_SWITCHES
+    PauseMode_SolenoidToggle,
+    #endif // USES_SWITCHES
+    PauseMode_BurstFireToggle,
+    #endif // USES_SOLENOID
+    PauseMode_Exit
+};
+// Selector for which option in the simple pause menu you're scrolled on.
+byte pauseModeSelection = 0;
+// Selector for which profile in the profile selector of the simple pause menu you're picking.
+byte profileModeSelection;
+// Flag to tell if we're in the profile selector submenu of the simple pause menu.
+bool pauseModeSelectingProfile = false;
+
+// Timestamp of when we started holding a buttons combo.
+unsigned long pauseHoldStartstamp;
+bool pauseHoldStarted = false;
 
 // run mode
 RunMode_e runMode = RunMode_Normal;
@@ -994,7 +1030,42 @@ void loop1()
             SendEscapeKey();
         }
 
-        if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+        if(holdToPause) {
+            if((buttons.debounced == EnterPauseModeHoldBtnMask)
+            && buttons.offScreen && !pauseHoldStarted) {
+                pauseHoldStarted = true;
+                pauseHoldStartstamp = millis();
+                Serial.println("Started holding pause mode signal buttons!");
+            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen)) {
+                pauseHoldStarted = false;
+                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+            } else if(pauseHoldStarted) {
+                unsigned long t = millis();
+                if(t - pauseHoldStartstamp > pauseHoldLength) {
+                    // MAKE SURE EVERYTHING IS DISENGAGED:
+                    #ifdef USES_SOLENOID
+                        digitalWrite(solenoidPin, LOW);
+                        solenoidFirstShot = false;
+                    #endif // USES_SOLENOID
+                    #ifdef USES_RUMBLE
+                        digitalWrite(rumblePin, LOW);
+                        rumbleHappening = false;
+                        rumbleHappened = false;
+                    #endif // USES_RUMBLE
+                    Keyboard.releaseAll();
+                    AbsMouse5.release(MOUSE_LEFT);
+                    AbsMouse5.release(MOUSE_RIGHT);
+                    offscreenBShot = false;
+                    buttonPressed = false;
+                    triggerHeld = false;
+                    burstFiring = false;
+                    burstFireCount = 0;
+                    SetMode(GunMode_Pause);
+                    buttons.ReportDisable();
+                    return;
+                }
+            }
+        } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             // MAKE SURE EVERYTHING IS DISENGAGED:
             #ifdef USES_SOLENOID
                 digitalWrite(solenoidPin, LOW);
@@ -1033,9 +1104,99 @@ void loop()
     }
     #endif // MAMEHOOKER
 
+    if(holdToPause && pauseHoldStarted) {
+        #ifdef USES_RUMBLE
+            analogWrite(rumblePin, rumbleIntensity);
+            delay(300);
+            digitalWrite(rumblePin, LOW);
+        #endif // USES_RUMBLE
+        while(buttons.debounced != 0) {
+            Serial.println("Release the buttons, pls.");
+            buttons.Poll(1);
+            buttons.Repeat();
+        }
+        pauseHoldStarted = false;
+        pauseModeSelection = PauseMode_Calibrate;
+    }
+
     switch(gunMode) {
         case GunMode_Pause:
-            if(buttons.pressedReleased == ExitPauseModeBtnMask) {
+            if(simpleMenu) {
+                if(pauseModeSelectingProfile) {
+                    if(buttons.pressedReleased == BtnMask_A) {
+                        SetProfileSelection(false);
+                    } else if(buttons.pressedReleased == BtnMask_B) {
+                        SetProfileSelection(true);
+                    } else if(buttons.pressedReleased == BtnMask_Trigger) {
+                        SelectCalProfile(profileModeSelection);
+                        pauseModeSelectingProfile = false;
+                        pauseModeSelection = PauseMode_Calibrate;
+                        Serial.print("Switched to profile: ");
+                        Serial.println(profileDesc[selectedProfile].profileLabel);
+                        Serial.println("Going back to the main menu...");
+                        Serial.println("Selecting: Calibrate current profile");
+                    } else if(buttons.pressedReleased == BtnMask_Reload) {
+                        Serial.println("Exiting profile selection.");
+                        pauseModeSelectingProfile = false;
+                        pauseModeSelection = PauseMode_Calibrate;
+                        #ifdef LED_ENABLE
+                            SetLedPackedColor(profileDesc[selectedProfile].color);
+                        #endif // LED_ENABLE
+                    }
+                } else if(buttons.pressedReleased == BtnMask_A) {
+                    SetPauseModeSelection(false);
+                } else if(buttons.pressedReleased == BtnMask_B) {
+                    SetPauseModeSelection(true);
+                } else if(buttons.pressedReleased == BtnMask_Trigger) {
+                    switch(pauseModeSelection) {
+                        case PauseMode_Calibrate:
+                          SetMode(GunMode_CalCenter);
+                          Serial.print("Calibrating for current profile: ");
+                          Serial.println(profileDesc[selectedProfile].profileLabel);
+                          break;
+                        case PauseMode_ProfileSelect:
+                          Serial.println("Pick a profile!");
+                          Serial.print("Current profile in use: ");
+                          Serial.println(profileDesc[selectedProfile].profileLabel);
+                          pauseModeSelectingProfile = true;
+                          break;
+                        case PauseMode_Save:
+                          Serial.println("Saving...");
+                          SavePreferences();
+                          break;
+                        #ifndef USES_SWITCHES
+                        #ifdef USES_RUMBLE
+                        case PauseMode_RumbleToggle:
+                          Serial.println("Toggling rumble!");
+                          RumbleToggle();
+                          break;
+                        #endif // USES_RUMBLE
+                        #ifdef USES_SOLENOID
+                        case PauseMode_SolenoidToggle:
+                          Serial.println("Toggling solenoid!");
+                          SolenoidToggle();
+                          break;
+                        #endif // USES_SOLENOID
+                        #endif // USES_SWITCHES
+                        #ifdef USES_SOLENOID
+                        case PauseMode_BurstFireToggle:
+                          Serial.println("Toggling solenoid burst firing!");
+                          BurstFireToggle();
+                          break;
+                        #endif // USES_SOLENOID
+                        case PauseMode_Exit:
+                          Serial.println("Exiting pause mode...");
+                          SetMode(GunMode_Run);
+                          break;
+                        default:
+                          Serial.println("Oops, somethnig went wrong.");
+                          break;
+                    }
+                } else if(buttons.pressedReleased == BtnMask_Reload) {
+                    Serial.println("Exiting pause mode...");
+                    SetMode(GunMode_Run);
+                }
+            } else if(buttons.pressedReleased == ExitPauseModeBtnMask) {
                 SetMode(GunMode_Run);
             } else if(buttons.pressedReleased == BtnMask_Trigger) {
                 SetMode(GunMode_CalCenter);
@@ -1281,7 +1442,42 @@ void ExecRunMode()
             SendEscapeKey();
         }
 
-        if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+        if(holdToPause) {
+            if((buttons.debounced == EnterPauseModeHoldBtnMask)
+            && buttons.offScreen && !pauseHoldStarted) {
+                pauseHoldStarted = true;
+                pauseHoldStartstamp = millis();
+                Serial.println("Started holding pause mode signal buttons!");
+            } else if(buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen) {
+                pauseHoldStarted = false;
+                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+            } else if(pauseHoldStarted) {
+                unsigned long t = millis();
+                if(t - pauseHoldStartstamp > pauseHoldLength) {
+                    // MAKE SURE EVERYTHING IS DISENGAGED:
+                    #ifdef USES_SOLENOID
+                        digitalWrite(solenoidPin, LOW);
+                        solenoidFirstShot = false;
+                    #endif // USES_SOLENOID
+                    #ifdef USES_RUMBLE
+                        digitalWrite(rumblePin, LOW);
+                        rumbleHappening = false;
+                        rumbleHappened = false;
+                    #endif // USES_RUMBLE
+                    Keyboard.releaseAll();
+                    AbsMouse5.release(MOUSE_LEFT);
+                    AbsMouse5.release(MOUSE_RIGHT);
+                    offscreenBShot = false;
+                    buttonPressed = false;
+                    triggerHeld = false;
+                    burstFiring = false;
+                    burstFireCount = 0;
+                    SetMode(GunMode_Pause);
+                    buttons.ReportDisable();
+                    return;
+                }
+            }
+        } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             // MAKE SURE EVERYTHING IS DISENGAGED:
             #ifdef USES_SOLENOID
                 digitalWrite(solenoidPin, LOW);
@@ -2394,6 +2590,81 @@ void SetRunMode(RunMode_e newMode)
             PrintRunMode();
         }
     }
+}
+
+void SetPauseModeSelection(bool isIncrement)
+{
+    if(isIncrement) {
+        if(pauseModeSelection == PauseMode_Exit) {
+            pauseModeSelection = PauseMode_Calibrate;
+        } else {
+            pauseModeSelection++;
+        }
+    } else {
+        if(pauseModeSelection == PauseMode_Calibrate) {
+            pauseModeSelection = PauseMode_Exit;
+        } else {
+            pauseModeSelection--;
+        }
+    }
+    switch(pauseModeSelection) {
+        case PauseMode_Calibrate:
+          Serial.println("Selecting: Calibrate current profile");
+          break;
+        case PauseMode_ProfileSelect:
+          Serial.println("Selecting: Switch profile");
+          break;
+        case PauseMode_Save:
+          Serial.println("Selecting: Save Settings");
+          break;
+        #ifndef USES_SWITCHES
+        #ifdef USES_RUMBLE
+        case PauseMode_RumbleToggle:
+          Serial.println("Selecting: Toggle rumble On/Off");
+          break;
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+        case PauseMode_SolenoidToggle:
+          Serial.println("Selecting: Toggle solenoid On/Off");
+          break;
+        #endif // USES_SOLENOID
+        #endif // USES_SWITCHES
+        #ifdef USES_SOLENOID
+        case PauseMode_BurstFireToggle:
+          Serial.println("Selecting: Toggle burst-firing mode");
+          break;
+        #endif // USES_SOLENOID
+        case PauseMode_Exit:
+          Serial.println("Selecting: Exit pause mode");
+          break;
+        default:
+          Serial.println("YOU'RE NOT SUPPOSED TO BE SEEING THIS");
+          break;
+    }
+    return;
+}
+
+void SetProfileSelection(bool isIncrement)
+{
+    if(isIncrement) {
+        if(profileModeSelection >= ProfileCount - 1) {
+            profileModeSelection = 0;
+        } else {
+            profileModeSelection++;
+        }
+    } else {
+        if(profileModeSelection <= 0) {
+            profileModeSelection = ProfileCount - 1;
+        } else {
+            profileModeSelection--;
+        }
+    }
+    #ifdef LED_ENABLE
+        SetLedPackedColor(profileDesc[profileModeSelection].color);
+    #endif // LED_ENABLE
+    Serial.print("Selecting profile: ");
+    Serial.println(profileDesc[profileModeSelection].profileLabel);
+    return;
 }
 
 void PrintResults()
