@@ -1186,6 +1186,21 @@ void loop()
                         #endif // USES_SOLENOID
                         case PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
+                          if(runMode == RunMode_Processing) {
+                              switch(profileData[selectedProfile].runMode) {
+                                  case RunMode_Normal:
+                                    SetRunMode(RunMode_Normal);
+                                    break;
+                                  case RunMode_Average:
+                                    SetRunMode(RunMode_Average);
+                                    break;
+                                  case RunMode_Average2:
+                                    SetRunMode(RunMode_Average2);
+                                    break;
+                                  default:
+                                    break;
+                              }
+                          }
                           SetMode(GunMode_Run);
                           break;
                         default:
@@ -2032,12 +2047,27 @@ void SerialProcessing()                                         // Reading the i
             }
         // Toggle Processing/Run Mode
         } else if(serialInput == 'T') {
-            if(gunMode != GunMode_Run) {
-                Serial.println("Exiting back to normal run mode...");
+            if(runMode == RunMode_Processing) {
+                Serial.println("Exiting processing mode...");
+                switch(profileData[selectedProfile].runMode) {
+                    case RunMode_Normal:
+                      SetRunMode(RunMode_Normal);
+                      break;
+                    case RunMode_Average:
+                      SetRunMode(RunMode_Average);
+                      break;
+                    case RunMode_Average2:
+                      SetRunMode(RunMode_Average2);
+                      break;
+                    default:
+                      break;
+                }
                 SetMode(GunMode_Run);
             } else {
                 Serial.println("Entering Processing Sketch mode...");
                 SetRunMode(RunMode_Processing);
+                SetMode(GunMode_Run);
+                loop();
             }
         // Toggle Pause/Run Mode
         } else if(serialInput == 'P') {
