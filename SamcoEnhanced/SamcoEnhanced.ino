@@ -1037,11 +1037,11 @@ void loop1()
 
         if(holdToPause) {
             if((buttons.debounced == EnterPauseModeHoldBtnMask)
-            && buttons.offScreen && !pauseHoldStarted) {
+            && !lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 Serial.println("Started holding pause mode signal buttons!");
-            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen)) {
+            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || lastSeen)) {
                 pauseHoldStarted = false;
                 Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
             } else if(pauseHoldStarted) {
@@ -1517,8 +1517,15 @@ void ExecRunMode()
         }
 
         if(holdToPause) {
-            if(pauseHoldStarted &&
-            (buttons.debounced == EnterPauseModeHoldBtnMask) && buttons.offScreen) {
+            if((buttons.debounced == EnterPauseModeHoldBtnMask)
+            && !lastSeen && !pauseHoldStarted) {
+                pauseHoldStarted = true;
+                pauseHoldStartstamp = millis();
+                Serial.println("Started holding pause mode signal buttons!");
+            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || lastSeen)) {
+                pauseHoldStarted = false;
+                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+            } else if(pauseHoldStarted) {
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
@@ -1544,13 +1551,6 @@ void ExecRunMode()
                     buttons.ReportDisable();
                     return;
                 }
-            } else if((buttons.debounced == EnterPauseModeHoldBtnMask) && buttons.offScreen) {
-                pauseHoldStarted = true;
-                pauseHoldStartstamp = millis();
-                Serial.println("Started holding pause mode signal buttons!");
-            } else if(buttons.debounced != EnterPauseModeHoldBtnMask || !buttons.offScreen) {
-                pauseHoldStarted = false;
-                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
             }
         } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
             // MAKE SURE EVERYTHING IS DISENGAGED:
