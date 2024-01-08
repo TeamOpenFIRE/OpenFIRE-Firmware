@@ -2026,28 +2026,32 @@ void SerialProcessing()                                         // Reading the i
     switch(serialInput) {
         // Start Signal
         case 'S':
-          serialMode = true;                                         // Set it on, then!
-          Serial.println("Received serial start pulse, overriding force feedback!");
-          #ifdef USES_RUMBLE
-              digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
-              rumbleHappened = false;
-              rumbleHappening = false;
-          #endif // USES_RUMBLE
-          #ifdef USES_SOLENOID
-              digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
-              solenoidFirstShot = false;
-          #endif // USES_SOLENOID
-          triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
-          burstFiring = false;
-          burstFireCount = 0;
-          offscreenBShot = false;
-          #ifdef LED_ENABLE
-              leds[0].setRGB(127, 127, 127);
-              FastLED.show();
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(127, 127, 127);
-              #endif // FOURPIN_LED
-          #endif // LED_ENABLE
+          if(serialMode) {
+              Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
+          } else {
+              serialMode = true;                                         // Set it on, then!
+              Serial.println("Received serial start pulse, overriding force feedback!");
+              #ifdef USES_RUMBLE
+                  digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
+                  rumbleHappened = false;
+                  rumbleHappening = false;
+              #endif // USES_RUMBLE
+              #ifdef USES_SOLENOID
+                  digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
+                  solenoidFirstShot = false;
+              #endif // USES_SOLENOID
+              triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
+              burstFiring = false;
+              burstFireCount = 0;
+              offscreenBShot = false;
+              #ifdef LED_ENABLE
+                  leds[0].setRGB(127, 127, 127);
+                  FastLED.show();
+                  #ifdef FOURPIN_LED
+                      FourPinUpdate(127, 127, 127);
+                  #endif // FOURPIN_LED
+              #endif // LED_ENABLE
+          }
           break;
         case 'M':
           serialInput = Serial.read();                               // Read the second bit.
@@ -2063,40 +2067,44 @@ void SerialProcessing()                                         // Reading the i
           break;
         // End Signal
         case 'E':
-          serialMode = false;                                    // Turn off serial mode then.
-          offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-          serialQueue = 0b00000000;
-          #ifdef LED_ENABLE
-              serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
-              serialLEDPulses = 0;
-              serialLEDPulsesLast = 0;
-              serialLEDPulseRising = true;
-              serialLEDR = 0;                                    // Clear stale serial LED values.
-              serialLEDG = 0;
-              serialLEDB = 0;
-              serialLEDChange = false;
-              LedOff();                                          // Turn it off, and let lastSeen handle it from here.
-          #endif // LED_ENABLE
-          #ifdef USES_RUMBLE
-              digitalWrite(rumblePin, LOW);
-              serialRumbPulseStage = 0;
-              serialRumbPulses = 0;
-              serialRumbPulsesLast = 0;
-          #endif // USES_RUMBLE
-          #ifdef USES_SOLENOID
-              digitalWrite(solenoidPin, LOW);
-              serialSolPulseOn = false;
-              serialSolPulses = 0;
-              serialSolPulsesLast = 0;
-          #endif // USES_SOLENOID
-          AbsMouse5.release(MOUSE_LEFT);
-          AbsMouse5.release(MOUSE_RIGHT);
-          AbsMouse5.release(MOUSE_MIDDLE);
-          AbsMouse5.release(MOUSE_BUTTON4);
-          AbsMouse5.release(MOUSE_BUTTON5);
-          Keyboard.releaseAll();
-          delay(5);
-          Serial.println("Received end serial pulse, releasing FF override.");
+          if(!serialMode) {
+              Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
+          } else {
+              serialMode = false;                                    // Turn off serial mode then.
+              offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
+              serialQueue = 0b00000000;
+              #ifdef LED_ENABLE
+                  serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
+                  serialLEDPulses = 0;
+                  serialLEDPulsesLast = 0;
+                  serialLEDPulseRising = true;
+                  serialLEDR = 0;                                    // Clear stale serial LED values.
+                  serialLEDG = 0;
+                  serialLEDB = 0;
+                  serialLEDChange = false;
+                  LedOff();                                          // Turn it off, and let lastSeen handle it from here.
+              #endif // LED_ENABLE
+              #ifdef USES_RUMBLE
+                  digitalWrite(rumblePin, LOW);
+                  serialRumbPulseStage = 0;
+                  serialRumbPulses = 0;
+                  serialRumbPulsesLast = 0;
+              #endif // USES_RUMBLE
+              #ifdef USES_SOLENOID
+                  digitalWrite(solenoidPin, LOW);
+                  serialSolPulseOn = false;
+                  serialSolPulses = 0;
+                  serialSolPulsesLast = 0;
+              #endif // USES_SOLENOID
+              AbsMouse5.release(MOUSE_LEFT);
+              AbsMouse5.release(MOUSE_RIGHT);
+              AbsMouse5.release(MOUSE_MIDDLE);
+              AbsMouse5.release(MOUSE_BUTTON4);
+              AbsMouse5.release(MOUSE_BUTTON5);
+              Keyboard.releaseAll();
+              delay(5);
+              Serial.println("Received end serial pulse, releasing FF override.");
+          }
           break;
         // owo SPECIAL SETUP EH?
         case 'X':
