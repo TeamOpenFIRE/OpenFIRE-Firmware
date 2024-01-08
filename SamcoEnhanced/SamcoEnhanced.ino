@@ -2023,345 +2023,389 @@ void SerialProcessing()                                         // Reading the i
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
     char serialInputS[3] = {0, 0, 0};
 
-    if(serialInput == 'S') {                 // Does the command start with an S? (Start)
-        serialMode = true;                                         // Set it on, then!
-        Serial.println("Received serial start pulse, overriding force feedback!");
-        #ifdef USES_RUMBLE
-            digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
-            rumbleHappened = false;
-            rumbleHappening = false;
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-            digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
-            solenoidFirstShot = false;
-        #endif // USES_SOLENOID
-        triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
-        burstFiring = false;
-        burstFireCount = 0;
-        offscreenBShot = false;
-        #ifdef LED_ENABLE
-            // Set the RGB LED to a mid-intense white.
-            // The onboard pins on Adafruits are RGB (no W), FWIW.
-            #ifdef DOTSTAR_ENABLE
-                dotstar.setPixelColor(0, 127, 127, 127);
-                dotstar.show();
-            #endif // DOTSTAR_ENABLE
-            #ifdef NEOPIXEL_PIN
-                neopixel.setPixelColor(0, 127, 127, 127);
-                neopixel.show();
-            #endif // NEOPIXEL_PIN
-            #ifdef FOURPIN_LED
-                FourPinUpdate(127, 127, 127);
-            #endif // FOURPIN_LED
-        #endif // LED_ENABLE
-    } else if(serialInput == 'M') {          // Does the command start with an M? (Mode)
-        serialInput = Serial.read();                               // Read the second bit.
-        if(serialInput == '1') {             // Is it M1? (Gun "offscreen mode" set)?
-            serialInput = Serial.read();                           // Nomf the padding bit.
-            serialInput = Serial.read();                           // Read the next.
-            if(serialInput == '2') {         // Is it the offscreen button mode bit?
-                offscreenButtonSerial = true;                      // Set that if so.
-            }
-        }
-    } else if(serialInput == 'E') {          // Is it an E command? (End)
-            serialMode = false;                                    // Turn off serial mode then.
-            offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-            serialQueue = 0b00000000;
-            #ifdef LED_ENABLE
-                serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
-                serialLEDPulses = 0;
-                serialLEDPulsesLast = 0;
-                serialLEDPulseRising = true;
-                serialLEDR = 0;                                    // Clear stale serial LED values.
-                serialLEDG = 0;
-                serialLEDB = 0;
-                serialLEDChange = false;
-                LedOff();                                          // Turn it off, and let lastSeen handle it from here.
-            #endif // LED_ENABLE
-            #ifdef USES_RUMBLE
-                digitalWrite(rumblePin, LOW);
-                serialRumbPulseStage = 0;
-                serialRumbPulses = 0;
-                serialRumbPulsesLast = 0;
-            #endif // USES_RUMBLE
-            #ifdef USES_SOLENOID
-                digitalWrite(solenoidPin, LOW);
-                serialSolPulseOn = false;
-                serialSolPulses = 0;
-                serialSolPulsesLast = 0;
-            #endif // USES_SOLENOID
-            AbsMouse5.release(MOUSE_LEFT);
-            AbsMouse5.release(MOUSE_RIGHT);
-            AbsMouse5.release(MOUSE_MIDDLE);
-            AbsMouse5.release(MOUSE_BUTTON4);
-            AbsMouse5.release(MOUSE_BUTTON5);
-            Keyboard.releaseAll();
-            delay(5);
-            Serial.println("Received end serial pulse, releasing FF override.");
-    } else if(serialInput == 'X') {                               // owo SPECIAL SETUP EH?
-        serialInput = Serial.read();
-        // Toggle Gamepad Output Mode
-        if(serialInput == 'A') {
-            buttons.analogOutput = !buttons.analogOutput;
-            if(buttons.analogOutput) {
-                AbsMouse5.release(MOUSE_LEFT);
-                AbsMouse5.release(MOUSE_RIGHT);
-                AbsMouse5.release(MOUSE_MIDDLE);
-                AbsMouse5.release(MOUSE_BUTTON4);
-                AbsMouse5.release(MOUSE_BUTTON5);
-                Keyboard.releaseAll();
-                Serial.println("Switched to Analog Output mode!");
-            } else {
-                Gamepad16.releaseAll();
-                Keyboard.releaseAll();
-                Serial.println("Switched to Mouse Output mode!");
-            }
-        // Toggle Processing/Run Mode
-        } else if(serialInput == 'T') {
-            if(runMode == RunMode_Processing) {
-                Serial.println("Exiting processing mode...");
-                switch(profileData[selectedProfile].runMode) {
-                    case RunMode_Normal:
-                      SetRunMode(RunMode_Normal);
+    switch(serialInput) {
+        // Start Signal
+        case 'S':
+          serialMode = true;                                         // Set it on, then!
+          Serial.println("Received serial start pulse, overriding force feedback!");
+          #ifdef USES_RUMBLE
+              digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
+              rumbleHappened = false;
+              rumbleHappening = false;
+          #endif // USES_RUMBLE
+          #ifdef USES_SOLENOID
+              digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
+              solenoidFirstShot = false;
+          #endif // USES_SOLENOID
+          triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
+          burstFiring = false;
+          burstFireCount = 0;
+          offscreenBShot = false;
+          #ifdef LED_ENABLE
+              leds[0].setRGB(127, 127, 127);
+              FastLED.show();
+              #ifdef FOURPIN_LED
+                  FourPinUpdate(127, 127, 127);
+              #endif // FOURPIN_LED
+          #endif // LED_ENABLE
+          break;
+        case 'M':
+          serialInput = Serial.read();                               // Read the second bit.
+          if(serialInput == '1') {             // Is it M1? (Gun "offscreen mode" set)?
+              serialInput = Serial.read();                           // Nomf the padding bit.
+              serialInput = Serial.read();                           // Read the next.
+              if(serialInput == '2') {         // Is it the offscreen button mode bit?
+                  offscreenButtonSerial = true;                      // Set that if so.
+              }
+          } else {
+              Serial.println("SERIALREAD: Serial modesetting command found, but no Offscreen Mode [M1.2] bit found!");
+          }
+          break;
+        // End Signal
+        case 'E':
+          serialMode = false;                                    // Turn off serial mode then.
+          offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
+          serialQueue = 0b00000000;
+          #ifdef LED_ENABLE
+              serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
+              serialLEDPulses = 0;
+              serialLEDPulsesLast = 0;
+              serialLEDPulseRising = true;
+              serialLEDR = 0;                                    // Clear stale serial LED values.
+              serialLEDG = 0;
+              serialLEDB = 0;
+              serialLEDChange = false;
+              LedOff();                                          // Turn it off, and let lastSeen handle it from here.
+          #endif // LED_ENABLE
+          #ifdef USES_RUMBLE
+              digitalWrite(rumblePin, LOW);
+              serialRumbPulseStage = 0;
+              serialRumbPulses = 0;
+              serialRumbPulsesLast = 0;
+          #endif // USES_RUMBLE
+          #ifdef USES_SOLENOID
+              digitalWrite(solenoidPin, LOW);
+              serialSolPulseOn = false;
+              serialSolPulses = 0;
+              serialSolPulsesLast = 0;
+          #endif // USES_SOLENOID
+          AbsMouse5.release(MOUSE_LEFT);
+          AbsMouse5.release(MOUSE_RIGHT);
+          AbsMouse5.release(MOUSE_MIDDLE);
+          AbsMouse5.release(MOUSE_BUTTON4);
+          AbsMouse5.release(MOUSE_BUTTON5);
+          Keyboard.releaseAll();
+          delay(5);
+          Serial.println("Received end serial pulse, releasing FF override.");
+          break;
+        // owo SPECIAL SETUP EH?
+        case 'X':
+          serialInput = Serial.read();
+          switch(serialInput) {
+              // Toggle Gamepad Output Mode
+              case 'A':
+                buttons.analogOutput = !buttons.analogOutput;
+                if(buttons.analogOutput) {
+                    AbsMouse5.release(MOUSE_LEFT);
+                    AbsMouse5.release(MOUSE_RIGHT);
+                    AbsMouse5.release(MOUSE_MIDDLE);
+                    AbsMouse5.release(MOUSE_BUTTON4);
+                    AbsMouse5.release(MOUSE_BUTTON5);
+                    Keyboard.releaseAll();
+                    Serial.println("Switched to Analog Output mode!");
+                } else {
+                    Gamepad16.releaseAll();
+                    Keyboard.releaseAll();
+                    Serial.println("Switched to Mouse Output mode!");
+                }
+                break;
+              // Toggle Processing/Run Mode
+              case 'T':
+                if(runMode == RunMode_Processing) {
+                    Serial.println("Exiting processing mode...");
+                    switch(profileData[selectedProfile].runMode) {
+                        case RunMode_Normal:
+                          SetRunMode(RunMode_Normal);
+                          break;
+                        case RunMode_Average:
+                          SetRunMode(RunMode_Average);
+                          break;
+                        case RunMode_Average2:
+                          SetRunMode(RunMode_Average2);
+                          break;
+                        default:
+                          break;
+                    }
+                    SetMode(GunMode_Run);
+                } else {
+                    Serial.println("Entering Processing Sketch mode...");
+                    SetRunMode(RunMode_Processing);
+                    SetMode(GunMode_Run);
+                    loop();
+                }
+                break;
+              // Toggle Pause/Run Mode
+              case 'P':
+                if(gunMode != GunMode_Run) {
+                    Serial.println("Exiting back to normal run mode...");
+                    SetMode(GunMode_Run);
+                } else {
+                    Serial.println("Entering pause mode...");
+                    buttons.ReportDisable();
+                    SetMode(GunMode_Pause);
+                }
+                break;
+              // Enter Calibration mode (optional: switch to cal profile if detected)
+              case 'C':
+                serialInput = Serial.read();
+                if(serialInput == '1' || serialInput == '2' ||
+                   serialInput == '3' || serialInput == '4') {
+                    // Converting char to its real respective number
+                    byte profileNum = serialInput - '0';
+                    SelectCalProfile(profileNum-1);
+                    Serial.print("Now calibrating selected profile: ");
+                    Serial.println(profileDesc[selectedProfile].profileLabel);
+                    SetMode(GunMode_CalCenter);
+                } else {
+                    // Eh, just set the current profile to calibrate.
+                    Serial.print("Called for calibration without valid profile number, so calibrating current profile: ");
+                    Serial.println(profileDesc[selectedProfile].profileLabel);
+                    SetMode(GunMode_CalCenter);
+                }
+                // Force the mouse to center, in case the signal gets dropped by the next camera update
+                AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
+                break;
+              // Save current profile
+              case 'S':
+                Serial.println("Saving preferences...");
+                // We actually need to flick to Pause Mode to save configs.
+                bool wasPaused;
+                if(gunMode != GunMode_Pause) {
+                    wasPaused = false;
+                    SetMode(GunMode_Pause);
+                } else {
+                    wasPaused = true;
+                }
+                SetMode(GunMode_Pause);
+                SavePreferences();
+                if(!wasPaused) {
+                    SetMode(GunMode_Run);
+                }
+                break;
+              // Remap player numbers
+              case 'R':
+                serialInput = Serial.read();
+                switch(serialInput) {
+                    case '1':
+                      playerStartBtn = '1';
+                      playerSelectBtn = '5';
+                      Serial.println("Remapping to player slot 1.");
                       break;
-                    case RunMode_Average:
-                      SetRunMode(RunMode_Average);
+                    case '2':
+                      playerStartBtn = '2';
+                      playerSelectBtn = '6';
+                      Serial.println("Remapping to player slot 2.");
                       break;
-                    case RunMode_Average2:
-                      SetRunMode(RunMode_Average2);
+                    case '3':
+                      playerStartBtn = '3';
+                      playerSelectBtn = '7';
+                      Serial.println("Remapping to player slot 3.");
+                      break;
+                    case '4':
+                      playerStartBtn = '4';
+                      playerSelectBtn = '8';
+                      Serial.println("Remapping to player slot 4.");
                       break;
                     default:
+                      Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                       break;
                 }
-                SetMode(GunMode_Run);
-            } else {
-                Serial.println("Entering Processing Sketch mode...");
-                SetRunMode(RunMode_Processing);
-                SetMode(GunMode_Run);
-                loop();
-            }
-        // Toggle Pause/Run Mode
-        } else if(serialInput == 'P') {
-            if(gunMode != GunMode_Run) {
-                Serial.println("Exiting back to normal run mode...");
-                SetMode(GunMode_Run);
-            } else {
-                Serial.println("Entering pause mode...");
-                buttons.ReportDisable();
-                SetMode(GunMode_Pause);
-            }
-        // Enter Calibration mode (optional: switch to cal profile if detected)
-        } else if(serialInput == 'C') {
-            serialInput = Serial.read();
-            if(serialInput == '1' || serialInput == '2' || serialInput == '3' || serialInput == '4') {
-                // Converting char to its real respective number
-                byte profileNum = serialInput - '0';
-                SelectCalProfile(profileNum-1);
-                Serial.print("Now calibrating selected profile: ");
-                Serial.println(profileDesc[selectedProfile].profileLabel);
-                SetMode(GunMode_CalCenter);
-            } else {
-                // Eh, just set the current profile to calibrate.
-                Serial.print("Called for calibration without valid profile number, so calibrating current profile: ");
-                Serial.println(profileDesc[selectedProfile].profileLabel);
-                SetMode(GunMode_CalCenter);
-            }
-            // Force the mouse to center, in case the signal gets dropped by the next camera update
-            AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-        // Save current profile
-        } else if(serialInput == 'S') {
-            Serial.println("Saving preferences...");
-            // We actually need to flick to Pause Mode to save configs.
-            bool wasPaused;
-            if(gunMode != GunMode_Pause) {
-                wasPaused = false;
-                SetMode(GunMode_Pause);
-            } else {
-                wasPaused = true;
-            }
-            SetMode(GunMode_Pause);
-            SavePreferences();
-            if(!wasPaused) {
-                SetMode(GunMode_Run);
-            }
-        // Remap player numbers
-        } else if(serialInput == 'R') {
-            serialInput = Serial.read();
-            switch(serialInput) {
-                case '1':
-                  playerStartBtn = '1';
-                  playerSelectBtn = '5';
-                  Serial.println("Remapping to player slot 1.");
-                  break;
-                case '2':
-                  playerStartBtn = '2';
-                  playerSelectBtn = '6';
-                  Serial.println("Remapping to player slot 2.");
-                  break;
-                case '3':
-                  playerStartBtn = '3';
-                  playerSelectBtn = '7';
-                  Serial.println("Remapping to player slot 3.");
-                  break;
-                case '4':
-                  playerStartBtn = '4';
-                  playerSelectBtn = '8';
-                  Serial.println("Remapping to player slot 4.");
-                  break;
-                default:
-                  Serial.println("ERROR: No slot number declared!");
-                  break;
-            }
-            UpdateBindings();
-        // Optional: Switch to profile number if detected
-        } else if(serialInput == '1' || serialInput == '2' || serialInput == '3' || serialInput == '4') {
-            byte profileNum = serialInput - '0';
-            SelectCalProfile(profileNum-1);
-            Serial.print("Switching to selected profile: ");
-            Serial.println(profileDesc[selectedProfile].profileLabel);
-        }
-    } else if(serialInput == 'F') {          // Does the command start with an F (force feedback)?
-        serialInput = Serial.read();                               // Alright, read the next bit.
-        if(serialInput == '0') {             // Is it a solenoid bit?
-            #ifdef USES_SOLENOID
-            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
-            serialInput = Serial.read();                           // Read the next number.
-            if(serialInput == '1') {         // Is it a solenoid "on" command?)
-                bitWrite(serialQueue, 0, 1);                       // Queue the solenoid on bit.
-            } else if(serialInput == '2' &&  // Is it a solenoid pulse command?
-            !bitRead(serialQueue, 1)) {      // (and we aren't already pulsing?)
-                bitWrite(serialQueue, 1, 1);                       // Set the solenoid pulsing bit!
-                serialInput = Serial.read();                       // nomf the padding bit.
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
-                    }
+                UpdateBindings();
+                break;
+              // Switch profiles
+              default:
+                if(serialInput == '1' || serialInput == '2' ||
+                   serialInput == '3' || serialInput == '4') {
+                    byte profileNum = serialInput - '0';
+                    SelectCalProfile(profileNum-1);
+                    Serial.print("Switching to selected profile: ");
+                    Serial.println(profileDesc[selectedProfile].profileLabel);
+                } else {
+                    Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
+                    Serial.println("Internally recognized commands are:");
+                    Serial.println("A(nalog) / T(est) / R(emap)1/2/3/4 / P(ause) / C(alibrate) / S(ave) / (profile) 1/2/3/4]");
                 }
-                serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
-                serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
-            } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
-                bitWrite(serialQueue, 0, 0);                       // Disable the solenoid off bit!
-            }
-            #endif // USES_SOLENOID
-        } else if(serialInput == '1') {      // it's rumble then?
-            #ifdef USES_RUMBLE
-            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
-            serialInput = Serial.read();                           // read the next number.
-            if(serialInput == '1') {         // Is it an on signal?
-                bitWrite(serialQueue, 2, 1);                       // Queue the rumble on bit.
-            } else if(serialInput == '2' &&  // Is it a pulsed on signal?
-            !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
-                bitWrite(serialQueue, 3, 1);                       // Set the rumble pulsed bit.
-                serialInput = Serial.read();                       // nomf the x
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                break;
+          }
+          // End of 'X'
+          break;
+        // Force Feedback
+        case 'F':
+          serialInput = Serial.read();
+          switch(serialInput) {
+              #ifdef USES_SOLENOID
+              // Solenoid bits
+              case '0':
+                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                serialInput = Serial.read();                           // Read the next number.
+                if(serialInput == '1') {         // Is it a solenoid "on" command?)
+                    bitWrite(serialQueue, 0, 1);                       // Queue the solenoid on bit.
+                } else if(serialInput == '2' &&  // Is it a solenoid pulse command?
+                !bitRead(serialQueue, 1)) {      // (and we aren't already pulsing?)
+                    bitWrite(serialQueue, 1, 1);                       // Set the solenoid pulsing bit!
+                    serialInput = Serial.read();                       // nomf the padding bit.
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
+                    serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
+                    serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
+                } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
+                    bitWrite(serialQueue, 0, 0);                       // Disable the solenoid off bit!
                 }
-                serialRumbPulses = atoi(serialInputS);             // and set as the amount of rumble pulses queued.
-                serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
-            } else if(serialInput == '0') {  // Else, it's a rumble off signal.
-                bitWrite(serialQueue, 2, 0);                       // Queue the rumble off bit... 
-            }
-            #endif // USES_RUMBLE
-        #ifdef LED_ENABLE
-        } else if(serialInput == '2') {      // It's an LED R bit?
-            serialLEDChange = true;                                // Set that we've changed an LED here!
-            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
-            serialInput = Serial.read();                           // Read the next number
-            if(serialInput == '1') {         // is it an "on" command?
-                bitWrite(serialQueue, 4, 1);                       // set that here!
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                break;
+              #endif // USES_SOLENOID
+              #ifdef USES_RUMBLE
+              // Rumble bits
+              case '1':
+                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                serialInput = Serial.read();                           // read the next number.
+                if(serialInput == '1') {         // Is it an on signal?
+                    bitWrite(serialQueue, 2, 1);                       // Queue the rumble on bit.
+                } else if(serialInput == '2' &&  // Is it a pulsed on signal?
+                !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
+                    bitWrite(serialQueue, 3, 1);                       // Set the rumble pulsed bit.
+                    serialInput = Serial.read();                       // nomf the x
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
+                    serialRumbPulses = atoi(serialInputS);             // and set as the amount of rumble pulses queued.
+                    serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
+                } else if(serialInput == '0') {  // Else, it's a rumble off signal.
+                    bitWrite(serialQueue, 2, 0);                       // Queue the rumble off bit... 
+                    //bitWrite(serialQueue, 3, 0); // And the rumble pulsed bit.
+                    // TODO: do we want to set this off if we get a rumble off bit?
                 }
-                serialLEDR = atoi(serialInputS);                   // And set that as the strength of the red value that's requested!
-            } else if(serialInput == '2' &&  // else, is it a pulse command?
-            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
-                serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                break;
+              #endif // USES_RUMBLE
+              #ifdef LED_ENABLE
+              // LED Red bits
+              case '2':
+                serialLEDChange = true;                                // Set that we've changed an LED here!
+                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                serialInput = Serial.read();                           // Read the next number
+                if(serialInput == '1') {         // is it an "on" command?
+                    bitWrite(serialQueue, 4, 1);                       // set that here!
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
-                }
-                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                serialLEDPulsesLast = 0;                           // reset the pulses done count.
-            } else if(serialInput == '0') {  // else, it's an off command.
-                bitWrite(serialQueue, 4, 0);                       // Set the R bit off.
-                serialLEDR = 0;                                    // Clear the R value.
-            }
-        } else if(serialInput == '3') {      // It's an LED G bit?
-            serialLEDChange = true;                                // Set that we've changed an LED here!
-            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
-            serialInput = Serial.read();                           // Read the next number
-            if(serialInput == '1') {         // is it an "on" command?
-                bitWrite(serialQueue, 5, 1);                       // set that here!
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                    serialLEDR = atoi(serialInputS);                   // And set that as the strength of the red value that's requested!
+                } else if(serialInput == '2' &&  // else, is it a pulse command?
+                !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
+                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
+                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
+                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
+                } else if(serialInput == '0') {  // else, it's an off command.
+                    bitWrite(serialQueue, 4, 0);                       // Set the R bit off.
+                    serialLEDR = 0;                                    // Clear the R value.
                 }
-                serialLEDG = atoi(serialInputS);                   // And set that here!
-            } else if(serialInput == '2' &&  // else, is it a pulse command?
-            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
-                serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                break;
+              // LED Green bits
+              case '3':
+                serialLEDChange = true;                                // Set that we've changed an LED here!
+                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                serialInput = Serial.read();                           // Read the next number
+                if(serialInput == '1') {         // is it an "on" command?
+                    bitWrite(serialQueue, 5, 1);                       // set that here!
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
-                }
-                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                serialLEDPulsesLast = 0;                           // reset the pulses done count.
-            } else if(serialInput == '0') {  // else, it's an off command.
-                bitWrite(serialQueue, 5, 0);                       // Set the G bit off.
-                serialLEDG = 0;                                    // Clear the G value.
-            }
-        } else if(serialInput == '4') {      // It's an LED B bit?
-            serialLEDChange = true;                                // Set that we've changed an LED here!
-            serialInput = Serial.read();                           // nomf the padding since it's meaningless.
-            serialInput = Serial.read();                           // Read the next number
-            if(serialInput == '1') {         // is it an "on" command?
-                bitWrite(serialQueue, 6, 1);                       // set that here!
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                    serialLEDG = atoi(serialInputS);                   // And set that here!
+                } else if(serialInput == '2' &&  // else, is it a pulse command?
+                !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
+                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
+                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
+                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
+                } else if(serialInput == '0') {  // else, it's an off command.
+                    bitWrite(serialQueue, 5, 0);                       // Set the G bit off.
+                    serialLEDG = 0;                                    // Clear the G value.
                 }
-                serialLEDB = atoi(serialInputS);                   // And set that as the strength requested here!
-            } else if(serialInput == '2' &&  // else, is it a pulse command?
-            !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
-                serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
-                serialInput = Serial.read();                       // nomf the padding
-                for(byte n = 0; n < 3; n++) {                      // For three runs,
-                    serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                    if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
-                        break;
+                break;
+              // LED Blue bits
+              case '4':
+                serialLEDChange = true;                                // Set that we've changed an LED here!
+                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                serialInput = Serial.read();                           // Read the next number
+                if(serialInput == '1') {         // is it an "on" command?
+                    bitWrite(serialQueue, 6, 1);                       // set that here!
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
                     }
+                    serialLEDB = atoi(serialInputS);                   // And set that as the strength requested here!
+                } else if(serialInput == '2' &&  // else, is it a pulse command?
+                !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
+                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
+                    serialInput = Serial.read();                       // nomf the padding
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                            break;
+                        }
+                    }
+                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
+                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
+                } else if(serialInput == '0') {  // else, it's an off command.
+                    bitWrite(serialQueue, 6, 0);                       // Set the B bit off.
+                    serialLEDB = 0;                                    // Clear the G value.
                 }
-                serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                serialLEDPulsesLast = 0;                           // reset the pulses done count.
-            } else if(serialInput == '0') {  // else, it's an off command.
-                bitWrite(serialQueue, 6, 0);                       // Set the B bit off.
-                serialLEDB = 0;                                    // Clear the G value.
-            }
-        #endif // LED_ENABLE
-        }
+                break;
+              #endif // LED_ENABLE
+              default:
+                #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
+                    Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
+                #else
+                    Serial.println("SERIALREAD: Incomplete feedback command detected! (is the syntax correct [Fx.y.z] ?)");
+                #endif
+          }
+          // End of 'F'
+          break;
+        default:
+          Serial.println("SERIALREAD: Invalid or incomplete serial command!");
+          break;
     }
 }
 
