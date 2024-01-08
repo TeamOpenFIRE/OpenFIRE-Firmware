@@ -3,8 +3,7 @@
 
 Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
 
-###### *(older video demo, doesn't reflect all the current features)
-[![YouTube Demo](https://i.ytimg.com/vi/Y_AKmZJIwDY/maxresdefault.jpg)](https://youtu.be/Y_AKmZJIwDY "YouTube Demo (Click to view!)")
+###### (new video demonstration coming soon!)
 
 ## PLUS Enhancements!
 - **Solenoid Support!** Get the authentic arcade feedback with every shot, in either single shot, three-shot burst, or rapid fire modes. Intelligently works when aiming *on-screen!*
@@ -12,16 +11,17 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Temperature Sensor Support!** With an optional TMP36 sensor, you can keep your solenoid working better for longer! Tempers feedback based on temperature readings with every shot.
 - **Offscreen Button Support!** The gun can distinguish between on- and off-screen aiming and *report different buttons* depending on screen detection! An optional setting is also available for older games that allows the trigger to send left or right-clicks when shooting off-screen.
 - **Gamepad Output Support!** GUN4ALL reports as a five-button mouse, keyboard, *and gamepad* with ability to output the position as a joystick. The first open source lightgun system that's fully compatible with PCSX2 nightly on all platforms for multiplayer!
-- **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in pause mode (Button C + Select)!
-- **Mame Hooker Support!** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs (WIP) *for event aware feedbacks for even more immersive gameplay!*
-- Dual Core Support; if using a board powered by the **RP2040**, it will take advantage of that second core for processing button inputs in parallel, (theoretically) reducing latency.
+- **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in Pause Mode (either via Hotkeys or a scrollable menu system)!
+- **Supports any gun shell imaginable!** All original console and custom controller designs are compatible with careful consideration for all sorts of form-factors; from the one-button Sega Virtua Gun to the stick-toting behemoths of Cabela's Top Shot Rifles, to even planned support for [Blamcons](https://blamcon.com/) - if you can fit a Pico in it, *you can use it with GUN4ALL!*
+- **Mame Hooker Support!** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs *for event aware feedbacks for even more immersive gameplay!*
+- Dual Core Support; take advantage of the second core in the ever-popular *Raspberry Pi Pico's* **RP2040** chip for processing button inputs in parallel, (theoretically) reducing latency.
 - Multiple Guns Support; easily set the gun to use binds for P1-4 with a single setting, swap player position on-the-fly, and change the USB identifier for each unique board without modifying deep rooted Arduino files!
 - Fixed button responsiveness; no sticky inputs, and solid debouncing with no performance impact!
 - All upgrades are *optional,* and can work as a drop-in upgrade for current SAMCO builds (with minor changes).
 - Plenty of safety checks, to ensure rock-solid functionality without parts sticking or overheating. Now you too can feel like a helicopter parent!
 - Remains forever open source, with *compatibility for GUN4IR parts!* Can use the same community resources of parts and tutorials for easier assembly of a complete build.
-- Clearer labeling in the sketch for user readability, to streamline configuration as much as possible!
-- Fully cross-platform solution, all initial hardware configuration done using the open-source Arduino IDE and profiles are saved on the board!
+- Clearer labeling in the sketch for user readability, to streamline configuration as much as possible (with simpler automated installation/binary distribution and graphical configuration options coming soon)!
+- Fully cross-platform solution; all initial hardware configuration done using the open-source Arduino IDE, profiles are saved on the board, and persist across updates!
 - Made out of at least 49% passion and 49% stubbornness (and 2% friendly spite)!
 
 ## Original Prow's Fork Enhancements
@@ -37,7 +37,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - Built in Processing mode for use with the SAMCO Processing sketch
 
 ## Requirements
-- An Arduino-compatible microcontroller based on an **RP2040**, **Cortex-M0/M0+**, or **Cortex-M4**. *(ATmega32U4 boards don't have enough codespace at this point.)*
+- An Arduino-compatible microcontroller based on an **RP2040**.
   * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, most pins available)* Adafruit [Keeboar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor)* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596) for drop-in compatibility with Namco Guncon hardware!)*
   * Keep in mind the differences in pinouts, as it will always be different between builds and boards!
 - **DFRobot IR Positioning Camera SEN0158:** [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html) | [Mirrors list](https://octopart.com/sen0158-dfrobot-81833633)
@@ -46,8 +46,6 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
      * *Requires a DC power extension cable and a separate adjustable 12-24V power supply.*
    * Optional: **Any 5V gamepad rumble motor,** w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw)
    * Optional: **Any 2-way SPDT switches,** to adjust state of rumble/solenoid/rapid fire in hardware *(can be adjusted in software from pause mode if not available!)*
-
-The Pico/RP2040 is the most performant microcontroller for the cheapest price, and is the reference board that GUN4ALL is designed around, but the M0 and M4 should still work well!
 
 ## Additional information
 [Check out the enclosed instruction book!](SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
@@ -68,20 +66,21 @@ For reference, the default schematic and (general) layout for the build and its 
 > Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
-- Implement Analog stick as another form of keyboard-cursor.
-  * Will probably default to ports A1-A2 for stick signals (to account for temp sensor), but two sticks will have to choose between that or temp sensor support.
-  * Keyboard cursor keys should be fine? Or the numpad if P2. There really aren't that many games (especially multiplayer) that use directional input.
-- Implement separate RGB LED support.
-  * Generic four-pin LEDs will be implemented first as it doesn't depend on any library.
-  * We currently use only a board's builtin DotStar or NeoPixel, but this is only for distinguishing between profiles and indicating camera state for now. These are also used in serial handoff mode, but we could perhaps also make RGB LEDs react to events, i.e. trigger pulls.
-  * Switch to [FastLED](https://github.com/FastLED/FastLED) for smart LEDs; waiting on compiling conflicts on RP2040 with optimization flags. See https://github.com/earlephilhower/arduino-pico/discussions/1649
+- Implement Analog stick input.
+  * Will probably default to ports A1-A2 for stick signals (to account for temp sensor) - Pico only has three available/readable analog pins for general devices so it works out evenly.
+  * Should it be mapped to the left or right stick (currently analog output tracking mode uses the left stick)? There really aren't that many games (especially multiplayer) that use directional input.
+- Add support for external addressable RGB LEDs (currently limiting to a NeoPixel and/or DotStar unit/strip for now)
+  * External 4-pin common anode/cathode LEDs are supported now for reacting to most operations, except those that call for using Wikicolors instead of direct R/G/B values.
+  * Only an onboard DotStar or NeoPixel unit is fully utilized (built into most Adafruit boards).
+  * Switching to [FastLED](https://github.com/FastLED/FastLED) in the future is discussed in #9.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
-- A more streamlined graphical interface specific for IR-GUN4ALL that doesn't require the Arduino IDE setup.
+- A more streamlined graphical interface specific for IR-GUN4ALL that doesn't require the full Arduino IDE setup.
   * The idea is to have an interface for both flashing the board (like GUN4IR, but supporting Linux as well as Windows) and configuring the gun (ideally in real-time, without having to re-flash to adjust e.g. solenoid settings or mappings).
     - Should use a native toolkit i.e. QT for Linux, though someone else would have to work on Windows support.
+    - Should we use pre-defined pins for buttons/force feedback devices? Possible on a Pico at least, but less so on an Adafruit (would mean being able to hard-code pins, so only mapping profiles need to be added/saved).
   * Failing this, maybe have a Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
     * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
     * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
@@ -90,9 +89,7 @@ For reference, the default schematic and (general) layout for the build and its 
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
   * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
-- Could the tracking be improved more? We have a slight but still somewhat noticeable amount of cursor drift when aiming from extreme angles at screen corners on a 50" display with fisheye lenses.
-- *Maybe* make an option for a true autofire that auto-reloads after a set amount of seconds or trigger pulls? Make the coordinates move to 0,0 and force a mouse unclick/click/unclick. Might be cheaty, but if someone wants it...
-  * A lot of games have problems with this, though. Not sure if that's desirable with the implied caveats.
+- Support for diamonds LED arrangement to be setup-compatible with GUN4IR (**help wanted here!** Discussed in #6).
 
 ## Thanks:
 * Samuel Ballantyne, for his SAMCO project which inspired my madness in the first place.
