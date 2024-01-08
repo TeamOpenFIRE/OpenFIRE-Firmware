@@ -12,9 +12,10 @@
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V2.1
  * @date 2023
  */
+#define G4ALL_VERSION 2.1
+#define G4ALL_CODENAME "Fantasyland-rev1"
 
  // Remember to check out the enclosed instruction book (README.md) that came with this program for more information!
 
@@ -3019,6 +3020,10 @@ void PrintExtras()
         Serial.println("Running on one core.");
     #endif // DUAL_CORE
     #endif // ARDUINO_ARCH_RP2040
+    Serial.print("Firmware version: v");
+    Serial.print(G4ALL_VERSION, 1);
+    Serial.print(" - ");
+    Serial.println(G4ALL_CODENAME);
 }
 
 void LoadPreferences()
