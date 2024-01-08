@@ -1691,13 +1691,16 @@ void CalVert()
         conMoveXAxis = MouseMaxX / 2;
         conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);
         AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+        if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
+            buttons.offScreen = true;
+        } else {
+            buttons.offScreen = false;
+        }
     }
     
-    if(buttons.repeat & BtnMask_B) {
+    if((buttons.repeat & BtnMask_B) || (buttons.offScreen && (buttons.repeat & BtnMask_A))) {
         yScale = yScale + ScaleStep;
-    }
-    
-    if(buttons.repeat & BtnMask_A) {
+    } else if(buttons.repeat & BtnMask_A) {
         if(yScale > 0.005f) {
             yScale = yScale - ScaleStep;
         }
@@ -1721,13 +1724,16 @@ void CalHoriz()
         conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
         conMoveYAxis = MouseMaxY / 2;
         AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+        if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
+            buttons.offScreen = true;
+        } else {
+            buttons.offScreen = false;
+        }
     }
 
-    if(buttons.repeat & BtnMask_B) {
+    if((buttons.repeat & BtnMask_B) || (buttons.offScreen && (buttons.repeat & BtnMask_A))) {
         xScale = xScale + ScaleStep;
-    }
-    
-    if(buttons.repeat & BtnMask_A) {
+    } else if(buttons.repeat & BtnMask_A) {
         if(xScale > 0.005f) {
             xScale = xScale - ScaleStep;
         }
