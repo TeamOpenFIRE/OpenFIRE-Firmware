@@ -2233,7 +2233,7 @@ void SerialProcessing()                                         // Reading the i
                 } else {
                     Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
                     Serial.println("Internally recognized commands are:");
-                    Serial.println("A(nalog) / T(est) / R(emap)1/2/3/4 / P(ause) / C(alibrate) / S(ave) / (profile) 1/2/3/4]");
+                    Serial.println("A(nalog) / T(est) / R(emap)1/2/3/4 / P(ause) / C(alibrate)[1/2/3/4] / S(ave) / [(profile) 1/2/3/4]");
                 }
                 break;
           }
@@ -2405,6 +2405,8 @@ void SerialProcessing()                                         // Reading the i
           break;
         default:
           Serial.println("SERIALREAD: Invalid or incomplete serial command!");
+          Serial.println("Recognized command types are:");
+          Serial.println("S(tartSerial) / E(ndSerial) / M(odeSetting) / F(orceFeedback) / X(treme - Internal Configuration)");
           break;
     }
 }
