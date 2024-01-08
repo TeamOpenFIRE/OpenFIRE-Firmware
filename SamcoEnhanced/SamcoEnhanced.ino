@@ -352,10 +352,10 @@ enum RunMode_e {
 // if you have original Samco calibration values, multiply by 4 for the center position and
 // scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
-    {1605, 935, 2137, 1522, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1695, 957, 2121, 1981, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1723, 890, 2073, 2036, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1683, 948, 2130, 2053, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0}
+    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
+    {0, 0, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0}
 };
 //  ------------------------------------------------------------------------------------------------------
 // profile descriptor
@@ -667,7 +667,23 @@ AbsMouse5_ AbsMouse5(1);
 #endif
 
 void setup() {
-    // ADDITIONS HERE:
+#ifdef SAMCO_FLASH_ENABLE
+    // init flash and load saved preferences
+    nvAvailable = flash.begin();
+#else
+#if defined(SAMCO_EEPROM_ENABLE) && defined(ARDUINO_ARCH_RP2040)
+    // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
+    EEPROM.begin(1024); 
+#endif // SAMCO_EEPROM_ENABLE/RP2040
+#endif // SAMCO_FLASH_ENABLE
+    
+    if(nvAvailable) {
+        LoadPreferences();
+    }
+
+    // use values from preferences
+    ApplyInitialPrefs();
+ 
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
     TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
@@ -708,23 +724,6 @@ void setup() {
     // initialize buttons (on the main thread for single core systems)
     buttons.Begin();
 #endif // ARDUINO_ARCH_RP2040
-
-#ifdef SAMCO_FLASH_ENABLE
-    // init flash and load saved preferences
-    nvAvailable = flash.begin();
-#else
-#if SAMCO_EEPROM_ENABLE && ARDUINO_ARCH_RP2040
-    // initialize 2040's emulated EEPROM device. Arduino AVR has a 1k flash, so use that.
-    EEPROM.begin(1024); 
-#endif // SAMCO_EEPROM_ENABLE/RP2040
-#endif // SAMCO_FLASH_ENABLE
-    
-    if(nvAvailable) {
-        LoadPreferences();
-    }
-
-    // use values from preferences
-    ApplyInitialPrefs();
 
     // Start IR Camera with basic data format
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
@@ -768,8 +767,24 @@ void setup() {
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(IRCamUpdateRate);
 
-    // this will turn off the DotStar/RGB LED and ensure proper transition to Run
-    SetMode(GunMode_Run);
+    // First boot sanity checks.
+    if(justBooted) {
+        //PinChecks();
+        // Check if the initial profiles are blanked.
+        if(profileData[selectedProfile].xScale == 0) {
+            // SHIT, it's a first boot! Prompt to start calibration.
+            Serial.println("Preferences data is empty!");
+            SetMode(GunMode_CalCenter);
+            Serial.println("Pull the trigger to start your first calibration!");
+            while(!(buttons.pressedReleased == BtnMask_Trigger)) {
+                buttons.Poll(1);
+                buttons.Repeat();
+            }
+        } else {
+            // this will turn off the DotStar/RGB LED and ensure proper transition to Run
+            SetMode(GunMode_Run);
+        }
+    }
 }
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
@@ -1340,6 +1355,11 @@ void loop()
             } else {
                 if(buttons.pressed & BtnMask_Trigger) {
                     ApplyCalToProfile();
+                    if(justBooted) {
+                        // If this is an initial calibration, save it immediately!
+                        SetMode(GunMode_Pause);
+                        SavePreferences();
+                    }
                     SetMode(GunMode_Run);
                 } else {
                     CalHoriz();
