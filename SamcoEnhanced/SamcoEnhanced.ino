@@ -1014,7 +1014,7 @@ void loop1()
         buttons.Poll(0);
 
         #ifdef MAMEHOOKER
-            while(Serial.available()) {
+            if(Serial.available()) {
                 SerialProcessing();
             }
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
@@ -1427,7 +1427,7 @@ void ExecRunMode()
         // The main gunMode loop: here it splits off to different paths,
         // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
         #ifdef MAMEHOOKER
-            while(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
+            if(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
                 SerialProcessing();                                 // Run through the serial processing method (repeatedly, if there's leftover bits)
             }
             if(!serialMode) {  // Normal (gun-handled) mode
@@ -2050,7 +2050,6 @@ void SerialProcessing()                                         // Reading the i
               Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
           } else {
               serialMode = true;                                         // Set it on, then!
-              Serial.println("Received serial start pulse, overriding force feedback!");
               #ifdef USES_RUMBLE
                   digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
                   rumbleHappened = false;
@@ -2081,8 +2080,6 @@ void SerialProcessing()                                         // Reading the i
               if(serialInput == '2') {         // Is it the offscreen button mode bit?
                   offscreenButtonSerial = true;                      // Set that if so.
               }
-          } else {
-              Serial.println("SERIALREAD: Serial modesetting command found, but no Offscreen Mode [M1.2] bit found!");
           }
           break;
         // End Signal
@@ -2160,8 +2157,6 @@ void SerialProcessing()                                         // Reading the i
                           break;
                         case RunMode_Average2:
                           SetRunMode(RunMode_Average2);
-                          break;
-                        default:
                           break;
                     }
                     SetMode(GunMode_Run);
@@ -2422,19 +2417,12 @@ void SerialProcessing()                                         // Reading the i
                 }
                 break;
               #endif // LED_ENABLE
+              #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
               default:
-                #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
-                    Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
-                #else
-                    Serial.println("SERIALREAD: Incomplete feedback command detected! (is the syntax correct [Fx.y.z] ?)");
-                #endif
+                Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
+              #endif
           }
           // End of 'F'
-          break;
-        default:
-          Serial.println("SERIALREAD: Invalid or incomplete serial command!");
-          Serial.println("Recognized command types are:");
-          Serial.println("S(tartSerial) / E(ndSerial) / M(odeSetting) / F(orceFeedback) / X(treme - Internal Configuration)");
           break;
     }
 }
