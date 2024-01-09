@@ -72,7 +72,7 @@ For reference, the default schematic and (general) layout for the build and its 
 - Add support for external addressable RGB LEDs (currently limiting to a NeoPixel and/or DotStar unit/strip for now)
   * External 4-pin common anode/cathode LEDs are supported now for reacting to most operations, except those that call for using Wikicolors instead of direct R/G/B values.
   * Only an onboard DotStar or NeoPixel unit is fully utilized (built into most Adafruit boards).
-  * Switching to [FastLED](https://github.com/FastLED/FastLED) in the future is discussed in #9.
+  * Switching to [FastLED](https://github.com/FastLED/FastLED) in the future is [discussed here](https://github.com/SeongGino/ir-light-gun-plus/issues/9).
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
@@ -89,7 +89,7 @@ For reference, the default schematic and (general) layout for the build and its 
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
   * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
-- Support for diamonds LED arrangement to be setup-compatible with GUN4IR (**help wanted here!** Discussed in #6).
+- Support for diamonds LED arrangement to be setup-compatible with GUN4IR (**help wanted here!** [Discussed here](https://github.com/SeongGino/ir-light-gun-plus/issues/6)).
 
 ## Thanks:
 * Samuel Ballantyne, for his SAMCO project which inspired my madness in the first place.
