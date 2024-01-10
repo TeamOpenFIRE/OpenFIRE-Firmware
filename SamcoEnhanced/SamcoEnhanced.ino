@@ -134,19 +134,21 @@ bool burstFireActive = false;                         // Is the solenoid firing 
 
 
   // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-const byte rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
-const byte solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
-const byte btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
-const byte btnGunA = 7;                               // <-- GCon 1-spec
-const byte btnGunB = 8;                               // <-- GCon 1-spec
-const byte btnGunC = 9;                               // Everything below are for GCon 2-spec only 
-const byte btnStart = 10;
-const byte btnSelect = 11;
-const byte btnGunUp = 1;
-const byte btnGunDown = 0;
-const byte btnGunLeft = 4;
-const byte btnGunRight = 5;
-const byte btnPedal = 12;                             // If you're using a physical Time Crisis-style pedal, this is for that.
+int8_t rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = 7;                               // <-- GCon 1-spec
+int8_t btnGunB = 8;                               // <-- GCon 1-spec
+int8_t btnGunC = 9;                               // Everything below are for GCon 2-spec only 
+int8_t btnStart = 10;
+int8_t btnSelect = 11;
+int8_t btnGunUp = 1;
+int8_t btnGunDown = 0;
+int8_t btnGunLeft = 4;
+int8_t btnGunRight = 5;
+int8_t btnPedal = 12;                             // If you're using a physical Time Crisis-style pedal, this is for that.
+int8_t btnPump = -1;
+int8_t btnHome = -1;
 
   // If you're using a regular 4-pin RGB LED, unset and define the R/G/B color pins here!
   // Remember: PWM PINS ONLY!
@@ -217,7 +219,9 @@ enum ButtonIndex_e {
     BtnIdx_Left,
     BtnIdx_Right,
     BtnIdx_Reload,
-    BtnIdx_Pedal
+    BtnIdx_Pedal,
+    BtnIdx_Pump,
+    BtnIdx_Home
 };
 
 // bit mask for each button, must match ButtonDesc[] order to match the proper button events
@@ -232,7 +236,9 @@ enum ButtonMask_e {
     BtnMask_Left = 1 << BtnIdx_Left,
     BtnMask_Right = 1 << BtnIdx_Right,
     BtnMask_Reload = 1 << BtnIdx_Reload,
-    BtnMask_Pedal = 1 << BtnIdx_Pedal
+    BtnMask_Pedal = 1 << BtnIdx_Pedal,
+    BtnMask_Pump = 1 << BtnIdx_Pump,
+    BtnMask_Home = 1 << BtnIdx_Home
 };
 
 // Button descriptor
@@ -251,7 +257,9 @@ LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
     {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
     {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2}
+    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
+    {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+    {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
 };
 
 // button count constant
@@ -1081,25 +1089,46 @@ void loop1()
                     buttons.ReportDisable();
                 }
             }
-        } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
-            // MAKE SURE EVERYTHING IS DISENGAGED:
-            #ifdef USES_SOLENOID
-                digitalWrite(solenoidPin, LOW);
-                solenoidFirstShot = false;
-            #endif // USES_SOLENOID
-            #ifdef USES_RUMBLE
-                digitalWrite(rumblePin, LOW);
-                rumbleHappening = false;
-                rumbleHappened = false;
-            #endif // USES_RUMBLE
-            offscreenBShot = false;
-            buttonPressed = false;
-            triggerHeld = false;
-            burstFiring = false;
-            burstFireCount = 0;
-            buttons.ReportDisable();
-            SetMode(GunMode_Pause);
-            // at this point, the other core should be stopping us now.
+        } else {
+            if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+                // MAKE SURE EVERYTHING IS DISENGAGED:
+                #ifdef USES_SOLENOID
+                    digitalWrite(solenoidPin, LOW);
+                    solenoidFirstShot = false;
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    digitalWrite(rumblePin, LOW);
+                    rumbleHappening = false;
+                    rumbleHappened = false;
+                #endif // USES_RUMBLE
+                offscreenBShot = false;
+                buttonPressed = false;
+                triggerHeld = false;
+                burstFiring = false;
+                burstFireCount = 0;
+                buttons.ReportDisable();
+                SetMode(GunMode_Pause);
+                // at this point, the other core should be stopping us now.
+            } else if(buttons.pressedReleased == BtnMask_Home) {
+                // MAKE SURE EVERYTHING IS DISENGAGED:
+                #ifdef USES_SOLENOID
+                    digitalWrite(solenoidPin, LOW);
+                    solenoidFirstShot = false;
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    digitalWrite(rumblePin, LOW);
+                    rumbleHappening = false;
+                    rumbleHappened = false;
+                #endif // USES_RUMBLE
+                offscreenBShot = false;
+                buttonPressed = false;
+                triggerHeld = false;
+                burstFiring = false;
+                burstFireCount = 0;
+                buttons.ReportDisable();
+                SetMode(GunMode_Pause);
+                // at this point, the other core should be stopping us now.
+            }
         }
     }
 }
@@ -1572,29 +1601,54 @@ void ExecRunMode()
                     return;
                 }
             }
-        } else if(buttons.pressedReleased == EnterPauseModeBtnMask) {
-            // MAKE SURE EVERYTHING IS DISENGAGED:
-            #ifdef USES_SOLENOID
-                digitalWrite(solenoidPin, LOW);
-                solenoidFirstShot = false;
-            #endif // USES_SOLENOID
-            #ifdef USES_RUMBLE
-                digitalWrite(rumblePin, LOW);
-                rumbleHappening = false;
-                rumbleHappened = false;
-            #endif // USES_RUMBLE
-            Keyboard.releaseAll();
-            delay(1);
-            AbsMouse5.release(MOUSE_LEFT);
-            AbsMouse5.release(MOUSE_RIGHT);
-            offscreenBShot = false;
-            buttonPressed = false;
-            triggerHeld = false;
-            burstFiring = false;
-            burstFireCount = 0;
-            SetMode(GunMode_Pause);
-            buttons.ReportDisable();
-            return;
+        } else {
+            if(buttons.pressedReleased == EnterPauseModeBtnMask) {
+                // MAKE SURE EVERYTHING IS DISENGAGED:
+                #ifdef USES_SOLENOID
+                    digitalWrite(solenoidPin, LOW);
+                    solenoidFirstShot = false;
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    digitalWrite(rumblePin, LOW);
+                    rumbleHappening = false;
+                    rumbleHappened = false;
+                #endif // USES_RUMBLE
+                Keyboard.releaseAll();
+                delay(1);
+                AbsMouse5.release(MOUSE_LEFT);
+                AbsMouse5.release(MOUSE_RIGHT);
+                offscreenBShot = false;
+                buttonPressed = false;
+                triggerHeld = false;
+                burstFiring = false;
+                burstFireCount = 0;
+                SetMode(GunMode_Pause);
+                buttons.ReportDisable();
+                return;
+            } else if(buttons.pressedReleased == BtnMask_Home) {
+                // MAKE SURE EVERYTHING IS DISENGAGED:
+                #ifdef USES_SOLENOID
+                    digitalWrite(solenoidPin, LOW);
+                    solenoidFirstShot = false;
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    digitalWrite(rumblePin, LOW);
+                    rumbleHappening = false;
+                    rumbleHappened = false;
+                #endif // USES_RUMBLE
+                Keyboard.releaseAll();
+                delay(1);
+                AbsMouse5.release(MOUSE_LEFT);
+                AbsMouse5.release(MOUSE_RIGHT);
+                offscreenBShot = false;
+                buttonPressed = false;
+                triggerHeld = false;
+                burstFiring = false;
+                burstFireCount = 0;
+                SetMode(GunMode_Pause);
+                buttons.ReportDisable();
+                return;
+            }
         }
         #else                                                       // if we're using dual cores,
         if(gunMode != GunMode_Run) {                                // We just check if the gunmode has been changed by the other thread.
@@ -3788,7 +3842,9 @@ void UpdateBindings()
         {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
         {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
         {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
-        {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2}
+        {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
+        {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+        {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
     };
 
     for(byte n = 0; n < ButtonCount; n++) {
