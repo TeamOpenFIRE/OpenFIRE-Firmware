@@ -41,13 +41,13 @@ public:
 
     /// @brief Descriptor.
     typedef struct Desc_s {
-        int pin;                      ///< Arduino defined pin to read.
+        int8_t pin;                   ///< Arduino defined pin to read.
         uint8_t reportType;           ///< Report type. See ReportType_e.
         uint8_t reportCode;           ///< Report code. Mouse or key press depending on report type.
-        uint8_t reportType2;          ///< Report type 2, for offscreen presses
-        uint8_t reportCode2;          ///< Report code type 2, for offscreen presses
-        uint8_t reportType3;
-        uint8_t reportCode3;
+        uint8_t reportType2;          ///< Report type 2, for offscreen presses.
+        uint8_t reportCode2;          ///< Report code type 2, for offscreen presses.
+        uint8_t reportType3;          ///< Report code type 3, for gamepad mode.
+        uint8_t reportCode3;          ///< Report code type 3, for gamepad mode.
         uint8_t debounceTicks;        ///< Number of millis() to wait after the button state changes.
         uint32_t debounceFifoMask;    ///< Mask checked to ensure button state is consistent (0 to disable)
     } Desc_t;
