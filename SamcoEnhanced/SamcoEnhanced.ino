@@ -40,7 +40,7 @@
 #endif // DOTSTAR_ENABLE
 #ifdef NEOPIXEL_PIN
     #define LED_ENABLE
-    #include <Adafruit_NeoPXL8.h>
+    #include <Adafruit_NeoPixel.h>
 #endif
 #ifdef SAMCO_FLASH_ENABLE
     #include <Adafruit_SPIFlashBase.h>
@@ -168,8 +168,9 @@ int8_t btnHome = -1;
 //#define CUSTOM_NEOPIXEL
 #ifdef CUSTOM_NEOPIXEL
     #define LED_ENABLE
-    #include <Adafruit_NeoPXL8.h>
-    int8_t customLEDpin = -1;                     // Pin number for the custom NeoPixel being used.
+    #include <Adafruit_NeoPixel.h>
+    int8_t customLEDpin = -1;                     // Pin number for the custom NeoPixel (strip) being used.
+    uint8_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
   // Adjustable aspects:
@@ -615,12 +616,13 @@ uint32_t stateFlags = StateFlagsDtrReset;
 Adafruit_DotStar dotstar(1, DOTSTAR_DATAPIN, DOTSTAR_CLOCKPIN, DOTSTAR_BGR);
 #endif // DOTSTAR_ENABLE
 
-#if defined(NEOPIXEL_PIN)
-int8_t neoPins[2] = {NEOPIXEL_PIN, customLEDpin};
-Adafruit_NeoPXL8 neopixel(1, neoPins, NEO_GRB + NEO_KHZ800);
+#if defined(NEOPIXEL_PIN) && defined(CUSTOM_NEOPIXEL)
+Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel externPixel(1, customLEDpin, NEO_GRB + NEO_KHZ800);
 #elif defined(CUSTOM_NEOPIXEL)
-int8_t neoPins[1] = {customLEDpin};
-Adafruit_NeoPXL8 neopixel(1, neoPins, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel externPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+#elif defined(NEOPIXEL_PIN)
+Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 #endif // CUSTOM_NEOPIXEL
 
 // flash transport instance
@@ -762,21 +764,6 @@ void setup() {
 #endif
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
-   
-    // sanity to ensure the cal prefs is populated with at least 1 entry
-    // in case the table is zero'd out
-    if(profileData[selectedProfile].xCenter == 0) {
-        profileData[selectedProfile].xCenter = xCenter;
-    }
-    if(profileData[selectedProfile].yCenter == 0) {
-        profileData[selectedProfile].yCenter = yCenter;
-    }
-    if(profileData[selectedProfile].xScale == 0) {
-        profileData[selectedProfile].xScale = CalScaleFloatToPref(xScale);
-    }
-    if(profileData[selectedProfile].yScale == 0) {
-        profileData[selectedProfile].yScale = CalScaleFloatToPref(yScale);
-    }
     
     // fetch the calibration data, other values already handled in ApplyInitialPrefs() 
     SelectCalPrefs(selectedProfile);
@@ -793,22 +780,19 @@ void setup() {
     startIrCamTimer(IRCamUpdateRate);
 
     // First boot sanity checks.
-    if(justBooted) {
-        //PinChecks();
-        // Check if the initial profiles are blanked.
-        if(profileData[selectedProfile].xScale == 0) {
-            // SHIT, it's a first boot! Prompt to start calibration.
-            Serial.println("Preferences data is empty!");
-            SetMode(GunMode_CalCenter);
-            Serial.println("Pull the trigger to start your first calibration!");
-            while(!(buttons.pressedReleased == BtnMask_Trigger)) {
-                buttons.Poll(1);
-                buttons.Repeat();
-            }
-        } else {
-            // this will turn off the DotStar/RGB LED and ensure proper transition to Run
-            SetMode(GunMode_Run);
+    // Check if the initial profiles are blanked.
+    if(profileData[selectedProfile].xScale == 0) {
+        // SHIT, it's a first boot! Prompt to start calibration.
+        Serial.println("Preferences data is empty!");
+        SetMode(GunMode_CalCenter);
+        Serial.println("Pull the trigger to start your first calibration!");
+        while(!(buttons.pressedReleased == BtnMask_Trigger)) {
+            buttons.Poll(1);
+            buttons.Repeat();
         }
+    } else {
+        // this will turn off the DotStar/RGB LED and ensure proper transition to Run
+        SetMode(GunMode_Run);
     }
 }
 
@@ -3341,7 +3325,7 @@ bool SelectCalProfile(unsigned int profile)
     }
  
     #ifdef LED_ENABLE
-    SetLedColorFromMode();
+        SetLedColorFromMode();
     #endif // LED_ENABLE
 
     // enable save to allow setting new default profile
@@ -3410,13 +3394,19 @@ void LedInit()
         pinMode(NEOPIXEL_ENABLEPIN, OUTPUT);
         digitalWrite(NEOPIXEL_ENABLEPIN, HIGH);
     #endif // NEOPIXEL_ENABLEPIN
+ 
     #ifdef DOTSTAR_ENABLE
         dotstar.begin();
     #endif // DOTSTAR_ENABLE
 
-    #if defined(NEOPIXEL_PIN) || defined(CUSTOM_NEOPIXEL)
+    #ifdef NEOPIXEL_PIN
         neopixel.begin();
     #endif // NEOPIXEL_PIN
+    #ifdef CUSTOM_NEOPIXEL
+        if(customLEDpin >= 0) {
+            externPixel.begin();
+        }
+    #endif // CUSTOM_NEOPIXEL
 
     #ifdef FOURPIN_LED
     if(PinR < 0 || PinG < 0 || PinB < 0) {
@@ -3442,6 +3432,12 @@ void SetLedPackedColor(uint32_t color)
     neopixel.setPixelColor(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
     neopixel.show();
 #endif // NEOPIXEL_PIN
+#ifdef CUSTOM_NEOPIXEL
+    if(customLEDpin >= 0) {
+        externPixel.fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
+        externPixel.show();
+    }
+#endif // CUSTOM_NEOPIXEL
 }
 
 void LedOff()
@@ -3456,10 +3452,18 @@ void LedUpdate(byte r, byte g, byte b)
         dotstar.setPixelColor(0, r, g, b);
         dotstar.show();
     #endif // DOTSTAR_ENABLE
-    #if defined(NEOPIXEL_PIN) || defined(CUSTOM_NEOPIXEL)
+    #ifdef NEOPIXEL_PIN
         neopixel.setPixelColor(0, r, g, b);
         neopixel.show();
-    #endif // NEOPIXEL
+    #endif // NEOPIXEL_PIN
+    #ifdef CUSTOM_NEOPIXEL
+        if(customLEDpin >= 0) {
+            for(byte i = 0; i < customLEDcount; i++) {
+                externPixel.setPixelColor(i, r, g, b);
+            }
+            externPixel.show();
+        }
+    #endif // CUSTOM_NEOPIXEL
     #ifdef FOURPIN_LED
         if(ledIsValid) {
             if(commonAnode) {
