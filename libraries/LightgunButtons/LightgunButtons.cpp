@@ -145,7 +145,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                     Gamepad16.press(btn.reportCode3);
                                 }
                             } else if(offScreen) {
-                                bitWrite(internalOffscreenMask, i, 1);
+                                bitSet(internalOffscreenMask, i);
                                 if(btn.reportType2 == ReportType_Mouse) {
                                     AbsMouse5.press(btn.reportCode2);
                                 } else if(btn.reportType2 == ReportType_Keyboard) {
@@ -180,7 +180,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                     Gamepad16.release(btn.reportCode3);
                                 }
                             } else if(bitRead(internalOffscreenMask, i)) {
-                                bitWrite(internalOffscreenMask, i, 0);
+                                bitClear(internalOffscreenMask, i);
                                 if(btn.reportType2 == ReportType_Mouse) {
                                     AbsMouse5.release(btn.reportCode2);
                                 } else if(btn.reportType2 == ReportType_Keyboard) {
