@@ -13,6 +13,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 - **Gamepad Output Support!** GUN4ALL reports as a five-button mouse, keyboard, *and gamepad* with ability to output the position as a joystick. The first open source lightgun system that's fully compatible with PCSX2 nightly on all platforms for multiplayer!
 - **Toggleable Extras!** Aside from the option for **using hardware switches** baked in, the extras *can all be individually toggled mid-game* in Pause Mode (either via Hotkeys or a scrollable menu system)!
 - **Supports any gun shell imaginable!** All original console and custom controller designs are compatible with careful consideration for all sorts of form-factors; from the one-button Sega Virtua Gun to the stick-toting behemoths of Cabela's Top Shot Rifles, to even planned support for [Blamcons](https://blamcon.com/) - if you can fit a Pico in it, *you can use it with GUN4ALL!*
+- **RGB Support!** GUN4ALL supports both four-pin-style RGB LEDs (common anode & cathode supported), as well as internal *and* external [NeoPixels](https://www.adafruit.com/product/1938) for glowy-blinky feedback, for both navigating the gun's internal systems or reacting to RGB commands!
 - **Mame Hooker Support!** Further your own goals with [Mame Hooker](http://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), compatible with Windows & Linux (thru Wine); the gun will automagically hand over control of offscreen button mode, peripherals and LEDs *for event aware feedbacks for even more immersive gameplay!*
 - Dual Core Support; take advantage of the second core in the ever-popular *Raspberry Pi Pico's* **RP2040** chip for processing button inputs in parallel, (theoretically) reducing latency.
 - Multiple Guns Support; easily set the gun to use binds for P1-4 with a single setting, swap player position on-the-fly, and change the USB identifier for each unique board without modifying deep rooted Arduino files!
@@ -69,10 +70,7 @@ For reference, the default schematic and (general) layout for the build and its 
 - Implement Analog stick input.
   * Will probably default to ports A1-A2 for stick signals (to account for temp sensor) - Pico only has three available/readable analog pins for general devices so it works out evenly.
   * Should it be mapped to the left or right stick (currently analog output tracking mode uses the left stick)? There really aren't that many games (especially multiplayer) that use directional input.
-- Add support for external addressable RGB LEDs (currently limiting to a NeoPixel and/or DotStar unit/strip for now)
-  * External 4-pin common anode/cathode LEDs are supported now for reacting to most operations, except those that call for using Wikicolors instead of direct R/G/B values.
-  * Only an onboard DotStar or NeoPixel unit is fully utilized (built into most Adafruit boards).
-  * Switching to [FastLED](https://github.com/FastLED/FastLED) in the future is [discussed here](https://github.com/SeongGino/ir-light-gun-plus/issues/9).
+- Finish Wikicolors interpretation for fourpin LEDs (they are used by onboard DotStars and internal/external NeoPixels, but are in a format incompatible with the three-channel system).
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
