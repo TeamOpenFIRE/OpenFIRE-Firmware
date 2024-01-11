@@ -3438,6 +3438,21 @@ void SetLedPackedColor(uint32_t color)
         externPixel.show();
     }
 #endif // CUSTOM_NEOPIXEL
+ #ifdef FOURPIN_LED
+    if(ledIsValid) {
+        byte r = highByte(color >> 8);
+        byte g = highByte(color);
+        byte b = lowByte(color);
+        if(commonAnode) {
+            r = ~r;
+            g = ~g;
+            b = ~b;
+        }
+        analogWrite(PinR, r);
+        analogWrite(PinG, g);
+        analogWrite(PinB, b);
+    }
+#endif // FOURPIN_LED
 }
 
 void LedOff()
