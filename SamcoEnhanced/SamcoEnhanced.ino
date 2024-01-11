@@ -2322,10 +2322,10 @@ void SerialProcessing()                                         // Reading the i
                 serialInput = Serial.read();                           // nomf the padding since it's meaningless.
                 serialInput = Serial.read();                           // Read the next number.
                 if(serialInput == '1') {         // Is it a solenoid "on" command?)
-                    bitWrite(serialQueue, 0, 1);                       // Queue the solenoid on bit.
+                    bitSet(serialQueue, 0);                            // Queue the solenoid on bit.
                 } else if(serialInput == '2' &&  // Is it a solenoid pulse command?
                 !bitRead(serialQueue, 1)) {      // (and we aren't already pulsing?)
-                    bitWrite(serialQueue, 1, 1);                       // Set the solenoid pulsing bit!
+                    bitSet(serialQueue, 1);                            // Set the solenoid pulsing bit!
                     serialInput = Serial.read();                       // nomf the padding bit.
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
@@ -2336,7 +2336,7 @@ void SerialProcessing()                                         // Reading the i
                     serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
                     serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
                 } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
-                    bitWrite(serialQueue, 0, 0);                       // Disable the solenoid off bit!
+                    bitClear(serialQueue, 0);                          // Disable the solenoid off bit!
                 }
                 break;
               #endif // USES_SOLENOID
@@ -2346,10 +2346,10 @@ void SerialProcessing()                                         // Reading the i
                 serialInput = Serial.read();                           // nomf the padding since it's meaningless.
                 serialInput = Serial.read();                           // read the next number.
                 if(serialInput == '1') {         // Is it an on signal?
-                    bitWrite(serialQueue, 2, 1);                       // Queue the rumble on bit.
+                    bitSet(serialQueue, 2);                            // Queue the rumble on bit.
                 } else if(serialInput == '2' &&  // Is it a pulsed on signal?
                 !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
-                    bitWrite(serialQueue, 3, 1);                       // Set the rumble pulsed bit.
+                    bitSet(serialQueue, 3);                            // Set the rumble pulsed bit.
                     serialInput = Serial.read();                       // nomf the x
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
@@ -2360,8 +2360,8 @@ void SerialProcessing()                                         // Reading the i
                     serialRumbPulses = atoi(serialInputS);             // and set as the amount of rumble pulses queued.
                     serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
                 } else if(serialInput == '0') {  // Else, it's a rumble off signal.
-                    bitWrite(serialQueue, 2, 0);                       // Queue the rumble off bit... 
-                    //bitWrite(serialQueue, 3, 0); // And the rumble pulsed bit.
+                    bitClear(serialQueue, 2);                          // Queue the rumble off bit... 
+                    //bitClear(serialQueue, 3); // And the rumble pulsed bit.
                     // TODO: do we want to set this off if we get a rumble off bit?
                 }
                 break;
@@ -2373,7 +2373,7 @@ void SerialProcessing()                                         // Reading the i
                 serialInput = Serial.read();                           // nomf the padding since it's meaningless.
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
-                    bitWrite(serialQueue, 4, 1);                       // set that here!
+                    bitSet(serialQueue, 4);                            // set that here!
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
@@ -2384,7 +2384,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDR = atoi(serialInputS);                   // And set that as the strength of the red value that's requested!
                 } else if(serialInput == '2' &&  // else, is it a pulse command?
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    bitSet(serialQueue, 7);                            // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
@@ -2396,7 +2396,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                     serialLEDPulsesLast = 0;                           // reset the pulses done count.
                 } else if(serialInput == '0') {  // else, it's an off command.
-                    bitWrite(serialQueue, 4, 0);                       // Set the R bit off.
+                    bitClear(serialQueue, 4);                          // Set the R bit off.
                     serialLEDR = 0;                                    // Clear the R value.
                 }
                 break;
@@ -2406,7 +2406,7 @@ void SerialProcessing()                                         // Reading the i
                 serialInput = Serial.read();                           // nomf the padding since it's meaningless.
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
-                    bitWrite(serialQueue, 5, 1);                       // set that here!
+                    bitSet(serialQueue, 5);                            // set that here!
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
@@ -2417,7 +2417,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDG = atoi(serialInputS);                   // And set that here!
                 } else if(serialInput == '2' &&  // else, is it a pulse command?
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    bitSet(serialQueue, 7);                            // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
@@ -2429,7 +2429,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                     serialLEDPulsesLast = 0;                           // reset the pulses done count.
                 } else if(serialInput == '0') {  // else, it's an off command.
-                    bitWrite(serialQueue, 5, 0);                       // Set the G bit off.
+                    bitClear(serialQueue, 5);                       // Set the G bit off.
                     serialLEDG = 0;                                    // Clear the G value.
                 }
                 break;
@@ -2439,7 +2439,7 @@ void SerialProcessing()                                         // Reading the i
                 serialInput = Serial.read();                           // nomf the padding since it's meaningless.
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
-                    bitWrite(serialQueue, 6, 1);                       // set that here!
+                    bitSet(serialQueue, 6);                       // set that here!
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
@@ -2450,7 +2450,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDB = atoi(serialInputS);                   // And set that as the strength requested here!
                 } else if(serialInput == '2' &&  // else, is it a pulse command?
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
-                    bitWrite(serialQueue, 7, 1);                       // Set the pulse bit!
+                    bitSet(serialQueue, 7);                       // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
@@ -2462,7 +2462,7 @@ void SerialProcessing()                                         // Reading the i
                     serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
                     serialLEDPulsesLast = 0;                           // reset the pulses done count.
                 } else if(serialInput == '0') {  // else, it's an off command.
-                    bitWrite(serialQueue, 6, 0);                       // Set the B bit off.
+                    bitClear(serialQueue, 6);                          // Set the B bit off.
                     serialLEDB = 0;                                    // Clear the G value.
                 }
                 break;
@@ -2511,7 +2511,7 @@ void SerialHandling()                                              // Where we l
                   unsigned long currentMillis = millis();                // Calibrate timer.
                   if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
                       digitalWrite(solenoidPin, LOW);                    // Finally shut it off for good.
-                      bitWrite(serialQueue, 1, 0);                       // Set the pulse bit as off.
+                      bitClear(serialQueue, 1);                          // Set the pulse bit as off.
                   }
               }
           } else {  // or if it's not,
@@ -2525,7 +2525,7 @@ void SerialHandling()                                              // Where we l
       if(rumbleActive) {
           if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
               digitalWrite(rumblePin, HIGH);                             // turn/keep it on.
-              //bitWrite(serialQueue, 3, 0);
+              //bitClear(serialQueue, 3);
           } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
               if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
                   analogWrite(rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
@@ -2555,7 +2555,7 @@ void SerialHandling()                                              // Where we l
                   }
               } else {                                              // ...or the pulses count is complete.
                   digitalWrite(rumblePin, LOW);                          // turn off the motor,
-                  bitWrite(serialQueue, 3, 0);                           // and set the rumble pulses bit off, now that we've completed it.
+                  bitClear(serialQueue, 3);                              // and set the rumble pulses bit off, now that we've completed it.
               }
           } else {                                                  // ...or we're being told to turn it off outright.
               digitalWrite(rumblePin, LOW);                              // Do that then.
@@ -2640,7 +2640,7 @@ void SerialHandling()                                              // Where we l
                 }
             } else {                                       // Or, we're done with the amount of pulse commands.
                 serialLEDPulseColorMap = 0b00000000;               // Clear the now-stale pulse color map,
-                bitWrite(serialQueue, 7, 0);                       // And flick the pulse command bit off.
+                bitClear(serialQueue, 7);                          // And flick the pulse command bit off.
             }
         } else {                                           // Or, all the LED bits are off, so we should be setting it off entirely.
             LedOff();                                              // Turn it off.
@@ -2689,7 +2689,7 @@ void ButtonsPush()
             } else {
                 Keyboard.press(playerStartBtn);
             }
-            bitWrite(buttonsHeld, 0, 1);
+            bitSet(buttonsHeld, 0);
         }
     } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
         if(buttons.analogOutput) {
@@ -2697,7 +2697,7 @@ void ButtonsPush()
         } else {
             Keyboard.release(playerStartBtn);
         }
-        bitWrite(buttonsHeld, 0, 0);
+        bitClear(buttonsHeld, 0);
     }
 
     if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
@@ -2707,7 +2707,7 @@ void ButtonsPush()
             } else {
                 Keyboard.press(playerSelectBtn);
             }
-            bitWrite(buttonsHeld, 1, 1);
+            bitSet(buttonsHeld, 1);
         }
     } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
         if(buttons.analogOutput) {
@@ -2715,7 +2715,7 @@ void ButtonsPush()
         } else {
             Keyboard.release(playerSelectBtn);
         }
-        bitWrite(buttonsHeld, 1, 0);
+        bitClear(buttonsHeld, 1);
     }
 }
 
