@@ -35,18 +35,20 @@
 #include <TinyUSB_Devices.h>
 #include <Wire.h>
 #ifdef DOTSTAR_ENABLE
-#define LED_ENABLE
-#include <Adafruit_DotStar.h>
+    #define LED_ENABLE
+    #include <Adafruit_DotStar.h>
 #endif // DOTSTAR_ENABLE
 #ifdef NEOPIXEL_PIN
-#define LED_ENABLE
-#include <Adafruit_NeoPixel.h>
+    #define LED_ENABLE
+    #include <Adafruit_NeoPXL8.h>
 #endif
 #ifdef SAMCO_FLASH_ENABLE
-#include <Adafruit_SPIFlashBase.h>
+    #include <Adafruit_SPIFlashBase.h>
 #elif SAMCO_EEPROM_ENABLE
-#include <EEPROM.h>
+    #include <EEPROM.h>
 #endif // SAMCO_FLASH_ENABLE/EEPROM_ENABLE
+
+
 #include <DFRobotIRPositionEx.h>
 #include <LightgunButtons.h>
 #include <SamcoPositionEnhanced.h>
@@ -55,11 +57,10 @@
 #include "SamcoPreferences.h"
 
 #ifdef ARDUINO_ARCH_RP2040
-#include <hardware/pwm.h>
-#include <hardware/irq.h>
-
-// declare PWM ISR
-void rp2040pwmIrq(void);
+  #include <hardware/pwm.h>
+  #include <hardware/irq.h>
+  // declare PWM ISR
+  void rp2040pwmIrq(void);
 #endif
 
 
@@ -87,7 +88,7 @@ void rp2040pwmIrq(void);
   // If unsure, or you don't plan to use MAMEHOOKER, leave this commented.
 //#define MAMEHOOKER
 
-  // Set this to 1 if your build uses hardware switches, or comment out (//) to only set at boot time.
+  // Leave this uncommented if your build uses hardware switches, or comment out (//) to disable all references to hw switch functionality.
 #define USES_SWITCHES
 #ifdef USES_SWITCHES // Here's where they should be defined!
     const byte autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
@@ -162,6 +163,14 @@ int8_t btnHome = -1;
     bool commonAnode = true;
 #endif // FOURPIN_LED
 
+  // If you're using a custom external NeoPixel unit, unset and define the data pin location here!
+  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
+//#define CUSTOM_NEOPIXEL
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPXL8.h>
+    int8_t customLEDpin = -1;                     // Pin number for the custom NeoPixel being used.
+#endif // CUSTOM_NEOPIXEL
 
   // Adjustable aspects:
 byte autofireWaitFactor = 3;                          // This is the default time to wait between rapid fire pulses (from 2-4)
@@ -447,6 +456,10 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     // We need the rumbleHappening because of the variable nature of the PWM controlling the motor.
 #endif // USES_RUMBLE
 
+#ifdef FOURPIN_LED
+    bool ledIsValid;                                // Flag set true if RGB pins are mapped to valid numbers
+#endif // FOURPIN_LED
+
 // For button queuing:
 byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons we've held on (for btnStart through btnRight)
 
@@ -595,16 +608,20 @@ constexpr uint32_t StateFlagsDtrReset = StateFlag_PrintSelectedProfile | StateFl
 // state flags, see StateFlag_e
 uint32_t stateFlags = StateFlagsDtrReset;
 
-
+// internal addressable LEDs inits
 #ifdef DOTSTAR_ENABLE
 // note if the colours don't match then change the colour format from BGR
 // apparently different lots of DotStars may have different colour ordering ¯\_(ツ)_/¯
 Adafruit_DotStar dotstar(1, DOTSTAR_DATAPIN, DOTSTAR_CLOCKPIN, DOTSTAR_BGR);
 #endif // DOTSTAR_ENABLE
 
-#ifdef NEOPIXEL_PIN
-Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-#endif // NEOPIXEL_PIN
+#if defined(NEOPIXEL_PIN)
+int8_t neoPins[2] = {NEOPIXEL_PIN, customLEDpin};
+Adafruit_NeoPXL8 neopixel(1, neoPins, NEO_GRB + NEO_KHZ800);
+#elif defined(CUSTOM_NEOPIXEL)
+int8_t neoPins[1] = {customLEDpin};
+Adafruit_NeoPXL8 neopixel(1, neoPins, NEO_GRB + NEO_KHZ800);
+#endif // CUSTOM_NEOPIXEL
 
 // flash transport instance
 #if defined(EXTERNAL_FLASH_USE_QSPI)
@@ -675,6 +692,9 @@ AbsMouse5_ AbsMouse5(1);
 #endif
 
 void setup() {
+    Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
+    Serial.setTimeout(0);
+ 
 #ifdef SAMCO_FLASH_ENABLE
     // init flash and load saved preferences
     nvAvailable = flash.begin();
@@ -740,9 +760,6 @@ void setup() {
     // Initializing the USB devices chunk.
     TinyUSBDevices.begin(1);
 #endif
-
-    Serial.begin(9600);      // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
-    Serial.setTimeout(0);    // This is to avoid any potential hangups when reading FF pulse values.
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
    
@@ -1235,9 +1252,7 @@ void loop()
                           SendEscapeKey();
                           #ifdef LED_ENABLE
                               for(byte i = 0; i < 3; i++) {
-                                  #ifdef FOURPIN_LED
-                                      FourPinUpdate(150,0,150);
-                                  #endif // FOURPIN_LED
+                                  LedUpdate(150,0,150);
                                   delay(55);
                                   LedOff();
                                   delay(40);
@@ -2118,19 +2133,8 @@ void SerialProcessing()                                         // Reading the i
               burstFireCount = 0;
               offscreenBShot = false;
               #ifdef LED_ENABLE
-                  // Set the RGB LED to a mid-intense white.
-                  // The onboard pins on Adafruits are RGB (no W), FWIW.
-                  #ifdef DOTSTAR_ENABLE
-                      dotstar.setPixelColor(0, 127, 127, 127);
-                      dotstar.show();
-                  #endif // DOTSTAR_ENABLE
-                  #ifdef NEOPIXEL_PIN
-                      neopixel.setPixelColor(0, 127, 127, 127);
-                      neopixel.show();
-                  #endif // NEOPIXEL_PIN
-                  #ifdef FOURPIN_LED
-                      FourPinUpdate(127, 127, 127);
-                  #endif // FOURPIN_LED
+                  // Set the LEDs to a mid-intense white.
+                  LedUpdate(127, 127, 127);
               #endif // LED_ENABLE
           }
           break;
@@ -2582,17 +2586,7 @@ void SerialHandling()                                              // Where we l
         bitRead(serialQueue, 5) ||                            // G,
         bitRead(serialQueue, 6)) {                            // OR B digital bits set to on?
             // Command the LED to change/turn on with the values serialProcessing set for us.
-            #ifdef DOTSTAR_ENABLE
-                dotstar.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
-                dotstar.show();
-            #endif // DOTSTAR_ENABLE
-            #ifdef NEOPIXEL_PIN
-                neopixel.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
-                neopixel.show();
-            #endif // NEOPIXEL_PIN
-            #ifdef FOURPIN_LED 
-                FourPinUpdate(serialLEDR, serialLEDG, serialLEDB);
-            #endif // FOURPIN_LED
+            LedUpdate(serialLEDR, serialLEDG, serialLEDB);
             serialLEDChange = false;                               // Set the bit to off.
         } else if(bitRead(serialQueue, 7)) {                  // Or is it an LED pulse command?
             if(!serialLEDPulsesLast) {                        // Are we just starting?
@@ -2658,17 +2652,7 @@ void SerialHandling()                                              // Where we l
                         }
                     }
                     // Then, commit the changed value.
-                    #ifdef DOTSTAR_ENABLE
-                        dotstar.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
-                        dotstar.show();
-                    #endif // DOTSTAR_ENABLE
-                    #ifdef NEOPIXEL_PIN
-                        neopixel.setPixelColor(0, serialLEDR, serialLEDG, serialLEDB);
-                        neopixel.show();
-                    #endif // NEOPIXEL_PIN
-                    #ifdef FOURPIN_LED 
-                        FourPinUpdate(serialLEDR, serialLEDG, serialLEDB);
-                    #endif // FOURPIN_LED
+                    LedUpdate(serialLEDR, serialLEDG, serialLEDB);
                 }
             } else {                                       // Or, we're done with the amount of pulse commands.
                 serialLEDPulseColorMap = 0b00000000;               // Clear the now-stale pulse color map,
@@ -2842,25 +2826,19 @@ void SetPauseModeSelection(bool isIncrement)
         case PauseMode_Calibrate:
           Serial.println("Selecting: Calibrate current profile");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(255,0,0);
-              #endif // FOURPIN_LED
+              LedUpdate(255,0,0);
           #endif // LED_ENABLE
           break;
         case PauseMode_ProfileSelect:
           Serial.println("Selecting: Switch profile");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(200,50,0);
-              #endif // FOURPIN_LED
+              LedUpdate(200,50,0);
           #endif // LED_ENABLE
           break;
         case PauseMode_Save:
           Serial.println("Selecting: Save Settings");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(155,100,0);
-              #endif // FOURPIN_LED
+              LedUpdate(155,100,0);
           #endif // LED_ENABLE
           break;
         #ifndef USES_SWITCHES
@@ -2868,9 +2846,7 @@ void SetPauseModeSelection(bool isIncrement)
         case PauseMode_RumbleToggle:
           Serial.println("Selecting: Toggle rumble On/Off");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(100,155,0);
-              #endif // FOURPIN_LED
+              LedUpdate(100,155,0);
           #endif // LED_ENABLE
           break;
         #endif // USES_RUMBLE
@@ -2878,9 +2854,7 @@ void SetPauseModeSelection(bool isIncrement)
         case PauseMode_SolenoidToggle:
           Serial.println("Selecting: Toggle solenoid On/Off");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(55,200,0);
-              #endif // FOURPIN_LED
+              LedUpdate(55,200,0);
           #endif // LED_ENABLE
           break;
         #endif // USES_SOLENOID
@@ -2889,18 +2863,14 @@ void SetPauseModeSelection(bool isIncrement)
         case PauseMode_BurstFireToggle:
           Serial.println("Selecting: Toggle burst-firing mode");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(0,255,0);
-              #endif // FOURPIN_LED
+              LedUpdate(0,255,0);
           #endif // LED_ENABLE
           break;
         #endif // USES_SOLENOID
         case PauseMode_EscapeSignal:
           Serial.println("Selecting: Send Escape key signal");
           #ifdef LED_ENABLE
-              #ifdef FOURPIN_LED
-                  FourPinUpdate(150,0,150);
-              #endif // FOURPIN_LED
+              LedUpdate(150,0,150);
           #endif // LED_ENABLE
           break;
         /*case PauseMode_Exit:
@@ -2911,7 +2881,6 @@ void SetPauseModeSelection(bool isIncrement)
           Serial.println("YOU'RE NOT SUPPOSED TO BE SEEING THIS");
           break;
     }
-    return;
 }
 
 void SetProfileSelection(bool isIncrement)
@@ -3240,9 +3209,7 @@ void SavePreferences()
         Serial.println(NVRAMlabel);
         #ifdef LED_ENABLE
             for(byte i = 0; i < 3; i++) {
-                #ifdef FOURPIN_LED
-                    FourPinUpdate(25,25,255);
-                #endif // FOURPIN_LED
+                LedUpdate(25,25,255);
                 delay(55);
                 LedOff();
                 delay(40);
@@ -3253,9 +3220,7 @@ void SavePreferences()
         PrintNVPrefsError();
         #ifdef LED_ENABLE
             for(byte i = 0; i < 2; i++) {
-                #ifdef FOURPIN_LED
-                    FourPinUpdate(255,10,5);
-                #endif // FOURPIN_LED
+                LedUpdate(255,10,5);
                 delay(145);
                 LedOff();
                 delay(60);
@@ -3440,26 +3405,31 @@ void ApplyCalToProfile()
 void LedInit()
 {
     // init DotStar and/or NeoPixel to red during setup()
-#ifdef DOTSTAR_ENABLE
-    dotstar.begin();
-    dotstar.setPixelColor(0, 150, 0, 0);
-    dotstar.show();
-#endif // DOTSTAR_ENABLE
-#ifdef NEOPIXEL_ENABLEPIN
-    pinMode(NEOPIXEL_ENABLEPIN, OUTPUT);
-    digitalWrite(NEOPIXEL_ENABLEPIN, HIGH);
-#endif // NEOPIXEL_ENABLEPIN
-#ifdef NEOPIXEL_PIN
-    neopixel.begin();
-    neopixel.setPixelColor(0, 255, 0, 0);
-    neopixel.show();
-#endif // NEOPIXEL_PIN
+    // For the onboard NEOPIXEL, if any; it needs to be enabled.
+    #ifdef NEOPIXEL_ENABLEPIN
+        pinMode(NEOPIXEL_ENABLEPIN, OUTPUT);
+        digitalWrite(NEOPIXEL_ENABLEPIN, HIGH);
+    #endif // NEOPIXEL_ENABLEPIN
+    #ifdef DOTSTAR_ENABLE
+        dotstar.begin();
+    #endif // DOTSTAR_ENABLE
+
+    #if defined(NEOPIXEL_PIN) || defined(CUSTOM_NEOPIXEL)
+        neopixel.begin();
+    #endif // NEOPIXEL_PIN
+
     #ifdef FOURPIN_LED
+    if(PinR < 0 || PinG < 0 || PinB < 0) {
+        Serial.println("RGB values not valid! Disabling four pin access.");
+        ledIsValid = false;
+    } else {
         pinMode(PinR, OUTPUT);
         pinMode(PinG, OUTPUT);
         pinMode(PinB, OUTPUT);
-        FourPinUpdate(255, 0, 0);
+        ledIsValid = true;
+    }
     #endif // FOURPIN_LED
+    LedUpdate(255, 0, 0);
 }
 
 void SetLedPackedColor(uint32_t color)
@@ -3476,32 +3446,33 @@ void SetLedPackedColor(uint32_t color)
 
 void LedOff()
 {
-#ifdef DOTSTAR_ENABLE
-    dotstar.setPixelColor(0, 0);
-    dotstar.show();
-#endif // DOTSTAR_ENABLE
-#ifdef NEOPIXEL_PIN
-    neopixel.setPixelColor(0, 0);
-    neopixel.show();
-#endif // NEOPIXEL_PIN
-#ifdef FOURPIN_LED
-    FourPinUpdate(0, 0, 0);
-#endif // FOURPIN_LED
+    LedUpdate(0, 0, 0);
 }
 
-#ifdef FOURPIN_LED
-void FourPinUpdate(byte r, byte g, byte b)
+// Generic R/G/B value update across all LED units
+void LedUpdate(byte r, byte g, byte b)
 {
-    if(commonAnode) {
-        r = ~r;
-        g = ~g;
-        b = ~b;
-    }
-    analogWrite(PinR, r);
-    analogWrite(PinG, g);
-    analogWrite(PinB, b);
+    #ifdef DOTSTAR_ENABLE
+        dotstar.setPixelColor(0, r, g, b);
+        dotstar.show();
+    #endif // DOTSTAR_ENABLE
+    #if defined(NEOPIXEL_PIN) || defined(CUSTOM_NEOPIXEL)
+        neopixel.setPixelColor(0, r, g, b);
+        neopixel.show();
+    #endif // NEOPIXEL
+    #ifdef FOURPIN_LED
+        if(ledIsValid) {
+            if(commonAnode) {
+                r = ~r;
+                g = ~g;
+                b = ~b;
+            }
+            analogWrite(PinR, r);
+            analogWrite(PinG, g);
+            analogWrite(PinB, b);
+        }
+    #endif // FOURPIN_LED
 }
-#endif // FOURPIN_LED
 
 void SetLedColorFromMode()
 {
