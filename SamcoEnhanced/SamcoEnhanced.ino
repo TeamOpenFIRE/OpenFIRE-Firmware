@@ -2118,8 +2118,16 @@ void SerialProcessing()                                         // Reading the i
               burstFireCount = 0;
               offscreenBShot = false;
               #ifdef LED_ENABLE
-                  leds[0].setRGB(127, 127, 127);
-                  FastLED.show();
+                  // Set the RGB LED to a mid-intense white.
+                  // The onboard pins on Adafruits are RGB (no W), FWIW.
+                  #ifdef DOTSTAR_ENABLE
+                      dotstar.setPixelColor(0, 127, 127, 127);
+                      dotstar.show();
+                  #endif // DOTSTAR_ENABLE
+                  #ifdef NEOPIXEL_PIN
+                      neopixel.setPixelColor(0, 127, 127, 127);
+                      neopixel.show();
+                  #endif // NEOPIXEL_PIN
                   #ifdef FOURPIN_LED
                       FourPinUpdate(127, 127, 127);
                   #endif // FOURPIN_LED
