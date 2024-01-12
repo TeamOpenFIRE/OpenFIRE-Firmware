@@ -1596,7 +1596,9 @@ void ExecRunMode()
                 buttons.offScreen = false;
             }
 
-            analogStickPolled = false;
+            #ifdef USES_ANALOG
+                analogStickPolled = false;
+            #endif // USES_ANALOG
         }
 
         // If using RP2040, we offload the button processing to the second core.
