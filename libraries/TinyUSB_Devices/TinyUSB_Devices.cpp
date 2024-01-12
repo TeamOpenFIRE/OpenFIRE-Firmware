@@ -421,12 +421,12 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::press(uint8_t buttonNum) {
-    bitWrite(gamepad16Report.buttons, buttonNum, 1);
+    bitSet(gamepad16Report.buttons, buttonNum);
     report();
   }
 
   void Gamepad16_::release(uint8_t buttonNum) {
-    bitWrite(gamepad16Report.buttons, buttonNum, 0);
+    bitClear(gamepad16Report.buttons, buttonNum);
     report();
   }
 
