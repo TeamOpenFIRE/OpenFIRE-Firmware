@@ -412,11 +412,17 @@ void AbsMouse5_::release(uint8_t button)
   Gamepad16_::Gamepad16_(void) {
   }
 
-  void Gamepad16_::move(uint16_t origX, uint16_t origY) {
+  void Gamepad16_::moveL(uint16_t origX, uint16_t origY) {
     // add shit ass
     // yes I hardcoded the mousemaxx/y values, eat me
     gamepad16Report.X = map(origX, 0, 4095, 0, 65535);
     gamepad16Report.Y = map(origY, 0, 3071, 0, 65535);
+    report();
+  }
+
+  void Gamepad16_::moveR(uint16_t origX, uint16_t origY) {
+    gamepad16Report.Rx = map(origX, 0, 4095, 0, 65535);
+    gamepad16Report.Ry = map(origY, 0, 4095, 0, 65535);
     report();
   }
 
@@ -442,6 +448,8 @@ void AbsMouse5_::release(uint8_t button)
     gamepad16Report.buttons = 0;
     gamepad16Report.X = 32767;
     gamepad16Report.Y = 32767;
+    gamepad16Report.Rx = 32767;
+    gamepad16Report.Ry = 32767;
     report();
   }
 

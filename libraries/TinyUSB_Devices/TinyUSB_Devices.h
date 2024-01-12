@@ -106,22 +106,24 @@ extern TinyUSBDevices_ TinyUSBDevices;
 			0xa1, 0x01, \
               0xa1, 0x00, \
               0x85, 0x03, \
-              0x05, 0x09, \
-              0x19, 0x01, \
-              0x29, 0x08, \
-              0x15, 0x00, \
-              0x25, 0x01, \
-              0x75, 0x01, \
-              0x95, 0x10, \
-              0x81, 0x02, \
-			0x05, 0x01, \
-              0x09, 0x30, \
-              0x09, 0x31, \
-              0x15, 0x00, \
-              0x27, 0xFF, 0xFF, 0x00, 0x00, \
-              0x75, 0x10, \
-              0x95, 0x02, \
-              0x81, 0x02, \
+                0x05, 0x09, \
+                0x19, 0x01, \
+                0x29, 0x0F, \
+                0x15, 0x00, \
+                0x25, 0x01, \
+                0x75, 0x01, \
+                0x95, 0x10, \
+                0x81, 0x02, \
+              0x05, 0x01, \
+                0x09, 0x30, \
+                0x09, 0x31, \
+                0x09, 0x33, \
+                0x09, 0x34, \
+                0x15, 0x00, \
+                0x27, 0xFF, 0xFF, 0x00, 0x00, \
+                0x75, 0x10, \
+                0x95, 0x04, \
+                0x81, 0x02, \
               0xc0,       \
 			0xc0
 #endif // USE_TINYUSB
@@ -241,8 +243,10 @@ extern Keyboard_ Keyboard;
 
 typedef struct {
         uint16_t buttons;     // button bitmask
-		uint16_t X = 32767;
-        uint16_t Y = 32767;
+		uint16_t X = 32768;
+        uint16_t Y = 32768;
+        uint16_t Rx = 32768;
+        uint16_t Ry = 32768;
 } gamepad16Report_s;
 
 class Gamepad16_ {
@@ -250,7 +254,8 @@ private:
   gamepad16Report_s gamepad16Report;
 public:
   Gamepad16_(void);
-  void move(uint16_t origX, uint16_t origY);
+  void moveL(uint16_t origX, uint16_t origY);
+  void moveR(uint16_t origX, uint16_t origY);
   void press(uint8_t buttonNum);
   void release(uint8_t buttonNum);
   void report(void);
