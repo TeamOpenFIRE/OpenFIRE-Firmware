@@ -151,6 +151,14 @@ int8_t btnPedal = 12;                             // If you're using a physical 
 int8_t btnPump = -1;
 int8_t btnHome = -1;
 
+  // If your build uses an analog stick, unset and define the stick's pins here!
+  // Remember: ANALOG PINS ONLY!
+//#define USES_ANALOG
+#ifdef USES_ANALOG
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
+#endif // USES_ANALOG
+
   // If you're using a regular 4-pin RGB LED, unset and define the R/G/B color pins here!
   // Remember: PWM PINS ONLY!
 //#define FOURPIN_LED
@@ -457,8 +465,13 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     // We need the rumbleHappening because of the variable nature of the PWM controlling the motor.
 #endif // USES_RUMBLE
 
+#ifdef USES_ANALOG
+    bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
+    bool analogStickPolled = false;              // Flag set on if the stick was polled recently, to prevent overloading with aStick updates.
+#endif // USES_ANALOG
+
 #ifdef FOURPIN_LED
-    bool ledIsValid;                                // Flag set true if RGB pins are mapped to valid numbers
+    bool ledIsValid;                             // Flag set true if RGB pins are mapped to valid numbers
 #endif // FOURPIN_LED
 
 // For button queuing:
@@ -740,6 +753,22 @@ void setup() {
     #ifdef LED_ENABLE
         LedInit();
     #endif // LED_ENABLE
+
+    #ifdef USES_ANALOG
+        analogReadResolution(12);
+        #ifdef USES_TEMP
+        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY &&
+        analogPinX != tempPin && analogPinY != tempPin) {
+        #else
+        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY) {
+        #endif
+            //pinMode(analogPinX, INPUT);
+            //pinMode(analogPinY, INPUT);
+            analogIsValid = true;
+        } else {
+            analogIsValid = false;
+        }
+    #endif // USES_ANALOG
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
     // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040
@@ -1054,6 +1083,17 @@ void loop1()
             // For processing the buttons tied to the keyboard.
             ButtonsPush();
         #endif // MAMEHOOKER
+
+        #ifdef USES_ANALOG
+            if(analogIsValid) {
+                // We tie analog stick updates to the IR camera timer, so as to not overload USB bandwidth.
+                // For some reason, tying it to irPosUpdateTick explicitly prevents mouse dropout.
+                if(!analogStickPolled && irPosUpdateTick) {
+                    AnalogStickPoll();
+                    analogStickPolled = true;
+                }
+            }
+        #endif // USES_ANALOG
         
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
             SendEscapeKey();
@@ -1431,7 +1471,7 @@ void ExecRunMode()
     if(justBooted) {
         // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
         delay(100);  // Exact time needed to wait seems to vary, so make a safe assumption here.
-        Gamepad16.move(MouseMaxX / 2, MouseMaxY / 2);
+        Gamepad16.releaseAll();
         justBooted = false;
     }
     for(;;) {
@@ -1545,7 +1585,7 @@ void ExecRunMode()
             }
 
             if(buttons.analogOutput) {
-                Gamepad16.move(conMoveXAxis, conMoveYAxis);
+                Gamepad16.moveR(conMoveXAxis, conMoveYAxis);
             } else {
                 AbsMouse5.move(conMoveXAxis, conMoveYAxis);
             }
@@ -1555,10 +1595,22 @@ void ExecRunMode()
             } else {
                 buttons.offScreen = false;
             }
+
+            analogStickPolled = false;
         }
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
+
+        #ifdef USES_ANALOG
+            if(analogIsValid) {
+                // We tie analog stick updates to the IR camera timer, so as to not overload USB bandwidth.
+                if(!analogStickPolled && irPosUpdateTick) {
+                    AnalogStickPoll();
+                    analogStickPolled = true;
+                }
+            }
+        #endif // USES_ANALOG
 
         if(buttons.pressedReleased == EscapeKeyBtnMask) {
             SendEscapeKey();
@@ -2074,6 +2126,22 @@ void TriggerNotFire()                                       // ...Or we just did
         }
     #endif // USES_RUMBLE
 }
+
+#ifdef USES_ANALOG
+void AnalogStickPoll()
+{
+    unsigned int analogValueX = analogRead(analogPinX);
+    unsigned int analogValueY = analogRead(analogPinY);
+    // Check if we're in the deadzone or not (roughly 15% on each axis)
+    if(analogValueX > 1500 && analogValueX < 2500) {
+        analogValueX = 2048;
+    }
+    if(analogValueY > 1500 && analogValueY < 2500) {
+        analogValueY = 2048;
+    }
+    Gamepad16.moveL(analogValueX, analogValueY);
+}
+#endif // USES_ANALOG
 
 #ifdef MAMEHOOKER
 void SerialProcessing()                                         // Reading the input from the serial buffer.
@@ -2722,7 +2790,7 @@ void ButtonsPush()
 void SendEscapeKey()
 {
     Keyboard.press(KEY_ESC);
-    delay(5);  // wait a bit so it registers on the PC.
+    delay(20);  // wait a bit so it registers on the PC.
     Keyboard.release(KEY_ESC);
 }
 
