@@ -760,7 +760,7 @@ void setup() {
     
 #ifdef USE_TINYUSB
     // Initializing the USB devices chunk.
-    TinyUSBDevices.begin(1);
+    TinyUSBDevices.begin(4);
 #endif
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
