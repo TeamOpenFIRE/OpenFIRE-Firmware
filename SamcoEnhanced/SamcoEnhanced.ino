@@ -1599,7 +1599,7 @@ void ExecRunMode()
             }
 
             if(buttons.analogOutput) {
-                Gamepad16.moveR(conMoveXAxis, conMoveYAxis);
+                Gamepad16.moveCam(conMoveXAxis, conMoveYAxis);
             } else {
                 AbsMouse5.move(conMoveXAxis, conMoveYAxis);
             }
@@ -2162,7 +2162,7 @@ void AnalogStickPoll()
     if(analogValueY > 1500 && analogValueY < 2500) {
         analogValueY = 2048;
     }
-    Gamepad16.moveL(analogValueX, analogValueY);
+    Gamepad16.moveStick(analogValueX, analogValueY);
 }
 #endif // USES_ANALOG
 
@@ -2270,19 +2270,52 @@ void SerialProcessing()                                         // Reading the i
           switch(serialInput) {
               // Toggle Gamepad Output Mode
               case 'A':
-                buttons.analogOutput = !buttons.analogOutput;
-                if(buttons.analogOutput) {
-                    AbsMouse5.release(MOUSE_LEFT);
-                    AbsMouse5.release(MOUSE_RIGHT);
-                    AbsMouse5.release(MOUSE_MIDDLE);
-                    AbsMouse5.release(MOUSE_BUTTON4);
-                    AbsMouse5.release(MOUSE_BUTTON5);
-                    Keyboard.releaseAll();
-                    Serial.println("Switched to Analog Output mode!");
-                } else {
-                    Gamepad16.releaseAll();
-                    Keyboard.releaseAll();
-                    Serial.println("Switched to Mouse Output mode!");
+                serialInput = Serial.read();
+                switch(serialInput) {
+                    case 'L':
+                      if(!buttons.analogOutput) {
+                          buttons.analogOutput = true;
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      }
+                      Gamepad16.stickRight = true;
+                      Serial.println("Setting camera to the Left Stick.");
+                      break;
+                    case 'R':
+                      if(!buttons.analogOutput) {
+                          buttons.analogOutput = true;
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      }
+                      Gamepad16.stickRight = false;
+                      Serial.println("Setting camera to the Right Stick.");
+                      break;
+                    default:
+                      buttons.analogOutput = !buttons.analogOutput;
+                      if(buttons.analogOutput) {
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      } else {
+                          Gamepad16.releaseAll();
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Mouse Output mode!");
+                      }
+                      break;
                 }
                 break;
               // Toggle Processing/Run Mode
