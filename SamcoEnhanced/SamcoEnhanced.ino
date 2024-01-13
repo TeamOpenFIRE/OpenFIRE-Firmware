@@ -480,7 +480,6 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 #ifdef MAMEHOOKER
 // For serial mode:
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-    bool serialIsProcessing = false;                 // Flag to indicate we should be pausing when Serial data is being read.
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
     // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.
@@ -1055,10 +1054,7 @@ void loop1()
         #ifdef MAMEHOOKER
             // Stalling mitigation: make both cores pause when reading serial
             if(Serial.available()) {
-                serialIsProcessing = true;
-                delay(2);
                 SerialProcessing();
-                delay(2);
             }
             if(!serialMode) {   // Have we released a serial signal pulse? If not,
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1501,9 +1497,7 @@ void ExecRunMode()
         // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
         #ifdef MAMEHOOKER
             if(Serial.available()) {                             // Have we received serial input? (This is cleared after we've read from it in full.)
-                delay(1);
                 SerialProcessing();                                 // Run through the serial processing method (repeatedly, if there's leftover bits)
-                delay(1);
             }
             if(!serialMode) {  // Normal (gun-handled) mode
                 // For processing the trigger specifically.
@@ -1542,13 +1536,6 @@ void ExecRunMode()
         #ifdef SAMCO_NO_HW_TIMER
             SAMCO_NO_HW_TIMER_UPDATE();
         #endif // SAMCO_NO_HW_TIMER
-
-        #ifdef MAMEHOOKER
-            if(serialIsProcessing) {
-                delay(3);
-                serialIsProcessing = false;
-            }
-        #endif // MAMEHOOKER
 
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
@@ -1614,13 +1601,6 @@ void ExecRunMode()
                 analogStickPolled = false;
             #endif // USES_ANALOG
         }
-
-        #ifdef MAMEHOOKER
-            if(serialIsProcessing) {
-                delay(3);
-                serialIsProcessing = false;
-            }
-        #endif // MAMEHOOKER
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
