@@ -56,9 +56,9 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
 
 ## Known Issues (want to fix sooner rather than later):
-- Serial communication (Mamehook or debug output) can randomly lock up operation when not using a core that has a patched TinyUSB *(refer to the enclosed instruction book)*. See https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
-  * If having issues, reducing the baud rate of the serial port in the sketch and the config files might help. Do report if you're still having issues!
-- MAMEHooker supports the main force feedback/lamp outputs and the offscreen modeset, but is missing and will not react to the screen ratio modesets.
+- Serial communication (Mamehook or debug output) can randomly lock up operation due to complications with HID packets (Mouse/Keyboard/Pad commands) and Serial I/O clashing. See https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
+  * If having issues, reducing the baud rate of the serial port in the sketch and the config files might help. This is being actively investigated!
+- MAMEHooker supports the main force feedback/lamp outputs and the offscreen button modeset, but is missing and will not react to the screen ratio or other modesets.
   * Are there games that have issues with this? It really should be resolved by the game/emulator, not the gun.
   * LED pulses sent rapidly may reset at the ON-falling position, but the effect looks kind of good actually. Is this really a bug?
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
@@ -93,6 +93,8 @@ For reference, the default schematic and (general) layout for the build and its 
 * Samuel Ballantyne, for his SAMCO project which inspired my madness in the first place.
 * Prow7, for improving an already promising project and providing the basis for this madness.
 * Jaybee, for a frame of reference on implementing the feedback additions, and to hopefully act as an OS-agnostic competition for the (I assume) great GUN4IR.
+* The people that have donated and given their thoughts about this silly little obsession I've been working on.
+* The testers that have had to deal with my MAMEHOOKER integration stability bullshit (seriously, it's super appreciated, and I'm so sorry).
 * [My YouTube audience,](https://youtube.com/@ThatOneSeong) for their endless patience as I couldn't help but work on this instead of videos.
 * Emm, for being there when I needed her.
 * And Autism.
