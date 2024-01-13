@@ -254,11 +254,12 @@ private:
   gamepad16Report_s gamepad16Report;
 public:
   Gamepad16_(void);
-  void moveL(uint16_t origX, uint16_t origY);
-  void moveR(uint16_t origX, uint16_t origY);
+  void moveCam(uint16_t origX, uint16_t origY);
+  void moveStick(uint16_t origX, uint16_t origY);
   void press(uint8_t buttonNum);
   void release(uint8_t buttonNum);
   void report(void);
   void releaseAll(void);
+  bool stickRight;
 };
 extern Gamepad16_ Gamepad16;
