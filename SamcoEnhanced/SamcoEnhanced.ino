@@ -631,7 +631,7 @@ Adafruit_DotStar dotstar(1, DOTSTAR_DATAPIN, DOTSTAR_CLOCKPIN, DOTSTAR_BGR);
 
 #if defined(NEOPIXEL_PIN) && defined(CUSTOM_NEOPIXEL)
 Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel externPixel(1, customLEDpin, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel externPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
 #elif defined(CUSTOM_NEOPIXEL)
 Adafruit_NeoPixel externPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
 #elif defined(NEOPIXEL_PIN)
@@ -789,7 +789,7 @@ void setup() {
     
 #ifdef USE_TINYUSB
     // Initializing the USB devices chunk.
-    TinyUSBDevices.begin(4);
+    TinyUSBDevices.begin(2);
 #endif
     
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
