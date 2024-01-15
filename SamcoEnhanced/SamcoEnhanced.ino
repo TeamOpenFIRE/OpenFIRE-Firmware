@@ -2199,7 +2199,17 @@ void SerialProcessing()                                         // Reading the i
               serialInput = Serial.read();                           // Nomf the padding bit.
               serialInput = Serial.read();                           // Read the next.
               if(serialInput == '2') {         // Is it the offscreen button mode bit?
-                  offscreenButtonSerial = true;                      // Set that if so.
+                  if(serialMode) {
+                      offscreenButtonSerial = true;                      // Set that if so.
+                  } else {
+                      // eh, might be useful for Linux Supermodel users.
+                      offscreenButton = !offscreenButton;
+                      if(offscreenButton) {
+                          Serial.println("Setting offscreen button mode on.");
+                      } else {
+                          Serial.println("Setting offscreen button mode off.");
+                      }
+                  }
               }
           }
           break;
