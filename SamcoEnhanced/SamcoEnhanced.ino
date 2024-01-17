@@ -1375,7 +1375,7 @@ void loop()
             } else if(buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
                 OffscreenToggle();
             } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
-                AutofireSpeedToggle();
+                AutofireSpeedToggle(0);
             } else if(buttons.pressedReleased == EnterPauseModeProcessingBtnMask) { // A+B+C
                 BurstFireToggle();
             #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
@@ -2328,6 +2328,16 @@ void SerialProcessing()                                         // Reading the i
                           Serial.println("Switched to Mouse Output mode!");
                       }
                       break;
+                }
+                break;
+              // Set Autofire Interval Length
+              case 'I':
+                serialInput = Serial.read();
+                if(serialInput == '2' || serialInput == '3' || serialInput == '4') {
+                    byte afSetting = serialInput - '0';
+                    AutofireSpeedToggle(afSetting);
+                } else {
+                    Serial.println("SERIALREAD: No valid interval set! (Expected 2 to 4)");
                 }
                 break;
               // Toggle Processing/Run Mode
@@ -3695,50 +3705,59 @@ void OffscreenToggle()
     }
 }
 
-void AutofireSpeedToggle()
+void AutofireSpeedToggle(byte setting)
 {
-    switch (autofireWaitFactor) {
-        case 2:
-            autofireWaitFactor = 3;
-            Serial.println("Autofire speed level 2.");
-            break;
-        case 3:
-            autofireWaitFactor = 4;
-            Serial.println("Autofire speed level 3.");
-            break;
-        case 4:
-            autofireWaitFactor = 2;
-            Serial.println("Autofire speed level 1.");
-            break;
+    // If a number is passed, assume this is from Serial and directly set it.
+    if(setting >= 2 && setting <= 4) {
+        autofireWaitFactor = setting;
+        Serial.print("Autofire speed level ");
+        Serial.println(setting);
+        return;
+    // Else, this is a button toggle, so cycle.
+    } else {
+        switch (autofireWaitFactor) {
+            case 2:
+                autofireWaitFactor = 3;
+                Serial.println("Autofire speed level 2.");
+                break;
+            case 3:
+                autofireWaitFactor = 4;
+                Serial.println("Autofire speed level 3.");
+                break;
+            case 4:
+                autofireWaitFactor = 2;
+                Serial.println("Autofire speed level 1.");
+                break;
+        }
+        #ifdef LED_ENABLE
+            SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
+        #endif // LED_ENABLE
+        #ifdef USES_SOLENOID
+            digitalWrite(solenoidPin, HIGH);                          // And demonstrate the new autofire factor five times!
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * autofireWaitFactor);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * autofireWaitFactor);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * autofireWaitFactor);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+            delay(solenoidFastInterval * autofireWaitFactor);
+            digitalWrite(solenoidPin, HIGH);
+            delay(solenoidFastInterval);
+            digitalWrite(solenoidPin, LOW);
+        #endif // USES_SOLENOID
+        #ifdef LED_ENABLE
+            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+        #endif // LED_ENABLE
+        return;
     }
-    #ifdef LED_ENABLE
-        SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
-    #endif // LED_ENABLE
-    #ifdef USES_SOLENOID
-        digitalWrite(solenoidPin, HIGH);                          // And demonstrate the new autofire factor five times!
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * autofireWaitFactor);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * autofireWaitFactor);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * autofireWaitFactor);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-        delay(solenoidFastInterval * autofireWaitFactor);
-        digitalWrite(solenoidPin, HIGH);
-        delay(solenoidFastInterval);
-        digitalWrite(solenoidPin, LOW);
-    #endif // USES_SOLENOID
-    #ifdef LED_ENABLE
-        SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
-    #endif // LED_ENABLE
-    return;
 }
 
 void BurstFireToggle()
