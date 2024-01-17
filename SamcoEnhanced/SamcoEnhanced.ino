@@ -567,7 +567,7 @@ enum PauseModeSelection_e {
     #ifndef USES_SWITCHES
     PauseMode_SolenoidToggle,
     #endif // USES_SWITCHES
-    PauseMode_BurstFireToggle,
+    //PauseMode_BurstFireToggle,
     #endif // USES_SOLENOID
     PauseMode_EscapeSignal
 };
@@ -1267,12 +1267,14 @@ void loop()
                           break;
                         #endif // USES_SOLENOID
                         #endif // USES_SWITCHES
+                        /*
                         #ifdef USES_SOLENOID
                         case PauseMode_BurstFireToggle:
                           Serial.println("Toggling solenoid burst firing!");
                           BurstFireToggle();
                           break;
                         #endif // USES_SOLENOID
+                        */
                         case PauseMode_EscapeSignal:
                           SendEscapeKey();
                           #ifdef LED_ENABLE
@@ -2193,24 +2195,44 @@ void SerialProcessing()                                         // Reading the i
               #endif // LED_ENABLE
           }
           break;
+        // Modesetting Signal
         case 'M':
           serialInput = Serial.read();                               // Read the second bit.
-          if(serialInput == '1') {             // Is it M1? (Gun "offscreen mode" set)?
-              serialInput = Serial.read();                           // Nomf the padding bit.
-              serialInput = Serial.read();                           // Read the next.
-              if(serialInput == '2') {         // Is it the offscreen button mode bit?
-                  if(serialMode) {
-                      offscreenButtonSerial = true;                      // Set that if so.
-                  } else {
-                      // eh, might be useful for Linux Supermodel users.
-                      offscreenButton = !offscreenButton;
-                      if(offscreenButton) {
-                          Serial.println("Setting offscreen button mode on.");
-                      } else {
-                          Serial.println("Setting offscreen button mode off.");
-                      }
-                  }
-              }
+          switch(serialInput) {
+              case '1':
+                if(serialMode) {
+                    offscreenButtonSerial = true;
+                } else {
+                    // eh, might be useful for Linux Supermodel users.
+                    offscreenButton = !offscreenButton;
+                    if(offscreenButton) {
+                        Serial.println("Setting offscreen button mode on!");
+                    } else {
+                        Serial.println("Setting offscreen button mode off!");
+                    }
+                }
+                break;
+              #ifdef USES_SOLENOID
+              case '8':
+                serialInput = Serial.read();                           // Nomf the padding bit.
+                serialInput = Serial.read();                           // Read the next.
+                if(serialInput == '1') {
+                    burstFireActive = true;
+                    autofireActive = false;
+                } else if(serialInput == '2') {
+                    autofireActive = true;
+                    burstFireActive = false;
+                } else if(serialInput == '0') {
+                    autofireActive = false;
+                    burstFireActive = false;
+                }
+                break;
+              #endif // USES_SOLENOID
+              default:
+                if(!serialMode) {
+                    Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
+                }
+                break;
           }
           break;
         // End Signal
@@ -2638,7 +2660,7 @@ void SerialHandling()                                              // Where we l
   #ifdef USES_RUMBLE
       if(rumbleActive) {
           if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
-              digitalWrite(rumblePin, HIGH);                             // turn/keep it on.
+              analogWrite(rumblePin, rumbleIntensity);              // turn/keep it on.
               //bitClear(serialQueue, 3);
           } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
               if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
@@ -2957,7 +2979,7 @@ void SetPauseModeSelection(bool isIncrement)
           break;
         #endif // USES_SOLENOID
         #endif // USES_SWITCHES
-        #ifdef USES_SOLENOID
+        /*#ifdef USES_SOLENOID
         case PauseMode_BurstFireToggle:
           Serial.println("Selecting: Toggle burst-firing mode");
           #ifdef LED_ENABLE
@@ -2965,6 +2987,7 @@ void SetPauseModeSelection(bool isIncrement)
           #endif // LED_ENABLE
           break;
         #endif // USES_SOLENOID
+        */
         case PauseMode_EscapeSignal:
           Serial.println("Selecting: Send Escape key signal");
           #ifdef LED_ENABLE
