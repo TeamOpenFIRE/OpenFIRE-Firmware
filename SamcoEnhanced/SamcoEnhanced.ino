@@ -67,8 +67,8 @@
     // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
   // Enables input processing on the second core, if available. Currently exclusive to Raspberry Pi Pico, or boards based on the RP2040.
   // Isn't necessarily faster, but might make responding to force feedback more consistent.
-  // If unsure, leave this commented.
-//#define DUAL_CORE
+  // If unsure, leave this uncommented - it only affects RP2040 anyways.
+#define DUAL_CORE
 
   // Here we define the Manufacturer Name/Device Name/PID:VID of the gun as will be displayed by the operating system.
   // For multiplayer, different guns need different IDs!
@@ -82,13 +82,13 @@
   // If unsure, just leave this at 1 - the mapping can be changed at runtime by sending an 'XR#' command over Serial, where # = player number
 #define PLAYER_NUMBER 1
 
-  // Uncomment this to enable (currently experimental) MAMEHOOKER support, or leave commented out to disable references to serial reading and only use it for debugging.
+  // Leave this uncommented to enable MAMEHOOKER support, or comment out (//) to disable references to serial reading and only use it for debugging.
   // WARNING: Has a chance of making the board lock up if TinyUSB hasn't been patched to fix serial-related lockups.
-  // Currently fixed only for RP2040 using the fixed core as provided in the instruction manual. Consider this option potentially dangerous for other boards.
-  // If unsure, or you don't plan to use MAMEHOOKER, leave this commented.
-//#define MAMEHOOKER
+  // If you're building this for RP2040, please make sure that you have NOT installed the TinyUSB library.
+  // If unsure, leave uncommented - serial activity is used for configuration, and undefining this will cause errors.
+#define MAMEHOOKER
 
-  // Leave this uncommented if your build uses hardware switches, or comment out (//) to disable all references to hw switch functionality.
+  // Leave this uncommented if your build uses hardware switches, or comment out to disable all references to hw switch functionality.
 #define USES_SWITCHES
 #ifdef USES_SWITCHES // Here's where they should be defined!
     const byte autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
@@ -1105,10 +1105,14 @@ void loop1()
             && !lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
-                Serial.println("Started holding pause mode signal buttons!");
+                if(!serialMode) {
+                    Serial.println("Started holding pause mode signal buttons!");
+                }
             } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || lastSeen)) {
                 pauseHoldStarted = false;
-                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+                if(!serialMode) {
+                    Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+                }
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > pauseHoldLength) {
@@ -1200,7 +1204,6 @@ void loop()
         while(buttons.debounced != 0) {
             // Should release the buttons to continue, pls.
             buttons.Poll(1);
-            buttons.Repeat();
         }
         pauseHoldStarted = false;
         pauseModeSelection = PauseMode_Calibrate;
@@ -1219,12 +1222,16 @@ void loop()
                         SelectCalProfile(profileModeSelection);
                         pauseModeSelectingProfile = false;
                         pauseModeSelection = PauseMode_Calibrate;
-                        Serial.print("Switched to profile: ");
-                        Serial.println(profileDesc[selectedProfile].profileLabel);
-                        Serial.println("Going back to the main menu...");
-                        Serial.println("Selecting: Calibrate current profile");
+                        if(!serialMode) {
+                            Serial.print("Switched to profile: ");
+                            Serial.println(profileDesc[selectedProfile].profileLabel);
+                            Serial.println("Going back to the main menu...");
+                            Serial.println("Selecting: Calibrate current profile");
+                        }
                     } else if(buttons.pressedReleased == BtnMask_Reload) {
-                        Serial.println("Exiting profile selection.");
+                        if(!serialMode) {
+                            Serial.println("Exiting profile selection.");
+                        }
                         pauseModeSelectingProfile = false;
                         pauseModeSelection = PauseMode_Calibrate;
                     }
@@ -1236,13 +1243,17 @@ void loop()
                     switch(pauseModeSelection) {
                         case PauseMode_Calibrate:
                           SetMode(GunMode_CalCenter);
-                          Serial.print("Calibrating for current profile: ");
-                          Serial.println(profileDesc[selectedProfile].profileLabel);
+                          if(!serialMode) {
+                              Serial.print("Calibrating for current profile: ");
+                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                          }
                           break;
                         case PauseMode_ProfileSelect:
-                          Serial.println("Pick a profile!");
-                          Serial.print("Current profile in use: ");
-                          Serial.println(profileDesc[selectedProfile].profileLabel);
+                          if(!serialMode) {
+                              Serial.println("Pick a profile!");
+                              Serial.print("Current profile in use: ");
+                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                          }
                           pauseModeSelectingProfile = true;
                           profileModeSelection = selectedProfile;
                           #ifdef LED_ENABLE
@@ -1250,19 +1261,25 @@ void loop()
                           #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
-                          Serial.println("Saving...");
+                          if(!serialMode) {
+                              Serial.println("Saving...");
+                          }
                           SavePreferences();
                           break;
                         #ifndef USES_SWITCHES
                         #ifdef USES_RUMBLE
                         case PauseMode_RumbleToggle:
-                          Serial.println("Toggling rumble!");
+                          if(!serialMode) {
+                              Serial.println("Toggling rumble!");
+                          }
                           RumbleToggle();
                           break;
                         #endif // USES_RUMBLE
                         #ifdef USES_SOLENOID
                         case PauseMode_SolenoidToggle:
-                          Serial.println("Toggling solenoid!");
+                          if(!serialMode) {
+                              Serial.println("Toggling solenoid!");
+                          }
                           SolenoidToggle();
                           break;
                         #endif // USES_SOLENOID
@@ -1311,14 +1328,18 @@ void loop()
                           break;
                     }
                 } else if(buttons.pressedReleased == BtnMask_Reload) {
-                    Serial.println("Exiting pause mode...");
+                    if(!serialMode) {
+                        Serial.println("Exiting pause mode...");
+                    }
                     SetMode(GunMode_Run);
                 }
                 if(pauseExitHoldStarted &&
                 (buttons.debounced & ExitPauseModeHoldBtnMask)) {
                     unsigned long t = millis();
                     if(t - pauseHoldStartstamp > (pauseHoldLength / 2)) {
-                        Serial.println("Exiting pause mode via hold...");
+                        if(!serialMode) {
+                            Serial.println("Exiting pause mode via hold...");
+                        }
                         if(runMode == RunMode_Processing) {
                             switch(profileData[selectedProfile].runMode) {
                                 case RunMode_Normal:
@@ -1346,7 +1367,6 @@ void loop()
                         while(buttons.debounced != 0) {
                             //lol
                             buttons.Poll(1);
-                            buttons.Repeat();
                         }
                         pauseExitHoldStarted = false;
                     }
@@ -1392,7 +1412,9 @@ void loop()
                 SelectCalProfileFromBtnMask(buttons.pressedReleased);
             }
 
-            PrintResults();
+            if(!serialMode) {
+                PrintResults();
+            }
             
             break;
         case GunMode_CalCenter:
@@ -1626,10 +1648,14 @@ void ExecRunMode()
             && !lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
-                Serial.println("Started holding pause mode signal buttons!");
+                if(!serialMode) {
+                    Serial.println("Started holding pause mode signal buttons!");
+                }
             } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || lastSeen)) {
                 pauseHoldStarted = false;
-                Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+                if(!serialMode) {
+                    Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
+                }
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > pauseHoldLength) {
