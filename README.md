@@ -67,10 +67,7 @@ For reference, the default schematic and (general) layout for the build and its 
 > Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
-- Implement Analog stick input.
-  * Will probably default to ports A1-A2 for stick signals (to account for temp sensor) - Pico only has three available/readable analog pins for general devices so it works out evenly.
-  * Should it be mapped to the left or right stick (currently analog output tracking mode uses the left stick)? There really aren't that many games (especially multiplayer) that use directional input.
-- Finish Wikicolors interpretation for fourpin LEDs (they are used by onboard DotStars and internal/external NeoPixels, but are in a format incompatible with the three-channel system).
+- Implement expanded preferences saving/loading to/from EEPROM/flash. Should allow setting variables at runtime through the eventual GUI/serial and overriding pins layout with customs.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
