@@ -91,7 +91,7 @@
   // Leave this uncommented if your build uses hardware switches, or comment out to disable all references to hw switch functionality.
 #define USES_SWITCHES
 #ifdef USES_SWITCHES // Here's where they should be defined!
-    const byte autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
+    int8_t autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
 #endif // USES_SWITCHES
 
   // Leave this uncommented if your build uses a rumble motor; comment out to disable any references to rumble functionality.
@@ -99,7 +99,7 @@
 #ifdef USES_RUMBLE
     bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
     #ifdef USES_SWITCHES
-        const byte rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
+        int8_t rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
     #endif // USES_SWITCHES
 
     // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
@@ -115,15 +115,15 @@
 #ifdef USES_SOLENOID
     bool solenoidActive = false;                      // Are we allowed to use a solenoid? Default to off.
     #ifdef USES_SWITCHES // If your build uses hardware switches,
-        const byte solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
+        int8_t solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
     #endif // USES_SWITCHES
     
   // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
     //#define USES_TEMP
     #ifdef USES_TEMP    
-        const byte tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
-        const byte tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        const byte tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+        int8_t tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
+        byte tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        byte tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
     #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
 #endif // USES_SOLENOID
 
@@ -184,13 +184,13 @@ int8_t btnHome = -1;
   // Adjustable aspects:
 byte autofireWaitFactor = 3;                          // This is the default time to wait between rapid fire pulses (from 2-4)
 #ifdef USES_RUMBLE
-    const byte rumbleIntensity = 255;                 // The strength of the rumble motor, 0=off to 255=maxPower.
-    const unsigned int rumbleInterval = 110;          // How long to wait for the whole rumble command, in ms.
+    byte rumbleIntensity = 255;                 // The strength of the rumble motor, 0=off to 255=maxPower.
+    unsigned int rumbleInterval = 110;          // How long to wait for the whole rumble command, in ms.
 #endif // USES_RUMBLE
 #ifdef USES_SOLENOID
-    const unsigned int solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    const unsigned int solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    const unsigned int solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+    unsigned int solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    unsigned int solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    unsigned int solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
 
 // Menu options:
@@ -558,15 +558,11 @@ enum PauseModeSelection_e {
     PauseMode_Calibrate = 0,
     PauseMode_ProfileSelect,
     PauseMode_Save,
-    #ifndef USES_SWITCHES
     #ifdef USES_RUMBLE
     PauseMode_RumbleToggle,
     #endif // USES_RUMBLE
-    #endif // USES_SWITCHES
     #ifdef USES_SOLENOID
-    #ifndef USES_SWITCHES
     PauseMode_SolenoidToggle,
-    #endif // USES_SWITCHES
     //PauseMode_BurstFireToggle,
     #endif // USES_SOLENOID
     PauseMode_EscapeSignal
@@ -1037,16 +1033,6 @@ void NoHardwareTimerCamTickMillis()
 void loop1()
 {
     while(gunMode == GunMode_Run) {
-        #ifdef USES_SWITCHES
-            #ifdef USES_RUMBLE
-                rumbleActive = !digitalRead(rumbleSwitch);
-            #endif // USES_RUMBLE
-            #ifdef USES_SOLENOID
-                solenoidActive = !digitalRead(solenoidSwitch);
-            #endif // USES_SOLENOID
-            autofireActive = !digitalRead(autofireSwitch);
-        #endif
-
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         buttons.Poll(0);
@@ -1233,6 +1219,15 @@ void loop()
                             Serial.println("Exiting profile selection.");
                         }
                         pauseModeSelectingProfile = false;
+                        #ifdef LED_ENABLE
+                            for(byte i = 0; i < 2; i++) {
+                                LedUpdate(180,180,180);
+                                delay(125);
+                                LedOff();
+                                delay(100);
+                            }
+                            LedUpdate(255,0,0);
+                        #endif // LED_ENABLE
                         pauseModeSelection = PauseMode_Calibrate;
                     }
                 } else if(buttons.pressedReleased == BtnMask_A) {
@@ -1266,7 +1261,6 @@ void loop()
                           }
                           SavePreferences();
                           break;
-                        #ifndef USES_SWITCHES
                         #ifdef USES_RUMBLE
                         case PauseMode_RumbleToggle:
                           if(!serialMode) {
@@ -1283,7 +1277,6 @@ void loop()
                           SolenoidToggle();
                           break;
                         #endif // USES_SOLENOID
-                        #endif // USES_SWITCHES
                         /*
                         #ifdef USES_SOLENOID
                         case PauseMode_BurstFireToggle:
@@ -1500,20 +1493,25 @@ void ExecRunMode()
         justBooted = false;
     }
     for(;;) {
-        // If we're on RP2040, we offload the button polling to the second core.
-        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        // ADDITIONS HERE: setting the state of our toggles, if used.
+        // Setting the state of our toggles, if used.
+        // Only sets these values if the switches are mapped to valid pins.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
-                rumbleActive = !digitalRead(rumbleSwitch);
+                if(rumbleSwitch >= 0) {
+                    rumbleActive = !digitalRead(rumbleSwitch);
+                }
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                solenoidActive = !digitalRead(solenoidSwitch);
+                if(solenoidSwitch >= 0) {
+                    solenoidActive = !digitalRead(solenoidSwitch);
+                }
             #endif // USES_SOLENOID
-            autofireActive = !digitalRead(autofireSwitch);
+            if(autofireSwitch >= 0) {
+                autofireActive = !digitalRead(autofireSwitch);
+            }
         #endif // USES_SWITCHES
-        #endif // DUAL_CORE
 
+        // If we're on RP2040, we offload the button polling to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
         buttons.Poll(0);
 
@@ -2970,12 +2968,68 @@ void SetPauseModeSelection(bool isIncrement)
             pauseModeSelection = PauseMode_Calibrate;
         } else {
             pauseModeSelection++;
+            // If we use switches, and they ARE mapped to valid pins,
+            // then skip over the manual toggle options.
+            #ifdef USES_SWITCHES
+                #ifdef USES_RUMBLE
+                    if(pauseModeSelection == PauseMode_RumbleToggle &&
+                    rumbleSwitch >= 0 && rumblePin >= 0) {
+                        pauseModeSelection++;
+                    }
+                #endif // USES_RUMBLE
+                #ifdef USES_SOLENOID
+                    if(pauseModeSelection == PauseMode_SolenoidToggle &&
+                    solenoidSwitch >= 0 && solenoidPin >= 0) {
+                        pauseModeSelection++;
+                    }
+                #endif // USES_SOLENOID
+            #else
+                #ifdef USES_RUMBLE
+                    if(pauseModeSelection == PauseMode_RumbleToggle &&
+                    rumblePin >= 0) {
+                        pauseModeSelection++;
+                    }
+                #endif // USES_RUMBLE
+                #ifdef USES_SOLENOID
+                    if(pauseModeSelection == PauseMode_SolenoidToggle &&
+                    solenoidPin >= 0) {
+                        pauseModeSelection++;
+                    }
+                #endif // USES_SOLENOID
+            #endif // USES_SWITCHES
         }
     } else {
         if(pauseModeSelection == PauseMode_Calibrate) {
             pauseModeSelection = PauseMode_EscapeSignal;
         } else {
             pauseModeSelection--;
+            #ifdef USES_SWITCHES
+                #ifdef USES_SOLENOID
+                    if(pauseModeSelection == PauseMode_SolenoidToggle &&
+                    solenoidSwitch >= 0 && solenoidPin >= 0) {
+                        pauseModeSelection--;
+                    }
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    if(pauseModeSelection == PauseMode_RumbleToggle &&
+                    rumbleSwitch >= 0 && rumblePin >= 0) {
+                        pauseModeSelection--;
+                    }
+                #endif // USES_RUMBLE
+            #else
+                #ifdef USES_SOLENOID
+                    if(pauseModeSelection == PauseMode_SolenoidToggle &&
+                    solenoidPin >= 0) {
+                        pauseModeSelection--;
+                    }
+                #endif // USES_SOLENOID
+                #ifdef USES_RUMBLE
+                    if(pauseModeSelection == PauseMode_RumbleToggle &&
+                    rumblePin >= 0) {
+                        pauseModeSelection--;
+                    }
+                #endif // USES_RUMBLE
+            #endif // USES_SWITCHES
         }
     }
     switch(pauseModeSelection) {
@@ -2997,7 +3051,6 @@ void SetPauseModeSelection(bool isIncrement)
               LedUpdate(155,100,0);
           #endif // LED_ENABLE
           break;
-        #ifndef USES_SWITCHES
         #ifdef USES_RUMBLE
         case PauseMode_RumbleToggle:
           Serial.println("Selecting: Toggle rumble On/Off");
@@ -3014,7 +3067,6 @@ void SetPauseModeSelection(bool isIncrement)
           #endif // LED_ENABLE
           break;
         #endif // USES_SOLENOID
-        #endif // USES_SWITCHES
         /*#ifdef USES_SOLENOID
         case PauseMode_BurstFireToggle:
           Serial.println("Selecting: Toggle burst-firing mode");
@@ -3828,7 +3880,6 @@ void BurstFireToggle()
     }
 }
 
-#ifndef USES_SWITCHES
 #ifdef USES_RUMBLE
 void RumbleToggle()
 {
@@ -3896,7 +3947,6 @@ void SolenoidToggle()
     }
 }
 #endif // USES_SOLENOID
-#endif // USES_SWITCHES
 
 #ifdef USES_SOLENOID
 void SolenoidActivation(int solenoidFinalInterval)
