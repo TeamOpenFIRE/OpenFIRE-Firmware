@@ -3809,7 +3809,7 @@ void AutofireSpeedToggle(byte setting)
             SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
         #endif // LED_ENABLE
         #ifdef USES_SOLENOID
-            for(byte i = 0; i < 6; i++) {                             // And demonstrate the new autofire factor five times!
+            for(byte i = 0; i < 5; i++) {                             // And demonstrate the new autofire factor five times!
                 digitalWrite(solenoidPin, HIGH);
                 delay(solenoidFastInterval);
                 digitalWrite(solenoidPin, LOW);
