@@ -1389,8 +1389,6 @@ void loop()
                 OffscreenToggle();
             } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle(0);
-            } else if(buttons.pressedReleased == EnterPauseModeProcessingBtnMask) { // A+B+C
-                BurstFireToggle();
             #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
                 #ifdef USES_RUMBLE
                     } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
@@ -3811,25 +3809,12 @@ void AutofireSpeedToggle(byte setting)
             SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
         #endif // LED_ENABLE
         #ifdef USES_SOLENOID
-            digitalWrite(solenoidPin, HIGH);                          // And demonstrate the new autofire factor five times!
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * autofireWaitFactor);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * autofireWaitFactor);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * autofireWaitFactor);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * autofireWaitFactor);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
+            for(byte i = 0; i < 6; i++) {                             // And demonstrate the new autofire factor five times!
+                digitalWrite(solenoidPin, HIGH);
+                delay(solenoidFastInterval);
+                digitalWrite(solenoidPin, LOW);
+                delay(solenoidFastInterval * autofireWaitFactor);
+            }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
@@ -3838,6 +3823,7 @@ void AutofireSpeedToggle(byte setting)
     }
 }
 
+/*
 void BurstFireToggle()
 {
     burstFireActive = !burstFireActive;                           // Toggle burst fire mode.
@@ -3847,17 +3833,12 @@ void BurstFireToggle()
             SetLedPackedColor(WikiColor::Orange);
         #endif
         #ifdef USES_SOLENOID
-            digitalWrite(solenoidPin, HIGH);                      // Demonstrate it by flicking the solenoid on/off three times!
-            delay(solenoidFastInterval);                          // (at a fixed rate to distinguish it from autofire speed toggles)
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * 2);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
-            delay(solenoidFastInterval * 2);
-            digitalWrite(solenoidPin, HIGH);
-            delay(solenoidFastInterval);
-            digitalWrite(solenoidPin, LOW);
+            for(byte i = 0; i < 4; i++) {
+                digitalWrite(solenoidPin, HIGH);                  // Demonstrate it by flicking the solenoid on/off three times!
+                delay(solenoidFastInterval);                      // (at a fixed rate to distinguish it from autofire speed toggles)
+                digitalWrite(solenoidPin, LOW);
+                delay(solenoidFastInterval * 2);
+            }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
@@ -3879,6 +3860,7 @@ void BurstFireToggle()
         return;
     }
 }
+*/
 
 #ifdef USES_RUMBLE
 void RumbleToggle()
