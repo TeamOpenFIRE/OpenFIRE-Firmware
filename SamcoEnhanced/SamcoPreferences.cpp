@@ -13,6 +13,7 @@
 
 #include "SamcoPreferences.h"
 
+#include <Wire.h>
 #ifdef SAMCO_FLASH_ENABLE
 #include <Adafruit_SPIFlashBase.h>
 #endif // SAMCO_FLASH_ENABLE
@@ -129,44 +130,41 @@ int SamcoPreferences::Save()
 
 void SamcoPreferences::LoadExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings)
 {
+    // Sizes of the arrays: dataBools = 1, dataMappings = 27, dataSettings = 8
     // Basic booleans
-    (*dataBools) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools));
+    (*dataBools) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1);
 
     // Custom Pins (checks if this feature is enabled first, but space is always reserved)
-    (*dataMappings) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools) + 1);
+    (*dataMappings) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2);
     if(*dataMappings) { // dataMappings[0] corresponds to the custom pin bool.
-        for(uint8_t i = 1; i < sizeof(dataMappings); ++i) {
-            *(dataMappings + i) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools) + 1 + i);
+        for(uint8_t i = 1; i < 27; ++i) {
+            *(dataMappings + i) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i);
         }
     }
 
     // Main Settings
-    uint16_t unsignedInt;
     uint8_t n = 0;
-    for(uint8_t i = 0; i < (sizeof(dataSettings) / 2); ++i) {
-        *(dataSettings + i) = EEPROM.get(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools) + sizeof(dataMappings) + 1 + n, unsignedInt);
+    for(uint8_t i = 0; i < 8; ++i) {
+        EEPROM.get(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1 + 27 + 1 + n, *(dataSettings + i));
         n += 2;
     }
     return;
 }
 
-// offset is: 5 + (sizeof(ProfileData_t) * preferences.profileCount)
-
 int SamcoPreferences::SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings)
 {
     // Basic booleans
-    EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools), *dataBools);
+    EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1, *dataBools);
 
     // Custom Pins (always gets saved, regardless of if it's used or not)
-    for(uint8_t i = 0; i < sizeof(dataMappings); ++i) {
-        EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools) + 1 + i, *(dataMappings + i));
+    for(uint8_t i = 0; i < 27; ++i) {
+        EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i, *(dataMappings + i));
     }
 
     // Main Settings
     uint8_t n = 0;
-    for(uint8_t i = 0; i < (sizeof(dataSettings) / 2); ++i) {
-        uint16_t unsignedInt = *(dataSettings + i);
-        EEPROM.put(5 + (sizeof(ProfileData_t) * preferences.profileCount) + sizeof(*dataBools) + sizeof(dataMappings) + 1 + n, unsignedInt);
+    for(uint8_t i = 0; i < 8; ++i) {
+        EEPROM.put(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1 + 27 + 1 + n, *(dataSettings + i));
         n += 2;
     }
 
@@ -185,26 +183,6 @@ void SamcoPreferences::ResetPreferences()
         EEPROM.commit();
     #endif // ARDUINO_ARCH_RP2040
 }
-
-
-#ifdef USE_TINYUSB
-int SamcoPreferences::LoadTinyID(char *tinyName, unsigned int *tinyID)
-{
-    *tinyName = EEPROM.get(EEPROM.length() - 18, *tinyName);
-    *tinyID = EEPROM.get(EEPROM.length() - 2, *tinyID);
-    return Error_Success;
-}
-
-int SamcoPreferences::SaveTinyID(char deviceName[16], unsigned int *tinyID)
-{
-    EEPROM.put(EEPROM.length() - 18, deviceName);
-    EEPROM.put(EEPROM.length() - 2, *tinyID);
-    #ifdef ARDUINO_ARCH_RP2040
-        EEPROM.commit();
-    #endif // ARDUINO_ARCH_RP2040
-    return Error_Success;
-}
-#endif // USE_TINYUSB
 
 #else
 

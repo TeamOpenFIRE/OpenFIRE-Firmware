@@ -112,16 +112,6 @@ private:
     /// @return Nothing
     static void ResetPreferences();
 
-    #ifdef USE_TINYUSB
-    /// @brief Load TinyUSB identifiers
-    /// @return An error code from Errors_e
-    static int LoadTinyID(char *tinyName, unsigned int *tinyID);
-
-    /// @brief Save TinyID identifiers
-    /// @return An error code from Errors_e
-    static int SaveTinyID(char deviceName[16], unsigned int *tinyID);
-    #endif // USE_TINYUSB
-
 #endif
 };
 
