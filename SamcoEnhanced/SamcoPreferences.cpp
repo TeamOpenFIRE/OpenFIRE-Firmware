@@ -178,7 +178,7 @@ int SamcoPreferences::SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uin
 
 void SamcoPreferences::ResetPreferences()
 {
-    for(uint8_t i = 0; i < 255; ++i) {
+    for(uint16_t i = 0; i < EEPROM.length(); ++i) {
         EEPROM.write(i, 0);
     }
     #ifdef ARDUINO_ARCH_RP2040
