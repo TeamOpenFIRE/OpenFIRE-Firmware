@@ -728,10 +728,10 @@ void setup() {
         // If data is available but none written, commit builtin values to eeprom.
         if(nvPrefsError == SamcoPreferences::Error_NoData) {
             Serial.println("No data detected, setting defaults!");
-            SaveExtPreferences();
+            ExtPreferences(false);
         } else if(nvPrefsError == SamcoPreferences::Error_Success) {
             Serial.println("Data detected, pulling settings from EEPROM!");
-            LoadExtPreferences();
+            ExtPreferences(true);
         }
     }
 
@@ -2864,7 +2864,7 @@ void SerialProcessing()                                         // Reading the i
               // Save extended values to EEPROM.
               case 's':
                 Serial.println("Saving extended settings to EEPROM...");
-                SaveExtPreferences();
+                ExtPreferences(false);
                 break;
               // Print EEPROM values.
               case 'p':
@@ -4039,22 +4039,10 @@ void SavePreferences()
     }
 }
 
-void SaveExtPreferences()
+void ExtPreferences(bool isLoad)
 {
     uint8_t tempBools = 0b00000000;
     uint8_t *dataBools = &tempBools;
-    #ifdef USES_RUMBLE
-        bitWrite(tempBools, 0, rumbleActive);
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        bitWrite(tempBools, 1, solenoidActive);
-    #endif // USES_SOLENOID
-    bitWrite(tempBools, 2, autofireActive);
-    bitWrite(tempBools, 3, simpleMenu);
-    bitWrite(tempBools, 4, holdToPause);
-    #ifdef FOURPIN_LED
-        bitWrite(tempBools, 5, commonAnode);
-    #endif // FOURPIN_LED
 
     // Temp pin mappings
     int8_t tempMappings[] = {
@@ -4131,210 +4119,108 @@ void SaveExtPreferences()
       #ifdef USES_RUMBLE
       rumbleIntensity,
       rumbleInterval,
-      #else
-      0,
-      0,
       #endif // USES_RUMBLE
       #ifdef USES_SOLENOID
       solenoidNormalInterval,
       solenoidFastInterval,
       solenoidLongInterval,
-      #else
-      0,
-      0,
-      0,
       #endif // USES_SOLENOID
       #ifdef CUSTOM_NEOPIXEL
       customLEDcount,
-      #else
-      1,
       #endif // CUSTOM_NEOPIXEL
       autofireWaitFactor,
       pauseHoldLength
     };
     uint16_t *dataSettings = tempSettings;
 
-    nvPrefsError = SamcoPreferences::SaveExtended(dataBools, dataMappings, dataSettings);
-    if(nvPrefsError == SamcoPreferences::Error_Success) {
-        Serial.println("Saved!");
+    if(!isLoad) {
+        nvPrefsError = SamcoPreferences::SaveExtended(dataBools, dataMappings, dataSettings);
+        if(nvPrefsError == SamcoPreferences::Error_Success) {
+            Serial.println("Saved!");
+        } else {
+            Serial.println("Error!");
+        }
     } else {
-        Serial.println("Error!");
-    }
-}
+        SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
 
-void LoadExtPreferences()
-{
-    uint8_t tempBools = 0b00000000;
-    uint8_t *dataBools = &tempBools;
-
-    // Temp pin mappings
-    int8_t tempMappings[] = {
-      customPinsInUse,            // custom pin enabled - disabled by default
-      btnTrigger,
-      btnGunA,
-      btnGunB,
-      btnGunC,
-      btnStart,
-      btnSelect,
-      btnGunUp,
-      btnGunDown,
-      btnGunLeft,
-      btnGunRight,
-      btnPedal,
-      btnHome,
-      btnPump,
-      #ifdef USES_RUMBLE
-      rumblePin,
-      #else
-      -1,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      solenoidPin,
-      #ifdef USES_TEMP
-      tempPin,
-      #else
-      -1,
-      #endif // USES_TEMP
-      #else
-      -1,
-      #endif // USES_SOLENOID
-      #ifdef USES_SWITCHES
-      #ifdef USES_RUMBLE
-      rumbleSwitch,
-      #else
-      -1,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      solenoidSwitch,
-      #else
-      -1,
-      #endif // USES_SOLENOID
-      autofireSwitch,
-      #else
-      -1,
-      #endif // USES_SWITCHES
-      #ifdef FOURPIN_LED
-      PinR,
-      PinG,
-      PinB,
-      #else
-      -1,
-      -1,
-      -1,
-      #endif // FOURPIN_LED
-      #ifdef CUSTOM_NEOPIXEL
-      customLEDpin,
-      #else
-      -1,
-      #endif // CUSTOM_NEOPIXEL
-      #ifdef USES_ANALOG
-      analogPinX,
-      analogPinY,
-      #else
-      -1,
-      -1,
-      #endif // USES_ANALOG
-      -127
-    };
-    int8_t *dataMappings = tempMappings;
-
-    uint16_t tempSettings[] = {
-      #ifdef USES_RUMBLE
-      rumbleIntensity,
-      rumbleInterval,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      solenoidNormalInterval,
-      solenoidFastInterval,
-      solenoidLongInterval,
-      #endif // USES_SOLENOID
-      #ifdef CUSTOM_NEOPIXEL
-      customLEDcount,
-      #endif // CUSTOM_NEOPIXEL
-      autofireWaitFactor,
-      pauseHoldLength
-    };
-    uint16_t *dataSettings = tempSettings;
-
-    SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
-
-    // Set Bools
-    #ifdef USES_RUMBLE
-        rumbleActive = bitRead(tempBools, 0);
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        solenoidActive = bitRead(tempBools, 1);
-    #endif // USES_SOLENOID
-    autofireActive = bitRead(tempBools, 2);
-    simpleMenu = bitRead(tempBools, 3);
-    holdToPause = bitRead(tempBools, 4);
-    #ifdef FOURPIN_LED
-        commonAnode = bitRead(tempBools, 5);
-    #endif // FOURPIN_LED
-
-    // Set pins, if allowed.
-    customPinsInUse = tempMappings[0];
-    if(customPinsInUse) {
-        btnTrigger = tempMappings[1];
-        btnGunA = tempMappings[2];
-        btnGunB = tempMappings[3];
-        btnGunC = tempMappings[4];
-        btnStart = tempMappings[5];
-        btnSelect = tempMappings[6];
-        btnGunUp = tempMappings[7];
-        btnGunDown = tempMappings[8];
-        btnGunLeft = tempMappings[9];
-        btnGunRight = tempMappings[10];
-        btnPedal = tempMappings[11];
-        btnHome = tempMappings[12];
-        btnPump = tempMappings[13];
+        // Set Bools
         #ifdef USES_RUMBLE
-        rumblePin = tempMappings[14];
+            rumbleActive = bitRead(tempBools, 0);
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-        solenoidPin = tempMappings[15];
-        #ifdef USES_TEMP
-        tempPin = tempMappings[16];
-        #endif // USES_TEMP
+            solenoidActive = bitRead(tempBools, 1);
         #endif // USES_SOLENOID
-        #ifdef USES_SWITCHES
-        #ifdef USES_RUMBLE
-        rumbleSwitch = tempMappings[17];
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-        solenoidSwitch = tempMappings[18];
-        #endif // USES_SOLENOID
-        autofireSwitch = tempMappings[19];
-        #endif // USES_SWITCHES
+        autofireActive = bitRead(tempBools, 2);
+        simpleMenu = bitRead(tempBools, 3);
+        holdToPause = bitRead(tempBools, 4);
         #ifdef FOURPIN_LED
-        PinR = tempMappings[20];
-        PinG = tempMappings[21];
-        PinB = tempMappings[22];
+            commonAnode = bitRead(tempBools, 5);
         #endif // FOURPIN_LED
-        #ifdef CUSTOM_NEOPIXEL
-        customLEDpin = tempMappings[23];
-        #endif // CUSTOM_NEOPIXEL
-        #ifdef USES_ANALOG
-        analogPinX = tempMappings[24];
-        analogPinY = tempMappings[25];
-        #endif // USES_ANALOG
-    }
 
-    // Set other settings
-    #ifdef USES_RUMBLE
-    rumbleIntensity = tempSettings[0];
-    rumbleInterval = tempSettings[1];
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-    solenoidNormalInterval = tempSettings[2];
-    solenoidFastInterval = tempSettings[3];
-    solenoidLongInterval = tempSettings[4];
-    #endif // USES_SOLENOID
-    #ifdef CUSTOM_NEOPIXEL
-    customLEDcount = tempSettings[5];
-    #endif // CUSTOM_NEOPIXEL
-    autofireWaitFactor = tempSettings[6];
-    pauseHoldLength = tempSettings[7];
+        // Set pins, if allowed.
+        customPinsInUse = tempMappings[0];
+        if(customPinsInUse) {
+            btnTrigger = tempMappings[1];
+            btnGunA = tempMappings[2];
+            btnGunB = tempMappings[3];
+            btnGunC = tempMappings[4];
+            btnStart = tempMappings[5];
+            btnSelect = tempMappings[6];
+            btnGunUp = tempMappings[7];
+            btnGunDown = tempMappings[8];
+            btnGunLeft = tempMappings[9];
+            btnGunRight = tempMappings[10];
+            btnPedal = tempMappings[11];
+            btnHome = tempMappings[12];
+            btnPump = tempMappings[13];
+            #ifdef USES_RUMBLE
+            rumblePin = tempMappings[14];
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+            solenoidPin = tempMappings[15];
+            #ifdef USES_TEMP
+            tempPin = tempMappings[16];
+            #endif // USES_TEMP
+            #endif // USES_SOLENOID
+            #ifdef USES_SWITCHES
+            #ifdef USES_RUMBLE
+            rumbleSwitch = tempMappings[17];
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+            solenoidSwitch = tempMappings[18];
+            #endif // USES_SOLENOID
+            autofireSwitch = tempMappings[19];
+            #endif // USES_SWITCHES
+            #ifdef FOURPIN_LED
+            PinR = tempMappings[20];
+            PinG = tempMappings[21];
+            PinB = tempMappings[22];
+            #endif // FOURPIN_LED
+            #ifdef CUSTOM_NEOPIXEL
+            customLEDpin = tempMappings[23];
+            #endif // CUSTOM_NEOPIXEL
+            #ifdef USES_ANALOG
+            analogPinX = tempMappings[24];
+            analogPinY = tempMappings[25];
+            #endif // USES_ANALOG
+        }
+
+        // Set other settings
+        #ifdef USES_RUMBLE
+        rumbleIntensity = tempSettings[0];
+        rumbleInterval = tempSettings[1];
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+        solenoidNormalInterval = tempSettings[2];
+        solenoidFastInterval = tempSettings[3];
+        solenoidLongInterval = tempSettings[4];
+        #endif // USES_SOLENOID
+        #ifdef CUSTOM_NEOPIXEL
+        customLEDcount = tempSettings[5];
+        #endif // CUSTOM_NEOPIXEL
+        autofireWaitFactor = tempSettings[6];
+        pauseHoldLength = tempSettings[7];
+        }
 }
 
 void SelectCalProfileFromBtnMask(uint32_t mask)
