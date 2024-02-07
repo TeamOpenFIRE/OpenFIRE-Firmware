@@ -6,8 +6,9 @@
  * @copyright GNU Lesser General Public License
  *
  * @author Mike Lynch
- * @version V1.0
- * @date 2021
+ * @author [That One Seong](SeongsSeongs@gmail.com)
+ * @version V1.1
+ * @date 2023
  */
 
 #ifndef _SAMCOPREFERENCES_H_
