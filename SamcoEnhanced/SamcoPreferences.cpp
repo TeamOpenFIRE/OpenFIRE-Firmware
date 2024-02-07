@@ -13,7 +13,6 @@
 
 #include "SamcoPreferences.h"
 
-#include <Wire.h>
 #ifdef SAMCO_FLASH_ENABLE
 #include <Adafruit_SPIFlashBase.h>
 #endif // SAMCO_FLASH_ENABLE
