@@ -4181,6 +4181,7 @@ void ExtPreferences(bool isLoad)
         #ifdef FOURPIN_LED
             commonAnode = bitRead(tempBools, 5);
         #endif // FOURPIN_LED
+        lowButtonMode = bitRead(tempBools, 6);
 
         // Set pins, if allowed.
         customPinsInUse = tempMappings[0];
