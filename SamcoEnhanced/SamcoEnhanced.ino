@@ -513,7 +513,7 @@ byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons 
 
 #ifdef USE_TINYUSB
 char deviceName[16] = "GUN4ALL-Con";
-unsigned int devicePID = 0x0000;
+unsigned int devicePID;
 #endif // USE_TINYUSB
 
 bool customPinsInUse = false;                        // For if custom pins defined in the EEPROM are overriding sketch defaults.
@@ -857,9 +857,13 @@ void setup1()
 void TinyUSBInit()
 {
     TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
-    char *tinyName = deviceName;
-    unsigned int *tinyID = &devicePID;
-    nvPrefsError = SamcoPreferences::LoadTinyID(tinyName, tinyID);
+    for(byte i = 0; i < sizeof(deviceName); i++) {
+        deviceName[i] = '\0';
+    }
+    for(byte i = 0; i < 16; i++) {
+        deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
+    }
+    EEPROM.get(EEPROM.length() - 22, devicePID);
     if(devicePID) {
         TinyUSBDevice.setProductDescriptor(deviceName);
         TinyUSBDevice.setID(DEVICE_VID, devicePID);
@@ -2516,8 +2520,8 @@ void SerialProcessing()                                         // Reading the i
               {
                 serialInput = Serial.read(); // nomf
                 serialInput = Serial.read();
+                // bool change
                 if(serialInput == '0') {
-                    // bool change
                     serialInput = Serial.read(); // nomf
                     serialInput = Serial.read();
                     switch(serialInput) {
@@ -2564,6 +2568,7 @@ void SerialProcessing()                                         // Reading the i
                         break;
                       #endif
                     }
+                // Pins
                 } else if(serialInput == '1') {
                     serialInput = Serial.read(); // nomf
                     byte sCase = Serial.parseInt();
@@ -2748,6 +2753,7 @@ void SerialProcessing()                                         // Reading the i
                         break;
                       #endif
                     }
+                // Settings
                 } else if(serialInput == '2') {
                     serialInput = Serial.read(); // nomf
                     serialInput = Serial.read();
@@ -2755,62 +2761,81 @@ void SerialProcessing()                                         // Reading the i
                       #ifdef USES_RUMBLE
                       case '0':
                         serialInput = Serial.read(); // nomf
-                        rumbleIntensity = constrain(Serial.parseInt(), 0, 255);
-                        Serial.println("Set Rumble Intensity.");
+                        rumbleIntensity = Serial.parseInt();
+                        rumbleIntensity = constrain(rumbleIntensity, 0, 255);
+                        Serial.print("Set Rumble Intensity to: ");
+                        Serial.println(rumbleIntensity);
                         break;
                       case '1':
                         serialInput = Serial.read(); // nomf
                         rumbleInterval = Serial.parseInt();
-                        Serial.println("Set Rumble Length.");
+                        Serial.print("Set Rumble Length to: ");
+                        Serial.println(rumbleInterval);
                         break;
                       #endif
                       #ifdef USES_SOLENOID
                       case '2':
                         serialInput = Serial.read(); // nomf
                         solenoidNormalInterval = Serial.parseInt();
-                        Serial.println("Set Solenoid Normal Interval.");
+                        Serial.print("Set Solenoid Normal Interval to: ");
+                        Serial.println(solenoidNormalInterval);
                         break;
                       case '3':
                         serialInput = Serial.read(); // nomf
                         solenoidFastInterval = Serial.parseInt();
-                        Serial.println("Set Solenoid Fast Interval.");
+                        Serial.print("Set Solenoid Fast Interval to: ");
+                        Serial.println(solenoidFastInterval);
                         break;
                       case '4':
                         serialInput = Serial.read(); // nomf
                         solenoidLongInterval = Serial.parseInt();
-                        Serial.println("Set Solenoid Hold Length.");
+                        Serial.print("Set Solenoid Hold Length to: ");
+                        Serial.println(solenoidLongInterval);
                         break;
                       #endif
                       #ifdef CUSTOM_NEOPIXEL
                       case '5':
                         serialInput = Serial.read(); // nomf
                         customLEDcount = Serial.parseInt();
-                        Serial.println("Set NeoPixel strip length.");
+                        customLEDcount = constrain(customLEDcount, 1, 255);
+                        Serial.print("Set NeoPixel strip length to: ");
+                        Serial.println(customLEDcount);
                         break;
                       #endif
                       case '6':
                         serialInput = Serial.read(); // nomf
-                        autofireWaitFactor = constrain(Serial.parseInt(), 2, 4);
-                        Serial.println("Set Autofire Wait Factor.");
+                        autofireWaitFactor = Serial.parseInt();
+                        autofireWaitFactor = constrain(autofireWaitFactor, 2, 4);
+                        Serial.print("Set Autofire Wait Factor to: ");
+                        Serial.println(autofireWaitFactor);
                         break;
                       case '7':
                         serialInput = Serial.read(); // nomf
                         pauseHoldLength = Serial.parseInt();
-                        Serial.println("Set Hold-to-Pause Length.");
+                        Serial.print("Set Hold-to-Pause Length to: ");
+                        Serial.println(pauseHoldLength);
                         break;
                     }
                 #ifdef USE_TINYUSB
+                // TinyUSB Identifier Settings
                 } else if(serialInput == '3') {
                     serialInput = Serial.read(); // nomf
                     serialInput = Serial.read();
                     switch(serialInput) {
+                      // Device PID
                       case '0':
-                        serialInput = Serial.read(); // nomf
-                        //String pid = Serial.readString();
-                        //devicePID = 
-                        // unsigned int *tinyID = &devicePID;
-                        // SamcoPreferences::SaveTinyID(deviceName, tinyID);
-                        break;
+                        {
+                          serialInput = Serial.read(); // nomf
+                          devicePID = Serial.parseInt();
+                          Serial.print("Updated TinyUSB Device ID to: ");
+                          Serial.println(devicePID, HEX);
+                          EEPROM.put(EEPROM.length() - 22, devicePID);
+                          #ifdef ARDUINO_ARCH_RP2040
+                              EEPROM.commit();
+                          #endif // ARDUINO_ARCH_RP2040
+                          break;
+                        }
+                      // Device name
                       case '1':
                         serialInput = Serial.read(); // nomf
                         for(byte i = 0; i < sizeof(deviceName); i++) {
@@ -2819,19 +2844,17 @@ void SerialProcessing()                                         // Reading the i
                         for(byte i = 0; i < 15; i++) {
                             deviceName[i] = Serial.read();
                             if(!Serial.available()) {
-                                deviceName[i+1] = '\0';
                                 break;
                             }
                         }
                         Serial.print("Updated TinyUSB Device String to: ");
                         Serial.println(deviceName);
-                        unsigned int *tinyID = &devicePID;
-                        /*nvPrefsError = SamcoPreferences::SaveTinyID(deviceName, tinyID);
-                        if(nvPrefsError == SamcoPreferences::Error_Success) {
-                            Serial.println("Successfully committed to EEPROM!");
-                        } else {
-                            Serial.println("Error!");
-                        }*/
+                        for(byte i = 0; i < 16; i++) {
+                            EEPROM.update(EEPROM.length() - 18 + i, deviceName[i]);
+                        }
+                        #ifdef ARDUINO_ARCH_RP2040
+                            EEPROM.commit();
+                        #endif // ARDUINO_ARCH_RP2040
                         break;
                     }
                 #endif // USE_TINYUSB
@@ -3027,6 +3050,14 @@ void SerialProcessing()                                         // Reading the i
                 Serial.print("Hold to Pause Length: ");
                 Serial.println(tempSettings[7]);
                 #ifdef USE_TINYUSB
+                for(byte i = 0; i < sizeof(deviceName); i++) {
+                    deviceName[i] = '\0';
+                }
+                for(byte i = 0; i < 16; i++) {
+                    deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
+                }
+                devicePID = 0;
+                EEPROM.get(EEPROM.length() - 22, devicePID);
                 Serial.println("-----------TINYUSB ID------------");
                 Serial.print("TinyUSB Device Name: ");
                 Serial.println(deviceName);
