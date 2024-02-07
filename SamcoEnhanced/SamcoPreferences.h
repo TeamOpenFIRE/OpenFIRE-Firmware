@@ -98,6 +98,29 @@ private:
     /// @brief Save preferences
     /// @return An error code from Errors_e
     static int Save();
+
+    /// @brief Load extended preferences
+    /// @return Nothing
+    static void LoadExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings);
+
+    /// @brief Save extended preferences
+    /// @return An error code from Errors_e
+    static int SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings);
+
+    /// @brief Resets preferences with a zero-fill to the EEPROM.
+    /// @return Nothing
+    static void ResetPreferences();
+
+    #ifdef USE_TINYUSB
+    /// @brief Load TinyUSB identifiers
+    /// @return An error code from Errors_e
+    static int LoadTinyID(char *tinyName, unsigned int *tinyID);
+
+    /// @brief Save TinyID identifiers
+    /// @return An error code from Errors_e
+    static int SaveTinyID(char deviceName[16], unsigned int *tinyID);
+    #endif // USE_TINYUSB
+
 #endif
 };
 
