@@ -151,6 +151,8 @@ int8_t btnPedal = 12;                             // If you're using a physical 
 int8_t btnPump = -1;
 int8_t btnHome = -1;
 
+bool lowButtonMode = false;                       // Flag that determines if buttons A/B will be Start/Select when pointing offscreen; for Sega Stunner and GunCon 1-spec guns mainly.
+
   // If your build uses an analog stick, unset and define the stick's pins here!
   // Remember: ANALOG PINS ONLY!
 //#define USES_ANALOG
@@ -798,10 +800,8 @@ void setup() {
 // Wire.setSDA(4);
 // Wire.setSCL(5);
 
-#if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-    // initialize buttons (on the main thread for single core systems)
+    // initialize buttons
     buttons.Begin();
-#endif // ARDUINO_ARCH_RP2040
 
     // Start IR Camera with basic data format
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
@@ -843,15 +843,6 @@ void setup() {
         SetMode(GunMode_Run);
     }
 }
-
-#if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
-void setup1()
-{
-    // Since we need this for the second core to activate, may as well give it something to do.
-    // initialize buttons (on the second core)
-    buttons.Begin();
-}
-#endif // ARDUINO_ARCH_RP2040
 
 #ifdef USE_TINYUSB
 void TinyUSBInit()
@@ -1074,6 +1065,11 @@ void NoHardwareTimerCamTickMillis()
 #endif // SAMCO_NO_HW_TIMER
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
+void setup1()
+{
+    // i sleep
+}
+
 void loop1()
 {
     while(gunMode == GunMode_Run) {
@@ -2505,7 +2501,7 @@ void SerialProcessing()                                         // Reading the i
                       Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                       break;
                 }
-                UpdateBindings();
+                UpdateBindings(lowButtonMode);
                 break;
               // Clear EEPROM.
               case 'c':
@@ -2567,6 +2563,17 @@ void SerialProcessing()                                         // Reading the i
                         Serial.println("Toggled Common Anode setting.");
                         break;
                       #endif
+                      case '6':
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        lowButtonMode = serialInput - '0';
+                        if(lowButtonMode) {
+                            UpdateBindings(true);
+                        } else {
+                            UpdateBindings(false);
+                        }
+                        Serial.println("Toggled Low Button Mode setting.");
+                        break;
                     }
                 // Pins
                 } else if(serialInput == '1') {
@@ -2977,6 +2984,8 @@ void SerialProcessing()                                         // Reading the i
                 Serial.println(bitRead(tempBools, 4));
                 Serial.print("Common Anode Active: ");
                 Serial.println(bitRead(tempBools, 5));
+                Serial.print("Low Buttons Mode Active: ");
+                Serial.println(bitRead(tempBools, 6));
                 Serial.println("----------PIN MAPPINGS-----------");
                 Serial.print("Custom pins layout enabled: ");
                 Serial.println(tempMappings[0]);
@@ -4057,6 +4066,7 @@ void ExtPreferences(bool isLoad)
         #ifdef FOURPIN_LED
             bitWrite(tempBools, 5, commonAnode);
         #endif // FOURPIN_LED
+        bitWrite(tempBools, 6, lowButtonMode);
     }
 
     // Temp pin mappings
@@ -4235,7 +4245,12 @@ void ExtPreferences(bool isLoad)
         #endif // CUSTOM_NEOPIXEL
         autofireWaitFactor = tempSettings[6];
         pauseHoldLength = tempSettings[7];
-        }
+    }
+    if(justBooted && lowButtonMode) {
+        UpdateBindings(true);
+    } else if(justBooted && !lowButtonMode) {
+        UpdateBindings(false);
+    }
 }
 
 void SelectCalProfileFromBtnMask(uint32_t mask)
@@ -4843,26 +4858,46 @@ void BurstFire()
 
 // Updates the button array with new bindings, if any.
 // VERY hacky workaround, but seems to work?
-void UpdateBindings()
+void UpdateBindings(bool offscreenEnable)
 {
-    LightgunButtons::Desc_t ButtonDescReplacement[] = {
-        {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
-        {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-        {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
-        {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
-        {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
-        {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
-        {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
-        {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
-        {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
-        {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
-        {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
-        {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-        {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
-    };
-
-    for(byte n = 0; n < ButtonCount; n++) {
-        LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
+    if(offscreenEnable) {
+        LightgunButtons::Desc_t ButtonDescReplacement[] = {
+            {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
+            {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+            {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
+            {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
+            {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
+            {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
+            {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
+            {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
+            {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
+            {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
+            {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
+            {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+            {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
+        };
+        for(byte n = 0; n < ButtonCount; n++) {
+            LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
+        }
+    } else {
+        LightgunButtons::Desc_t ButtonDescReplacement[] = {
+            {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
+            {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+            {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
+            {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
+            {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
+            {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
+            {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
+            {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
+            {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
+            {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
+            {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
+            {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
+            {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
+        };
+        for(byte n = 0; n < ButtonCount; n++) {
+            LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
+        }
     }
 }
 
