@@ -4044,6 +4044,19 @@ void ExtPreferences(bool isLoad)
     uint8_t tempBools = 0b00000000;
     uint8_t *dataBools = &tempBools;
 
+    #ifdef USES_RUMBLE
+        bitWrite(tempBools, 0, rumbleActive);
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        bitWrite(tempBools, 1, solenoidActive);
+    #endif // USES_SOLENOID
+    bitWrite(tempBools, 2, autofireActive);
+    bitWrite(tempBools, 3, simpleMenu);
+    bitWrite(tempBools, 4, holdToPause);
+    #ifdef FOURPIN_LED
+        bitWrite(tempBools, 5, commonAnode);
+    #endif // FOURPIN_LED
+
     // Temp pin mappings
     int8_t tempMappings[] = {
       customPinsInUse,            // custom pin enabled - disabled by default
