@@ -180,7 +180,7 @@ bool lowButtonMode = false;                       // Flag that determines if but
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
     int8_t customLEDpin = -1;                     // Pin number for the custom NeoPixel (strip) being used.
-    uint8_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
+    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
   // Adjustable aspects:
@@ -828,8 +828,8 @@ void setup() {
     startIrCamTimer(IRCamUpdateRate);
 
     // First boot sanity checks.
-    // Check if the initial profiles are blanked.
-    if(profileData[selectedProfile].xScale == 0) {
+    // Check if the initial profiles are blanked (zero center = init)
+    if(profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
         SetMode(GunMode_CalCenter);
