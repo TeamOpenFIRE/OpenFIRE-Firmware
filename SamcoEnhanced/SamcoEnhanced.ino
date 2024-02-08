@@ -90,80 +90,73 @@
 
   // Leave this uncommented if your build uses hardware switches, or comment out to disable all references to hw switch functionality.
 #define USES_SWITCHES
-#ifdef USES_SWITCHES // Here's where they should be defined!
-    int8_t autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
-#endif // USES_SWITCHES
 
   // Leave this uncommented if your build uses a rumble motor; comment out to disable any references to rumble functionality.
 #define USES_RUMBLE
-#ifdef USES_RUMBLE
-    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    #ifdef USES_SWITCHES
-        int8_t rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_SWITCHES
-
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-#endif // USES_RUMBLE
 
   // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
 #define USES_SOLENOID
 #ifdef USES_SOLENOID
-    bool solenoidActive = false;                      // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_SWITCHES // If your build uses hardware switches,
-        int8_t solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SWITCHES
-    
-  // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
+    // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
     //#define USES_TEMP
-    #ifdef USES_TEMP    
-        int8_t tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
-        uint16_t tempNormal = 50;                 // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
 #endif // USES_SOLENOID
 
+  // Leave this uncommented if your build uses an analog stick.
+#define USES_ANALOG
+
+  // Leave this uncommented if your build uses a four pin RGB LED.
+#define FOURPIN_LED
+
+  // Leave this uncommented if your build uses an external NeoPixel.
+#define CUSTOM_NEOPIXEL
 
   // Which software extras should be activated? Set here if your build doesn't use toggle switches.
 bool autofireActive = false;                          // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
 bool offscreenButton = false;                         // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
 bool burstFireActive = false;                         // Is the solenoid firing in burst fire mode? false = default, true = 3-shot burst firing mode
 
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040 // For the Adafruit ItsyBitsy RP2040
+#ifdef USES_SWITCHES
+    int8_t autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
+    #ifdef USES_RUMBLE
+        int8_t rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        int8_t solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SOLENOID
+#endif // USES_SWITCHES
 
-  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-int8_t rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = 7;                               // <-- GCon 1-spec
-int8_t btnGunB = 8;                               // <-- GCon 1-spec
-int8_t btnGunC = 9;                               // Everything below are for GCon 2-spec only 
-int8_t btnStart = 10;
-int8_t btnSelect = 11;
-int8_t btnGunUp = 1;
-int8_t btnGunDown = 0;
-int8_t btnGunLeft = 4;
-int8_t btnGunRight = 5;
-int8_t btnPedal = 12;                             // If you're using a physical Time Crisis-style pedal, this is for that.
-int8_t btnPump = -1;
-int8_t btnHome = -1;
+#ifdef USES_RUMBLE
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
+    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
+    uint16_t rumbleIntensity = 170;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 150;          // How long to wait for the whole rumble command, in ms.
+#endif // USES_RUMBLE
 
-bool lowButtonMode = false;                       // Flag that determines if buttons A/B will be Start/Select when pointing offscreen; for Sega Stunner and GunCon 1-spec guns mainly.
+#ifdef USES_SOLENOID
+    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_TEMP    
+        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
+        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+#endif // USES_SOLENOID
 
-  // If your build uses an analog stick, unset and define the stick's pins here!
   // Remember: ANALOG PINS ONLY!
-//#define USES_ANALOG
 #ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
+    int8_t analogPinX = A0;
+    int8_t analogPinY = A1;
 #endif // USES_ANALOG
 
-  // If you're using a regular 4-pin RGB LED, unset and define the R/G/B color pins here!
   // Remember: PWM PINS ONLY!
-//#define FOURPIN_LED
 #ifdef FOURPIN_LED
     #define LED_ENABLE
     int8_t PinR = -1;
@@ -173,27 +166,111 @@ bool lowButtonMode = false;                       // Flag that determines if but
     bool commonAnode = true;
 #endif // FOURPIN_LED
 
-  // If you're using a custom external NeoPixel unit, unset and define the data pin location here!
   // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-//#define CUSTOM_NEOPIXEL
 #ifdef CUSTOM_NEOPIXEL
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                     // Pin number for the custom NeoPixel (strip) being used.
+    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
     uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
-  // Adjustable aspects:
-uint16_t autofireWaitFactor = 3;                  // This is the default time to wait between rapid fire pulses (from 2-4)
+  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
+int8_t rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t btnTrigger = 6;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = 7;                              // <-- GCon 1-spec
+int8_t btnGunB = 8;                              // <-- GCon 1-spec
+int8_t btnGunC = 9;                              // Everything below are for GCon 2-spec only 
+int8_t btnStart = 10;
+int8_t btnSelect = 11;
+int8_t btnGunUp = 1;
+int8_t btnGunDown = 0;
+int8_t btnGunLeft = 4;
+int8_t btnGunRight = 5;
+int8_t btnPedal = 12;
+int8_t btnPump = -1;
+int8_t btnHome = -1;
+
+#else // For the Raspberry Pi Pico
+
+#ifdef USES_SWITCHES
+    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
+    #ifdef USES_SOLENOID
+        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SOLENOID
+    #ifdef USES_RUMBLE
+        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_RUMBLE
+#endif // USES_SWITCHES
+
 #ifdef USES_RUMBLE
-    uint16_t rumbleIntensity = 255;             // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 110;              // How long to wait for the whole rumble command, in ms.
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
+    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
+    uint16_t rumbleIntensity = 170;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 150;          // How long to wait for the whole rumble command, in ms.
 #endif // USES_RUMBLE
+
 #ifdef USES_SOLENOID
-    uint16_t solenoidNormalInterval = 45;       // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;         // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;        // for single shot, how long to wait until we start spamming the solenoid? In ms.
+    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_TEMP    
+        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
+        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
+
+  // Remember: ANALOG PINS ONLY!
+#ifdef USES_ANALOG
+    int8_t analogPinX = A0;
+    int8_t analogPinY = A1;
+#endif // USES_ANALOG
+
+  // Remember: PWM PINS ONLY!
+#ifdef FOURPIN_LED
+    #define LED_ENABLE
+    int8_t PinR = 10;
+    int8_t PinG = 11;
+    int8_t PinB = 12;
+    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
+    bool commonAnode = true;
+#endif // FOURPIN_LED
+
+  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPixel.h>
+    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
+    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
+#endif // CUSTOM_NEOPIXEL
+
+int8_t rumblePin = 17;                            // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = 16;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t btnTrigger = 15;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = 0;                              // <-- GCon 1-spec
+int8_t btnGunB = 1;                              // <-- GCon 1-spec
+int8_t btnGunC = 2;                              // Everything below are for GCon 2-spec only 
+int8_t btnStart = 3;
+int8_t btnSelect = 4;
+int8_t btnGunUp = 6;
+int8_t btnGunDown = 7;
+int8_t btnGunLeft = 8;
+int8_t btnGunRight = 9;
+int8_t btnPedal = 14;
+int8_t btnPump = 13;
+int8_t btnHome = 5;
+
+#endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+
+bool lowButtonMode = false;                           // Flag that determines if buttons A/B will be Start/Select when pointing offscreen; for Sega Stunner and GunCon 1-spec guns mainly.
+uint16_t autofireWaitFactor = 3;                      // This is the default time to wait between rapid fire pulses (from 2-4)
 
 // Menu options:
 bool simpleMenu = false;                              // Flag that determines if Pause Mode will be a simple scrolling menu; else, relies on hotkeys.
@@ -522,7 +599,7 @@ bool customPinsInUse = false;                        // For if custom pins defin
 
 unsigned int lastSeen = 0;
 
-bool justBooted = true;                              // For ops we need to do on initial boot (just joystick centering atm)
+bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)
 
 #ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
@@ -797,9 +874,8 @@ void setup() {
     Wire1.setSDA(2);
     Wire1.setSCL(3);
 #endif
-// Wire (0) should be defaulting to and using GPIO 4 & 5, but in case you need it:
-// Wire.setSDA(4);
-// Wire.setSCL(5);
+    Wire.setSDA(20);
+    Wire.setSCL(21);
 
     // initialize buttons
     buttons.Begin();
@@ -2432,13 +2508,15 @@ void SerialProcessing()                                         // Reading the i
                 break;
               // Toggle Pause/Run Mode
               case 'P':
-                if(gunMode != GunMode_Run) {
-                    Serial.println("Exiting back to normal run mode...");
-                    SetMode(GunMode_Run);
-                } else {
-                    Serial.println("Entering pause mode...");
-                    buttons.ReportDisable();
-                    SetMode(GunMode_Pause);
+                if(!justBooted) {
+                    if(gunMode != GunMode_Run) {
+                        Serial.println("Exiting back to normal run mode...");
+                        SetMode(GunMode_Run);
+                    } else {
+                        Serial.println("Entering pause mode...");
+                        buttons.ReportDisable();
+                        SetMode(GunMode_Pause);
+                    }
                 }
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
