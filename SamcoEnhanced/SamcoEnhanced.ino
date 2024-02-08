@@ -2609,7 +2609,13 @@ void SerialProcessing()                                         // Reading the i
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         rumbleActive = serialInput - '0';
-                        Serial.println("Toggled Rumble setting.");
+                        rumbleActive = constrain(rumbleActive, 0, 1);
+                        Serial.print("Toggled Rumble setting ");
+                        if(rumbleActive) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       #endif
                       #ifdef USES_SOLENOID
@@ -2617,45 +2623,78 @@ void SerialProcessing()                                         // Reading the i
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         solenoidActive = serialInput - '0';
-                        Serial.println("Toggled Solenoid setting.");
+                        solenoidActive = constrain(solenoidActive, 0, 1);
+                        Serial.print("Toggled Solenoid setting ");
+                        if(solenoidActive) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       #endif
                       case '2':
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         autofireActive = serialInput - '0';
-                        Serial.println("Toggled Autofire setting.");
+                        autofireActive = constrain(autofireActive, 0, 1);
+                        Serial.print("Toggled Autofire setting ");
+                        if(autofireActive) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       case '3':
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         simpleMenu = serialInput - '0';
-                        Serial.println("Toggled Simple Pause Menu setting.");
+                        simpleMenu = constrain(simpleMenu, 0, 1);
+                        Serial.print("Toggled Simple Pause Menu setting ");
+                        if(simpleMenu) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       case '4':
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         holdToPause = serialInput - '0';
-                        Serial.println("Toggled Hold to Pause setting.");
+                        holdToPause = constrain(holdToPause, 0, 1);
+                        Serial.print("Toggled Hold to Pause setting ");
+                        if(holdToPause) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       #ifdef FOURPIN_LED
                       case '5':
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         commonAnode = serialInput - '0';
-                        Serial.println("Toggled Common Anode setting.");
+                        commonAnode = constrain(commonAnode, 0, 1);
+                        Serial.print("Toggled Common Anode setting ");
+                        if(commonAnode) {
+                          Serial.println("ON.");
+                        } else {
+                          Serial.println("OFF.");
+                        }
                         break;
                       #endif
                       case '6':
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         lowButtonMode = serialInput - '0';
+                        lowButtonMode = constrain(lowButtonMode, 0, 1);
+                        Serial.print("Toggled Low Button Mode setting ");
                         if(lowButtonMode) {
                             UpdateBindings(true);
+                            Serial.println("ON.");
                         } else {
                             UpdateBindings(false);
+                            Serial.println("OFF.");
                         }
-                        Serial.println("Toggled Low Button Mode setting.");
                         break;
                     }
                 // Pins
@@ -2667,6 +2706,7 @@ void SerialProcessing()                                         // Reading the i
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         customPinsInUse = serialInput - '0';
+                        customPinsInUse = constrain(customPinsInUse, 0, 1);
                         if(customPinsInUse) {
                             Serial.print("Toggled custom pin setting on; ");
                         } else {
@@ -2677,78 +2717,91 @@ void SerialProcessing()                                         // Reading the i
                       case 1:
                         serialInput = Serial.read(); // nomf
                         btnTrigger = Serial.parseInt();
+                        btnTrigger = constrain(btnTrigger, -1, 40);
                         Serial.print("Set trigger button pin to: ");
                         Serial.println(btnTrigger);
                         break;
                       case 2:
                         serialInput = Serial.read(); // nomf
                         btnGunA = Serial.parseInt();
+                        btnGunA = constrain(btnGunA, -1, 40);
                         Serial.print("Set A button pin to: ");
                         Serial.println(btnGunA);
                         break;
                       case 3:
                         serialInput = Serial.read(); // nomf
                         btnGunB = Serial.parseInt();
+                        btnGunB = constrain(btnGunB, -1, 40);
                         Serial.print("Set B button pin to: ");
                         Serial.println(btnGunB);
                         break;
                       case 4:
                         serialInput = Serial.read(); // nomf
                         btnGunC = Serial.parseInt();
+                        btnGunC = constrain(btnGunC, -1, 40);
                         Serial.print("Set C button pin to: ");
                         Serial.println(btnGunC);
                         break;
                       case 5:
                         serialInput = Serial.read(); // nomf
                         btnStart = Serial.parseInt();
+                        btnStart = constrain(btnStart, -1, 40);
                         Serial.print("Set Start button pin to: ");
                         Serial.println(btnStart);
                         break;
                       case 6:
                         serialInput = Serial.read(); // nomf
                         btnSelect = Serial.parseInt();
+                        btnSelect = constrain(btnSelect, -1, 40);
                         Serial.print("Set Select button pin to: ");
                         Serial.println(btnSelect);
                         break;
                       case 7:
                         serialInput = Serial.read(); // nomf
                         btnGunUp = Serial.parseInt();
+                        btnGunUp = constrain(btnGunUp, -1, 40);
                         Serial.print("Set D-Pad Up button pin to: ");
                         Serial.println(btnGunUp);
                         break;
                       case 8:
                         serialInput = Serial.read(); // nomf
                         btnGunDown = Serial.parseInt();
+                        btnGunDown = constrain(btnGunDown, -1, 40);
                         Serial.print("Set D-Pad Down button pin to: ");
                         Serial.println(btnGunDown);
                         break;
                       case 9:
                         serialInput = Serial.read(); // nomf
                         btnGunLeft = Serial.parseInt();
+                        btnGunLeft = constrain(btnGunLeft, -1, 40);
                         Serial.print("Set D-Pad Left button pin to: ");
                         Serial.println(btnGunLeft);
                         break;
                       case 10:
                         serialInput = Serial.read(); // nomf
                         btnGunRight = Serial.parseInt();
+                        btnGunRight = constrain(btnGunRight, -1, 40);
                         Serial.print("Set D-Pad Right button pin to: ");
                         Serial.println(btnGunRight);
                         break;
                       case 11:
                         serialInput = Serial.read(); // nomf
                         btnPedal = Serial.parseInt();
+                        btnPedal = constrain(btnPedal, -1, 40);
                         Serial.print("Set External Pedal button pin to: ");
                         Serial.println(btnPedal);
                         break;
                       case 12:
                         serialInput = Serial.read(); // nomf
                         btnHome = Serial.parseInt();
+                        btnHome = constrain(btnHome, -1, 40);
                         Serial.print("Set Home button pin to: ");
                         Serial.println(btnHome);
                         break;
                       case 13:
                         serialInput = Serial.read(); // nomf
                         btnPump = Serial.parseInt();
+                        btnPump = constrain(btnPump, -1, 40);
                         Serial.print("Set Pump Action button pin to: ");
                         Serial.println(btnPump);
                         break;
@@ -2756,6 +2809,7 @@ void SerialProcessing()                                         // Reading the i
                       case 14:
                         serialInput = Serial.read(); // nomf
                         rumblePin = Serial.parseInt();
+                        rumblePin = constrain(rumblePin, -1, 40);
                         Serial.print("Set Rumble signal pin to: ");
                         Serial.println(rumblePin);
                         break;
@@ -2764,6 +2818,7 @@ void SerialProcessing()                                         // Reading the i
                       case 15:
                         serialInput = Serial.read(); // nomf
                         solenoidPin = Serial.parseInt();
+                        solenoidPin = constrain(solenoidPin, -1, 40);
                         Serial.print("Set Solenoid signal pin to: ");
                         Serial.println(solenoidPin);
                         break;
@@ -2771,6 +2826,7 @@ void SerialProcessing()                                         // Reading the i
                       case 16:
                         serialInput = Serial.read(); // nomf
                         tempPin = Serial.parseInt();
+                        tempPin = constrain(tempPin, -1, 40);
                         Serial.print("Set Temperature Sensor pin to: ");
                         Serial.println(tempPin);
                         break;
@@ -2781,6 +2837,7 @@ void SerialProcessing()                                         // Reading the i
                       case 17:
                         serialInput = Serial.read(); // nomf
                         rumbleSwitch = Serial.parseInt();
+                        rumbleSwitch = constrain(rumbleSwitch, -1, 40);
                         Serial.print("Set Rumble Switch pin to: ");
                         Serial.println(rumbleSwitch);
                         break;
@@ -2789,6 +2846,7 @@ void SerialProcessing()                                         // Reading the i
                       case 18:
                         serialInput = Serial.read(); // nomf
                         solenoidSwitch = Serial.parseInt();
+                        solenoidSwitch = constrain(solenoidSwitch, -1, 40);
                         Serial.print("Set Solenoid Switch pin to: ");
                         Serial.println(solenoidSwitch);
                         break;
@@ -2796,6 +2854,7 @@ void SerialProcessing()                                         // Reading the i
                       case 19:
                         serialInput = Serial.read(); // nomf
                         autofireSwitch = Serial.parseInt();
+                        autofireSwitch = constrain(autofireSwitch, -1, 40);
                         Serial.print("Set Autofire Switch pin to: ");
                         Serial.println(autofireSwitch);
                         break;
@@ -2804,18 +2863,21 @@ void SerialProcessing()                                         // Reading the i
                       case 20:
                         serialInput = Serial.read(); // nomf
                         PinR = Serial.parseInt();
+                        PinR = constrain(PinR, -1, 40);
                         Serial.print("Set Fourpin LED R pin to: ");
                         Serial.println(PinR);
                         break;
                       case 21:
                         serialInput = Serial.read(); // nomf
                         PinG = Serial.parseInt();
+                        PinG = constrain(PinG, -1, 40);
                         Serial.print("Set Fourpin LED G pin to: ");
                         Serial.println(PinG);
                         break;
                       case 22:
                         serialInput = Serial.read(); // nomf
                         PinB = Serial.parseInt();
+                        PinB = constrain(PinB, -1, 40);
                         Serial.print("Set Fourpin LED B pin to: ");
                         Serial.println(PinB);
                         break;
@@ -2824,6 +2886,7 @@ void SerialProcessing()                                         // Reading the i
                       case 23:
                         serialInput = Serial.read(); // nomf
                         customLEDpin = Serial.parseInt();
+                        customLEDpin = constrain(customLEDpin, -1, 40);
                         Serial.print("Set NeoPixel pin to: ");
                         Serial.println(customLEDpin);
                         break;
@@ -2832,12 +2895,14 @@ void SerialProcessing()                                         // Reading the i
                       case 24:
                         serialInput = Serial.read(); // nomf
                         analogPinX = Serial.parseInt();
+                        analogPinX = constrain(analogPinX, -1, 40);
                         Serial.print("Set Analog X pin to: ");
                         Serial.println(analogPinX);
                         break;
                       case 25:
                         serialInput = Serial.read(); // nomf
                         analogPinY = Serial.parseInt();
+                        analogPinY = constrain(analogPinY, -1, 40);
                         Serial.print("Set Analog Y pin to: ");
                         Serial.println(analogPinY);
                         break;
