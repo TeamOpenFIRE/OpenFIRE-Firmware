@@ -3254,7 +3254,7 @@ void SerialProcessing()                                         // Reading the i
                 } else {
                     Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
                     Serial.println("Internally recognized commands are:");
-                    Serial.println("A(nalog) / T(est) / R(emap)1/2/3/4 / P(ause) / C(alibrate)[1/2/3/4] / S(ave) / [(profile) 1/2/3/4]");
+                    Serial.println("A(nalog) / C(alibrate)[1/2/3/4] / I(nterval Autofire)2/3/4 / P(ause) / R(emap)1/2/3/4 / S(ave) / T(est) / [(profile) 1/2/3/4]");
                 }
                 break;
           }
