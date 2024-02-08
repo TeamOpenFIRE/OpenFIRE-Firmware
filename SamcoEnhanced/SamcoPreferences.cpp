@@ -153,11 +153,11 @@ void SamcoPreferences::LoadExtended(uint8_t *dataBools, int8_t *dataMappings, ui
 int SamcoPreferences::SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings)
 {
     // Basic booleans
-    EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1, *dataBools);
+    EEPROM.update(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1, *dataBools);
 
     // Custom Pins (always gets saved, regardless of if it's used or not)
     for(uint8_t i = 0; i < 27; ++i) {
-        EEPROM.write(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i, *(dataMappings + i));
+        EEPROM.update(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i, *(dataMappings + i));
     }
 
     // Main Settings
