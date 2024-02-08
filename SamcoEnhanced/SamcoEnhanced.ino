@@ -424,13 +424,11 @@ uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
 // button combination to toggle offscreen button mode in software:
 uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
 
-#ifndef USES_SWITCHES
 // button combination to toggle rumble in software:
 uint32_t RumbleToggleBtnMask = BtnMask_Left;
 
 // button combination to toggle solenoid in software:
 uint32_t SolenoidToggleBtnMask = BtnMask_Right;
-#endif
 
 // colour when no IR points are seen
 uint32_t IRSeen0Color = WikiColor::Amber;
@@ -1510,16 +1508,14 @@ void loop()
                 OffscreenToggle();
             } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle(0);
-            #ifndef USES_SWITCHES // Builds without hardware switches needs software toggles
-                #ifdef USES_RUMBLE
-                    } else if(buttons.pressedReleased == RumbleToggleBtnMask) {
-                        RumbleToggle();
-                #endif // USES_RUMBLE
-                #ifdef USES_SOLENOID
-                    } else if(buttons.pressedReleased == SolenoidToggleBtnMask) {
-                        SolenoidToggle();
-                #endif // USES_SOLENOID
-            #endif // ifndef USES_TOGGLES
+            #ifdef USES_RUMBLE
+                } else if(buttons.pressedReleased == RumbleToggleBtnMask && rumbleSwitch >= 0) {
+                    RumbleToggle();
+            #endif // USES_RUMBLE
+            #ifdef USES_SOLENOID
+                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && solenoidSwitch >= 0) {
+                    SolenoidToggle();
+            #endif // USES_SOLENOID
             } else {
                 SelectCalProfileFromBtnMask(buttons.pressedReleased);
             }
