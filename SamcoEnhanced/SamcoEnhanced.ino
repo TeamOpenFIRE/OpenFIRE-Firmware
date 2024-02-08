@@ -2948,6 +2948,96 @@ void SerialProcessing()                                         // Reading the i
                         break;
                     }
                 #endif // USE_TINYUSB
+                } else { // "default" - print out help
+                    Serial.println("Xm - Update mappings.");
+                    Serial.println("Usage: Xm.x.y.z");
+                    Serial.println("");
+                    #ifdef USE_TINYUSB
+                    Serial.println("`x` - 0 = Booleans, 1 = Pins, 2 = Extended Settings, 3 = TinyUSB");
+                    #else
+                    Serial.println("`x` - 0 = Booleans, 1 = Pins, 2 = Extended Settings");
+                    #endif
+                    Serial.println("");
+                    Serial.print("`y` Booleans | ");
+                    #ifdef USES_RUMBLE
+                    Serial.print("0 = Rumble On/Off, ");
+                    #endif
+                    #ifdef USES_SOLENOID
+                    Serial.print("1 = Solenoid On/Off, ");
+                    #endif
+                    Serial.print("2 = Autofire On/Off, 3 = Simple Pause Menu, 4 = Hold to Pause Enabled, ");
+                    #ifdef FOURPIN_LED
+                    Serial.print("5 = 4-Pin Common Anode, ");
+                    #endif
+                    Serial.println("6 = Low Buttons Mode");
+                    Serial.println("`z` Booleans | 0 = Off, 1 = On");
+                    Serial.println("");
+                    Serial.print("`y` Pins Mapping | ");
+                    Serial.print("[0]Custom Pins Enabled (Boolean), [1]Trigger, [2]A, [3]B, [4]C, [5]Start, [6]Select, [7]Up, [8]Down, [9]Left, [10]Right, [11]Pedal, [12]Home, [13]Pump Action, ");
+                    #ifdef USES_RUMBLE
+                    Serial.print("[14]Rumble Pin, ");
+                    #else
+                    Serial.print("[.]Rumble Pin (Unused), ");
+                    #endif // USES_RUMBLE
+                    #ifdef USES_SOLENOID
+                    Serial.print("[15]Solenoid Pin, ");
+                    #ifdef USES_TEMP
+                    Serial.print("[16]Temperature Sensor Pin, ");
+                    #else
+                    Serial.print("[.]Temperature Sensor (Unused), ");
+                    #endif // USES_TEMP
+                    #else
+                    Serial.print("[.]Solenoid Pin (Unused), [.]Temperature Sensor (Unused), ");
+                    #endif // USES_SOLENOID
+                    #ifdef USES_SWITCHES
+                    #ifdef USES_RUMBLE
+                    Serial.print("[17]Rumble Switch, ");
+                    #else
+                    Serial.print("[.]Rumble Switch (Unused), ");
+                    #endif // USES_RUMBLE
+                    #ifdef USES_SOLENOID
+                    Serial.print("[18]Solenoid Switch, ");
+                    #else
+                    Serial.print("[.]Solenoid Switch (Unused), ");
+                    #endif // USES_SOLENOID
+                    Serial.print("[19]Autofire Switch, ");
+                    #else
+                    Serial.print("[.]Rumble Switch (Unused), [.]Solenoid Switch (Unused), [.]Autofire Switch (Unused), ");
+                    #endif // USES_SWITCHES
+                    #ifdef FOURPIN_LED
+                    Serial.print("[20]LED Pin R, [21]LED Pin G, [22]LED Pin B, ");
+                    #else
+                    Serial.print("[.]LED Pin R (Unused), [.]LED Pin G (Unused), [.]LED Pin B (Unused), ");
+                    #endif // FOURPIN_LED
+                    #ifdef CUSTOM_NEOPIXEL
+                    Serial.print("[23]External NeoPixel Output Pin, ");
+                    #else
+                    Serial.print("[.]External NeoPixel Pin (Unused), ");
+                    #endif // CUSTOM_NEOPIXEL
+                    #ifdef USES_ANALOG
+                    Serial.println("[24]Analog Pin X, [25]Analog Pin Y, ");
+                    #else
+                    Serial.println("[.]Analog Pin X (Unused), [.]Analog Pin Y (Unused).");
+                    #endif // USES_ANALOG
+                    Serial.println("`z` Pins Mapping | 0 = Disabled, 1 = Enabled (Custom Pins Setting only) / 0-40 = Set to GPIO Pin #, -1 = Disabled (Any pin)");
+                    Serial.println("");
+                    Serial.print("`y` Extended Settings | ");
+                    #ifdef USES_RUMBLE
+                    Serial.print("[0] Rumble Intensity (0-255), [1] Rumble Event Length (0-9999, in ms), ");
+                    #endif // USES_RUMBLE
+                    #ifdef USES_SOLENOID
+                    Serial.print("[2] Solenoid Normal Interval (0-9999, in ms), [3] Solenoid Fast Interval (0-9999, in ms), [4] Solenoid Hold Length (0-9999, in ms), ");
+                    #endif // USES_SOLENOID
+                    #ifdef CUSTOM_NEOPIXEL
+                    Serial.print("[5] NeoPixel Strand Length (1-255, in LEDs count), ");
+                    #endif // CUSTOM_NEOPIXEL
+                    Serial.println("[6] Autofire Wait Factor (2-4), [7] Hold-to-Pause Length (0-9999, in ms).");
+                    Serial.println("`z` Extended Settings | Any positive int");
+                    #ifdef USE_TINYUSB
+                    Serial.println("");
+                    Serial.println("`y` TinyUSB Identifier | 0 = Product ID, 1 = Product Name");
+                    Serial.println("`z` TinyUSB Identifier | Any decimal int (ID, converts to Hex), Up to 15 ASCII Characters (Name).");
+                    #endif // USE_TINYUSB
                 }
                 break;
               }
