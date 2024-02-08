@@ -730,7 +730,8 @@ void setup() {
         // If data is available but none written, commit builtin values to eeprom.
         if(nvPrefsError == SamcoPreferences::Error_NoData) {
             Serial.println("No data detected, setting defaults!");
-            ExtPreferences(false);
+            SamcoPreferences::ResetPreferences();
+            SavePreferences();
         } else if(nvPrefsError == SamcoPreferences::Error_Success) {
             Serial.println("Data detected, pulling settings from EEPROM!");
             ExtPreferences(true);
@@ -835,6 +836,10 @@ void setup() {
         SetMode(GunMode_CalCenter);
         Serial.println("Pull the trigger to start your first calibration!");
         while(!(buttons.pressedReleased == BtnMask_Trigger)) {
+            // Check and process serial commands, in case user needs to change EEPROM settings.
+            if(Serial.available()) {
+                SerialProcessing();
+            }
             buttons.Poll(1);
             buttons.Repeat();
         }
@@ -2868,11 +2873,6 @@ void SerialProcessing()                                         // Reading the i
                 }
                 break;
               }
-              // Save extended values to EEPROM.
-              case 's':
-                Serial.println("Saving extended settings to EEPROM...");
-                ExtPreferences(false);
-                break;
               // Print EEPROM values.
               case 'p':
               {
@@ -4026,6 +4026,7 @@ void SavePreferences()
     if(nvPrefsError == SamcoPreferences::Error_Success) {
         Serial.print("Settings saved to ");
         Serial.println(NVRAMlabel);
+        ExtPreferences(false);
         #ifdef LED_ENABLE
             for(byte i = 0; i < 3; i++) {
                 LedUpdate(25,25,255);
