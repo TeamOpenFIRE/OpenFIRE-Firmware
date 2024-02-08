@@ -6,8 +6,9 @@
  * @copyright GNU Lesser General Public License
  *
  * @author Mike Lynch
- * @version V1.0
- * @date 2021
+ * @author [That One Seong](SeongsSeongs@gmail.com)
+ * @version V1.1
+ * @date 2023
  */
 
 #ifndef _SAMCOPREFERENCES_H_
@@ -98,6 +99,19 @@ private:
     /// @brief Save preferences
     /// @return An error code from Errors_e
     static int Save();
+
+    /// @brief Load extended preferences
+    /// @return Nothing
+    static void LoadExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings);
+
+    /// @brief Save extended preferences
+    /// @return An error code from Errors_e
+    static int SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings);
+
+    /// @brief Resets preferences with a zero-fill to the EEPROM.
+    /// @return Nothing
+    static void ResetPreferences();
+
 #endif
 };
 
