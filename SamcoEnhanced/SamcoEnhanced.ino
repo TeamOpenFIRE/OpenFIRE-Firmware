@@ -824,11 +824,15 @@ void setup() {
     #ifdef USES_RUMBLE
         if(rumblePin >= 0) {
             pinMode(rumblePin, OUTPUT);
+        } else {
+            rumbleActive = false;
         }
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
         if(solenoidPin >= 0) {
             pinMode(solenoidPin, OUTPUT);
+        } else {
+            solenoidActive = false;
         }
     #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
@@ -1193,7 +1197,7 @@ void loop1()
         #ifdef USES_ANALOG
             if(analogIsValid) {
                 // We tie analog stick updates to the IR camera timer, so as to not overload USB bandwidth.
-                // For some reason, tying it to irPosUpdateTick explicitly prevents mouse dropout.
+                // For some reason, tying it to irPosUpdateTick exclusively prevents mouse dropout.
                 if(!analogStickPolled && irPosUpdateTick) {
                     AnalogStickPoll();
                     analogStickPolled = true;
