@@ -913,6 +913,11 @@ void setup() {
         Serial.println("Preferences data is empty!");
         SetMode(GunMode_CalCenter);
         Serial.println("Pull the trigger to start your first calibration!");
+        unsigned int timerIntervalShort = 600;
+        unsigned int timerInterval = 1000;
+        LedOff();
+        unsigned long lastT = millis();
+        bool LEDisOn = false;
         while(!(buttons.pressedReleased == BtnMask_Trigger)) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available()) {
@@ -920,6 +925,22 @@ void setup() {
             }
             buttons.Poll(1);
             buttons.Repeat();
+            // LED update:
+            if(LEDisOn) {
+                unsigned long t = millis();
+                if(t - lastT > timerInterval) {
+                    LedOff();
+                    LEDisOn = false;
+                    lastT = millis();
+                }
+            } else {
+                unsigned long t = millis();
+                if(t - lastT > timerIntervalShort) {
+                    LedUpdate(255,125,0);
+                    LEDisOn = true;
+                    lastT = millis();
+                } 
+            }
         }
     } else {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
