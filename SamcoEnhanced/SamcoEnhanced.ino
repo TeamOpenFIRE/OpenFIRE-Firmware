@@ -14,8 +14,8 @@
  * @author [That One Seong](SeongsSeongs@gmail.com)
  * @date 2023
  */
-#define G4ALL_VERSION 2.1
-#define G4ALL_CODENAME "Fantasyland-rev1"
+#define G4ALL_VERSION 3.0
+#define G4ALL_CODENAME "Rinko"
 
  // Remember to check out the enclosed instruction book (README.md) that came with this program for more information!
 
