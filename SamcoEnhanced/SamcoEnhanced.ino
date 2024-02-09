@@ -134,8 +134,8 @@ bool burstFireActive = false;                         // Is the solenoid firing 
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
     bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 170;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 150;          // How long to wait for the whole rumble command, in ms.
+    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
@@ -211,8 +211,8 @@ int8_t btnHome = -1;
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
     bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 170;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 150;          // How long to wait for the whole rumble command, in ms.
+    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
