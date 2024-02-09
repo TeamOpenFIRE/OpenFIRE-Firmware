@@ -52,9 +52,9 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 ## Additional information
 [Check out the enclosed instruction book!](SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
 
-For reference, the default schematic and (general) layout for the build and its optional extras are attached:
-![Weh](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic.png)
- * *Clarification: Rumble power can go to either the pin marked `VHi` (board decides power delivery) or `USB` (directly powered from the USB interface).*
+For reference, the default schematic and (general) layout for the build and its optional extras are attached.
+![Guh](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/SamcoPlus%20Schematic-pico.png)
+ * *Layouts can be customized after installing the firmware - the only pins that **must** match are Camera Data & Clock.*
 
 ## Known Issues (want to fix sooner rather than later):
 - Serial communication (Mamehook or debug output) can randomly lock up operation due to complications with HID packets (Mouse/Keyboard/Pad commands) and Serial I/O clashing. See https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
@@ -69,17 +69,14 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## TODO (can and will implement, just not now):
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
+- Detect temp monitor in a more graceful way to determine which solenoid activation path to use, so we don't need to have different firmwares with TMP enabled/disabled.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
-- A more streamlined graphical interface specific for IR-GUN4ALL that doesn't require the full Arduino IDE setup.
-  * The idea is to have an interface for both flashing the board (like GUN4IR, but supporting Linux as well as Windows) and configuring the gun (ideally in real-time, without having to re-flash to adjust e.g. solenoid settings or mappings).
-    - Should use a native toolkit i.e. QT for Linux, though someone else would have to work on Windows support.
-    - Should we use pre-defined pins for buttons/force feedback devices? Possible on a Pico at least, but less so on an Adafruit (would mean being able to hard-code pins, so only mapping profiles need to be added/saved).
-  * Failing this, maybe have a Web-based UI to configure board settings (pin numbers, peripherals, etc.) at runtime, a'la [GP2040-CE](https://github.com/OpenStickCommunity/GP2040-CE).
-    * This should be web browser agnostic, so WebUSB is off the table - consider RNDIS or alike (need examples)? Seong isn't downloading Chrome just to configure a gun :/
-    * Preferably should be done by setting a runmode at boot by holding a button (trigger depressed at boot) to start webserver mode, which can't be accessed by Pause Mode otherwise.
-  * Either one of these GUI options will necessitate moving away from pre-processor definitions/constants in-sketch to variables and stored in/pulled from EEPROM/SPI storage.
+- A streamlined graphical app for the desktop to configure custom pins mapping & settings.
+  * Essentially just a frontend for the currently available serial commands, as well as making the process easier for Windows users (who don't have a useful serial terminal OOTB, or don't want to use one).
+  * **Must be a native application.** Seong is not installing Chromium just to configure a lightgun. :/
+  * Configuration can be done currently via the serial interface - send `Xm` to the board via serial monitor/terminal to learn more.
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
