@@ -3107,7 +3107,7 @@ void SerialProcessing()                                         // Reading the i
                 break;
               }
               // Print EEPROM values.
-              case 'p':
+              case 'l':
               {
                 Serial.println("Printing values saved in EEPROM...");
                 uint8_t tempBools = 0b00000000;
