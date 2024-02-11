@@ -17,6 +17,12 @@
 #define G4ALL_VERSION 3.0
 #define G4ALL_CODENAME "Rinko"
 
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+#define G4ALL_BOARD "adafruitItsyRP2040"
+#elifdef ARDUINO_RASPBERRY_PI_PICO
+#define G4ALL_BOARD "rpipico"
+#endif // board
+
  // Remember to check out the enclosed instruction book (README.md) that came with this program for more information!
 
 #include <Arduino.h>
@@ -960,8 +966,12 @@ void TinyUSBInit()
     }
     EEPROM.get(EEPROM.length() - 22, devicePID);
     if(devicePID) {
-        TinyUSBDevice.setProductDescriptor(deviceName);
         TinyUSBDevice.setID(DEVICE_VID, devicePID);
+        if(deviceName[0] == '\0') {
+            TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
+        } else {
+            TinyUSBDevice.setProductDescriptor(deviceName);
+        }
     } else {
         TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
         TinyUSBDevice.setID(DEVICE_VID, DEVICE_PID);
@@ -3141,7 +3151,11 @@ void SerialProcessing()                                         // Reading the i
                       for(byte i = 0; i < 16; i++) {
                           deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
                       }
-                      Serial.println(deviceName);
+                      if(deviceName[0] == '\0') {
+                          Serial.println("SERIALREADERR01");
+                      } else {
+                          Serial.println(deviceName);
+                      }
                       break;
                     case 'i':
                       devicePID = 0;
@@ -3149,6 +3163,14 @@ void SerialProcessing()                                         // Reading the i
                       Serial.println(devicePID);
                       break;
                     #endif // USE_TINYUSB
+                    case 'v':
+                      Serial.print("GUN4ALL/");
+                      Serial.print(G4ALL_VERSION, 1);
+                      Serial.print("/");
+                      Serial.print(G4ALL_CODENAME);
+                      Serial.print("/");
+                      Serial.println(G4ALL_BOARD);
+                      break;
                     default:
                       break;
                   }
@@ -3346,7 +3368,11 @@ void SerialProcessing()                                         // Reading the i
                   EEPROM.get(EEPROM.length() - 22, devicePID);
                   Serial.println("-----------TINYUSB ID------------");
                   Serial.print("TinyUSB Device Name: ");
-                  Serial.println(deviceName);
+                  if(deviceName[0] == '\0') {
+                      Serial.println("No custom device name");
+                  } else {
+                      Serial.println(deviceName);
+                  }
                   Serial.print("TinyUSB Product Identifier: ");
                   Serial.println(devicePID, HEX);
                   #endif // USE_TINYUSB
