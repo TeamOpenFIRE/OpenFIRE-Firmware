@@ -19,6 +19,8 @@
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 #define G4ALL_BOARD "adafruitItsyRP2040"
+#elifdef ARDUINO_NANO_RP2040_CONNECT
+#define G4ALL_BOARD "arduinoNanoRP2040"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
 #define G4ALL_BOARD "rpipico"
 #endif // board
@@ -882,8 +884,13 @@ void setup() {
     Wire1.setSDA(2);
     Wire1.setSCL(3);
 #endif
+#ifdef ARDUINO_NANO_RP2040_CONNECT
+    Wire.setSDA(12);
+    Wire.setSCL(13);
+#else // assumes ARDUINO_RASPBERRY_PI_PICO
     Wire.setSDA(20);
     Wire.setSCL(21);
+#endif // board
 
     // initialize buttons
     buttons.Begin();
@@ -2504,6 +2511,20 @@ void SerialProcessing()                                         // Reading the i
                       break;
                 }
                 break;
+              // Set IR Brightness
+              case 'B':
+                serialInput = Serial.read();
+                if(serialInput == '0' || serialInput == '1' || serialInput == '2') {
+                    if(gunMode != GunMode_Pause) {
+                        Serial.println("Can't set sensitivity in run mode! Please enter pause mode if you'd like to change IR sensitivity.");
+                    } else {
+                        byte brightnessLvl = serialInput - '0';
+                        SetIrSensitivity(brightnessLvl);
+                    }
+                } else {
+                    Serial.println("SERIALREAD: No valid IR sensitivity level set! (Expected 0 to 2)");
+                }
+                break;
               // Set Autofire Interval Length
               case 'I':
                 serialInput = Serial.read();
@@ -2540,13 +2561,20 @@ void SerialProcessing()                                         // Reading the i
               // Toggle Pause/Run Mode
               case 'P':
                 if(!justBooted) {
-                    if(gunMode != GunMode_Run) {
-                        Serial.println("Exiting back to normal run mode...");
+                    serialInput = Serial.read();
+                    if(serialInput == '0') {
                         SetMode(GunMode_Run);
-                    } else {
-                        Serial.println("Entering pause mode...");
-                        buttons.ReportDisable();
+                    } else if(serialInput == '1') {
                         SetMode(GunMode_Pause);
+                    } else {
+                        if(gunMode != GunMode_Run) {
+                            Serial.println("Exiting back to normal run mode...");
+                            SetMode(GunMode_Run);
+                        } else {
+                            Serial.println("Entering pause mode...");
+                            buttons.ReportDisable();
+                            SetMode(GunMode_Pause);
+                        }
                     }
                 }
                 break;
@@ -3390,7 +3418,7 @@ void SerialProcessing()                                         // Reading the i
                 } else {
                     Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
                     Serial.println("Internally recognized commands are:");
-                    Serial.println("A(nalog) / C(alibrate)[1/2/3/4] / I(nterval Autofire)2/3/4 / P(ause) / R(emap)1/2/3/4 / S(ave) / T(est) / [(profile) 1/2/3/4]");
+                    Serial.println("A(nalog) / B(rightness)0/1/2 / C(alibrate)[1/2/3/4] / I(nterval Autofire)2/3/4 / P(ause) / R(emap)1/2/3/4 / S(ave) / T(est) / [(profile) 1/2/3/4]");
                 }
                 break;
           }
