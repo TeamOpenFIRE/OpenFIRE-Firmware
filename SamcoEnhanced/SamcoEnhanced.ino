@@ -50,6 +50,12 @@
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
 #endif
+#ifdef ARDUINO_NANO_RP2040_CONNECT
+    #define LED_ENABLE
+    // Apparently an LED is included, but has to be communicated with through the WiFi chip (or else it throws compiler errors)
+    // That said, LEDs are attached to Pins 25(G), 26(B), 27(R).
+    #include <WiFiNINA.h>
+#endif
 #ifdef SAMCO_FLASH_ENABLE
     #include <Adafruit_SPIFlashBase.h>
 #elif SAMCO_EEPROM_ENABLE
@@ -4793,6 +4799,11 @@ void LedInit()
         ledIsValid = true;
     }
     #endif // FOURPIN_LED
+    #ifdef ARDUINO_NANO_RP2040_CONNECT
+    pinMode(LEDR, OUTPUT);
+    pinMode(LEDG, OUTPUT);
+    pinMode(LEDB, OUTPUT);
+    #endif // NANO_RP2040
     LedUpdate(255, 0, 0);
 }
 
@@ -4812,7 +4823,7 @@ void SetLedPackedColor(uint32_t color)
         externPixel.show();
     }
 #endif // CUSTOM_NEOPIXEL
- #ifdef FOURPIN_LED
+#ifdef FOURPIN_LED
     if(ledIsValid) {
         byte r = highByte(color >> 8);
         byte g = highByte(color);
@@ -4827,6 +4838,17 @@ void SetLedPackedColor(uint32_t color)
         analogWrite(PinB, b);
     }
 #endif // FOURPIN_LED
+#ifdef ARDUINO_NANO_RP2040_CONNECT
+    byte r = highByte(color >> 8);
+    byte g = highByte(color);
+    byte b = lowByte(color);
+    r = ~r;
+    g = ~g;
+    b = ~b;
+    analogWrite(LEDR, r);
+    analogWrite(LEDG, g);
+    analogWrite(LEDB, b);
+#endif // NANO_RP2040
 }
 
 void LedOff()
@@ -4865,6 +4887,24 @@ void LedUpdate(byte r, byte g, byte b)
             analogWrite(PinB, b);
         }
     #endif // FOURPIN_LED
+    #ifdef ARDUINO_NANO_RP2040_CONNECT
+        #ifdef FOURPIN_LED
+        // Nano's builtin is a common anode, so we use that logic by default if it's enabled on the external 4-pin;
+        // otherwise, invert the values.
+        if((ledIsValid && !commonAnode) || !ledIsValid) {
+            r = ~r;
+            g = ~g;
+            b = ~b;
+        }
+        #else
+            r = ~r;
+            g = ~g;
+            b = ~b;
+        #endif // FOURPIN_LED
+        analogWrite(LEDR, r);
+        analogWrite(LEDG, g);
+        analogWrite(LEDB, b);
+    #endif // NANO_RP2040
 }
 
 void SetLedColorFromMode()
