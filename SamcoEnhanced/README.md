@@ -20,6 +20,9 @@
 ## IR Emitter setup
 The IR emitters must be arranged with 2 emitters on opposite edges of your screen/monitor forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
+For visual reference, the purple/pinkish trapezoids are how your emitters should be placed on the display:
+![Emitters](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/Emitters%20Layout-monitor.png)
+
 ## Operations Manual
 The light gun operates as an absolute positioning mouse (like a stylus!) until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
 
