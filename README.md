@@ -68,15 +68,15 @@ For reference, the default schematic and (general) layout for the build and its 
 > Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
+- A streamlined graphical app for the desktop to configure custom pins mapping & settings (will be in a separate repository, TBA *soon-ish*).
+  * Essentially just a frontend for the currently available serial commands, as well as making the process easier for Windows users (who don't have a useful serial terminal OOTB, or don't want to use one).
+  * **Must be a native application** (currently being developed in QT5/6). Seong is not installing Chromium just to configure a lightgun. :/
+  * Configuration can be done currently via the serial interface - send `Xm` to the board via serial monitor/terminal to learn more.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Detect temp monitor in a more graceful way to determine which solenoid activation path to use, so we don't need to have different firmwares with TMP enabled/disabled.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
 
 ## Wishlist (things I want to but don't know how/can't do yet):
-- A streamlined graphical app for the desktop to configure custom pins mapping & settings.
-  * Essentially just a frontend for the currently available serial commands, as well as making the process easier for Windows users (who don't have a useful serial terminal OOTB, or don't want to use one).
-  * **Must be a native application.** Seong is not installing Chromium just to configure a lightgun. :/
-  * Configuration can be done currently via the serial interface - send `Xm` to the board via serial monitor/terminal to learn more.
 - Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
   * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
 - RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
