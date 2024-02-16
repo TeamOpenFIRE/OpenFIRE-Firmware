@@ -3198,11 +3198,9 @@ void SerialProcessing()                                         // Reading the i
                       break;
                     #endif // USE_TINYUSB
                     case 'v':
-                      Serial.print("GUN4ALL/");
-                      Serial.print(G4ALL_VERSION, 1);
-                      Serial.print("/");
-                      Serial.print(G4ALL_CODENAME);
-                      Serial.print("/");
+                      Serial.println("GUN4ALL");
+                      Serial.println(G4ALL_VERSION, 1);
+                      Serial.println(G4ALL_CODENAME);
                       Serial.println(G4ALL_BOARD);
                       break;
                     default:
