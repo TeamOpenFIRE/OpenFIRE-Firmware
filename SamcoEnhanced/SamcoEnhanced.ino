@@ -3207,7 +3207,7 @@ void SerialProcessing()                                         // Reading the i
                       break;
                   }
                 } else {
-                  Serial.println("Printing values saved in EEPROM...");
+                  //Serial.println("Printing values saved in EEPROM...");
                   uint8_t tempBools = 0b00000000;
                   uint8_t *dataBools = &tempBools;
 
@@ -3302,112 +3302,107 @@ void SerialProcessing()                                         // Reading the i
 
                   SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
 
-                  Serial.println("----------BOOL SETTINGS----------");
-                  Serial.print("Rumble Active: ");
+                  //Serial.println("----------BOOL SETTINGS----------");
+                  //Serial.print("Rumble Active: ");
                   Serial.println(bitRead(tempBools, 0));
-                  Serial.print("Solenoid Active: ");
+                  //Serial.print("Solenoid Active: ");
                   Serial.println(bitRead(tempBools, 1));
-                  Serial.print("Autofire Active: ");
+                  //Serial.print("Autofire Active: ");
                   Serial.println(bitRead(tempBools, 2));
-                  Serial.print("Simple Pause Menu Enabled: ");
+                  //Serial.print("Simple Pause Menu Enabled: ");
                   Serial.println(bitRead(tempBools, 3));
-                  Serial.print("Hold to Pause Enabled: ");
+                  //Serial.print("Hold to Pause Enabled: ");
                   Serial.println(bitRead(tempBools, 4));
-                  Serial.print("Common Anode Active: ");
+                  //Serial.print("Common Anode Active: ");
                   Serial.println(bitRead(tempBools, 5));
-                  Serial.print("Low Buttons Mode Active: ");
+                  //Serial.print("Low Buttons Mode Active: ");
                   Serial.println(bitRead(tempBools, 6));
-                  Serial.println("----------PIN MAPPINGS-----------");
-                  Serial.print("Custom pins layout enabled: ");
+                  //Serial.println("----------PIN MAPPINGS-----------");
+                  //Serial.print("Custom pins layout enabled: ");
                   Serial.println(tempMappings[0]);
-                  Serial.print("Trigger: ");
+                  //Serial.print("Trigger: ");
                   Serial.println(tempMappings[1]);
-                  Serial.print("Button A: ");
+                  //Serial.print("Button A: ");
                   Serial.println(tempMappings[2]);
-                  Serial.print("Button B: ");
+                  //Serial.print("Button B: ");
                   Serial.println(tempMappings[3]);
-                  Serial.print("Button C: ");
+                  //Serial.print("Button C: ");
                   Serial.println(tempMappings[4]);
-                  Serial.print("Start: ");
+                  //Serial.print("Start: ");
                   Serial.println(tempMappings[5]);
-                  Serial.print("Select: ");
+                  //Serial.print("Select: ");
                   Serial.println(tempMappings[6]);
-                  Serial.print("D-Pad Up: ");
+                  //Serial.print("D-Pad Up: ");
                   Serial.println(tempMappings[7]);
-                  Serial.print("D-Pad Down: ");
+                  //Serial.print("D-Pad Down: ");
                   Serial.println(tempMappings[8]);
-                  Serial.print("D-Pad Left: ");
+                  //Serial.print("D-Pad Left: ");
                   Serial.println(tempMappings[9]);
-                  Serial.print("D-Pad Right: ");
+                  //Serial.print("D-Pad Right: ");
                   Serial.println(tempMappings[10]);
-                  Serial.print("External Pedal: ");
+                  //Serial.print("External Pedal: ");
                   Serial.println(tempMappings[11]);
-                  Serial.print("Home Button: ");
+                  //Serial.print("Home Button: ");
                   Serial.println(tempMappings[12]);
-                  Serial.print("Pump Action: ");
+                  //Serial.print("Pump Action: ");
                   Serial.println(tempMappings[13]);
-                  Serial.print("Rumble Signal Wire: ");
+                  //Serial.print("Rumble Signal Wire: ");
                   Serial.println(tempMappings[14]);
-                  Serial.print("Solenoid Signal Wire: ");
+                  //Serial.print("Solenoid Signal Wire: ");
                   Serial.println(tempMappings[15]);
-                  Serial.print("Temperature Sensor: ");
+                  //Serial.print("Temperature Sensor: ");
                   Serial.println(tempMappings[16]);
-                  Serial.print("Rumble Switch: ");
+                  //Serial.print("Rumble Switch: ");
                   Serial.println(tempMappings[17]);
-                  Serial.print("Solenoid Switch: ");
+                  //Serial.print("Solenoid Switch: ");
                   Serial.println(tempMappings[18]);
-                  Serial.print("Autofire Switch: ");
+                  //Serial.print("Autofire Switch: ");
                   Serial.println(tempMappings[19]);
-                  Serial.print("LED R: ");
+                  //Serial.print("LED R: ");
                   Serial.println(tempMappings[20]);
-                  Serial.print("LED G: ");
+                  //Serial.print("LED G: ");
                   Serial.println(tempMappings[21]);
-                  Serial.print("LED B: ");
+                  //Serial.print("LED B: ");
                   Serial.println(tempMappings[22]);
-                  Serial.print("Custom NeoPixel Pin: ");
+                  //Serial.print("Custom NeoPixel Pin: ");
                   Serial.println(tempMappings[23]);
-                  Serial.print("Analog Joystick X: ");
+                  //Serial.print("Analog Joystick X: ");
                   Serial.println(tempMappings[24]);
-                  Serial.print("Analog Joystick Y: ");
+                  //Serial.print("Analog Joystick Y: ");
                   Serial.println(tempMappings[25]);
-                  Serial.print("Padding Bit (Should be -127): ");
+                  //Serial.print("Padding Bit (Should be -127): ");
                   Serial.println(tempMappings[26]);
-                  Serial.println("----------OTHER SETTINGS-----------");
-                  Serial.print("Rumble Intensity Value: ");
+                  //Serial.println("----------OTHER SETTINGS-----------");
+                  //Serial.print("Rumble Intensity Value: ");
                   Serial.println(tempSettings[0]);
-                  Serial.print("Rumble Length: ");
+                  //Serial.print("Rumble Length: ");
                   Serial.println(tempSettings[1]);
-                  Serial.print("Solenoid Normal Interval: ");
+                  //Serial.print("Solenoid Normal Interval: ");
                   Serial.println(tempSettings[2]);
-                  Serial.print("Solenoid Fast Interval: ");
+                  //Serial.print("Solenoid Fast Interval: ");
                   Serial.println(tempSettings[3]);
-                  Serial.print("Solenoid Hold Length: ");
+                  //Serial.print("Solenoid Hold Length: ");
                   Serial.println(tempSettings[4]);
-                  Serial.print("Custom NeoPixel Strip Length: ");
+                  //Serial.print("Custom NeoPixel Strip Length: ");
                   Serial.println(tempSettings[5]);
-                  Serial.print("Autofire Wait Factor: ");
+                  //Serial.print("Autofire Wait Factor: ");
                   Serial.println(tempSettings[6]);
-                  Serial.print("Hold to Pause Length: ");
+                  //Serial.print("Hold to Pause Length: ");
                   Serial.println(tempSettings[7]);
-                  #ifdef USE_TINYUSB
-                  for(byte i = 0; i < sizeof(deviceName); i++) {
-                      deviceName[i] = '\0';
-                  }
-                  for(byte i = 0; i < 16; i++) {
-                      deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
-                  }
-                  devicePID = 0;
-                  EEPROM.get(EEPROM.length() - 22, devicePID);
-                  Serial.println("-----------TINYUSB ID------------");
-                  Serial.print("TinyUSB Device Name: ");
-                  if(deviceName[0] == '\0') {
-                      Serial.println("No custom device name");
-                  } else {
-                      Serial.println(deviceName);
-                  }
-                  Serial.print("TinyUSB Product Identifier: ");
-                  Serial.println(devicePID, HEX);
-                  #endif // USE_TINYUSB
+                }
+                break;
+              }
+              // Testing feedback
+              case 't':
+                serialInput = Serial.read();
+                if(serialInput == 's') {
+                  digitalWrite(solenoidPin, HIGH);
+                  delay(solenoidNormalInterval);
+                  digitalWrite(solenoidPin, LOW);
+                } else if(serialInput == 'r') {
+                  analogWrite(rumblePin, rumbleIntensity);
+                  delay(rumbleInterval);
+                  digitalWrite(rumblePin, LOW);
                 }
                 break;
               }
