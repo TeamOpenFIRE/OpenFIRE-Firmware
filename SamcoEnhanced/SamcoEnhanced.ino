@@ -205,6 +205,83 @@ int8_t btnPedal = 12;
 int8_t btnPump = -1;
 int8_t btnHome = -1;
 
+#elifdef ARDUINO_NANO_RP2040_CONNECT
+// todo: finalize arduino nano layout soon - these are just test values for now.
+#ifdef USES_SWITCHES
+    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
+    #ifdef USES_RUMBLE
+        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SOLENOID
+#endif // USES_SWITCHES
+
+#ifdef USES_RUMBLE
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
+    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
+    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+#endif // USES_RUMBLE
+
+#ifdef USES_SOLENOID
+    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_TEMP    
+        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
+        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+#endif // USES_SOLENOID
+
+  // Remember: ANALOG PINS ONLY!
+#ifdef USES_ANALOG
+    int8_t analogPinX = A0;
+    int8_t analogPinY = A1;
+#endif // USES_ANALOG
+
+  // Remember: PWM PINS ONLY!
+#ifdef FOURPIN_LED
+    #define LED_ENABLE
+    int8_t PinR = -1;
+    int8_t PinG = -1;
+    int8_t PinB = -1;
+    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
+    bool commonAnode = true;
+#endif // FOURPIN_LED
+
+  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPixel.h>
+    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
+    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
+#endif // CUSTOM_NEOPIXEL
+
+  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
+int8_t rumblePin = 17;
+int8_t solenoidPin = 16;
+int8_t btnTrigger = 15;
+int8_t btnGunA = 0;
+int8_t btnGunB = 1;
+int8_t btnGunC = 18;
+int8_t btnStart = 19;
+int8_t btnSelect = 20;
+int8_t btnGunUp = -1;
+int8_t btnGunDown = -1;
+int8_t btnGunLeft = -1;
+int8_t btnGunRight = -1;
+int8_t btnPedal = -1;
+int8_t btnPump = -1;
+int8_t btnHome = -1;
+
 #else // For the Raspberry Pi Pico
 
 #ifdef USES_SWITCHES
