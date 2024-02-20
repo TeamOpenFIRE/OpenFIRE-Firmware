@@ -689,6 +689,7 @@ bool customPinsInUse = false;                        // For if custom pins defin
 unsigned int lastSeen = 0;
 
 bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)
+bool dockedSaving = false;                           // To block sending test output in docked mode.
 
 #ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
@@ -1018,7 +1019,7 @@ void setup() {
         while(!(buttons.pressedReleased == BtnMask_Trigger)) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available()) {
-                SerialProcessing();
+                SerialProcessingDocked();
             }
             if(gunMode == GunMode_Docked) {
                 ExecGunModeDocked();
@@ -2056,91 +2057,93 @@ void ExecGunModeDocked()
         buttons.Poll(1);
 
         if(Serial.available()) {
-            SerialProcessing();
+            SerialProcessingDocked();
         }
 
-        switch(buttons.pressed) {
-            case BtnMask_Trigger:
-              Serial.println("Pressed: BtnTrigger");
-              break;
-            case BtnMask_A:
-              Serial.println("Pressed: BtnA");
-              break;
-            case BtnMask_B:
-              Serial.println("Pressed: BtnB");
-              break;
-            case BtnMask_Reload:
-              Serial.println("Pressed: BtnC");
-              break;
-            case BtnMask_Start:
-              Serial.println("Pressed: BtnStart");
-              break;
-            case BtnMask_Select:
-              Serial.println("Pressed: BtnSelect");
-              break;
-            case BtnMask_Up:
-              Serial.println("Pressed: BtnGunUp");
-              break;
-            case BtnMask_Down:
-              Serial.println("Pressed: BtnGunDown");
-              break;
-            case BtnMask_Left:
-              Serial.println("Pressed: BtnGunLeft");
-              break;
-            case BtnMask_Right:
-              Serial.println("Pressed: BtnGunRight");
-              break;
-            case BtnMask_Pedal:
-              Serial.println("Pressed: BtnPedal");
-              break;
-            case BtnMask_Home:
-              Serial.println("Pressed: BtnHome");
-              break;
-            case BtnMask_Pump:
-              Serial.println("Pressed: BtnPump");
-              break;
-        }
+        if(!dockedSaving) {
+            switch(buttons.pressed) {
+                case BtnMask_Trigger:
+                  Serial.println("Pressed: BtnTrigger");
+                  break;
+                case BtnMask_A:
+                  Serial.println("Pressed: BtnA");
+                  break;
+                case BtnMask_B:
+                  Serial.println("Pressed: BtnB");
+                  break;
+                case BtnMask_Reload:
+                  Serial.println("Pressed: BtnC");
+                  break;
+                case BtnMask_Start:
+                  Serial.println("Pressed: BtnStart");
+                  break;
+                case BtnMask_Select:
+                  Serial.println("Pressed: BtnSelect");
+                  break;
+                case BtnMask_Up:
+                  Serial.println("Pressed: BtnGunUp");
+                  break;
+                case BtnMask_Down:
+                  Serial.println("Pressed: BtnGunDown");
+                  break;
+                case BtnMask_Left:
+                  Serial.println("Pressed: BtnGunLeft");
+                  break;
+                case BtnMask_Right:
+                  Serial.println("Pressed: BtnGunRight");
+                  break;
+                case BtnMask_Pedal:
+                  Serial.println("Pressed: BtnPedal");
+                  break;
+                case BtnMask_Home:
+                  Serial.println("Pressed: BtnHome");
+                  break;
+                case BtnMask_Pump:
+                  Serial.println("Pressed: BtnPump");
+                  break;
+            }
 
-        switch(buttons.released) {
-            case BtnMask_Trigger:
-              Serial.println("Released: BtnTrigger");
-              break;
-            case BtnMask_A:
-              Serial.println("Released: BtnA");
-              break;
-            case BtnMask_B:
-              Serial.println("Released: BtnB");
-              break;
-            case BtnMask_Reload:
-              Serial.println("Released: BtnC");
-              break;
-            case BtnMask_Start:
-              Serial.println("Released: BtnStart");
-              break;
-            case BtnMask_Select:
-              Serial.println("Released: BtnSelect");
-              break;
-            case BtnMask_Up:
-              Serial.println("Released: BtnGunUp");
-              break;
-            case BtnMask_Down:
-              Serial.println("Released: BtnGunDown");
-              break;
-            case BtnMask_Left:
-              Serial.println("Released: BtnGunLeft");
-              break;
-            case BtnMask_Right:
-              Serial.println("Released: BtnGunRight");
-              break;
-            case BtnMask_Pedal:
-              Serial.println("Released: BtnPedal");
-              break;
-            case BtnMask_Home:
-              Serial.println("Released: BtnHome");
-              break;
-            case BtnMask_Pump:
-              Serial.println("Released: BtnPump");
-              break;
+            switch(buttons.released) {
+                case BtnMask_Trigger:
+                  Serial.println("Released: BtnTrigger");
+                  break;
+                case BtnMask_A:
+                  Serial.println("Released: BtnA");
+                  break;
+                case BtnMask_B:
+                  Serial.println("Released: BtnB");
+                  break;
+                case BtnMask_Reload:
+                  Serial.println("Released: BtnC");
+                  break;
+                case BtnMask_Start:
+                  Serial.println("Released: BtnStart");
+                  break;
+                case BtnMask_Select:
+                  Serial.println("Released: BtnSelect");
+                  break;
+                case BtnMask_Up:
+                  Serial.println("Released: BtnGunUp");
+                  break;
+                case BtnMask_Down:
+                  Serial.println("Released: BtnGunDown");
+                  break;
+                case BtnMask_Left:
+                  Serial.println("Released: BtnGunLeft");
+                  break;
+                case BtnMask_Right:
+                  Serial.println("Released: BtnGunRight");
+                  break;
+                case BtnMask_Pedal:
+                  Serial.println("Released: BtnPedal");
+                  break;
+                case BtnMask_Home:
+                  Serial.println("Released: BtnHome");
+                  break;
+                case BtnMask_Pump:
+                  Serial.println("Released: BtnPump");
+                  break;
+            }
         }
 
         if(gunMode != GunMode_Docked) {
@@ -2529,188 +2532,17 @@ void AnalogStickPoll()
 }
 #endif // USES_ANALOG
 
-#ifdef MAMEHOOKER
-void SerialProcessing()                                         // Reading the input from the serial buffer.
+// Limited subset of SerialProcessing specifically for "docked" mode
+// contains setting submethods for use by GUN4ALL-GUI
+void SerialProcessingDocked()
 {
-    // So, APPARENTLY there is a map of what the serial commands are, at least wrt gun controllers.
-    // "Sx" is a start command, the x being a number from 0-6 (0=sol, 1=motor, 2-4=led colors, 6=everything) but this is more a formal suggestion than anything.
-    // "E" is an end command, which is the cue to hand control over back to the sketch's force feedback.
-    // "M" sets parameters for how the gun should be handled when the game starts:
-    //  - M3 is fullscreen or 4:3, which we don't do so ignore this
-    //  - M5 is auto reload(?). How do we use this?
-    //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
-    //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
-    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
-    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
-    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
-    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
-    // These commands are all sent as one clump of data, with the letter being the distinguisher.
-    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit of some kind, and the value).
-
-    char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
+    char serialInput = Serial.read();
     char serialInputS[3] = {0, 0, 0};
 
     switch(serialInput) {
-        // Start Signal
-        case 'S':
-          if(serialMode) {
-              Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
-          } else {
-              serialMode = true;                                         // Set it on, then!
-              #ifdef USES_RUMBLE
-                  digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
-                  rumbleHappened = false;
-                  rumbleHappening = false;
-              #endif // USES_RUMBLE
-              #ifdef USES_SOLENOID
-                  digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
-                  solenoidFirstShot = false;
-              #endif // USES_SOLENOID
-              triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
-              burstFiring = false;
-              burstFireCount = 0;
-              offscreenBShot = false;
-              #ifdef LED_ENABLE
-                  // Set the LEDs to a mid-intense white.
-                  LedUpdate(127, 127, 127);
-              #endif // LED_ENABLE
-          }
-          break;
-        // Modesetting Signal
-        case 'M':
-          serialInput = Serial.read();                               // Read the second bit.
-          switch(serialInput) {
-              case '1':
-                if(serialMode) {
-                    offscreenButtonSerial = true;
-                } else {
-                    // eh, might be useful for Linux Supermodel users.
-                    offscreenButton = !offscreenButton;
-                    if(offscreenButton) {
-                        Serial.println("Setting offscreen button mode on!");
-                    } else {
-                        Serial.println("Setting offscreen button mode off!");
-                    }
-                }
-                break;
-              #ifdef USES_SOLENOID
-              case '8':
-                serialInput = Serial.read();                           // Nomf the padding bit.
-                serialInput = Serial.read();                           // Read the next.
-                if(serialInput == '1') {
-                    burstFireActive = true;
-                    autofireActive = false;
-                } else if(serialInput == '2') {
-                    autofireActive = true;
-                    burstFireActive = false;
-                } else if(serialInput == '0') {
-                    autofireActive = false;
-                    burstFireActive = false;
-                }
-                break;
-              #endif // USES_SOLENOID
-              default:
-                if(!serialMode) {
-                    Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
-                }
-                break;
-          }
-          break;
-        // End Signal
-        case 'E':
-          if(!serialMode) {
-              Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
-          } else {
-              serialMode = false;                                    // Turn off serial mode then.
-              offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-              serialQueue = 0b00000000;
-              #ifdef LED_ENABLE
-                  serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
-                  serialLEDPulses = 0;
-                  serialLEDPulsesLast = 0;
-                  serialLEDPulseRising = true;
-                  serialLEDR = 0;                                    // Clear stale serial LED values.
-                  serialLEDG = 0;
-                  serialLEDB = 0;
-                  serialLEDChange = false;
-                  LedOff();                                          // Turn it off, and let lastSeen handle it from here.
-              #endif // LED_ENABLE
-              #ifdef USES_RUMBLE
-                  digitalWrite(rumblePin, LOW);
-                  serialRumbPulseStage = 0;
-                  serialRumbPulses = 0;
-                  serialRumbPulsesLast = 0;
-              #endif // USES_RUMBLE
-              #ifdef USES_SOLENOID
-                  digitalWrite(solenoidPin, LOW);
-                  serialSolPulseOn = false;
-                  serialSolPulses = 0;
-                  serialSolPulsesLast = 0;
-              #endif // USES_SOLENOID
-              AbsMouse5.release(MOUSE_LEFT);
-              AbsMouse5.release(MOUSE_RIGHT);
-              AbsMouse5.release(MOUSE_MIDDLE);
-              AbsMouse5.release(MOUSE_BUTTON4);
-              AbsMouse5.release(MOUSE_BUTTON5);
-              Keyboard.releaseAll();
-              delay(5);
-              Serial.println("Received end serial pulse, releasing FF override.");
-          }
-          break;
-        // owo SPECIAL SETUP EH?
         case 'X':
           serialInput = Serial.read();
           switch(serialInput) {
-              // Toggle Gamepad Output Mode
-              case 'A':
-                serialInput = Serial.read();
-                switch(serialInput) {
-                    case 'L':
-                      if(!buttons.analogOutput) {
-                          buttons.analogOutput = true;
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
-                          Keyboard.releaseAll();
-                          Serial.println("Switched to Analog Output mode!");
-                      }
-                      Gamepad16.stickRight = true;
-                      Serial.println("Setting camera to the Left Stick.");
-                      break;
-                    case 'R':
-                      if(!buttons.analogOutput) {
-                          buttons.analogOutput = true;
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
-                          Keyboard.releaseAll();
-                          Serial.println("Switched to Analog Output mode!");
-                      }
-                      Gamepad16.stickRight = false;
-                      Serial.println("Setting camera to the Right Stick.");
-                      break;
-                    default:
-                      buttons.analogOutput = !buttons.analogOutput;
-                      if(buttons.analogOutput) {
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
-                          Keyboard.releaseAll();
-                          Serial.println("Switched to Analog Output mode!");
-                      } else {
-                          Gamepad16.releaseAll();
-                          Keyboard.releaseAll();
-                          Serial.println("Switched to Mouse Output mode!");
-                      }
-                      break;
-                }
-                break;
               // Set IR Brightness
               case 'B':
                 serialInput = Serial.read();
@@ -2723,16 +2555,6 @@ void SerialProcessing()                                         // Reading the i
                     }
                 } else {
                     Serial.println("SERIALREAD: No valid IR sensitivity level set! (Expected 0 to 2)");
-                }
-                break;
-              // Set Autofire Interval Length
-              case 'I':
-                serialInput = Serial.read();
-                if(serialInput == '2' || serialInput == '3' || serialInput == '4') {
-                    byte afSetting = serialInput - '0';
-                    AutofireSpeedToggle(afSetting);
-                } else {
-                    Serial.println("SERIALREAD: No valid interval set! (Expected 2 to 4)");
                 }
                 break;
               // Toggle Processing/Run Mode
@@ -2762,12 +2584,14 @@ void SerialProcessing()                                         // Reading the i
               case 'P':
                 if(gunMode != GunMode_Docked) {
                     SetMode(GunMode_Docked);
+                    Serial.println("Docking.");
                 } else {
                     if(!justBooted) {
                         SetMode(GunMode_Run);
                     } else {
                         SetMode(GunMode_Init);
                     }
+                    Serial.println("Undocking.");
                 }
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
@@ -2792,52 +2616,23 @@ void SerialProcessing()                                         // Reading the i
                 break;
               // Save current profile
               case 'S':
-                // Only works if in Pause Mode, or Docked to the GUI app.
-                if(gunMode == GunMode_Docked || gunMode == GunMode_Pause) {
-                    Serial.println("Saving preferences...");
-                    SavePreferences();
-                }
-                break;
-              // Remap player numbers
-              case 'R':
-                serialInput = Serial.read();
-                switch(serialInput) {
-                    case '1':
-                      playerStartBtn = '1';
-                      playerSelectBtn = '5';
-                      Serial.println("Remapping to player slot 1.");
-                      break;
-                    case '2':
-                      playerStartBtn = '2';
-                      playerSelectBtn = '6';
-                      Serial.println("Remapping to player slot 2.");
-                      break;
-                    case '3':
-                      playerStartBtn = '3';
-                      playerSelectBtn = '7';
-                      Serial.println("Remapping to player slot 3.");
-                      break;
-                    case '4':
-                      playerStartBtn = '4';
-                      playerSelectBtn = '8';
-                      Serial.println("Remapping to player slot 4.");
-                      break;
-                    default:
-                      Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
-                      break;
-                }
-                UpdateBindings(lowButtonMode);
+                Serial.println("Saving preferences...");
+                SavePreferences();
+                dockedSaving = false;
                 break;
               // Clear EEPROM.
               case 'c':
                 //Serial.println(EEPROM.length());
                 Serial.println("Clearing EEPROM...");
+                dockedSaving = true;
                 SamcoPreferences::ResetPreferences();
                 Serial.println("Cleared! Please reset the board.");
+                dockedSaving = false;
                 break;
               // Mapping new values to commit to EEPROM.
               case 'm':
               {
+                dockedSaving = true; // mark so button presses won't interrupt this process.
                 serialInput = Serial.read(); // nomf
                 serialInput = Serial.read();
                 // bool change
@@ -3195,6 +2990,7 @@ void SerialProcessing()                                         // Reading the i
                         break;
                     }
                 #endif // USE_TINYUSB
+                // Profile settings
                 } else if(serialInput == 'P') {
                     serialInput = Serial.read(); // nomf
                     serialInput = Serial.read();
@@ -3517,6 +3313,240 @@ void SerialProcessing()                                         // Reading the i
                     Serial.println("Internally recognized commands are:");
                     Serial.println("A(nalog) / B(rightness)0/1/2 / C(alibrate)[1/2/3/4] / I(nterval Autofire)2/3/4 / P(ause) / R(emap)1/2/3/4 / S(ave) / T(est) / [(profile) 1/2/3/4]");
                 }
+                break;
+          }
+          break;
+    }
+}
+
+#ifdef MAMEHOOKER
+// Reading the input from the serial buffer.
+// for normal runmode runtime use w/ e.g. MAMEHOOKER/general scripts
+void SerialProcessing()
+{
+    // So, APPARENTLY there is a map of what the serial commands are, at least wrt gun controllers.
+    // "Sx" is a start command, the x being a number from 0-6 (0=sol, 1=motor, 2-4=led colors, 6=everything) but this is more a formal suggestion than anything.
+    // "E" is an end command, which is the cue to hand control over back to the sketch's force feedback.
+    // "M" sets parameters for how the gun should be handled when the game starts:
+    //  - M3 is fullscreen or 4:3, which we don't do so ignore this
+    //  - M5 is auto reload(?). How do we use this?
+    //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
+    //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
+    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
+    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
+    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
+    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
+    // These commands are all sent as one clump of data, with the letter being the distinguisher.
+    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit of some kind, and the value).
+
+    char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
+    char serialInputS[3] = {0, 0, 0};
+
+    switch(serialInput) {
+        // Start Signal
+        case 'S':
+          if(serialMode) {
+              Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
+          } else {
+              serialMode = true;                                         // Set it on, then!
+              #ifdef USES_RUMBLE
+                  digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
+                  rumbleHappened = false;
+                  rumbleHappening = false;
+              #endif // USES_RUMBLE
+              #ifdef USES_SOLENOID
+                  digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
+                  solenoidFirstShot = false;
+              #endif // USES_SOLENOID
+              triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
+              burstFiring = false;
+              burstFireCount = 0;
+              offscreenBShot = false;
+              #ifdef LED_ENABLE
+                  // Set the LEDs to a mid-intense white.
+                  LedUpdate(127, 127, 127);
+              #endif // LED_ENABLE
+          }
+          break;
+        // Modesetting Signal
+        case 'M':
+          serialInput = Serial.read();                               // Read the second bit.
+          switch(serialInput) {
+              case '1':
+                if(serialMode) {
+                    offscreenButtonSerial = true;
+                } else {
+                    // eh, might be useful for Linux Supermodel users.
+                    offscreenButton = !offscreenButton;
+                    if(offscreenButton) {
+                        Serial.println("Setting offscreen button mode on!");
+                    } else {
+                        Serial.println("Setting offscreen button mode off!");
+                    }
+                }
+                break;
+              #ifdef USES_SOLENOID
+              case '8':
+                serialInput = Serial.read();                           // Nomf the padding bit.
+                serialInput = Serial.read();                           // Read the next.
+                if(serialInput == '1') {
+                    burstFireActive = true;
+                    autofireActive = false;
+                } else if(serialInput == '2') {
+                    autofireActive = true;
+                    burstFireActive = false;
+                } else if(serialInput == '0') {
+                    autofireActive = false;
+                    burstFireActive = false;
+                }
+                break;
+              #endif // USES_SOLENOID
+              default:
+                if(!serialMode) {
+                    Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
+                }
+                break;
+          }
+          break;
+        // End Signal
+        case 'E':
+          if(!serialMode) {
+              Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
+          } else {
+              serialMode = false;                                    // Turn off serial mode then.
+              offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
+              serialQueue = 0b00000000;
+              #ifdef LED_ENABLE
+                  serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
+                  serialLEDPulses = 0;
+                  serialLEDPulsesLast = 0;
+                  serialLEDPulseRising = true;
+                  serialLEDR = 0;                                    // Clear stale serial LED values.
+                  serialLEDG = 0;
+                  serialLEDB = 0;
+                  serialLEDChange = false;
+                  LedOff();                                          // Turn it off, and let lastSeen handle it from here.
+              #endif // LED_ENABLE
+              #ifdef USES_RUMBLE
+                  digitalWrite(rumblePin, LOW);
+                  serialRumbPulseStage = 0;
+                  serialRumbPulses = 0;
+                  serialRumbPulsesLast = 0;
+              #endif // USES_RUMBLE
+              #ifdef USES_SOLENOID
+                  digitalWrite(solenoidPin, LOW);
+                  serialSolPulseOn = false;
+                  serialSolPulses = 0;
+                  serialSolPulsesLast = 0;
+              #endif // USES_SOLENOID
+              AbsMouse5.release(MOUSE_LEFT);
+              AbsMouse5.release(MOUSE_RIGHT);
+              AbsMouse5.release(MOUSE_MIDDLE);
+              AbsMouse5.release(MOUSE_BUTTON4);
+              AbsMouse5.release(MOUSE_BUTTON5);
+              Keyboard.releaseAll();
+              delay(5);
+              Serial.println("Received end serial pulse, releasing FF override.");
+          }
+          break;
+        // owo SPECIAL SETUP EH?
+        case 'X':
+          serialInput = Serial.read();
+          switch(serialInput) {
+              // Toggle Gamepad Output Mode
+              case 'A':
+                serialInput = Serial.read();
+                switch(serialInput) {
+                    case 'L':
+                      if(!buttons.analogOutput) {
+                          buttons.analogOutput = true;
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      }
+                      Gamepad16.stickRight = true;
+                      Serial.println("Setting camera to the Left Stick.");
+                      break;
+                    case 'R':
+                      if(!buttons.analogOutput) {
+                          buttons.analogOutput = true;
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      }
+                      Gamepad16.stickRight = false;
+                      Serial.println("Setting camera to the Right Stick.");
+                      break;
+                    default:
+                      buttons.analogOutput = !buttons.analogOutput;
+                      if(buttons.analogOutput) {
+                          AbsMouse5.release(MOUSE_LEFT);
+                          AbsMouse5.release(MOUSE_RIGHT);
+                          AbsMouse5.release(MOUSE_MIDDLE);
+                          AbsMouse5.release(MOUSE_BUTTON4);
+                          AbsMouse5.release(MOUSE_BUTTON5);
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Analog Output mode!");
+                      } else {
+                          Gamepad16.releaseAll();
+                          Keyboard.releaseAll();
+                          Serial.println("Switched to Mouse Output mode!");
+                      }
+                      break;
+                }
+                break;
+              // Set Autofire Interval Length
+              case 'I':
+                serialInput = Serial.read();
+                if(serialInput == '2' || serialInput == '3' || serialInput == '4') {
+                    byte afSetting = serialInput - '0';
+                    AutofireSpeedToggle(afSetting);
+                } else {
+                    Serial.println("SERIALREAD: No valid interval set! (Expected 2 to 4)");
+                }
+                break;
+              // Remap player numbers
+              case 'R':
+                serialInput = Serial.read();
+                switch(serialInput) {
+                    case '1':
+                      playerStartBtn = '1';
+                      playerSelectBtn = '5';
+                      Serial.println("Remapping to player slot 1.");
+                      break;
+                    case '2':
+                      playerStartBtn = '2';
+                      playerSelectBtn = '6';
+                      Serial.println("Remapping to player slot 2.");
+                      break;
+                    case '3':
+                      playerStartBtn = '3';
+                      playerSelectBtn = '7';
+                      Serial.println("Remapping to player slot 3.");
+                      break;
+                    case '4':
+                      playerStartBtn = '4';
+                      playerSelectBtn = '8';
+                      Serial.println("Remapping to player slot 4.");
+                      break;
+                    default:
+                      Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
+                      break;
+                }
+                UpdateBindings(lowButtonMode);
+                break;
+              // Toggle Pause/Run Mode
+              case 'P':
+                SetMode(GunMode_Docked);
+                Serial.println("Docking.");
                 break;
           }
           // End of 'X'
@@ -5333,6 +5363,7 @@ void BurstFire()
 // VERY hacky workaround, but seems to work?
 void UpdateBindings(bool offscreenEnable)
 {
+    // TODO: this is ugly as shit. maybe use pointers instead? Copying tables wholesale works, but looking at it gives me an aneurysm.
     if(offscreenEnable) {
         LightgunButtons::Desc_t ButtonDescReplacement[] = {
             {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
