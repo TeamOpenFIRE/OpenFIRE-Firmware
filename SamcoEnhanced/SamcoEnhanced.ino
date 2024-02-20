@@ -1696,7 +1696,7 @@ void loop()
                         SetMode(GunMode_Pause);
                         SavePreferences();
                     } else if(dockedCalibrating) {
-                        Serial.print("UpdatedProfile: ");
+                        Serial.print("UpdatedProf: ");
                         Serial.println(selectedProfile);
                         Serial.println(profileData[selectedProfile].xScale);
                         Serial.println(profileData[selectedProfile].yScale);
