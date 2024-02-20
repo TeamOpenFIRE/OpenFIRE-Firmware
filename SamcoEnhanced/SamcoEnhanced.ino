@@ -2584,14 +2584,12 @@ void SerialProcessingDocked()
               case 'P':
                 if(gunMode != GunMode_Docked) {
                     SetMode(GunMode_Docked);
-                    Serial.println("Docking.");
                 } else {
                     if(!justBooted) {
                         SetMode(GunMode_Run);
                     } else {
                         SetMode(GunMode_Init);
                     }
-                    Serial.println("Undocking.");
                 }
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
@@ -3278,12 +3276,6 @@ void SerialProcessingDocked()
                     Serial.println(devicePID);
                     break;
                   #endif // USE_TINYUSB
-                  case 'v':
-                    Serial.println("GUN4ALL");
-                    Serial.println(G4ALL_VERSION, 1);
-                    Serial.println(G4ALL_CODENAME);
-                    Serial.println(G4ALL_BOARD);
-                    break;
                 }
                 break;
               }
@@ -3546,7 +3538,6 @@ void SerialProcessing()
               // Toggle Pause/Run Mode
               case 'P':
                 SetMode(GunMode_Docked);
-                Serial.println("Docking.");
                 break;
           }
           // End of 'X'
@@ -3985,6 +3976,7 @@ void SetMode(GunMode_e newMode)
     case GunMode_Pause:
         break;
     case GunMode_Docked:
+        Serial.println("Undocking.");
         break;
     }
     
@@ -4006,6 +3998,10 @@ void SetMode(GunMode_e newMode)
         break;
     case GunMode_Docked:
         stateFlags |= StateFlag_SavePreferencesEn;
+        Serial.println("GUN4ALL");
+        Serial.println(G4ALL_VERSION, 1);
+        Serial.println(G4ALL_CODENAME);
+        Serial.println(G4ALL_BOARD);
         break;
     }
 
