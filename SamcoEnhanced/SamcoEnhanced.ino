@@ -2653,13 +2653,11 @@ void SerialProcessingDocked()
                     // Converting char to its real respective number
                     byte profileNum = serialInput - '0';
                     SelectCalProfile(profileNum-1);
-                    Serial.print("Now calibrating selected profile: ");
-                    Serial.println(profileDesc[selectedProfile].profileLabel);
+                    Serial.print("Profile: ");
+                    Serial.println(profileNum);
                     SetMode(GunMode_CalCenter);
                 } else {
                     // Eh, just set the current profile to calibrate.
-                    Serial.print("Called for calibration without valid profile number, so calibrating current profile: ");
-                    Serial.println(profileDesc[selectedProfile].profileLabel);
                     SetMode(GunMode_CalCenter);
                 }
                 // Force the mouse to center, in case the signal gets dropped by the next camera update
@@ -4058,6 +4056,7 @@ void SetMode(GunMode_e newMode)
             Serial.println(G4ALL_VERSION, 1);
             Serial.println(G4ALL_CODENAME);
             Serial.println(G4ALL_BOARD);
+            Serial.println(selectedProfile);
         }
         break;
     }
