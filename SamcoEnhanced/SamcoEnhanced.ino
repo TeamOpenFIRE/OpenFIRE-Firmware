@@ -2655,7 +2655,6 @@ void SerialProcessingDocked()
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
               case 'C':
-                dockedCalibrating = true;
                 serialInput = Serial.read();
                 if(serialInput == '1' || serialInput == '2' ||
                    serialInput == '3' || serialInput == '4') {
@@ -2664,13 +2663,14 @@ void SerialProcessingDocked()
                     SelectCalProfile(profileNum-1);
                     Serial.print("Profile: ");
                     Serial.println(profileNum-1);
-                    SetMode(GunMode_CalCenter);
-                } else {
-                    // Eh, just set the current profile to calibrate.
-                    SetMode(GunMode_CalCenter);
+                    serialInput = Serial.read();
+                    if(serialInput == 'C') {
+                        dockedCalibrating = true;
+                        //Serial.print("Now calibrating selected profile: ");
+                        //Serial.println(profileDesc[selectedProfile].profileLabel);
+                        SetMode(GunMode_CalCenter);
+                    }
                 }
-                // Force the mouse to center, in case the signal gets dropped by the next camera update
-                AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
                 break;
               // Save current profile
               case 'S':
@@ -3352,20 +3352,6 @@ void SerialProcessingDocked()
                   digitalWrite(rumblePin, LOW);
                 }
                 break;
-              // Switch profiles
-              default:
-                if(serialInput == '1' || serialInput == '2' ||
-                   serialInput == '3' || serialInput == '4') {
-                    byte profileNum = serialInput - '0';
-                    SelectCalProfile(profileNum-1);
-                    Serial.print("Switching to selected profile: ");
-                    Serial.println(profileDesc[selectedProfile].profileLabel);
-                } else {
-                    Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
-                    Serial.println("Internally recognized commands are:");
-                    Serial.println("A(nalog) / B(rightness)0/1/2 / C(alibrate)[1/2/3/4] / I(nterval Autofire)2/3/4 / P(ause) / R(emap)1/2/3/4 / S(ave) / T(est) / [(profile) 1/2/3/4]");
-                }
-                break;
           }
           break;
     }
@@ -3598,6 +3584,11 @@ void SerialProcessing()
               // Enter Docked Mode
               case 'P':
                 SetMode(GunMode_Docked);
+                break;
+              default:
+                Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
+                Serial.println("Internally recognized commands are:");
+                Serial.println("A(nalog)[L/R] / I(nterval Autofire)2/3/4 / R(emap)1/2/3/4 / P(ause)");
                 break;
           }
           // End of 'X'
