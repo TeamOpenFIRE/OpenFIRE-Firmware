@@ -690,6 +690,7 @@ unsigned int lastSeen = 0;
 
 bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)
 bool dockedSaving = false;                           // To block sending test output in docked mode.
+bool dockedCalibrating = false;                      // If set, calibration will send back to docked mode.
 
 #ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
@@ -1694,8 +1695,11 @@ void loop()
                         // If this is an initial calibration, save it immediately!
                         SetMode(GunMode_Pause);
                         SavePreferences();
+                    } else if(dockedCalibrating) {
+                        SetMode(GunMode_Docked);
+                    } else {
+                        SetMode(GunMode_Run);
                     }
-                    SetMode(GunMode_Run);
                 } else {
                     CalHoriz();
                 }
@@ -2060,7 +2064,55 @@ void ExecGunModeDocked()
             SerialProcessingDocked();
         }
 
-        if(!dockedSaving) {
+        if(dockedCalibrating) {
+            #ifdef SAMCO_NO_HW_TIMER
+                SAMCO_NO_HW_TIMER_UPDATE();
+            #endif // SAMCO_NO_HW_TIMER
+
+            if(irPosUpdateTick) {
+                irPosUpdateTick = 0;
+                GetPosition();
+                
+                int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
+                moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
+                halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
+                moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
+
+                switch(runMode) {
+                case RunMode_Average:
+                    // 2 position moving average
+                    moveIndex ^= 1;
+                    moveXAxisArr[moveIndex] = moveXAxis;
+                    moveYAxisArr[moveIndex] = moveYAxis;
+                    moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                    moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                    break;
+                case RunMode_Average2:
+                    // weighted average of current position and previous 2
+                    if(moveIndex < 2) {
+                        ++moveIndex;
+                    } else {
+                        moveIndex = 0;
+                    }
+                    moveXAxisArr[moveIndex] = moveXAxis;
+                    moveYAxisArr[moveIndex] = moveYAxis;
+                    moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                    moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                    break;
+                case RunMode_Normal:
+                default:
+                    break;
+                }
+
+                conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
+                conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
+
+                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
+            }
+            if(buttons.pressed == BtnMask_Trigger) {
+                dockedCalibrating = false;
+            }
+        } else if(!dockedSaving) {
             switch(buttons.pressed) {
                 case BtnMask_Trigger:
                   Serial.println("Pressed: BtnTrigger");
@@ -2594,6 +2646,7 @@ void SerialProcessingDocked()
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
               case 'C':
+                dockedCalibrating = true;
                 serialInput = Serial.read();
                 if(serialInput == '1' || serialInput == '2' ||
                    serialInput == '3' || serialInput == '4') {
@@ -3976,7 +4029,9 @@ void SetMode(GunMode_e newMode)
     case GunMode_Pause:
         break;
     case GunMode_Docked:
-        Serial.println("Undocking.");
+        if(!dockedCalibrating) {
+            Serial.println("Undocking.");
+        }
         break;
     }
     
@@ -3998,10 +4053,12 @@ void SetMode(GunMode_e newMode)
         break;
     case GunMode_Docked:
         stateFlags |= StateFlag_SavePreferencesEn;
-        Serial.println("GUN4ALL");
-        Serial.println(G4ALL_VERSION, 1);
-        Serial.println(G4ALL_CODENAME);
-        Serial.println(G4ALL_BOARD);
+        if(!dockedCalibrating) {
+            Serial.println("GUN4ALL");
+            Serial.println(G4ALL_VERSION, 1);
+            Serial.println(G4ALL_CODENAME);
+            Serial.println(G4ALL_BOARD);
+        }
         break;
     }
 
@@ -4795,8 +4852,13 @@ void CancelCalibration()
     stateFlags |= StateFlag_PrintSelectedProfile;
     // re-apply the cal stored in the profile
     RevertToCalProfile(selectedProfile);
-    // return to pause mode
-    SetMode(GunMode_Pause);
+    if(dockedCalibrating) {
+        SetMode(GunMode_Docked);
+        dockedCalibrating = false;
+    } else {
+        // return to pause mode
+        SetMode(GunMode_Pause);
+    } 
 }
 
 void PrintSelectedProfile()
