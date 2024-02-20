@@ -2663,7 +2663,7 @@ void SerialProcessingDocked()
                     byte profileNum = serialInput - '0';
                     SelectCalProfile(profileNum-1);
                     Serial.print("Profile: ");
-                    Serial.println(profileNum);
+                    Serial.println(profileNum-1);
                     SetMode(GunMode_CalCenter);
                 } else {
                     // Eh, just set the current profile to calibrate.
@@ -4291,7 +4291,7 @@ void PrintResults()
 
 void PrintCalInterval()
 {
-    if(millis() - lastPrintMillis < 100) {
+    if(millis() - lastPrintMillis < 100 || dockedCalibrating) {
         return;
     }
     PrintCal();
