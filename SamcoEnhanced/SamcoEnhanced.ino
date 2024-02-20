@@ -725,7 +725,8 @@ enum GunMode_e {
     GunMode_CalHoriz = 1,
     GunMode_CalVert = 2,
     GunMode_CalCenter = 3,
-    GunMode_Pause = 4
+    GunMode_Pause = 4,
+    GunMode_Docked = 5
 };
 GunMode_e gunMode = GunMode_Init;   // initial mode
 
@@ -1018,6 +1019,10 @@ void setup() {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available()) {
                 SerialProcessing();
+            }
+            if(gunMode == GunMode_Docked) {
+                ExecGunModeDocked();
+                SetMode(GunMode_CalCenter);
             }
             buttons.Poll(1);
             buttons.Repeat();
@@ -1650,6 +1655,9 @@ void loop()
             }
             
             break;
+        case GunMode_Docked:
+            ExecGunModeDocked();
+            break;
         case GunMode_CalCenter:
             AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
             if(buttons.pressedReleased & CancelCalBtnMask) {
@@ -2028,6 +2036,115 @@ void ExecRunModeProcessing()
             } else if(error == DFRobotIRPositionEx::Error_IICerror) {
                 Serial.println("Device not available!");
             }
+        }
+    }
+}
+
+// For use with GUN4ALL-GUI when app connects to this board.
+void ExecGunModeDocked()
+{
+    buttons.ReportDisable();
+    if(justBooted) {
+        // center the joystick so RetroArch/Windows doesn't throw a hissy fit about uncentered joysticks
+        delay(250);  // Exact time needed to wait seems to vary, so make a safe assumption here.
+        Gamepad16.releaseAll();
+    }
+    #ifdef LED_ENABLE
+        LedUpdate(127, 127, 255);
+    #endif // LED_ENABLE
+    for(;;) {
+        buttons.Poll(1);
+
+        if(Serial.available()) {
+            SerialProcessing();
+        }
+
+        switch(buttons.pressed) {
+            case BtnMask_Trigger:
+              Serial.println("Pressed: BtnTrigger");
+              break;
+            case BtnMask_A:
+              Serial.println("Pressed: BtnA");
+              break;
+            case BtnMask_B:
+              Serial.println("Pressed: BtnB");
+              break;
+            case BtnMask_Reload:
+              Serial.println("Pressed: BtnC");
+              break;
+            case BtnMask_Start:
+              Serial.println("Pressed: BtnStart");
+              break;
+            case BtnMask_Select:
+              Serial.println("Pressed: BtnSelect");
+              break;
+            case BtnMask_Up:
+              Serial.println("Pressed: BtnGunUp");
+              break;
+            case BtnMask_Down:
+              Serial.println("Pressed: BtnGunDown");
+              break;
+            case BtnMask_Left:
+              Serial.println("Pressed: BtnGunLeft");
+              break;
+            case BtnMask_Right:
+              Serial.println("Pressed: BtnGunRight");
+              break;
+            case BtnMask_Pedal:
+              Serial.println("Pressed: BtnPedal");
+              break;
+            case BtnMask_Home:
+              Serial.println("Pressed: BtnHome");
+              break;
+            case BtnMask_Pump:
+              Serial.println("Pressed: BtnPump");
+              break;
+        }
+
+        switch(buttons.released) {
+            case BtnMask_Trigger:
+              Serial.println("Released: BtnTrigger");
+              break;
+            case BtnMask_A:
+              Serial.println("Released: BtnA");
+              break;
+            case BtnMask_B:
+              Serial.println("Released: BtnB");
+              break;
+            case BtnMask_Reload:
+              Serial.println("Released: BtnC");
+              break;
+            case BtnMask_Start:
+              Serial.println("Released: BtnStart");
+              break;
+            case BtnMask_Select:
+              Serial.println("Released: BtnSelect");
+              break;
+            case BtnMask_Up:
+              Serial.println("Released: BtnGunUp");
+              break;
+            case BtnMask_Down:
+              Serial.println("Released: BtnGunDown");
+              break;
+            case BtnMask_Left:
+              Serial.println("Released: BtnGunLeft");
+              break;
+            case BtnMask_Right:
+              Serial.println("Released: BtnGunRight");
+              break;
+            case BtnMask_Pedal:
+              Serial.println("Released: BtnPedal");
+              break;
+            case BtnMask_Home:
+              Serial.println("Released: BtnHome");
+              break;
+            case BtnMask_Pump:
+              Serial.println("Released: BtnPump");
+              break;
+        }
+
+        if(gunMode != GunMode_Docked) {
+            return;
         }
     }
 }
@@ -2598,7 +2715,7 @@ void SerialProcessing()                                         // Reading the i
               case 'B':
                 serialInput = Serial.read();
                 if(serialInput == '0' || serialInput == '1' || serialInput == '2') {
-                    if(gunMode != GunMode_Pause) {
+                    if(gunMode != GunMode_Pause || gunMode != GunMode_Docked) {
                         Serial.println("Can't set sensitivity in run mode! Please enter pause mode if you'd like to change IR sensitivity.");
                     } else {
                         byte brightnessLvl = serialInput - '0';
@@ -2643,21 +2760,13 @@ void SerialProcessing()                                         // Reading the i
                 break;
               // Toggle Pause/Run Mode
               case 'P':
-                if(!justBooted) {
-                    serialInput = Serial.read();
-                    if(serialInput == '0') {
+                if(gunMode != GunMode_Docked) {
+                    SetMode(GunMode_Docked);
+                } else {
+                    if(!justBooted) {
                         SetMode(GunMode_Run);
-                    } else if(serialInput == '1') {
-                        SetMode(GunMode_Pause);
                     } else {
-                        if(gunMode != GunMode_Run) {
-                            Serial.println("Exiting back to normal run mode...");
-                            SetMode(GunMode_Run);
-                        } else {
-                            Serial.println("Entering pause mode...");
-                            buttons.ReportDisable();
-                            SetMode(GunMode_Pause);
-                        }
+                        SetMode(GunMode_Init);
                     }
                 }
                 break;
@@ -2683,19 +2792,10 @@ void SerialProcessing()                                         // Reading the i
                 break;
               // Save current profile
               case 'S':
-                Serial.println("Saving preferences...");
-                // We actually need to flick to Pause Mode to save configs.
-                bool wasPaused;
-                if(gunMode != GunMode_Pause) {
-                    wasPaused = false;
-                    SetMode(GunMode_Pause);
-                } else {
-                    wasPaused = true;
-                }
-                SetMode(GunMode_Pause);
-                SavePreferences();
-                if(!wasPaused) {
-                    SetMode(GunMode_Run);
+                // Only works if in Pause Mode, or Docked to the GUI app.
+                if(gunMode == GunMode_Docked || gunMode == GunMode_Pause) {
+                    Serial.println("Saving preferences...");
+                    SavePreferences();
                 }
                 break;
               // Remap player numbers
@@ -3095,96 +3195,55 @@ void SerialProcessing()                                         // Reading the i
                         break;
                     }
                 #endif // USE_TINYUSB
-                } else { // "default"
-                    Serial.println("Xm - Update mappings.");
-                    Serial.println("Usage: Xm.x.y.z");
-                    Serial.println("");
-                    #ifdef USE_TINYUSB
-                    Serial.println("`x` - 0 = Booleans, 1 = Pins, 2 = Extended Settings, 3 = TinyUSB");
-                    #else
-                    Serial.println("`x` - 0 = Booleans, 1 = Pins, 2 = Extended Settings");
-                    #endif
-                    Serial.println("");
-                    Serial.print("`y` Booleans | ");
-                    #ifdef USES_RUMBLE
-                    Serial.print("0 = Rumble On/Off, ");
-                    #endif
-                    #ifdef USES_SOLENOID
-                    Serial.print("1 = Solenoid On/Off, ");
-                    #endif
-                    Serial.print("2 = Autofire On/Off, 3 = Simple Pause Menu, 4 = Hold to Pause Enabled, ");
-                    #ifdef FOURPIN_LED
-                    Serial.print("5 = 4-Pin Common Anode, ");
-                    #endif
-                    Serial.println("6 = Low Buttons Mode");
-                    Serial.println("`z` Booleans | 0 = Off, 1 = On");
-                    Serial.println("");
-                    Serial.print("`y` Pins Mapping | ");
-                    Serial.print("[0]Custom Pins Enabled (Boolean), [1]Trigger, [2]A, [3]B, [4]C, [5]Start, [6]Select, [7]Up, [8]Down, [9]Left, [10]Right, [11]Pedal, [12]Home, [13]Pump Action, ");
-                    #ifdef USES_RUMBLE
-                    Serial.print("[14]Rumble Pin, ");
-                    #else
-                    Serial.print("[.]Rumble Pin (Unused), ");
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    Serial.print("[15]Solenoid Pin, ");
-                    #ifdef USES_TEMP
-                    Serial.print("[16]Temperature Sensor Pin, ");
-                    #else
-                    Serial.print("[.]Temperature Sensor (Unused), ");
-                    #endif // USES_TEMP
-                    #else
-                    Serial.print("[.]Solenoid Pin (Unused), [.]Temperature Sensor (Unused), ");
-                    #endif // USES_SOLENOID
-                    #ifdef USES_SWITCHES
-                    #ifdef USES_RUMBLE
-                    Serial.print("[17]Rumble Switch, ");
-                    #else
-                    Serial.print("[.]Rumble Switch (Unused), ");
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    Serial.print("[18]Solenoid Switch, ");
-                    #else
-                    Serial.print("[.]Solenoid Switch (Unused), ");
-                    #endif // USES_SOLENOID
-                    Serial.print("[19]Autofire Switch, ");
-                    #else
-                    Serial.print("[.]Rumble Switch (Unused), [.]Solenoid Switch (Unused), [.]Autofire Switch (Unused), ");
-                    #endif // USES_SWITCHES
-                    #ifdef FOURPIN_LED
-                    Serial.print("[20]LED Pin R, [21]LED Pin G, [22]LED Pin B, ");
-                    #else
-                    Serial.print("[.]LED Pin R (Unused), [.]LED Pin G (Unused), [.]LED Pin B (Unused), ");
-                    #endif // FOURPIN_LED
-                    #ifdef CUSTOM_NEOPIXEL
-                    Serial.print("[23]External NeoPixel Output Pin, ");
-                    #else
-                    Serial.print("[.]External NeoPixel Pin (Unused), ");
-                    #endif // CUSTOM_NEOPIXEL
-                    #ifdef USES_ANALOG
-                    Serial.println("[24]Analog Pin X, [25]Analog Pin Y, ");
-                    #else
-                    Serial.println("[.]Analog Pin X (Unused), [.]Analog Pin Y (Unused).");
-                    #endif // USES_ANALOG
-                    Serial.println("`z` Pins Mapping | 0 = Disabled, 1 = Enabled (Custom Pins Setting only) / 0-40 = Set to GPIO Pin #, -1 = Disabled (Any pin)");
-                    Serial.println("");
-                    Serial.print("`y` Extended Settings | ");
-                    #ifdef USES_RUMBLE
-                    Serial.print("[0] Rumble Intensity (0-255), [1] Rumble Event Length (0-9999, in ms), ");
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    Serial.print("[2] Solenoid Normal Interval (0-9999, in ms), [3] Solenoid Fast Interval (0-9999, in ms), [4] Solenoid Hold Length (0-9999, in ms), ");
-                    #endif // USES_SOLENOID
-                    #ifdef CUSTOM_NEOPIXEL
-                    Serial.print("[5] NeoPixel Strand Length (1-255, in LEDs count), ");
-                    #endif // CUSTOM_NEOPIXEL
-                    Serial.println("[6] Autofire Wait Factor (2-4), [7] Hold-to-Pause Length (0-9999, in ms).");
-                    Serial.println("`z` Extended Settings | Any positive int");
-                    #ifdef USE_TINYUSB
-                    Serial.println("");
-                    Serial.println("`y` TinyUSB Identifier | 0 = Product ID, 1 = Product Name");
-                    Serial.println("`z` TinyUSB Identifier | Any decimal int (ID, converts to Hex), Up to 15 ASCII Characters (Name).");
-                    #endif // USE_TINYUSB
+                } else if(serialInput == 'P') {
+                    serialInput = Serial.read(); // nomf
+                    serialInput = Serial.read();
+                    switch(serialInput) {
+                      case 'i':
+                      {
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        uint8_t i = serialInput - '0';
+                        i = constrain(i, 0, ProfileCount - 1);
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        uint8_t v = serialInput - '0';
+                        v = constrain(v, 0, 2);
+                        profileData[i].irSensitivity = v;
+                        if(i == selectedProfile) {
+                            SetIrSensitivity(v);
+                        }
+                        Serial.println("OK: Set IR sensitivity");
+                        break;
+                      }
+                      case 'r':
+                      {
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        uint8_t i = serialInput - '0';
+                        i = constrain(i, 0, ProfileCount - 1);
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        uint8_t v = serialInput - '0';
+                        v = constrain(v, 0, 2);
+                        profileData[i].runMode = v;
+                        if(i == selectedProfile) {
+                            switch(v) {
+                              case 0:
+                                SetRunMode(RunMode_Normal);
+                                break;
+                              case 1:
+                                SetRunMode(RunMode_Average);
+                                break;
+                              case 2:
+                                SetRunMode(RunMode_Average2);
+                                break;
+                            }
+                        }
+                        Serial.println("OK: Set Run Mode");
+                        break;
+                      }
+                    }
                 }
                 break;
               }
@@ -3389,6 +3448,19 @@ void SerialProcessing()                                         // Reading the i
                     Serial.println(tempSettings[6]);
                     //Serial.print("Hold to Pause Length: ");
                     Serial.println(tempSettings[7]);
+                    break;
+                  case 'P':
+                    serialInput = Serial.read();
+                    if(serialInput == '0' || serialInput == '1' ||
+                       serialInput == '2' || serialInput == '3') {
+                        uint8_t i = serialInput - '0';
+                        Serial.println(profileData[i].xScale);
+                        Serial.println(profileData[i].yScale);
+                        Serial.println(profileData[i].xCenter);
+                        Serial.println(profileData[i].yCenter);
+                        Serial.println(profileData[i].irSensitivity);
+                        Serial.println(profileData[i].runMode);
+                    }
                     break;
                   #ifdef USE_TINYUSB
                   case 'n':
@@ -3882,6 +3954,8 @@ void SetMode(GunMode_e newMode)
         break;
     case GunMode_Pause:
         break;
+    case GunMode_Docked:
+        break;
     }
     
     // enter new mode
@@ -3899,6 +3973,9 @@ void SetMode(GunMode_e newMode)
         break;
     case GunMode_Pause:
         stateFlags |= StateFlag_SavePreferencesEn | StateFlag_PrintSelectedProfile;
+        break;
+    case GunMode_Docked:
+        stateFlags |= StateFlag_SavePreferencesEn;
         break;
     }
 
@@ -4364,13 +4441,16 @@ void ApplyInitialPrefs()
 
 void SavePreferences()
 {
-    if(!nvAvailable || !(stateFlags & StateFlag_SavePreferencesEn)) {
-        return;
-    }
-
+    // Unless the user's Docked,
     // Only allow one write per pause state until something changes.
     // Extra protection to ensure the same data can't write a bunch of times.
-    stateFlags &= ~StateFlag_SavePreferencesEn;
+    if(gunMode != GunMode_Docked) {
+        if(!nvAvailable || !(stateFlags & StateFlag_SavePreferencesEn)) {
+            return;
+        }
+
+        stateFlags &= ~StateFlag_SavePreferencesEn;
+    }
     
     // use selected profile as the default
     SamcoPreferences::preferences.profile = (uint8_t)selectedProfile;
