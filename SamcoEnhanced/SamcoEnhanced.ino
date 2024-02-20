@@ -2115,85 +2115,85 @@ void ExecGunModeDocked()
         } else if(!dockedSaving) {
             switch(buttons.pressed) {
                 case BtnMask_Trigger:
-                  Serial.println("Pressed: BtnTrigger");
+                  Serial.println("Pressed: 1");
                   break;
                 case BtnMask_A:
-                  Serial.println("Pressed: BtnA");
+                  Serial.println("Pressed: 2");
                   break;
                 case BtnMask_B:
-                  Serial.println("Pressed: BtnB");
+                  Serial.println("Pressed: 3");
                   break;
                 case BtnMask_Reload:
-                  Serial.println("Pressed: BtnC");
+                  Serial.println("Pressed: 4");
                   break;
                 case BtnMask_Start:
-                  Serial.println("Pressed: BtnStart");
+                  Serial.println("Pressed: 5");
                   break;
                 case BtnMask_Select:
-                  Serial.println("Pressed: BtnSelect");
+                  Serial.println("Pressed: 6");
                   break;
                 case BtnMask_Up:
-                  Serial.println("Pressed: BtnGunUp");
+                  Serial.println("Pressed: 7");
                   break;
                 case BtnMask_Down:
-                  Serial.println("Pressed: BtnGunDown");
+                  Serial.println("Pressed: 8");
                   break;
                 case BtnMask_Left:
-                  Serial.println("Pressed: BtnGunLeft");
+                  Serial.println("Pressed: 9");
                   break;
                 case BtnMask_Right:
-                  Serial.println("Pressed: BtnGunRight");
+                  Serial.println("Pressed: 10");
                   break;
                 case BtnMask_Pedal:
-                  Serial.println("Pressed: BtnPedal");
+                  Serial.println("Pressed: 11");
                   break;
                 case BtnMask_Home:
-                  Serial.println("Pressed: BtnHome");
+                  Serial.println("Pressed: 12");
                   break;
                 case BtnMask_Pump:
-                  Serial.println("Pressed: BtnPump");
+                  Serial.println("Pressed: 13");
                   break;
             }
 
             switch(buttons.released) {
                 case BtnMask_Trigger:
-                  Serial.println("Released: BtnTrigger");
+                  Serial.println("Released: 1");
                   break;
                 case BtnMask_A:
-                  Serial.println("Released: BtnA");
+                  Serial.println("Released: 2");
                   break;
                 case BtnMask_B:
-                  Serial.println("Released: BtnB");
+                  Serial.println("Released: 3");
                   break;
                 case BtnMask_Reload:
-                  Serial.println("Released: BtnC");
+                  Serial.println("Released: 4");
                   break;
                 case BtnMask_Start:
-                  Serial.println("Released: BtnStart");
+                  Serial.println("Released: 5");
                   break;
                 case BtnMask_Select:
-                  Serial.println("Released: BtnSelect");
+                  Serial.println("Released: 6");
                   break;
                 case BtnMask_Up:
-                  Serial.println("Released: BtnGunUp");
+                  Serial.println("Released: 7");
                   break;
                 case BtnMask_Down:
-                  Serial.println("Released: BtnGunDown");
+                  Serial.println("Released: 8");
                   break;
                 case BtnMask_Left:
-                  Serial.println("Released: BtnGunLeft");
+                  Serial.println("Released: 9");
                   break;
                 case BtnMask_Right:
-                  Serial.println("Released: BtnGunRight");
+                  Serial.println("Released: 10");
                   break;
                 case BtnMask_Pedal:
-                  Serial.println("Released: BtnPedal");
+                  Serial.println("Released: 11");
                   break;
                 case BtnMask_Home:
-                  Serial.println("Released: BtnHome");
+                  Serial.println("Released: 12");
                   break;
                 case BtnMask_Pump:
-                  Serial.println("Released: BtnPump");
+                  Serial.println("Released: 13");
                   break;
             }
         }
