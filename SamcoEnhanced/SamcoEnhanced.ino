@@ -1696,6 +1696,12 @@ void loop()
                         SetMode(GunMode_Pause);
                         SavePreferences();
                     } else if(dockedCalibrating) {
+                        Serial.print("UpdatedProfile: ");
+                        Serial.println(selectedProfile);
+                        Serial.println(profileData[selectedProfile].xScale);
+                        Serial.println(profileData[selectedProfile].yScale);
+                        Serial.println(profileData[selectedProfile].xCenter);
+                        Serial.println(profileData[selectedProfile].yCenter);
                         SetMode(GunMode_Docked);
                     } else {
                         SetMode(GunMode_Run);
@@ -2011,8 +2017,12 @@ void ExecRunModeProcessing()
     for(;;) {
         buttons.Poll(1);
         if(buttons.pressedReleased & EnterPauseModeProcessingBtnMask) {
-            SetMode(GunMode_Pause);
+            Serial.println("Exiting Test Mode");
+            SetMode(GunMode_Docked);
             return;
+        }
+        if(Serial.available()) {
+            SerialProcessingDocked();
         }
 
         #ifdef SAMCO_NO_HW_TIMER
@@ -2609,7 +2619,7 @@ void SerialProcessingDocked()
                     Serial.println("SERIALREAD: No valid IR sensitivity level set! (Expected 0 to 2)");
                 }
                 break;
-              // Toggle Processing/Run Mode
+              // Toggle Test/Processing Mode
               case 'T':
                 if(runMode == RunMode_Processing) {
                     Serial.println("Exiting processing mode...");
@@ -2624,12 +2634,11 @@ void SerialProcessingDocked()
                           SetRunMode(RunMode_Average2);
                           break;
                     }
-                    SetMode(GunMode_Run);
+                    SetMode(GunMode_Docked);
                 } else {
-                    Serial.println("Entering Processing Sketch mode...");
+                    Serial.println("Entering Test Mode...");
                     SetRunMode(RunMode_Processing);
                     SetMode(GunMode_Run);
-                    loop();
                 }
                 break;
               // Enter Docked Mode
