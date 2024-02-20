@@ -2580,16 +2580,16 @@ void SerialProcessingDocked()
                     loop();
                 }
                 break;
-              // Toggle Pause/Run Mode
+              // Enter Docked Mode
               case 'P':
-                if(gunMode != GunMode_Docked) {
-                    SetMode(GunMode_Docked);
+                SetMode(GunMode_Docked);
+                break;
+              // Exit Docked Mode
+              case 'E':
+                if(!justBooted) {
+                    SetMode(GunMode_Run);
                 } else {
-                    if(!justBooted) {
-                        SetMode(GunMode_Run);
-                    } else {
-                        SetMode(GunMode_Init);
-                    }
+                    SetMode(GunMode_Init);
                 }
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
@@ -3535,7 +3535,7 @@ void SerialProcessing()
                 }
                 UpdateBindings(lowButtonMode);
                 break;
-              // Toggle Pause/Run Mode
+              // Enter Docked Mode
               case 'P':
                 SetMode(GunMode_Docked);
                 break;
