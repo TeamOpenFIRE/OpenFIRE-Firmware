@@ -1747,6 +1747,7 @@ void loop()
                         // If this is an initial calibration, save it immediately!
                         SetMode(GunMode_Pause);
                         SavePreferences();
+                        SetMode(GunMode_Run);
                     } else if(dockedCalibrating) {
                         Serial.print("UpdatedProf: ");
                         Serial.println(selectedProfile);
@@ -2731,6 +2732,10 @@ void SerialProcessingDocked()
                 buttons.Unset();
                 PinsReset();
                 SavePreferences();
+                // load everything back to commit custom pins setting to memory
+                if(nvPrefsError == SamcoPreferences::Error_Success) {
+                    ExtPreferences(true);
+                }
                 FeedbackSet();
                 buttons.Begin();
                 dockedSaving = false;
@@ -3163,6 +3168,22 @@ void SerialProcessingDocked()
                 //Serial.println("Printing values saved in EEPROM...");
                 uint8_t tempBools = 0b00000000;
                 uint8_t *dataBools = &tempBools;
+
+                if(nvPrefsError != SamcoPreferences::Error_Success) {
+                    #ifdef USES_RUMBLE
+                        bitWrite(tempBools, 0, rumbleActive);
+                    #endif // USES_RUMBLE
+                    #ifdef USES_SOLENOID
+                        bitWrite(tempBools, 1, solenoidActive);
+                    #endif // USES_SOLENOID
+                    bitWrite(tempBools, 2, autofireActive);
+                    bitWrite(tempBools, 3, simpleMenu);
+                    bitWrite(tempBools, 4, holdToPause);
+                    #ifdef FOURPIN_LED
+                        bitWrite(tempBools, 5, commonAnode);
+                    #endif // FOURPIN_LED
+                    bitWrite(tempBools, 6, lowButtonMode);
+                }
 
                 // Temp pin mappings
                 int8_t tempMappings[] = {
