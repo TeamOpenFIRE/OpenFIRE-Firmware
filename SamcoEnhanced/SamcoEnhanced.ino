@@ -896,74 +896,21 @@ void setup() {
     
     if(nvAvailable) {
         LoadPreferences();
-        // If data is available but none written, commit builtin values to eeprom.
         if(nvPrefsError == SamcoPreferences::Error_NoData) {
             Serial.println("No data detected, setting defaults!");
             SamcoPreferences::ResetPreferences();
-            SavePreferences();
         } else if(nvPrefsError == SamcoPreferences::Error_Success) {
             Serial.println("Data detected, pulling settings from EEPROM!");
+            // use values from preferences
+            ApplyInitialPrefs();
             ExtPreferences(true);
         }
     }
-
-    // use values from preferences
-    ApplyInitialPrefs();
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
         TinyUSBInit();
     #endif // USE_TINYUSB
- 
-    #ifdef USES_RUMBLE
-        if(rumblePin >= 0) {
-            pinMode(rumblePin, OUTPUT);
-        } else {
-            rumbleActive = false;
-        }
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        if(solenoidPin >= 0) {
-            pinMode(solenoidPin, OUTPUT);
-        } else {
-            solenoidActive = false;
-        }
-    #endif // USES_SOLENOID
-    #ifdef USES_SWITCHES
-        #ifdef USES_RUMBLE
-            if(rumbleSwitch >= 0) {
-                pinMode(rumbleSwitch, INPUT_PULLUP);
-            }
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-            if(solenoidSwitch >= 0) {
-                pinMode(solenoidSwitch, INPUT_PULLUP);
-            }  
-        #endif // USES_SOLENOID
-        if(autofireSwitch >= 0) {
-            pinMode(autofireSwitch, INPUT_PULLUP);
-        }
-    #endif // USES_SWITCHES
-
-    #ifdef LED_ENABLE
-        LedInit();
-    #endif // LED_ENABLE
-
-    #ifdef USES_ANALOG
-        analogReadResolution(12);
-        #ifdef USES_TEMP
-        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY &&
-        analogPinX != tempPin && analogPinY != tempPin) {
-        #else
-        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY) {
-        #endif
-            //pinMode(analogPinX, INPUT);
-            //pinMode(analogPinY, INPUT);
-            analogIsValid = true;
-        } else {
-            analogIsValid = false;
-        }
-    #endif // USES_ANALOG
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
     // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040
@@ -978,8 +925,12 @@ void setup() {
     Wire.setSCL(21);
 #endif // board
 
-    // initialize buttons
+    // initialize buttons & feedback devices
     buttons.Begin();
+    FeedbackSet();
+    #ifdef LED_ENABLE
+        LedInit();
+    #endif // LED_ENABLE
 
     // Start IR Camera with basic data format
     dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
@@ -1006,8 +957,9 @@ void setup() {
     startIrCamTimer(IRCamUpdateRate);
 
     // First boot sanity checks.
-    // Check if the initial profiles are blanked (zero center = init)
-    if(profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
+    // Check if loading has failde
+    if(nvPrefsError != SamcoPreferences::Error_Success ||
+    profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
         SetMode(GunMode_CalCenter);
@@ -1049,6 +1001,106 @@ void setup() {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
     }
+}
+
+// inits and enables devices, if valid
+void FeedbackSet()
+{
+    #ifdef USES_RUMBLE
+        if(rumblePin >= 0) {
+            pinMode(rumblePin, OUTPUT);
+        } else {
+            rumbleActive = false;
+        }
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        if(solenoidPin >= 0) {
+            pinMode(solenoidPin, OUTPUT);
+        } else {
+            solenoidActive = false;
+        }
+    #endif // USES_SOLENOID
+    #ifdef USES_SWITCHES
+        #ifdef USES_RUMBLE
+            if(rumbleSwitch >= 0) {
+                pinMode(rumbleSwitch, INPUT_PULLUP);
+            }
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+            if(solenoidSwitch >= 0) {
+                pinMode(solenoidSwitch, INPUT_PULLUP);
+            }  
+        #endif // USES_SOLENOID
+        if(autofireSwitch >= 0) {
+            pinMode(autofireSwitch, INPUT_PULLUP);
+        }
+    #endif // USES_SWITCHES
+    #ifdef USES_ANALOG
+        analogReadResolution(12);
+        #ifdef USES_TEMP
+        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY &&
+        analogPinX != tempPin && analogPinY != tempPin) {
+        #else
+        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY) {
+        #endif // USES_TEMP
+            //pinMode(analogPinX, INPUT);
+            //pinMode(analogPinY, INPUT);
+            analogIsValid = true;
+        } else {
+            analogIsValid = false;
+        }
+    #endif // USES_ANALOG
+    #if defined(LED_ENABLE) && defined(FOURPIN_LED)
+    if(PinR < 0 || PinG < 0 || PinB < 0) {
+        Serial.println("RGB values not valid! Disabling four pin access.");
+        ledIsValid = false;
+    } else {
+        pinMode(PinR, OUTPUT);
+        pinMode(PinG, OUTPUT);
+        pinMode(PinB, OUTPUT);
+        ledIsValid = true;
+    }
+    #endif // FOURPIN_LED
+}
+
+// resets feedback pins to defaults
+void PinsReset()
+{
+    #ifdef USES_RUMBLE
+        if(rumblePin >= 0) {
+            pinMode(rumblePin, INPUT);
+        }
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        if(solenoidPin >= 0) {
+            pinMode(solenoidPin, INPUT);
+        }
+    #endif // USES_SOLENOID
+    #ifdef USES_SWITCHES
+        #ifdef USES_RUMBLE
+            if(rumbleSwitch >= 0) {
+                pinMode(rumbleSwitch, INPUT);
+            }
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+            if(solenoidSwitch >= 0) {
+                pinMode(solenoidSwitch, INPUT);
+            }  
+        #endif // USES_SOLENOID
+        if(autofireSwitch >= 0) {
+            pinMode(autofireSwitch, INPUT);
+        }
+    #endif // USES_SWITCHES
+    #ifdef LED_ENABLE
+        LedOff();
+        #ifdef FOURPIN_LED
+            if(ledIsValid) {
+                pinMode(PinR, INPUT);
+                pinMode(PinG, INPUT);
+                pinMode(PinB, INPUT);
+            }
+        #endif // FOURPIN_LED
+    #endif // LED_ENABLE
 }
 
 #ifdef USE_TINYUSB
@@ -1652,7 +1704,7 @@ void loop()
                 SelectCalProfileFromBtnMask(buttons.pressedReleased);
             }
 
-            if(!serialMode) {
+            if(!serialMode && !dockedCalibrating) {
                 PrintResults();
             }
             
@@ -2675,13 +2727,17 @@ void SerialProcessingDocked()
               // Save current profile
               case 'S':
                 Serial.println("Saving preferences...");
+                // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
+                buttons.Unset();
+                PinsReset();
                 SavePreferences();
+                FeedbackSet();
+                buttons.Begin();
                 dockedSaving = false;
                 break;
               // Clear EEPROM.
               case 'c':
                 //Serial.println(EEPROM.length());
-                Serial.println("Clearing EEPROM...");
                 dockedSaving = true;
                 SamcoPreferences::ResetPreferences();
                 Serial.println("Cleared! Please reset the board.");
@@ -4951,7 +5007,7 @@ void ApplyCalToProfile()
 }
 
 #ifdef LED_ENABLE
-// (re)initializes RGB LEDs.
+// initializes system and 4pin RGB LEDs.
 void LedInit()
 {
     // init DotStar and/or NeoPixel to red during setup()
@@ -4973,18 +5029,7 @@ void LedInit()
             externPixel.begin();
         }
     #endif // CUSTOM_NEOPIXEL
-
-    #ifdef FOURPIN_LED
-    if(PinR < 0 || PinG < 0 || PinB < 0) {
-        Serial.println("RGB values not valid! Disabling four pin access.");
-        ledIsValid = false;
-    } else {
-        pinMode(PinR, OUTPUT);
-        pinMode(PinG, OUTPUT);
-        pinMode(PinB, OUTPUT);
-        ledIsValid = true;
-    }
-    #endif // FOURPIN_LED
+ 
     #ifdef ARDUINO_NANO_RP2040_CONNECT
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
