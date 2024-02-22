@@ -1714,7 +1714,7 @@ void loop()
             break;
         case GunMode_CalCenter:
             AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-            if(buttons.pressedReleased & CancelCalBtnMask) {
+            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
                 CancelCalibration();
             } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
                 Serial.println("Calibrate Center skipped");
@@ -1727,7 +1727,7 @@ void loop()
             }
             break;
         case GunMode_CalVert:
-            if(buttons.pressedReleased & CancelCalBtnMask) {
+            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
                 CancelCalibration();
             } else {
                 if(buttons.pressed & BtnMask_Trigger) {
@@ -1738,7 +1738,7 @@ void loop()
             }
             break;
         case GunMode_CalHoriz:
-            if(buttons.pressedReleased & CancelCalBtnMask) {
+            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
                 CancelCalibration();
             } else {
                 if(buttons.pressed & BtnMask_Trigger) {
