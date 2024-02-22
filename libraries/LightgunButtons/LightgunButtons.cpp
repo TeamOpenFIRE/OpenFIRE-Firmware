@@ -55,6 +55,17 @@ void LightgunButtons::Begin()
     }
 }
 
+void LightgunButtons::Unset()
+{
+    // set button pins to input with pullup
+    for(unsigned int i = 0; i < count; ++i) {
+        // do no setup if the pin is uninitialized
+        if(ButtonDesc[i].pin >= 0) {
+            pinMode(ButtonDesc[i].pin, INPUT);
+        }
+    }
+}
+
 uint32_t LightgunButtons::Poll(unsigned long minTicks)
 {
     unsigned long m = millis();
