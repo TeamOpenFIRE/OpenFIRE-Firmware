@@ -3253,7 +3253,10 @@ void SerialProcessingDocked()
                 };
                 uint16_t *dataSettings = tempSettings;
 
-                SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
+                // Only load if there's been no errors reported
+                if(nvPrefsError == SamcoPreferences::Error_Success) {
+                    SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
+                }
 
                 serialInput = Serial.read();
                 switch(serialInput) {
