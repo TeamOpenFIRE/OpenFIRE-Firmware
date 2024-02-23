@@ -57,13 +57,23 @@ void LightgunButtons::Begin()
 
 void LightgunButtons::Unset()
 {
-    // set button pins to input with pullup
+    // set button pins to normal input
     for(unsigned int i = 0; i < count; ++i) {
         // do no setup if the pin is uninitialized
         if(ButtonDesc[i].pin >= 0) {
             pinMode(ButtonDesc[i].pin, INPUT);
+            debounceCount[i] = 0;
         }
     }
+    pressed = 0;
+    released = 0;
+    debounced = 0;
+    debouncing = 0;
+    pressedReleased = 0;
+    lastMillis = 0;
+    lastRepeatMillis = 0;
+    internalPressedReleased = 0;
+    reportedPressed = 0;
 }
 
 uint32_t LightgunButtons::Poll(unsigned long minTicks)
