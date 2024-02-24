@@ -14,8 +14,8 @@
  * @author [That One Seong](SeongsSeongs@gmail.com)
  * @date 2023
  */
-#define G4ALL_VERSION 3.0
-#define G4ALL_CODENAME "Rinko"
+#define G4ALL_VERSION 4.0
+#define G4ALL_CODENAME "L.G.A Force"
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 #define G4ALL_BOARD "adafruitItsyRP2040"
