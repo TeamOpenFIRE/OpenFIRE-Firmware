@@ -2,6 +2,7 @@
 
 ## Table of Contents:
  - [IR Emitter Setup](#ir-emitter-setup)
+ - [Board Configuration](#board-configuration)
  - [Operations Manual](#operations-manual)
    - [Run Modes](#run-modes)
    - [Default Buttons](#default-buttons)
@@ -22,6 +23,14 @@ The IR emitters must be arranged with 2 emitters on opposite edges of your scree
 
 For visual reference, the purple/pinkish trapezoids are how your emitters should be placed on the display:
 ![Emitters](https://raw.githubusercontent.com/SeongGino/ir-light-gun-plus/plus/Emitters%20Layout-monitor.png)
+
+## Board Configuration
+Since v4.0 *(L.G.A Force)*, the gun is configured through the companion [GUN4ALL-GUI](https://github.com/SeongGino/GUN4ALL-GUI) application. The gun must be plugged in prior to starting the application.
+
+When the board's COM port is selected in the app, the gun will go into a *Docked* state - this is what allows for realtime configuration of pin mappings, settings, changing between and signaling calibration profiles, and testing button inputs and force feedback devices. The camera will be disabled while in this mode.
+
+## First-time Setup
+When flashing a new board with GUN4ALL v4.0 *(L.G.A Force)* or newer, or after clearing the EEPROM, the first time it's plugged in will prompt for the user to pull the trigger button to start initial calibration - see the [How to Calibrate](#how-to-calibrate) section for more information. If your build is using custom pins, or you would like to change any settings at this point, the gun can be docked to the G4A-GUI and configured prior to starting initial calibration.
 
 ## Operations Manual
 The light gun operates as an absolute positioning mouse (like a stylus!) until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
@@ -135,7 +144,7 @@ The Processing mode is intended for use with the [SAMCO Processing sketch](https
 ### Serial Handoff (Mame Hooker) Mode
 Introduced in v2.0 *(That Heart, That Power)*, when enabled, the gun will automatically hand off control to an instance of Mame Hooker that's connected once a start code has been detected! If available, the onboard LED will change to a mid-intensity white to signal serial handoff mode (unless any LED events trigger it to change, which will follow those thereafter).
 
-If you aren't already familiar with Mame Hooker, **you'll need compatible inis for each game you play** and **the gun's COM port should be set to match the player number** (COM1 for P1, COM2 for P2, etc.)! COM port assignment can be done in Windows via the Device Manager, or Linux via settings in the Wine registry of the prefix your game/Mame Hooker is started in. [Consult the wiki page on MAMEHOOKER for more information!](https://github.com/SeongGino/ir-light-gun-plus/wiki/MAMEHOOKER-for-Light-Guns-%E2%80%90-The-Secret-Files#mamehooker-setup-guide)
+If you aren't already familiar with Mame Hooker, **you'll need compatible inis for each game you play** and **the gun's COM port should be set to match the player number** (COM1 for P1, COM2 for P2, etc.)! COM port assignment can be done in Windows via the Device Manager, or Linux via settings in the Wine registry of the prefix your game/Mame Hooker is started in. [Consult the wiki page on MAMEHOOKER for more information!](https://github.com/SeongGino/ir-light-gun-plus/wiki/MAMEHOOKER-for-Light-Guns-%E2%80%90-The-Secret-Files#mamehooker-setup-guide) For Linux users wanting to use their gun with native emulators' force feedback (currently MAME, Flycast, or their RetroArch ports), consider trying [QMamehook](https://github.com/SeongGino/QMamehook).
 
 > [!WARNING]
 > Serial Handoff mode will cause INSTABILITY if GUN4ALL is built using an Arduino core without a patched TinyUSB - as of writing, upstream has a fatal bug where a large amount of serial data causes the board to unpredictably lock up, requiring physically unplugging from the PC. This has been fixed using a forked RP2040 core and is used in official binaries, but be mindful of this if you're deploying customized builds. For more information, see https://github.com/adafruit/Adafruit_TinyUSB_Arduino/issues/293
@@ -145,4 +154,4 @@ If you intend to use multiple GUN4ALLs, you'll want to change what the board rep
 
 These are known as the **USB Implementer's Forum (USB-IF) identifiers**, and if multiple devices share a common display name and/or Product/Vendor ID, apps like RetroArch and TeknoParrot that read individual mouse devices will get VERY confused.
 
-Since v3.0 *(Rinko)*, these parameters can be saved to and loaded from EEPROM if a customized Device Product ID (PID) & Device Name are detected. Refer to the builtin settings category by calling `Xm` in a serial monitor/terminal for more information.
+Since v4.0 *(L.G.A Force)*, these parameters can be saved to and loaded from EEPROM if a customized Device Product ID (PID) & Device Name are detected. These can be configured from the G4A-GUI.
