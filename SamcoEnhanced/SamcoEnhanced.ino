@@ -2729,8 +2729,6 @@ void SerialProcessingDocked()
               case 'S':
                 Serial.println("Saving preferences...");
                 // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
-                buttons.Unset();
-                PinsReset();
                 SavePreferences();
                 // load everything back to commit custom pins setting to memory
                 if(nvPrefsError == SamcoPreferences::Error_Success) {
@@ -2738,6 +2736,7 @@ void SerialProcessingDocked()
                 }
                 FeedbackSet();
                 buttons.Begin();
+                UpdateBindings(lowButtonMode);
                 dockedSaving = false;
                 break;
               // Clear EEPROM.
@@ -2751,413 +2750,418 @@ void SerialProcessingDocked()
               // Mapping new values to commit to EEPROM.
               case 'm':
               {
-                dockedSaving = true; // mark so button presses won't interrupt this process.
-                serialInput = Serial.read(); // nomf
-                serialInput = Serial.read();
-                // bool change
-                if(serialInput == '0') {
+                if(!dockedSaving) {
+                    buttons.Unset();
+                    PinsReset();
+                    dockedSaving = true; // mark so button presses won't interrupt this process.
+                } else {
                     serialInput = Serial.read(); // nomf
                     serialInput = Serial.read();
-                    switch(serialInput) {
-                      #ifdef USES_RUMBLE
-                      case '0':
+                    // bool change
+                    if(serialInput == '0') {
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
-                        rumbleActive = serialInput - '0';
-                        rumbleActive = constrain(rumbleActive, 0, 1);
-                        Serial.println("OK: Toggled Rumble setting.");
-                        break;
-                      #endif
-                      #ifdef USES_SOLENOID
-                      case '1':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        solenoidActive = serialInput - '0';
-                        solenoidActive = constrain(solenoidActive, 0, 1);
-                        Serial.println("OK: Toggled Solenoid setting.");
-                        break;
-                      #endif
-                      case '2':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        autofireActive = serialInput - '0';
-                        autofireActive = constrain(autofireActive, 0, 1);
-                        Serial.println("OK: Toggled Autofire setting.");
-                        break;
-                      case '3':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        simpleMenu = serialInput - '0';
-                        simpleMenu = constrain(simpleMenu, 0, 1);
-                        Serial.println("OK: Toggled Simple Pause Menu setting.");
-                        break;
-                      case '4':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        holdToPause = serialInput - '0';
-                        holdToPause = constrain(holdToPause, 0, 1);
-                        Serial.println("OK: Toggled Hold to Pause setting.");
-                        break;
-                      #ifdef FOURPIN_LED
-                      case '5':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        commonAnode = serialInput - '0';
-                        commonAnode = constrain(commonAnode, 0, 1);
-                        Serial.println("OK: Toggled Common Anode setting.");
-                        break;
-                      #endif
-                      case '6':
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        lowButtonMode = serialInput - '0';
-                        lowButtonMode = constrain(lowButtonMode, 0, 1);
-                        Serial.println("OK: Toggled Low Button Mode setting.");
-                        break;
-                      default:
-                        while(!Serial.available()) {
-                          serialInput = Serial.read(); // nomf it all
-                        }
-                        Serial.println("NOENT: No matching case (feature disabled).");
-                        break;
-                    }
-                // Pins
-                } else if(serialInput == '1') {
-                    serialInput = Serial.read(); // nomf
-                    byte sCase = Serial.parseInt();
-                    switch(sCase) {
-                      case 0:
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        customPinsInUse = serialInput - '0';
-                        customPinsInUse = constrain(customPinsInUse, 0, 1);
-                        Serial.println("OK: Toggled Custom Pin setting.");
-                        break;
-                      case 1:
-                        serialInput = Serial.read(); // nomf
-                        btnTrigger = Serial.parseInt();
-                        btnTrigger = constrain(btnTrigger, -1, 40);
-                        Serial.println("OK: Set trigger button pin.");
-                        break;
-                      case 2:
-                        serialInput = Serial.read(); // nomf
-                        btnGunA = Serial.parseInt();
-                        btnGunA = constrain(btnGunA, -1, 40);
-                        Serial.println("OK: Set A button pin.");
-                        break;
-                      case 3:
-                        serialInput = Serial.read(); // nomf
-                        btnGunB = Serial.parseInt();
-                        btnGunB = constrain(btnGunB, -1, 40);
-                        Serial.println("OK: Set B button pin.");
-                        break;
-                      case 4:
-                        serialInput = Serial.read(); // nomf
-                        btnGunC = Serial.parseInt();
-                        btnGunC = constrain(btnGunC, -1, 40);
-                        Serial.println("OK: Set C button pin.");
-                        break;
-                      case 5:
-                        serialInput = Serial.read(); // nomf
-                        btnStart = Serial.parseInt();
-                        btnStart = constrain(btnStart, -1, 40);
-                        Serial.println("OK: Set Start button pin.");
-                        break;
-                      case 6:
-                        serialInput = Serial.read(); // nomf
-                        btnSelect = Serial.parseInt();
-                        btnSelect = constrain(btnSelect, -1, 40);
-                        Serial.println("OK: Set Select button pin.");
-                        break;
-                      case 7:
-                        serialInput = Serial.read(); // nomf
-                        btnGunUp = Serial.parseInt();
-                        btnGunUp = constrain(btnGunUp, -1, 40);
-                        Serial.println("OK: Set D-Pad Up button pin.");
-                        break;
-                      case 8:
-                        serialInput = Serial.read(); // nomf
-                        btnGunDown = Serial.parseInt();
-                        btnGunDown = constrain(btnGunDown, -1, 40);
-                        Serial.println("OK: Set D-Pad Down button pin.");
-                        break;
-                      case 9:
-                        serialInput = Serial.read(); // nomf
-                        btnGunLeft = Serial.parseInt();
-                        btnGunLeft = constrain(btnGunLeft, -1, 40);
-                        Serial.println("OK: Set D-Pad Left button pin.");
-                        break;
-                      case 10:
-                        serialInput = Serial.read(); // nomf
-                        btnGunRight = Serial.parseInt();
-                        btnGunRight = constrain(btnGunRight, -1, 40);
-                        Serial.println("OK: Set D-Pad Right button pin.");
-                        break;
-                      case 11:
-                        serialInput = Serial.read(); // nomf
-                        btnPedal = Serial.parseInt();
-                        btnPedal = constrain(btnPedal, -1, 40);
-                        Serial.println("OK: Set External Pedal button pin.");
-                        break;
-                      case 12:
-                        serialInput = Serial.read(); // nomf
-                        btnHome = Serial.parseInt();
-                        btnHome = constrain(btnHome, -1, 40);
-                        Serial.println("OK: Set Home button pin.");
-                        break;
-                      case 13:
-                        serialInput = Serial.read(); // nomf
-                        btnPump = Serial.parseInt();
-                        btnPump = constrain(btnPump, -1, 40);
-                        Serial.println("OK: Set Pump Action button pin.");
-                        break;
-                      #ifdef USES_RUMBLE
-                      case 14:
-                        serialInput = Serial.read(); // nomf
-                        rumblePin = Serial.parseInt();
-                        rumblePin = constrain(rumblePin, -1, 40);
-                        Serial.println("OK: Set Rumble signal pin.");
-                        break;
-                      #endif
-                      #ifdef USES_SOLENOID
-                      case 15:
-                        serialInput = Serial.read(); // nomf
-                        solenoidPin = Serial.parseInt();
-                        solenoidPin = constrain(solenoidPin, -1, 40);
-                        Serial.println("OK: Set Solenoid signal pin.");
-                        break;
-                      #ifdef USES_TEMP
-                      case 16:
-                        serialInput = Serial.read(); // nomf
-                        tempPin = Serial.parseInt();
-                        tempPin = constrain(tempPin, -1, 40);
-                        Serial.println("OK: Set Temperature Sensor pin.");
-                        break;
-                      #endif
-                      #endif
-                      #ifdef USES_SWITCHES
-                      #ifdef USES_RUMBLE
-                      case 17:
-                        serialInput = Serial.read(); // nomf
-                        rumbleSwitch = Serial.parseInt();
-                        rumbleSwitch = constrain(rumbleSwitch, -1, 40);
-                        Serial.println("OK: Set Rumble Switch pin.");
-                        break;
-                      #endif
-                      #ifdef USES_SOLENOID
-                      case 18:
-                        serialInput = Serial.read(); // nomf
-                        solenoidSwitch = Serial.parseInt();
-                        solenoidSwitch = constrain(solenoidSwitch, -1, 40);
-                        Serial.println("OK: Set Solenoid Switch pin.");
-                        break;
-                      #endif
-                      case 19:
-                        serialInput = Serial.read(); // nomf
-                        autofireSwitch = Serial.parseInt();
-                        autofireSwitch = constrain(autofireSwitch, -1, 40);
-                        Serial.println("OK: Set Autofire Switch pin.");
-                        break;
-                      #endif
-                      #ifdef FOURPIN_LED
-                      case 20:
-                        serialInput = Serial.read(); // nomf
-                        PinR = Serial.parseInt();
-                        PinR = constrain(PinR, -1, 40);
-                        Serial.println("OK: Set RGB LED R pin.");
-                        break;
-                      case 21:
-                        serialInput = Serial.read(); // nomf
-                        PinG = Serial.parseInt();
-                        PinG = constrain(PinG, -1, 40);
-                        Serial.println("OK: Set RGB LED G pin.");
-                        break;
-                      case 22:
-                        serialInput = Serial.read(); // nomf
-                        PinB = Serial.parseInt();
-                        PinB = constrain(PinB, -1, 40);
-                        Serial.println("OK: Set RGB LED B pin.");
-                        break;
-                      #endif
-                      #ifdef CUSTOM_NEOPIXEL
-                      case 23:
-                        serialInput = Serial.read(); // nomf
-                        customLEDpin = Serial.parseInt();
-                        customLEDpin = constrain(customLEDpin, -1, 40);
-                        Serial.println("OK: Set Custom NeoPixel pin.");
-                        break;
-                      #endif
-                      #ifdef USES_ANALOG
-                      case 24:
-                        serialInput = Serial.read(); // nomf
-                        analogPinX = Serial.parseInt();
-                        analogPinX = constrain(analogPinX, -1, 40);
-                        Serial.println("OK: Set Analog X pin.");
-                        break;
-                      case 25:
-                        serialInput = Serial.read(); // nomf
-                        analogPinY = Serial.parseInt();
-                        analogPinY = constrain(analogPinY, -1, 40);
-                        Serial.println("OK: Set Analog Y pin.");
-                        break;
-                      #endif
-                      default:
-                        while(!Serial.available()) {
-                          serialInput = Serial.read(); // nomf it all
-                        }
-                        Serial.println("NOENT: No matching case (feature disabled).");
-                        break;
-                    }
-                // Extended Settings
-                } else if(serialInput == '2') {
-                    serialInput = Serial.read(); // nomf
-                    serialInput = Serial.read();
-                    switch(serialInput) {
-                      #ifdef USES_RUMBLE
-                      case '0':
-                        serialInput = Serial.read(); // nomf
-                        rumbleIntensity = Serial.parseInt();
-                        rumbleIntensity = constrain(rumbleIntensity, 0, 255);
-                        Serial.println("OK: Set Rumble Intensity setting.");
-                        break;
-                      case '1':
-                        serialInput = Serial.read(); // nomf
-                        rumbleInterval = Serial.parseInt();
-                        Serial.println("OK: Set Rumble Length setting.");
-                        break;
-                      #endif
-                      #ifdef USES_SOLENOID
-                      case '2':
-                        serialInput = Serial.read(); // nomf
-                        solenoidNormalInterval = Serial.parseInt();
-                        Serial.println("OK: Set Solenoid Normal Interval setting.");
-                        break;
-                      case '3':
-                        serialInput = Serial.read(); // nomf
-                        solenoidFastInterval = Serial.parseInt();
-                        Serial.println("OK: Set Solenoid Fast Interval setting.");
-                        break;
-                      case '4':
-                        serialInput = Serial.read(); // nomf
-                        solenoidLongInterval = Serial.parseInt();
-                        Serial.println("OK: Set Solenoid Hold Length setting.");
-                        break;
-                      #endif
-                      #ifdef CUSTOM_NEOPIXEL
-                      case '5':
-                        serialInput = Serial.read(); // nomf
-                        customLEDcount = Serial.parseInt();
-                        customLEDcount = constrain(customLEDcount, 1, 255);
-                        Serial.println("OK: Set NeoPixel strand length setting.");
-                        break;
-                      #endif
-                      case '6':
-                        serialInput = Serial.read(); // nomf
-                        autofireWaitFactor = Serial.parseInt();
-                        autofireWaitFactor = constrain(autofireWaitFactor, 2, 4);
-                        Serial.println("OK: Set Autofire Wait Factor setting.");
-                        break;
-                      case '7':
-                        serialInput = Serial.read(); // nomf
-                        pauseHoldLength = Serial.parseInt();
-                        Serial.println("OK: Set Hold to Pause length setting.");
-                        break;
-                      default:
-                        while(!Serial.available()) {
-                          serialInput = Serial.read(); // nomf it all
-                        }
-                        Serial.println("NOENT: No matching case (feature disabled).");
-                        break;
-                    }
-                #ifdef USE_TINYUSB
-                // TinyUSB Identifier Settings
-                } else if(serialInput == '3') {
-                    serialInput = Serial.read(); // nomf
-                    serialInput = Serial.read();
-                    switch(serialInput) {
-                      // Device PID
-                      case '0':
-                        {
-                          serialInput = Serial.read(); // nomf
-                          devicePID = Serial.parseInt();
-                          Serial.println("OK: Updated TinyUSB Device ID.");
-                          EEPROM.put(EEPROM.length() - 22, devicePID);
-                          #ifdef ARDUINO_ARCH_RP2040
-                              EEPROM.commit();
-                          #endif // ARDUINO_ARCH_RP2040
-                          break;
-                        }
-                      // Device name
-                      case '1':
-                        serialInput = Serial.read(); // nomf
-                        for(byte i = 0; i < sizeof(deviceName); i++) {
-                            deviceName[i] = '\0';
-                        }
-                        for(byte i = 0; i < 15; i++) {
-                            deviceName[i] = Serial.read();
-                            if(!Serial.available()) {
-                                break;
+                        switch(serialInput) {
+                          #ifdef USES_RUMBLE
+                          case '0':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            rumbleActive = serialInput - '0';
+                            rumbleActive = constrain(rumbleActive, 0, 1);
+                            Serial.println("OK: Toggled Rumble setting.");
+                            break;
+                          #endif
+                          #ifdef USES_SOLENOID
+                          case '1':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            solenoidActive = serialInput - '0';
+                            solenoidActive = constrain(solenoidActive, 0, 1);
+                            Serial.println("OK: Toggled Solenoid setting.");
+                            break;
+                          #endif
+                          case '2':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            autofireActive = serialInput - '0';
+                            autofireActive = constrain(autofireActive, 0, 1);
+                            Serial.println("OK: Toggled Autofire setting.");
+                            break;
+                          case '3':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            simpleMenu = serialInput - '0';
+                            simpleMenu = constrain(simpleMenu, 0, 1);
+                            Serial.println("OK: Toggled Simple Pause Menu setting.");
+                            break;
+                          case '4':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            holdToPause = serialInput - '0';
+                            holdToPause = constrain(holdToPause, 0, 1);
+                            Serial.println("OK: Toggled Hold to Pause setting.");
+                            break;
+                          #ifdef FOURPIN_LED
+                          case '5':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            commonAnode = serialInput - '0';
+                            commonAnode = constrain(commonAnode, 0, 1);
+                            Serial.println("OK: Toggled Common Anode setting.");
+                            break;
+                          #endif
+                          case '6':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            lowButtonMode = serialInput - '0';
+                            lowButtonMode = constrain(lowButtonMode, 0, 1);
+                            Serial.println("OK: Toggled Low Button Mode setting.");
+                            break;
+                          default:
+                            while(!Serial.available()) {
+                              serialInput = Serial.read(); // nomf it all
                             }
+                            Serial.println("NOENT: No matching case (feature disabled).");
+                            break;
                         }
-                        Serial.println("OK: Updated TinyUSB Device String.");
-                        for(byte i = 0; i < 16; i++) {
-                            EEPROM.update(EEPROM.length() - 18 + i, deviceName[i]);
-                        }
-                        #ifdef ARDUINO_ARCH_RP2040
-                            EEPROM.commit();
-                        #endif // ARDUINO_ARCH_RP2040
-                        break;
-                    }
-                #endif // USE_TINYUSB
-                // Profile settings
-                } else if(serialInput == 'P') {
-                    serialInput = Serial.read(); // nomf
-                    serialInput = Serial.read();
-                    switch(serialInput) {
-                      case 'i':
-                      {
+                    // Pins
+                    } else if(serialInput == '1') {
                         serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        uint8_t i = serialInput - '0';
-                        i = constrain(i, 0, ProfileCount - 1);
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        uint8_t v = serialInput - '0';
-                        v = constrain(v, 0, 2);
-                        profileData[i].irSensitivity = v;
-                        if(i == selectedProfile) {
-                            SetIrSensitivity(v);
-                        }
-                        Serial.println("OK: Set IR sensitivity");
-                        break;
-                      }
-                      case 'r':
-                      {
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        uint8_t i = serialInput - '0';
-                        i = constrain(i, 0, ProfileCount - 1);
-                        serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        uint8_t v = serialInput - '0';
-                        v = constrain(v, 0, 2);
-                        profileData[i].runMode = v;
-                        if(i == selectedProfile) {
-                            switch(v) {
-                              case 0:
-                                SetRunMode(RunMode_Normal);
-                                break;
-                              case 1:
-                                SetRunMode(RunMode_Average);
-                                break;
-                              case 2:
-                                SetRunMode(RunMode_Average2);
-                                break;
+                        byte sCase = Serial.parseInt();
+                        switch(sCase) {
+                          case 0:
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            customPinsInUse = serialInput - '0';
+                            customPinsInUse = constrain(customPinsInUse, 0, 1);
+                            Serial.println("OK: Toggled Custom Pin setting.");
+                            break;
+                          case 1:
+                            serialInput = Serial.read(); // nomf
+                            btnTrigger = Serial.parseInt();
+                            btnTrigger = constrain(btnTrigger, -1, 40);
+                            Serial.println("OK: Set trigger button pin.");
+                            break;
+                          case 2:
+                            serialInput = Serial.read(); // nomf
+                            btnGunA = Serial.parseInt();
+                            btnGunA = constrain(btnGunA, -1, 40);
+                            Serial.println("OK: Set A button pin.");
+                            break;
+                          case 3:
+                            serialInput = Serial.read(); // nomf
+                            btnGunB = Serial.parseInt();
+                            btnGunB = constrain(btnGunB, -1, 40);
+                            Serial.println("OK: Set B button pin.");
+                            break;
+                          case 4:
+                            serialInput = Serial.read(); // nomf
+                            btnGunC = Serial.parseInt();
+                            btnGunC = constrain(btnGunC, -1, 40);
+                            Serial.println("OK: Set C button pin.");
+                            break;
+                          case 5:
+                            serialInput = Serial.read(); // nomf
+                            btnStart = Serial.parseInt();
+                            btnStart = constrain(btnStart, -1, 40);
+                            Serial.println("OK: Set Start button pin.");
+                            break;
+                          case 6:
+                            serialInput = Serial.read(); // nomf
+                            btnSelect = Serial.parseInt();
+                            btnSelect = constrain(btnSelect, -1, 40);
+                            Serial.println("OK: Set Select button pin.");
+                            break;
+                          case 7:
+                            serialInput = Serial.read(); // nomf
+                            btnGunUp = Serial.parseInt();
+                            btnGunUp = constrain(btnGunUp, -1, 40);
+                            Serial.println("OK: Set D-Pad Up button pin.");
+                            break;
+                          case 8:
+                            serialInput = Serial.read(); // nomf
+                            btnGunDown = Serial.parseInt();
+                            btnGunDown = constrain(btnGunDown, -1, 40);
+                            Serial.println("OK: Set D-Pad Down button pin.");
+                            break;
+                          case 9:
+                            serialInput = Serial.read(); // nomf
+                            btnGunLeft = Serial.parseInt();
+                            btnGunLeft = constrain(btnGunLeft, -1, 40);
+                            Serial.println("OK: Set D-Pad Left button pin.");
+                            break;
+                          case 10:
+                            serialInput = Serial.read(); // nomf
+                            btnGunRight = Serial.parseInt();
+                            btnGunRight = constrain(btnGunRight, -1, 40);
+                            Serial.println("OK: Set D-Pad Right button pin.");
+                            break;
+                          case 11:
+                            serialInput = Serial.read(); // nomf
+                            btnPedal = Serial.parseInt();
+                            btnPedal = constrain(btnPedal, -1, 40);
+                            Serial.println("OK: Set External Pedal button pin.");
+                            break;
+                          case 12:
+                            serialInput = Serial.read(); // nomf
+                            btnHome = Serial.parseInt();
+                            btnHome = constrain(btnHome, -1, 40);
+                            Serial.println("OK: Set Home button pin.");
+                            break;
+                          case 13:
+                            serialInput = Serial.read(); // nomf
+                            btnPump = Serial.parseInt();
+                            btnPump = constrain(btnPump, -1, 40);
+                            Serial.println("OK: Set Pump Action button pin.");
+                            break;
+                          #ifdef USES_RUMBLE
+                          case 14:
+                            serialInput = Serial.read(); // nomf
+                            rumblePin = Serial.parseInt();
+                            rumblePin = constrain(rumblePin, -1, 40);
+                            Serial.println("OK: Set Rumble signal pin.");
+                            break;
+                          #endif
+                          #ifdef USES_SOLENOID
+                          case 15:
+                            serialInput = Serial.read(); // nomf
+                            solenoidPin = Serial.parseInt();
+                            solenoidPin = constrain(solenoidPin, -1, 40);
+                            Serial.println("OK: Set Solenoid signal pin.");
+                            break;
+                          #ifdef USES_TEMP
+                          case 16:
+                            serialInput = Serial.read(); // nomf
+                            tempPin = Serial.parseInt();
+                            tempPin = constrain(tempPin, -1, 40);
+                            Serial.println("OK: Set Temperature Sensor pin.");
+                            break;
+                          #endif
+                          #endif
+                          #ifdef USES_SWITCHES
+                          #ifdef USES_RUMBLE
+                          case 17:
+                            serialInput = Serial.read(); // nomf
+                            rumbleSwitch = Serial.parseInt();
+                            rumbleSwitch = constrain(rumbleSwitch, -1, 40);
+                            Serial.println("OK: Set Rumble Switch pin.");
+                            break;
+                          #endif
+                          #ifdef USES_SOLENOID
+                          case 18:
+                            serialInput = Serial.read(); // nomf
+                            solenoidSwitch = Serial.parseInt();
+                            solenoidSwitch = constrain(solenoidSwitch, -1, 40);
+                            Serial.println("OK: Set Solenoid Switch pin.");
+                            break;
+                          #endif
+                          case 19:
+                            serialInput = Serial.read(); // nomf
+                            autofireSwitch = Serial.parseInt();
+                            autofireSwitch = constrain(autofireSwitch, -1, 40);
+                            Serial.println("OK: Set Autofire Switch pin.");
+                            break;
+                          #endif
+                          #ifdef FOURPIN_LED
+                          case 20:
+                            serialInput = Serial.read(); // nomf
+                            PinR = Serial.parseInt();
+                            PinR = constrain(PinR, -1, 40);
+                            Serial.println("OK: Set RGB LED R pin.");
+                            break;
+                          case 21:
+                            serialInput = Serial.read(); // nomf
+                            PinG = Serial.parseInt();
+                            PinG = constrain(PinG, -1, 40);
+                            Serial.println("OK: Set RGB LED G pin.");
+                            break;
+                          case 22:
+                            serialInput = Serial.read(); // nomf
+                            PinB = Serial.parseInt();
+                            PinB = constrain(PinB, -1, 40);
+                            Serial.println("OK: Set RGB LED B pin.");
+                            break;
+                          #endif
+                          #ifdef CUSTOM_NEOPIXEL
+                          case 23:
+                            serialInput = Serial.read(); // nomf
+                            customLEDpin = Serial.parseInt();
+                            customLEDpin = constrain(customLEDpin, -1, 40);
+                            Serial.println("OK: Set Custom NeoPixel pin.");
+                            break;
+                          #endif
+                          #ifdef USES_ANALOG
+                          case 24:
+                            serialInput = Serial.read(); // nomf
+                            analogPinX = Serial.parseInt();
+                            analogPinX = constrain(analogPinX, -1, 40);
+                            Serial.println("OK: Set Analog X pin.");
+                            break;
+                          case 25:
+                            serialInput = Serial.read(); // nomf
+                            analogPinY = Serial.parseInt();
+                            analogPinY = constrain(analogPinY, -1, 40);
+                            Serial.println("OK: Set Analog Y pin.");
+                            break;
+                          #endif
+                          default:
+                            while(!Serial.available()) {
+                              serialInput = Serial.read(); // nomf it all
                             }
+                            Serial.println("NOENT: No matching case (feature disabled).");
+                            break;
                         }
-                        Serial.println("OK: Set Run Mode");
-                        break;
-                      }
+                    // Extended Settings
+                    } else if(serialInput == '2') {
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        switch(serialInput) {
+                          #ifdef USES_RUMBLE
+                          case '0':
+                            serialInput = Serial.read(); // nomf
+                            rumbleIntensity = Serial.parseInt();
+                            rumbleIntensity = constrain(rumbleIntensity, 0, 255);
+                            Serial.println("OK: Set Rumble Intensity setting.");
+                            break;
+                          case '1':
+                            serialInput = Serial.read(); // nomf
+                            rumbleInterval = Serial.parseInt();
+                            Serial.println("OK: Set Rumble Length setting.");
+                            break;
+                          #endif
+                          #ifdef USES_SOLENOID
+                          case '2':
+                            serialInput = Serial.read(); // nomf
+                            solenoidNormalInterval = Serial.parseInt();
+                            Serial.println("OK: Set Solenoid Normal Interval setting.");
+                            break;
+                          case '3':
+                            serialInput = Serial.read(); // nomf
+                            solenoidFastInterval = Serial.parseInt();
+                            Serial.println("OK: Set Solenoid Fast Interval setting.");
+                            break;
+                          case '4':
+                            serialInput = Serial.read(); // nomf
+                            solenoidLongInterval = Serial.parseInt();
+                            Serial.println("OK: Set Solenoid Hold Length setting.");
+                            break;
+                          #endif
+                          #ifdef CUSTOM_NEOPIXEL
+                          case '5':
+                            serialInput = Serial.read(); // nomf
+                            customLEDcount = Serial.parseInt();
+                            customLEDcount = constrain(customLEDcount, 1, 255);
+                            Serial.println("OK: Set NeoPixel strand length setting.");
+                            break;
+                          #endif
+                          case '6':
+                            serialInput = Serial.read(); // nomf
+                            autofireWaitFactor = Serial.parseInt();
+                            autofireWaitFactor = constrain(autofireWaitFactor, 2, 4);
+                            Serial.println("OK: Set Autofire Wait Factor setting.");
+                            break;
+                          case '7':
+                            serialInput = Serial.read(); // nomf
+                            pauseHoldLength = Serial.parseInt();
+                            Serial.println("OK: Set Hold to Pause length setting.");
+                            break;
+                          default:
+                            while(!Serial.available()) {
+                              serialInput = Serial.read(); // nomf it all
+                            }
+                            Serial.println("NOENT: No matching case (feature disabled).");
+                            break;
+                        }
+                    #ifdef USE_TINYUSB
+                    // TinyUSB Identifier Settings
+                    } else if(serialInput == '3') {
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        switch(serialInput) {
+                          // Device PID
+                          case '0':
+                            {
+                              serialInput = Serial.read(); // nomf
+                              devicePID = Serial.parseInt();
+                              Serial.println("OK: Updated TinyUSB Device ID.");
+                              EEPROM.put(EEPROM.length() - 22, devicePID);
+                              #ifdef ARDUINO_ARCH_RP2040
+                                  EEPROM.commit();
+                              #endif // ARDUINO_ARCH_RP2040
+                              break;
+                            }
+                          // Device name
+                          case '1':
+                            serialInput = Serial.read(); // nomf
+                            for(byte i = 0; i < sizeof(deviceName); i++) {
+                                deviceName[i] = '\0';
+                            }
+                            for(byte i = 0; i < 15; i++) {
+                                deviceName[i] = Serial.read();
+                                if(!Serial.available()) {
+                                    break;
+                                }
+                            }
+                            Serial.println("OK: Updated TinyUSB Device String.");
+                            for(byte i = 0; i < 16; i++) {
+                                EEPROM.update(EEPROM.length() - 18 + i, deviceName[i]);
+                            }
+                            #ifdef ARDUINO_ARCH_RP2040
+                                EEPROM.commit();
+                            #endif // ARDUINO_ARCH_RP2040
+                            break;
+                        }
+                    #endif // USE_TINYUSB
+                    // Profile settings
+                    } else if(serialInput == 'P') {
+                        serialInput = Serial.read(); // nomf
+                        serialInput = Serial.read();
+                        switch(serialInput) {
+                          case 'i':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t i = serialInput - '0';
+                            i = constrain(i, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t v = serialInput - '0';
+                            v = constrain(v, 0, 2);
+                            profileData[i].irSensitivity = v;
+                            if(i == selectedProfile) {
+                                SetIrSensitivity(v);
+                            }
+                            Serial.println("OK: Set IR sensitivity");
+                            break;
+                          }
+                          case 'r':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t i = serialInput - '0';
+                            i = constrain(i, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t v = serialInput - '0';
+                            v = constrain(v, 0, 2);
+                            profileData[i].runMode = v;
+                            if(i == selectedProfile) {
+                                switch(v) {
+                                  case 0:
+                                    SetRunMode(RunMode_Normal);
+                                    break;
+                                  case 1:
+                                    SetRunMode(RunMode_Average);
+                                    break;
+                                  case 2:
+                                    SetRunMode(RunMode_Average2);
+                                    break;
+                                }
+                            }
+                            Serial.println("OK: Set Run Mode");
+                            break;
+                          }
+                        }
                     }
                 }
                 break;
