@@ -66,7 +66,6 @@ Pause mode can be entered by either pressing C + Select by default, or *holding 
 - A, B, Start, Select: select a profile
 - Start + Down: Normal gun mode (averaging disabled)
 - Start + Up: Normal gun with averaging, switch between the 2 averaging modes (use serial monitor to see the setting)
-- Start + A: Processing mode for use with the Processing sketch
 - B + Down: Decrease IR camera sensitivity (use a serial monitor to see the setting)
 - B + Up: Increase IR camera sensitivity (use a serial monitor to see the setting)
 - C/Reload: Exit pause mode
@@ -137,6 +136,8 @@ The calibration data, profile settings, and extended gun options like custom pin
 For ItsyBitsy M0 and M4 boards, the external on-board SPI flash memory is used; for ATmega32U4 and RP2040, the EEPROM is used (in the 2040's case, a simulated EEPROM provided by the USB stack that actually writes to program flash space, but is considered EEPROM nonetheless).
 
 #### Processing Mode
+TODO: being implemented in G4A-GUI.
+
 The Processing mode is intended for use with the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Download [Processing](processing.org) and the 4IR processing sketch. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
 
 ## Technical Details & Assorted Errata
