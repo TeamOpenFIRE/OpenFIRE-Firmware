@@ -480,9 +480,6 @@ uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
 // button combo to enter pause mode (holding ver)
 uint32_t EnterPauseModeHoldBtnMask = BtnMask_Trigger | BtnMask_A;
 
-// press any button to enter pause mode from Processing mode (this is not a button combo)
-uint32_t EnterPauseModeProcessingBtnMask = BtnMask_A | BtnMask_B | BtnMask_Reload;
-
 // button combo to exit pause mode back to run mode
 uint32_t ExitPauseModeBtnMask = BtnMask_Reload;
 
@@ -507,7 +504,6 @@ uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
 // button combinations to select a run mode
 uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
 uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
-uint32_t RunModeProcessingBtnMask = BtnMask_Start | BtnMask_Right;
 
 // button combination to toggle offscreen button mode in software:
 uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
@@ -1680,8 +1676,6 @@ void loop()
                 SetRunMode(RunMode_Normal);
             } else if(buttons.pressedReleased == RunModeAverageBtnMask) {
                 SetRunMode(runMode == RunMode_Average ? RunMode_Average2 : RunMode_Average);
-            } else if(buttons.pressedReleased == RunModeProcessingBtnMask) {
-                SetRunMode(RunMode_Processing);
             } else if(buttons.pressedReleased == IRSensitivityUpBtnMask) {
                 IncreaseIrSensitivity();
             } else if(buttons.pressedReleased == IRSensitivityDownBtnMask) {
@@ -1768,8 +1762,8 @@ void loop()
             /* ---------------------- LET'S GO --------------------------- */
             switch(runMode) {
             case RunMode_Processing:
-                ExecRunModeProcessing();
-                break;
+                //ExecRunModeProcessing();
+                //break;
             case RunMode_Average:
             case RunMode_Average2:
             case RunMode_Normal:
@@ -2069,13 +2063,11 @@ void ExecRunModeProcessing()
     buttons.ReportDisable();
     for(;;) {
         buttons.Poll(1);
-        if(buttons.pressedReleased & EnterPauseModeProcessingBtnMask) {
-            Serial.println("Exiting Test Mode");
-            SetMode(GunMode_Docked);
-            return;
-        }
         if(Serial.available()) {
             SerialProcessingDocked();
+        }
+        if(runMode != RunMode_Processing) {
+            return;
         }
 
         #ifdef SAMCO_NO_HW_TIMER
@@ -2263,6 +2255,9 @@ void ExecGunModeDocked()
 
         if(gunMode != GunMode_Docked) {
             return;
+        }
+        if(runMode == RunMode_Processing) {
+            ExecRunModeProcessing();
         }
     }
 }
@@ -2687,11 +2682,9 @@ void SerialProcessingDocked()
                           SetRunMode(RunMode_Average2);
                           break;
                     }
-                    SetMode(GunMode_Docked);
                 } else {
                     Serial.println("Entering Test Mode...");
                     SetRunMode(RunMode_Processing);
-                    SetMode(GunMode_Run);
                 }
                 break;
               // Enter Docked Mode
@@ -2704,6 +2697,17 @@ void SerialProcessingDocked()
                     SetMode(GunMode_Run);
                 } else {
                     SetMode(GunMode_Init);
+                }
+                switch(profileData[selectedProfile].runMode) {
+                    case RunMode_Normal:
+                      SetRunMode(RunMode_Normal);
+                      break;
+                    case RunMode_Average:
+                      SetRunMode(RunMode_Average);
+                      break;
+                    case RunMode_Average2:
+                      SetRunMode(RunMode_Average2);
+                      break;
                 }
                 break;
               // Enter Calibration mode (optional: switch to cal profile if detected)
