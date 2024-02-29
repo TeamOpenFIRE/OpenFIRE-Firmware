@@ -70,6 +70,7 @@ For reference, the default schematic and (general) layout for the build and its 
 > Solenoid *may or may not* cause EMI disconnects depending on the build, the input voltage, and the disarray of wiring in tight gun builds. **This is not caused by the sketch,** but something that theoretically applies to most custom gun builds (just happened to happen to me and didn't find many consistent search results involving this, so be forewarned!) ***Make sure you use thick enough wiring!*** I replaced my jumper cables with 18AWG wires, as well as reduced freely floating ground daisy chain clumps, and my build seems to hold up to sustained solenoid use now.
 
 ## TODO (can and will implement, just not now):
+- (Re-)expose button function remapping.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`); able to do so now, just have to do it.
 - Detect temp monitor in a more graceful way to determine which solenoid activation path to use, so we don't need to have different firmwares with TMP enabled/disabled.
 - Code is still kind of a mess, so I should clean things up at some point maybe kinda.
