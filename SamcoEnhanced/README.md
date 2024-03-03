@@ -13,7 +13,7 @@
    - [Profiles](#profiles)
    - [Software Toggles](#software-toggles)
    - [Saving settings to non-volatile memory](#saving-settings-to-non-volatile-memory)
-   - [Processing Mode](#processing-mode)
+   - [Test Mode](#test-mode)
  - [Technical Details & Assorted Errata](#technical-details--assorted-errata)
    - [Serial Handoff (Mame Hooker) Mode](#serial-handoff-mame-hooker-mode)
    - [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns)
@@ -44,7 +44,7 @@ The gun has the following modes of operation:
 1. Normal - The mouse position updates from each frame from the IR positioning camera (no averaging)
 2. Averaging - The position is calculated from a 2 frame moving average (current + previous position)
 3. Averaging2 - The position is calculated from a weighted average of the current frame and 2 previous frames
-4. Processing - Test mode for use with the Processing sketch (this mode is prevented from being assigned to a profile)
+4. Processing - Test mode for use with the GUI (this mode is prevented from being assigned to a profile)
 
 The averaging modes are subtle but do reduce the motion jitter a bit without adding much if any noticeable lag.
 
@@ -114,7 +114,7 @@ The IR camera sensitivity can be adjusted. It is recommended to adjust the sensi
 
 A sign that the IR sensitivity is too low is if the pointer moves in noticeable coarse steps, as if it has a low resolution to it. If you have the sensitivity level set to max and you notice this then the IR emitters may not be bright enough.
 
-A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. The Processing sketch can help daignose this problem since it will visually display the 4 IR points.
+A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. Test Mode can help daignose this problem since it will visually display the 4 IR points.
 
 ### Profiles
 The sketch is configured with 4 profiles available (with up to 8 possible if desired, correlating to the d-pad). Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select), or selecting them via the profiles submenu in simple pause menu.
@@ -135,10 +135,8 @@ The calibration data, profile settings, and extended gun options like custom pin
 
 For ItsyBitsy M0 and M4 boards, the external on-board SPI flash memory is used; for ATmega32U4 and RP2040, the EEPROM is used (in the 2040's case, a simulated EEPROM provided by the USB stack that actually writes to program flash space, but is considered EEPROM nonetheless).
 
-#### Processing Mode
-TODO: being implemented in G4A-GUI.
-
-The Processing mode is intended for use with the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Download [Processing](processing.org) and the 4IR processing sketch. The Processing sketch lets you visually see the IR points as seen by the camera. This is very useful aligning the camera when building your light gun and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
+#### Test Mode
+The Test Mode is intended for use with [GUN4ALL-GUI v1.1 (Inuwaka)](https://github.com/SeongGino/GUN4ALL-GUI/releases/tag/v1.1), which contains a reimplementation of the [SAMCO Processing sketch](https://github.com/samuelballantyne/IR-Light-Gun/tree/master/Samco_4IR_Beta/Samco_4IR_Processing_Sketch_BETA). Test Mode lets you visually see the IR points as seen by the camera. This is very useful for aligning the camera when building your light gun, and for testing that the camera tracks all 4 points properly, as well as observing possible reflections.
 
 ## Technical Details & Assorted Errata
 
