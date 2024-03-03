@@ -688,6 +688,9 @@ bool justBooted = true;                              // For ops we need to do on
 bool dockedSaving = false;                           // To block sending test output in docked mode.
 bool dockedCalibrating = false;                      // If set, calibration will send back to docked mode.
 
+unsigned long testLastStamp;                         // Timestamp of last print in test mode.
+const byte testPrintInterval = 50;                   // Minimum time allowed between test mode printouts.
+
 #ifdef EXTRA_POS_GLITCH_FILTER00
 int badFinalTick = 0;
 int badMoveTick = 0;
@@ -2080,19 +2083,22 @@ void ExecRunModeProcessing()
             if(error == DFRobotIRPositionEx::Error_Success) {
                 mySamco.begin(dfrIRPos.xPositions(), dfrIRPos.yPositions(), dfrIRPos.seen(), MouseMaxX / 2, MouseMaxY / 2);
                 UpdateLastSeen();
-                for(int i = 0; i < 4; i++) {
-                    Serial.print(map(mySamco.testX(i), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
+                if(millis() - testLastStamp > testPrintInterval) {
+                    testLastStamp = millis();
+                    for(int i = 0; i < 4; i++) {
+                        Serial.print(map(mySamco.testX(i), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
+                        Serial.print(",");
+                        Serial.print(map(mySamco.testY(i), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
+                        Serial.print(",");
+                    }
+                    Serial.print(map(mySamco.x(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
                     Serial.print(",");
-                    Serial.print(map(mySamco.testY(i), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
+                    Serial.print(map(mySamco.y(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
                     Serial.print(",");
+                    Serial.print(map(mySamco.testMedianX(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
+                    Serial.print(",");
+                    Serial.println(map(mySamco.testMedianY(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
                 }
-                Serial.print(map(mySamco.x(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
-                Serial.print(",");
-                Serial.print(map(mySamco.y(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
-                Serial.print(",");
-                Serial.print(map(mySamco.testMedianX(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
-                Serial.print(",");
-                Serial.println(map(mySamco.testMedianY(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
             } else if(error == DFRobotIRPositionEx::Error_IICerror) {
                 Serial.println("Device not available!");
             }
