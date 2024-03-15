@@ -632,6 +632,8 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 #ifdef USES_ANALOG
     bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
     bool analogStickPolled = false;              // Flag set on if the stick was polled recently, to prevent overloading with aStick updates.
+    unsigned long previousStickPoll = 0;         // timestamp of last stick poll
+    byte analogPollInterval = 2;                 // amount of time to wait after irPosUpdateTick to update analog position, in ms
 #endif // USES_ANALOG
 
 #ifdef FOURPIN_LED
@@ -1375,11 +1377,13 @@ void loop1()
 
         #ifdef USES_ANALOG
             if(analogIsValid) {
-                // We tie analog stick updates to the IR camera timer, so as to not overload USB bandwidth.
-                // For some reason, tying it to irPosUpdateTick exclusively prevents mouse dropout.
-                if(!analogStickPolled && irPosUpdateTick) {
-                    AnalogStickPoll();
-                    analogStickPolled = true;
+                // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
+                // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
+                if(!analogStickPolled) {
+                    if(millis() - previousStickPoll > analogPollInterval) {
+                        AnalogStickPoll();
+                        analogStickPolled = true;
+                    }
                 }
             }
         #endif // USES_ANALOG
@@ -1930,6 +1934,7 @@ void ExecRunMode()
 
             #ifdef USES_ANALOG
                 analogStickPolled = false;
+                previousStickPoll = millis();
             #endif // USES_ANALOG
         }
 
@@ -1938,10 +1943,13 @@ void ExecRunMode()
 
         #ifdef USES_ANALOG
             if(analogIsValid) {
-                // We tie analog stick updates to the IR camera timer, so as to not overload USB bandwidth.
-                if(!analogStickPolled && irPosUpdateTick) {
-                    AnalogStickPoll();
-                    analogStickPolled = true;
+                // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
+                // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
+                if(!analogStickPolled) {
+                    if(millis() - previousStickPoll > analogPollInterval) {
+                        AnalogStickPoll();
+                        analogStickPolled = true;
+                    }
                 }
             }
         #endif // USES_ANALOG
@@ -2637,13 +2645,6 @@ void AnalogStickPoll()
 {
     unsigned int analogValueX = analogRead(analogPinX);
     unsigned int analogValueY = analogRead(analogPinY);
-    // Check if we're in the deadzone or not (roughly 15% on each axis)
-    if(analogValueX > 1500 && analogValueX < 2500) {
-        analogValueX = 2048;
-    }
-    if(analogValueY > 1500 && analogValueY < 2500) {
-        analogValueY = 2048;
-    }
     Gamepad16.moveStick(analogValueX, analogValueY);
 }
 #endif // USES_ANALOG
