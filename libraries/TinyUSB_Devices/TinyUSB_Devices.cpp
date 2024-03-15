@@ -426,12 +426,13 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::moveStick(uint16_t origX, uint16_t origY) {
+    // TODO: inverted output for Cabela's Top Shot Elite sticks, but it might be backwards for others.
     if(stickRight) {
-        gamepad16Report.Rx = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Ry = map(origY, 0, 4095, 0, 65535);
+        gamepad16Report.Rx = map(origX, 0, 4095, 65535, 0);
+        gamepad16Report.Ry = map(origY, 0, 4095, 65535, 0);
     } else {
-        gamepad16Report.X = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Y = map(origY, 0, 4095, 0, 65535);
+        gamepad16Report.X = map(origX, 0, 4095, 65535, 0);
+        gamepad16Report.Y = map(origY, 0, 4095, 65535, 0);
     }
     report();
   }
