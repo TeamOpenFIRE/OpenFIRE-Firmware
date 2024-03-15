@@ -14,8 +14,8 @@
  * @author [That One Seong](SeongsSeongs@gmail.com)
  * @date 2023
  */
-#define G4ALL_VERSION 4.0
-#define G4ALL_CODENAME "L.G.A Force"
+#define G4ALL_VERSION 4.1
+#define G4ALL_CODENAME "Song of Edo"
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 #define G4ALL_BOARD "adafruitItsyRP2040"
