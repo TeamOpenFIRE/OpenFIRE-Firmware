@@ -1380,7 +1380,9 @@ void loop1()
                 // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
                 // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
                 if(!analogStickPolled) {
-                    if(millis() - previousStickPoll > analogPollInterval) {
+                    if(buttons.pressed || buttons.released) {
+                        previousStickPoll = millis();
+                    } else if(millis() - previousStickPoll > analogPollInterval) {
                         AnalogStickPoll();
                         analogStickPolled = true;
                     }
@@ -1946,7 +1948,9 @@ void ExecRunMode()
                 // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
                 // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
                 if(!analogStickPolled) {
-                    if(millis() - previousStickPoll > analogPollInterval) {
+                    if(buttons.pressed || buttons.released) {
+                        previousStickPoll = millis();
+                    } else if(millis() - previousStickPoll > analogPollInterval) {
                         AnalogStickPoll();
                         analogStickPolled = true;
                     }
