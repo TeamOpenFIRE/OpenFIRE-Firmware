@@ -13,6 +13,7 @@
 #ifndef _SAMCOBOARD_H_
 #define _SAMCOBOARD_H_
 
+//// COMPATIBILIY FLAGS
 // sadly even Arduino doesn't have ideal defines... very odd there is a generic __SAMD51__, but not __SAMD21__?
 // I'll add that anyway along with the known ItsyBitsy defines that are the supported boards
 #if defined(ADAFRUIT_ITSYBITSY_M0) || defined(ARDUINO_ITSYBITSY_M0) || defined(__SAMD21__) || defined(__SAMD21G18A__)
@@ -59,7 +60,7 @@
     // software button anti-glitch mask
     #define BTN_AG_MASK 0x3
     #define BTN_AG_MASK2 0xF
-#elif defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
+#elif defined(ARDUINO_ARCH_RP2040)
     // Raspberry Pi Pico RP2040
     #define SAMCO_RP2040 1
     
@@ -84,6 +85,7 @@
     #define BTN_AG_MASK2 0xF
 #endif // determine SAMCO_xxx board
 
+//// ONBOARD LEDS
 // specific ItsyBitsy board configuration
 #if defined(ADAFRUIT_ITSYBITSY_M0) || defined(ARDUINO_ITSYBITSY_M0)
     // included Dot Star on ItsyBitsy M0
@@ -103,12 +105,13 @@
     // use flash
     #define SAMCO_FLASH_ENABLE 1
 #endif // ADAFRUIT_ITSYBITSY_M4_EXPRESS
-#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040)
-    // included Neopixel on ItsyBitsy RP2040
-    #define NEOPIXEL_PIN 17
-    #define NEOPIXEL_ENABLEPIN 16
-#endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+#if defined(NEOPIXEL_POWER)
+    // included NeoPixel on compatible Adafruit boards
+    #define NEOPIXEL_PIN PIN_NEOPIXEL
+    #define NEOPIXEL_ENABLEPIN NEOPIXEL_POWER
+#endif // NEOPIXEL_POWER
 
+//// FLASH STORAGE
 // auto-detect flash presence if it is not yet enabled and no EEPROM
 #if !defined(SAMCO_FLASH_ENABLE) && !defined(SAMCO_EEPROM_ENABLE)
 #if defined(EXTERNAL_FLASH_USE_QSPI) || defined(EXTERNAL_FLASH_USE_SPI)
