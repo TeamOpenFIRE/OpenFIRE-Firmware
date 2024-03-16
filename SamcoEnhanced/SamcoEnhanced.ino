@@ -25,7 +25,8 @@
 #define G4ALL_BOARD "rpipico"
 #endif // board
 
- // Remember to check out the enclosed instruction book (README.md) that came with this program for more information!
+ // For custom builders, remember to check (COMPILING.md) for IDE instructions!
+ // ISSUERS: REMEMBER TO SPECIFY YOUR USING A CUSTOM BUILD & WHAT CHANGES ARE MADE TO THE SKETCH; OTHERWISE YOUR ISSUE MAY BE CLOSED!
 
 #include <Arduino.h>
 #include <SamcoBoard.h>
