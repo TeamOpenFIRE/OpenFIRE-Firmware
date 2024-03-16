@@ -1656,7 +1656,6 @@ void loop()
                                   break;
                             }
                         }
-                        SetMode(GunMode_Run);
                         #ifdef USES_RUMBLE
                             for(byte i = 0; i < 3; i++) {
                                 analogWrite(rumblePin, rumbleIntensity);
@@ -1669,6 +1668,7 @@ void loop()
                             //lol
                             buttons.Poll(1);
                         }
+                        SetMode(GunMode_Run);
                         pauseExitHoldStarted = false;
                     }
                 } else if(buttons.debounced & ExitPauseModeHoldBtnMask) {
@@ -2425,13 +2425,7 @@ void GetPosition()
         finalY = mySamco.y();
 #endif // EXTRA_POS_GLITCH_FILTER
 
-        #ifdef MAMEHOOKER
-        if(!serialMode) {
-            UpdateLastSeen();
-        }
-        #else
         UpdateLastSeen();
-        #endif // MAMEHOOKER
      
 #if DEBUG_SERIAL == 2
         Serial.print(finalX);
@@ -2460,13 +2454,19 @@ void SetModeWaitNoButtons(GunMode_e newMode, unsigned long maxWait)
 void UpdateLastSeen()
 {
     if(lastSeen != mySamco.seen()) {
-        #ifdef LED_ENABLE
-        if(!lastSeen && mySamco.seen()) {
-            LedOff();
-        } else if(lastSeen && !mySamco.seen()) {
-            SetLedPackedColor(IRSeen0Color);
+        #ifdef MAMEHOOKER
+        if(!serialMode) {
+        #endif // MAMEHOOKER
+            #ifdef LED_ENABLE
+            if(!lastSeen && mySamco.seen()) {
+                LedOff();
+            } else if(lastSeen && !mySamco.seen()) {
+                SetLedPackedColor(IRSeen0Color);
+            }
+            #endif // LED_ENABLE
+        #ifdef MAMEHOOKER
         }
-        #endif // LED_ENABLE
+        #endif // MAMEHOOKER
         lastSeen = mySamco.seen();
     }
 }
