@@ -19,6 +19,8 @@
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 #define G4ALL_BOARD "adafruitItsyRP2040"
+#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
+#define G4ALL_BOARD "adafruitKB2040"
 #elifdef ARDUINO_NANO_RP2040_CONNECT
 #define G4ALL_BOARD "arduinoNanoRP2040"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
@@ -205,6 +207,82 @@ int8_t btnGunRight = 5;
 int8_t btnPedal = 12;
 int8_t btnPump = -1;
 int8_t btnHome = -1;
+
+#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040           // For the Adafruit KB2040 - GUN4IR-compatible defaults
+#ifdef USES_SWITCHES
+    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
+    #ifdef USES_RUMBLE
+        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_RUMBLE
+    #ifdef USES_SOLENOID
+        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SOLENOID
+#endif // USES_SWITCHES
+
+#ifdef USES_RUMBLE
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
+    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
+    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+#endif // USES_RUMBLE
+
+#ifdef USES_SOLENOID
+    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_TEMP    
+        int8_t tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
+        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+#endif // USES_SOLENOID
+
+  // Remember: ANALOG PINS ONLY!
+#ifdef USES_ANALOG
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
+#endif // USES_ANALOG
+
+  // Remember: PWM PINS ONLY!
+#ifdef FOURPIN_LED
+    #define LED_ENABLE
+    int8_t PinR = -1;
+    int8_t PinG = -1;
+    int8_t PinB = -1;
+    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
+    bool commonAnode = true;
+#endif // FOURPIN_LED
+
+  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPixel.h>
+    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
+    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
+#endif // CUSTOM_NEOPIXEL
+
+  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
+int8_t rumblePin = 5;                            // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = 7;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t btnTrigger = A2;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = A3;                              // <-- GCon 1-spec
+int8_t btnGunB = 4;                              // <-- GCon 1-spec
+int8_t btnGunC = 6;                              // Everything below are for GCon 2-spec only 
+int8_t btnStart = 9;
+int8_t btnSelect = 8;
+int8_t btnGunUp = 18;
+int8_t btnGunDown = 20;
+int8_t btnGunLeft = 19;
+int8_t btnGunRight = 10;
+int8_t btnPedal = -1;
+int8_t btnPump = -1;
+int8_t btnHome = A1;
 
 #elifdef ARDUINO_NANO_RP2040_CONNECT
 // todo: finalize arduino nano layout soon - these are just test values for now.
@@ -711,8 +789,8 @@ constexpr int BadMoveThreshold = 49 * CamToMouseMult;
 unsigned int selectedProfile = 0;
 
 // IR positioning camera
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
-// ItsyBitsy RP2040 only exposes I2C1 pins on the board
+#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
+// ItsyBitsy RP2040 only exposes I2C1 pins on the board, & KB2040 is for GUN4IR board compatibility
 DFRobotIRPositionEx dfrIRPos(Wire1);
 #else // Pico et al does not have this limitation
 //DFRobotIRPosition myDFRobotIRPosition;
@@ -914,8 +992,8 @@ void setup() {
         TinyUSBInit();
     #endif // USE_TINYUSB
 
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
-    // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040
+#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
+    // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040 and KB2040
     Wire1.setSDA(2);
     Wire1.setSCL(3);
 #endif
