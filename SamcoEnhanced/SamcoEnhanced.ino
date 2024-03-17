@@ -169,8 +169,8 @@ bool burstFireActive = false;                         // Is the solenoid firing 
 
   // Remember: ANALOG PINS ONLY!
 #ifdef USES_ANALOG
-    int8_t analogPinX = A0;
-    int8_t analogPinY = A1;
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
 #endif // USES_ANALOG
 
   // Remember: PWM PINS ONLY!
@@ -322,8 +322,8 @@ int8_t btnHome = A1;
 
   // Remember: ANALOG PINS ONLY!
 #ifdef USES_ANALOG
-    int8_t analogPinX = A0;
-    int8_t analogPinY = A1;
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
 #endif // USES_ANALOG
 
   // Remember: PWM PINS ONLY!
@@ -399,8 +399,8 @@ int8_t btnHome = -1;
 
   // Remember: ANALOG PINS ONLY!
 #ifdef USES_ANALOG
-    int8_t analogPinX = A0;
-    int8_t analogPinY = A1;
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
 #endif // USES_ANALOG
 
   // Remember: PWM PINS ONLY!
