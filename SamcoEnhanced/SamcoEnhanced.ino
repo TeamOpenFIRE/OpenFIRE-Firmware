@@ -1601,7 +1601,7 @@ void loop()
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
-                    } else if(buttons.pressedReleased == BtnMask_Reload) {
+                    } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                         if(!serialMode) {
                             Serial.println("Exiting profile selection.");
                         }
