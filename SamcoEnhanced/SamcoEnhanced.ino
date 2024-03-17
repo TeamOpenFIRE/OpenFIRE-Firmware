@@ -559,8 +559,8 @@ uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
 // button combo to enter pause mode (holding ver)
 uint32_t EnterPauseModeHoldBtnMask = BtnMask_Trigger | BtnMask_A;
 
-// button combo to exit pause mode back to run mode
-uint32_t ExitPauseModeBtnMask = BtnMask_Reload;
+// press any button to exit hotkey pause mode back to run mode (this is not a button combo)
+uint32_t ExitPauseModeBtnMask = BtnMask_Reload | BtnMask_Home;
 
 // press and hold any button to exit simple pause menu (this is not a button combo)
 uint32_t ExitPauseModeHoldBtnMask = BtnMask_A | BtnMask_B;
@@ -1707,7 +1707,7 @@ void loop()
                           Serial.println("Oops, somethnig went wrong.");
                           break;
                     }
-                } else if(buttons.pressedReleased == BtnMask_Reload) {
+                } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                     if(!serialMode) {
                         Serial.println("Exiting pause mode...");
                     }
@@ -1756,7 +1756,7 @@ void loop()
                 } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask) {
                     pauseExitHoldStarted = false;
                 }
-            } else if(buttons.pressedReleased == ExitPauseModeBtnMask) {
+            } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                 SetMode(GunMode_Run);
             } else if(buttons.pressedReleased == BtnMask_Trigger) {
                 SetMode(GunMode_CalCenter);
