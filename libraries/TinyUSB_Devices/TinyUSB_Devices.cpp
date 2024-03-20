@@ -447,6 +447,11 @@ void AbsMouse5_::release(uint8_t button)
     report();
   }
 
+  void Gamepad16_::padUpdate(uint8_t padMask) {
+    gamepad16Report.hat = padMask;
+    report();
+  }
+
   void Gamepad16_::report() {
     if ( USBDevice.suspended() )  {
       USBDevice.remoteWakeup();
@@ -457,6 +462,7 @@ void AbsMouse5_::release(uint8_t button)
 
   void Gamepad16_::releaseAll() {
     gamepad16Report.buttons = 0;
+    gamepad16Report.hat = 0;
     gamepad16Report.X = 32767;
     gamepad16Report.Y = 32767;
     gamepad16Report.Rx = 32767;

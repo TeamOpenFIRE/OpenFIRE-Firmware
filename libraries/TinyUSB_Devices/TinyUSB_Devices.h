@@ -106,14 +106,6 @@ extern TinyUSBDevices_ TinyUSBDevices;
 			0xa1, 0x01, \
               0xa1, 0x00, \
               0x85, 0x03, \
-                0x05, 0x09, \
-                0x19, 0x01, \
-                0x29, 0x0F, \
-                0x15, 0x00, \
-                0x25, 0x01, \
-                0x75, 0x01, \
-                0x95, 0x10, \
-                0x81, 0x02, \
               0x05, 0x01, \
                 0x09, 0x30, \
                 0x09, 0x31, \
@@ -124,9 +116,29 @@ extern TinyUSBDevices_ TinyUSBDevices;
                 0x75, 0x10, \
                 0x95, 0x04, \
                 0x81, 0x02, \
+                HID_USAGE          ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+                HID_LOGICAL_MIN    ( 1                                      ) ,\
+                HID_LOGICAL_MAX    ( 8                                      ) ,\
+                HID_PHYSICAL_MIN   ( 0                                      ) ,\
+                HID_PHYSICAL_MAX_N ( 315, 2                                 ) ,\
+                HID_REPORT_COUNT   ( 1                                      ) ,\
+                HID_REPORT_SIZE    ( 8                                      ) ,\
+                0x81, 0x02, \
+                0x75, 0x08, \
+                0x95, 0x01, \
+                HID_INPUT          ( HID_CONSTANT | HID_VARIABLE | HID_ABSOLUTE ) ,\
+              0x05, 0x09, \
+                0x19, 0x01, \
+                0x29, 0x10, \
+                0x15, 0x00, \
+                0x25, 0x01, \
+                0x75, 0x01, \
+                0x95, 0x20, \
+                0x81, 0x02, \
               0xc0,       \
 			0xc0
 #endif // USE_TINYUSB
+// I really... REAAAAALLY HATE these descriptors
 
 // 5 button absolute mouse
 class AbsMouse5_
@@ -241,12 +253,44 @@ extern Keyboard_ Keyboard;
  *   GAMEPAD SECTION
  *****************************/
 
+#define PAD_A      0
+#define PAD_B      1
+#define PAD_C      2
+#define PAD_X      3
+#define PAD_Y      4
+#define PAD_Z      5
+#define PAD_LB     6
+#define PAD_RB     7
+#define PAD_LT     8
+#define PAD_RT     9
+#define PAD_SELECT 10
+#define PAD_START  11
+#define PAD_HOME   12
+#define PAD_LS     13
+#define PAD_RS     14
+#define PAD_UP     15
+#define PAD_DOWN   16
+#define PAD_LEFT   17
+#define PAD_RIGHT  18
+
+#define GAMEPAD_HAT_CENTERED 0
+#define GAMEPAD_HAT_UP 1
+#define GAMEPAD_HAT_UP_RIGHT 2
+#define GAMEPAD_HAT_RIGHT 3
+#define GAMEPAD_HAT_DOWN_RIGHT 4
+#define GAMEPAD_HAT_DOWN 5
+#define GAMEPAD_HAT_DOWN_LEFT 6
+#define GAMEPAD_HAT_LEFT 7
+#define GAMEPAD_HAT_UP_LEFT 8
+
 typedef struct {
-        uint16_t buttons;     // button bitmask
 		uint16_t X = 32768;
         uint16_t Y = 32768;
         uint16_t Rx = 32768;
         uint16_t Ry = 32768;
+        uint8_t hat;
+        uint8_t padding;
+        uint16_t buttons;     // button bitmask
 } gamepad16Report_s;
 
 class Gamepad16_ {
@@ -258,6 +302,7 @@ public:
   void moveStick(uint16_t origX, uint16_t origY);
   void press(uint8_t buttonNum);
   void release(uint8_t buttonNum);
+  void padUpdate(uint8_t padMask);
   void report(void);
   void releaseAll(void);
   bool stickRight;

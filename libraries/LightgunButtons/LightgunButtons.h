@@ -161,6 +161,14 @@ private:
     /// @brief Button debounce count array.
     uint8_t* debounceCount;
 
+    /// @brief Bit mask of directional buttons pressed
+    /// @details Used to track state of gamepad directional buttons pressed.
+    uint8_t padMask = 0x00000000;
+
+    /// @brief Bit mask of directional buttons pressed
+    /// @details Used to track state of gamepad directional buttons pressed.
+    uint8_t padMaskConv = 0x00000000;
+
     /// @brief Tracked buttons that are offscreen.
     uint32_t internalOffscreenMask;
 
