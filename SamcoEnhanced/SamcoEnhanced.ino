@@ -514,11 +514,11 @@ enum ButtonMask_e {
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
 LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
+    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Mouse, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
     {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
     {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
-    {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
-    {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
+    {btnStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
+    {btnSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
     {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
     {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
     {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
@@ -718,9 +718,6 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 #ifdef FOURPIN_LED
     bool ledIsValid;                             // Flag set true if RGB pins are mapped to valid numbers
 #endif // FOURPIN_LED
-
-// For button queuing:
-byte buttonsHeld = 0b00000000;                   // Bitmask of what aux buttons we've held on (for btnStart through btnRight)
 
 #ifdef MAMEHOOKER
 // For serial mode:
@@ -1431,8 +1428,6 @@ void loop1()
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
                 }
-                // For processing Start & Select.
-                ButtonsPush();
             } else {   // This is if we've received a serial signal pulse in the last n millis.
                 // For safety reasons, we're just using the second core for polling, and the main core for sending signals entirely. Too much a headache otherwise. =w='
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -1440,8 +1435,6 @@ void loop1()
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                             // Release button inputs.
                 }
-                // For processing start & select.
-                ButtonsPush();
                 SerialHandling();                                       // Process the force feedback.
             }
         #else
@@ -1450,8 +1443,6 @@ void loop1()
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
             }
-            // For processing the buttons tied to the keyboard.
-            ButtonsPush();
         #endif // MAMEHOOKER
 
         #ifdef USES_ANALOG
@@ -1924,15 +1915,12 @@ void ExecRunMode()
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                               // Releasing button inputs and sending stop signals to feedback devices.
                 }
-                // For processing the buttons tied to the keyboard.
-                ButtonsPush();
             } else {  // Serial handoff mode
                 if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                         // Release button inputs.
                 }
-                ButtonsPush();                                      // For processing start & select.
                 SerialHandling();                                   // Process the force feedback from the current queue.
             }
         #else
@@ -1944,8 +1932,6 @@ void ExecRunMode()
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
             }
-            // For processing the buttons tied to the keyboard.
-            ButtonsPush();
         #endif // MAMEHOOKER
         #endif // DUAL_CORE
 
@@ -2556,7 +2542,7 @@ void TriggerFire()                                               // If we presse
     !offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
         if(!buttonPressed) {
             if(buttons.analogOutput) {
-                Gamepad16.press(0);                              // No reason to handle this ourselves here, but eh.
+                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); // No reason to handle this ourselves here, but eh.
             } else {
                 AbsMouse5.press(MOUSE_LEFT);                     // We're handling the trigger button press ourselves for a reason.
             }
@@ -2633,7 +2619,7 @@ void TriggerFire()                                               // If we presse
             if(!buttonPressed) {  // If we haven't pressed a trigger key yet,
                 if(!triggerHeld && offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
                     if(buttons.analogOutput) {
-                        Gamepad16.press(1);
+                        Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
                     } else {
                         AbsMouse5.press(MOUSE_RIGHT);
                     }
@@ -2641,7 +2627,7 @@ void TriggerFire()                                               // If we presse
                     buttonPressed = true;                      // Mark so we're not spamming these press events.
                 } else {  // Or if we're not in offscreen button mode,
                     if(buttons.analogOutput) {
-                        Gamepad16.press(0);
+                        Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
                     } else {
                         AbsMouse5.press(MOUSE_LEFT);
                     }
@@ -2684,7 +2670,7 @@ void TriggerNotFire()                                       // ...Or we just did
     if(buttonPressed) {
         if(offscreenBShot) {                                // If we fired off screen with the offscreenButton set,
             if(buttons.analogOutput) {
-                Gamepad16.release(1);
+                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
             } else {
                 AbsMouse5.release(MOUSE_RIGHT);             // We were pressing the right mouse, so release that.
             }
@@ -2692,7 +2678,7 @@ void TriggerNotFire()                                       // ...Or we just did
             buttonPressed = false;
         } else {                                            // Or if not,
             if(buttons.analogOutput) {
-                Gamepad16.release(0);
+                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
             } else {
                 AbsMouse5.release(MOUSE_LEFT);              // We were pressing the left mouse, so release that instead.
             }
@@ -4136,47 +4122,6 @@ void TriggerNotFireSimple()
 }
 #endif // MAMEHOOKER
 
-void ButtonsPush()
-{
-    // TinyUSB Devices' handling should be slightly more stable than the old Keyboard library across the board,
-    // so we only handle Start and Select differently to not conflict with the Pause Mode button combo.
-
-    if(bitRead(buttons.debounced, 3) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
-        if(!bitRead(buttonsHeld, 0)) {
-            if(buttons.analogOutput) {
-                Gamepad16.press(5);
-            } else {
-                Keyboard.press(playerStartBtn);
-            }
-            bitSet(buttonsHeld, 0);
-        }
-    } else if(!bitRead(buttons.debounced, 3) && bitRead(buttonsHeld, 0)) {
-        if(buttons.analogOutput) {
-            Gamepad16.release(5);
-        } else {
-            Keyboard.release(playerStartBtn);
-        }
-        bitClear(buttonsHeld, 0);
-    }
-
-    if(bitRead(buttons.debounced, 4) && !bitRead(buttons.debounced, 9)) { // Only if not holding Button C/Reload
-        if(!bitRead(buttonsHeld, 1)) {
-            if(buttons.analogOutput) {
-                Gamepad16.press(6);
-            } else {
-                Keyboard.press(playerSelectBtn);
-            }
-            bitSet(buttonsHeld, 1);
-        }
-    } else if(!bitRead(buttons.debounced, 4) && bitRead(buttonsHeld, 1)) {
-        if(buttons.analogOutput) {
-            Gamepad16.release(6);
-        } else {
-            Keyboard.release(playerSelectBtn);
-        }
-        bitClear(buttonsHeld, 1);
-    }
-}
 
 void SendEscapeKey()
 {
@@ -5584,48 +5529,36 @@ void BurstFire()
 }
 
 // Updates the button array with new bindings, if any.
-// VERY hacky workaround, but seems to work?
 void UpdateBindings(bool offscreenEnable)
 {
-    // TODO: this is ugly as shit. maybe use pointers instead? Copying tables wholesale works, but looking at it gives me an aneurysm.
+    // TODO: might still need to use pointers to the pins instead of lowkey memcopying, but at least this is less aneurysm-inducing.
+    LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = btnTrigger;
+    LightgunButtons::ButtonDesc[BtnIdx_A].pin = btnGunA;
+    LightgunButtons::ButtonDesc[BtnIdx_B].pin = btnGunB;
+    LightgunButtons::ButtonDesc[BtnIdx_Reload].pin = btnGunC;
+    LightgunButtons::ButtonDesc[BtnIdx_Start].pin = btnStart;
+    LightgunButtons::ButtonDesc[BtnIdx_Select].pin = btnSelect;
+    LightgunButtons::ButtonDesc[BtnIdx_Up].pin = btnGunUp;
+    LightgunButtons::ButtonDesc[BtnIdx_Down].pin = btnGunDown;
+    LightgunButtons::ButtonDesc[BtnIdx_Left].pin = btnGunLeft;
+    LightgunButtons::ButtonDesc[BtnIdx_Right].pin = btnGunRight;
+    LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = btnPedal;
+    LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = btnPump;
+    LightgunButtons::ButtonDesc[BtnIdx_Home].pin = btnHome;
     if(offscreenEnable) {
-        LightgunButtons::Desc_t ButtonDescReplacement[] = {
-            {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
-            {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-            {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
-            {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
-            {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
-            {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
-            {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
-            {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
-            {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
-            {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
-            {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
-            {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-            {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
-        };
-        for(byte n = 0; n < ButtonCount; n++) {
-            LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
-        }
+        LightgunButtons::ButtonDesc[1].reportType2 = LightgunButtons::ReportType_Keyboard;
+        LightgunButtons::ButtonDesc[1].reportCode2 = playerStartBtn;
+        LightgunButtons::ButtonDesc[2].reportType2 = LightgunButtons::ReportType_Keyboard;
+        LightgunButtons::ButtonDesc[2].reportCode2 = playerSelectBtn;
+        LightgunButtons::ButtonDesc[3].reportCode = playerStartBtn;
+        LightgunButtons::ButtonDesc[4].reportCode = playerSelectBtn;
     } else {
-        LightgunButtons::Desc_t ButtonDescReplacement[] = {
-            {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK},
-            {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-            {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, 2, 15, BTN_AG_MASK2},
-            {btnStart, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Internal, playerStartBtn, LightgunButtons::ReportType_Gamepad, 5, 20, BTN_AG_MASK2},
-            {btnSelect, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Internal, playerSelectBtn, LightgunButtons::ReportType_Gamepad, 6, 20, BTN_AG_MASK2},
-            {btnGunUp, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Keyboard, KEY_UP_ARROW, LightgunButtons::ReportType_Gamepad, 7, 20, BTN_AG_MASK2},
-            {btnGunDown, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Keyboard, KEY_DOWN_ARROW, LightgunButtons::ReportType_Gamepad, 8, 20, BTN_AG_MASK2},
-            {btnGunLeft, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_LEFT_ARROW, LightgunButtons::ReportType_Gamepad, 9, 20, BTN_AG_MASK2},
-            {btnGunRight, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Keyboard, KEY_RIGHT_ARROW, LightgunButtons::ReportType_Gamepad, 10, 20, BTN_AG_MASK2},
-            {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, 3, 15, BTN_AG_MASK2},
-            {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, 4, 15, BTN_AG_MASK2},
-            {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, 1, 15, BTN_AG_MASK2},
-            {btnHome, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, MOUSE_BUTTON5, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
-        };
-        for(byte n = 0; n < ButtonCount; n++) {
-            LightgunButtons::ButtonDesc[n] = ButtonDescReplacement[n];
-        }
+        LightgunButtons::ButtonDesc[1].reportType2 = LightgunButtons::ReportType_Mouse;
+        LightgunButtons::ButtonDesc[1].reportCode2 = MOUSE_RIGHT;
+        LightgunButtons::ButtonDesc[2].reportType2 = LightgunButtons::ReportType_Mouse;
+        LightgunButtons::ButtonDesc[2].reportCode2 = MOUSE_MIDDLE;
+        LightgunButtons::ButtonDesc[3].reportCode = playerStartBtn;
+        LightgunButtons::ButtonDesc[4].reportCode = playerSelectBtn;
     }
 }
 
