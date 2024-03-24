@@ -161,12 +161,12 @@ private:
     /// @brief Button debounce count array.
     uint8_t* debounceCount;
 
-    /// @brief Bit mask of directional buttons pressed
-    /// @details Used to track state of gamepad directional buttons pressed.
+    /// @brief Internal bit mask of directional buttons pressed.
+    /// @details Only the four rightmost bits are used to track state of gamepad directional buttons pressed.
     uint8_t padMask = 0x00000000;
 
-    /// @brief Bit mask of directional buttons pressed
-    /// @details Used to track state of gamepad directional buttons pressed.
+    /// @brief Bit mask of directional buttons pressed after conversion.
+    /// @details Converted from padMask before being passed over to TinyUSB_Devices' due to how HID POV works.
     uint8_t padMaskConv = 0x00000000;
 
     /// @brief Tracked buttons that are offscreen.
