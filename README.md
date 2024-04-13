@@ -61,6 +61,7 @@ For reference, the default schematic and (general) layout for the build and its 
  * *Layouts can be customized after installing the firmware - the only pins that **must** match are Camera Data & Clock.*
 
 ## Known Issues (want to fix sooner rather than later):
+- Calibrating while serial activity is ongoing has a chance of causing the gun to lock up (exact cause still being investigated).
 - MAMEHooker supports the main force feedback/lamp outputs and the offscreen button modeset, but is missing and will not react to the screen ratio or other modesets.
   * Are there games that have issues with this? It really should be resolved by the game/emulator, not the gun.
   * LED pulses sent rapidly may reset at the ON-falling position, but the effect looks kind of good actually. Is this really a bug?
