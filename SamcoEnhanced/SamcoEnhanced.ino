@@ -880,13 +880,11 @@ uint32_t stateFlags = StateFlagsDtrReset;
 Adafruit_DotStar dotstar(1, DOTSTAR_DATAPIN, DOTSTAR_CLOCKPIN, DOTSTAR_BGR);
 #endif // DOTSTAR_ENABLE
 
-#if defined(NEOPIXEL_PIN) && defined(CUSTOM_NEOPIXEL)
+#ifdef NEOPIXEL_PIN
 Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel externPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
-#elif defined(CUSTOM_NEOPIXEL)
-Adafruit_NeoPixel externPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
-#elif defined(NEOPIXEL_PIN)
-Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+#endif // CUSTOM_NEOPIXEL
+#ifdef CUSTOM_NEOPIXEL
+Adafruit_NeoPixel* externPixel;
 #endif // CUSTOM_NEOPIXEL
 
 // flash transport instance
@@ -1138,6 +1136,11 @@ void FeedbackSet()
         ledIsValid = true;
     }
     #endif // FOURPIN_LED
+    #ifdef CUSTOM_NEOPIXEL
+    if(customLEDpin >= 0) {
+        Adafruit_NeoPixel* externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+    }
+    #endif // CUSTOM_NEOPIXEL
 }
 
 // resets feedback pins to defaults
@@ -1177,6 +1180,15 @@ void PinsReset()
                 pinMode(PinB, INPUT);
             }
         #endif // FOURPIN_LED
+        #ifdef CUSTOM_NEOPIXEL
+            if(customLEDpin >= 0) {
+                if(externPixel) {
+                    delete externPixel;
+                }
+                Adafruit_NeoPixel* externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+                externPixel->begin();
+            }
+        #endif // CUSTOM_NEOPIXEL
     #endif // LED_ENABLE
 }
 
@@ -5093,7 +5105,7 @@ void LedInit()
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
         if(customLEDpin >= 0) {
-            externPixel.begin();
+            externPixel->begin();
         }
     #endif // CUSTOM_NEOPIXEL
  
@@ -5117,8 +5129,8 @@ void SetLedPackedColor(uint32_t color)
 #endif // NEOPIXEL_PIN
 #ifdef CUSTOM_NEOPIXEL
     if(customLEDpin >= 0) {
-        externPixel.fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
-        externPixel.show();
+        externPixel->fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
+        externPixel->show();
     }
 #endif // CUSTOM_NEOPIXEL
 #ifdef FOURPIN_LED
@@ -5168,9 +5180,9 @@ void LedUpdate(byte r, byte g, byte b)
     #ifdef CUSTOM_NEOPIXEL
         if(customLEDpin >= 0) {
             for(byte i = 0; i < customLEDcount; i++) {
-                externPixel.setPixelColor(i, r, g, b);
+                externPixel->setPixelColor(i, r, g, b);
             }
-            externPixel.show();
+            externPixel->show();
         }
     #endif // CUSTOM_NEOPIXEL
     #ifdef FOURPIN_LED
