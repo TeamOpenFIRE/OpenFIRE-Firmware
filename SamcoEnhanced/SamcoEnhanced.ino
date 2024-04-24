@@ -650,14 +650,14 @@ bool offYAxis = false;
 #ifdef USES_SOLENOID
     unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
     bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
     #ifdef USES_TEMP
         uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
         uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
         const unsigned int solenoidWarningInterval = solenoidFastInterval * 5; // for if solenoid is getting toasty.
     #endif // USES_TEMP
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
 
 // For burst firing stuff:
@@ -859,6 +859,8 @@ Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 #endif // CUSTOM_NEOPIXEL
 #ifdef CUSTOM_NEOPIXEL
 Adafruit_NeoPixel* externPixel;
+// Amount of pixels in a strand.
+uint16_t customLEDcount = 1;
 #endif // CUSTOM_NEOPIXEL
 
 // flash transport instance
