@@ -115,7 +115,7 @@
 #define USES_SOLENOID
 #ifdef USES_SOLENOID
     // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
-    //#define USES_TEMP
+    #define USES_TEMP
 #endif // USES_SOLENOID
 
   // Leave this uncommented if your build uses an analog stick.
@@ -150,21 +150,14 @@ bool burstFireActive = false;                         // Is the solenoid firing 
     #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
     bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
     #ifdef USES_TEMP    
-        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
-        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
+    #endif // USES_TEMP
 #endif // USES_SOLENOID
 
   // Remember: ANALOG PINS ONLY!
@@ -188,16 +181,15 @@ bool burstFireActive = false;                         // Is the solenoid firing 
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
     int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
   // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
 int8_t rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
 int8_t solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = 6;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = 7;                              // <-- GCon 1-spec
-int8_t btnGunB = 8;                              // <-- GCon 1-spec
-int8_t btnGunC = 9;                              // Everything below are for GCon 2-spec only 
+int8_t btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = 7;                               // <-- GCon 1-spec
+int8_t btnGunB = 8;                               // <-- GCon 1-spec
+int8_t btnGunC = 9;                               // Everything below are for GCon 2-spec only 
 int8_t btnStart = 10;
 int8_t btnSelect = 11;
 int8_t btnGunUp = 1;
@@ -226,21 +218,14 @@ int8_t btnHome = -1;
     #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+    bool rumbleActive = true;                     // Are we allowed to do rumble? Default to off.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
-    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    bool solenoidActive = true;                   // Are we allowed to use a solenoid? Default to off.
     #ifdef USES_TEMP    
         int8_t tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
-        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+    #endif // USES_TEMP
 #endif // USES_SOLENOID
 
   // Remember: ANALOG PINS ONLY!
@@ -264,16 +249,15 @@ int8_t btnHome = -1;
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
     int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
   // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-int8_t rumblePin = 5;                            // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = 7;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t rumblePin = 5;                             // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = 7;                           // What's the pin number of the solenoid output? Needs to be digital.
 int8_t btnTrigger = A2;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
 int8_t btnGunA = A3;                              // <-- GCon 1-spec
-int8_t btnGunB = 4;                              // <-- GCon 1-spec
-int8_t btnGunC = 6;                              // Everything below are for GCon 2-spec only 
+int8_t btnGunB = 4;                               // <-- GCon 1-spec
+int8_t btnGunC = 6;                               // Everything below are for GCon 2-spec only 
 int8_t btnStart = 9;
 int8_t btnSelect = 8;
 int8_t btnGunUp = 18;
@@ -303,21 +287,14 @@ int8_t btnHome = A1;
     #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
     bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
     #ifdef USES_TEMP    
-        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
-        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
+    #endif // USES_TEMP
 #endif // USES_SOLENOID
 
   // Remember: ANALOG PINS ONLY!
@@ -341,7 +318,6 @@ int8_t btnHome = A1;
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
     int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
   // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
@@ -380,21 +356,14 @@ int8_t btnHome = -1;
     #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
         #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
     #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                         // Are we allowed to do rumble? Default to off.
-    uint16_t rumbleIntensity = 255;               // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 125;          // How long to wait for the whole rumble command, in ms.
+    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
     bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
     #ifdef USES_TEMP    
-        int8_t tempPin = A2;                      // What's the pin number of the temp sensor? Needs to be analog.
-        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    #endif // USES_TEMP                               // **Anything above ^this^ is considered too dangerous, will disallow any further engagement.
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
+        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
+    #endif // USES_TEMP
 #endif // USES_SOLENOID
 
   // Remember: ANALOG PINS ONLY!
@@ -418,15 +387,14 @@ int8_t btnHome = -1;
     #define LED_ENABLE
     #include <Adafruit_NeoPixel.h>
     int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-    uint16_t customLEDcount = 1;                   // Amount of pixels; if not using a strip, just set to 1.
 #endif // CUSTOM_NEOPIXEL
 
 int8_t rumblePin = 17;                            // What's the pin number of the rumble output? Needs to be digital.
 int8_t solenoidPin = 16;                          // What's the pin number of the solenoid output? Needs to be digital.
 int8_t btnTrigger = 15;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = 0;                              // <-- GCon 1-spec
-int8_t btnGunB = 1;                              // <-- GCon 1-spec
-int8_t btnGunC = 2;                              // Everything below are for GCon 2-spec only 
+int8_t btnGunA = 0;                               // <-- GCon 1-spec
+int8_t btnGunB = 1;                               // <-- GCon 1-spec
+int8_t btnGunC = 2;                               // Everything below are for GCon 2-spec only 
 int8_t btnStart = 3;
 int8_t btnSelect = 4;
 int8_t btnGunUp = 6;
@@ -683,9 +651,13 @@ bool offYAxis = false;
     unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
     bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
     #ifdef USES_TEMP
-        int tempSensor;                          // Temp sensor changes over time, so just initialize the variable here ig.
-        const unsigned int solenoidWarningInterval = solenoidFastInterval * 3; // for if solenoid is getting toasty.
+        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+        const unsigned int solenoidWarningInterval = solenoidFastInterval * 5; // for if solenoid is getting toasty.
     #endif // USES_TEMP
+    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
+    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
+    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
 #endif // USES_SOLENOID
 
 // For burst firing stuff:
@@ -702,6 +674,8 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 
 // For rumble:
 #ifdef USES_RUMBLE
+    uint16_t rumbleIntensity = 255;              // The strength of the rumble motor, 0=off to 255=maxPower.
+    uint16_t rumbleInterval = 125;               // How long to wait for the whole rumble command, in ms.
     unsigned long previousMillisRumble = 0;      // our time since the rumble motor event started
     bool rumbleHappening = false;                // To keep track on if this is a rumble command or not.
     bool rumbleHappened = false;                 // If we're holding, this marks we sent a rumble command already.
@@ -2207,6 +2181,7 @@ void ExecGunModeDocked()
     #ifdef LED_ENABLE
         LedUpdate(127, 127, 255);
     #endif // LED_ENABLE
+    unsigned long tempChecked = millis();
     for(;;) {
         buttons.Poll(1);
 
@@ -2345,6 +2320,16 @@ void ExecGunModeDocked()
                 case BtnMask_Pump:
                   Serial.println("Released: 13");
                   break;
+            }
+            unsigned long currentMillis = millis();
+            if(currentMillis - tempChecked >= 1000) {
+                if(tempPin >= 0) {
+                    int tempSensor = analogRead(tempPin);
+                    tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100;
+                    Serial.print("Temperature: ");
+                    Serial.println(tempSensor);
+                }
+                tempChecked = currentMillis;
             }
         }
 
@@ -5446,48 +5431,59 @@ void SolenoidActivation(int solenoidFinalInterval)
         return;                                                   // We're done here now.
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        tempSensor = analogRead(tempPin);                         // Read the temp sensor.
-        tempSensor = (tempSensor * 0.32226563) + 0.5;             // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
-        #ifdef PRINT_VERBOSE
-            Serial.print("Current Temp near solenoid: ");
-            Serial.print(tempSensor);
-            Serial.println("*C");
-        #endif
-        if(tempSensor < tempNormal) {                             // Are we at (relatively) normal operating temps?
-            unsigned long currentMillis = millis();               // Start the timer.
-            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
-                previousMillisSol = currentMillis;                // Since we've waited long enough, calibrate the timer
-                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
-                return;                                           // Aaaand we're done here.
-            } else {                                              // If we pass the temp check but fail the timer check, we're here too quick.
-                return;                                           // Get out of here, speedy mc loserpants.
-            }
-        } else if(tempSensor < tempWarning) {                     // If we failed the room temp check, are we beneath the shutoff threshold?
-            if(digitalRead(solenoidPin)) {                        // Is the valve being pulled now?
-                unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
-                if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // We're holding it high for the requested time.
-                    previousMillisSol = currentMillis;            // Timer calibrate
-                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
-                    return;                                       // Yay.
-                } else {                                          // OR, Passed the temp check, STILL here too quick.
-                    return;                                       // Yeeted.
-                }
-            } else {                                              // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
-                unsigned long currentMillis = millis();           // Timerrrrrr.
-                if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
-                    previousMillisSol = currentMillis;            // Since we've waited long enough, calibrate the timer
-                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
-                    return;                                       // Doneso.
-                } else {                                          // OR, We passed the temp check but STILL got here too quick.
-                    return;                                       // Loser.
-                }
-            }
-        } else {                                                  // Failed both temp checks, so obviously it's not safe to fire.
+        if(tempPin >= 0) { // If a temp sensor is installed and enabled,
+            int tempSensor = analogRead(tempPin);
+            tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
             #ifdef PRINT_VERBOSE
-                Serial.println("Solenoid over safety threshold; not activating!");
+                Serial.print("Current Temp near solenoid: ");
+                Serial.print(tempSensor);
+                Serial.println("*C");
             #endif
-            digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
-            return;                                               // Go away.
+            if(tempSensor < tempNormal) { // Are we at (relatively) normal operating temps?
+                unsigned long currentMillis = millis();
+                if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
+                    previousMillisSol = currentMillis;
+                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                    return;
+                } else { // If we pass the temp check but fail the timer check, we're here too quick.
+                    return;
+                }
+            } else if(tempSensor < tempWarning) { // If we failed the room temp check, are we beneath the shutoff threshold?
+                if(digitalRead(solenoidPin)) {    // Is the valve being pulled now?
+                    unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
+                    if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
+                        previousMillisSol = currentMillis;
+                        digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
+                        return;
+                    } else { // OR, Passed the temp check, STILL here too quick.
+                        return;
+                    }
+                } else { // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
+                    unsigned long currentMillis = millis();
+                    if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
+                        previousMillisSol = currentMillis;
+                        digitalWrite(solenoidPin, !digitalRead(solenoidPin));
+                        return;
+                    } else { // OR, We passed the temp check but STILL got here too quick.
+                        return;
+                    }
+                }
+            } else { // Failed both temp checks, so obviously it's not safe to fire.
+                #ifdef PRINT_VERBOSE
+                    Serial.println("Solenoid over safety threshold; not activating!");
+                #endif
+                digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
+                return;
+            }
+        } else { // No temp sensor, so just go ahead.
+            unsigned long currentMillis = millis();                   // Start the timer.
+            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
+                previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
+                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                return;                                               // Aaaand we're done here.
+            } else {                                                  // If we failed the timer check, we're here too quick.
+                return;                                               // Get out of here, speedy mc loserpants.
+            }
         }
     #else                                                         // *The shorter version of this function if we're not using a temp sensor.
         unsigned long currentMillis = millis();                   // Start the timer.
