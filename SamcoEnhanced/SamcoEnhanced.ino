@@ -476,6 +476,8 @@ enum ButtonMask_e {
     BtnMask_Home = 1 << BtnIdx_Home
 };
 
+//// TODO: Try pointers for the button functions rather than direct declaration?
+
 // Button descriptor
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
