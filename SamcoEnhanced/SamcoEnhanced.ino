@@ -5429,48 +5429,59 @@ void SolenoidActivation(int solenoidFinalInterval)
         return;                                                   // We're done here now.
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        tempSensor = analogRead(tempPin);                         // Read the temp sensor.
-        tempSensor = (tempSensor * 0.32226563) + 0.5;             // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
-        #ifdef PRINT_VERBOSE
-            Serial.print("Current Temp near solenoid: ");
-            Serial.print(tempSensor);
-            Serial.println("*C");
-        #endif
-        if(tempSensor < tempNormal) {                             // Are we at (relatively) normal operating temps?
-            unsigned long currentMillis = millis();               // Start the timer.
-            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
-                previousMillisSol = currentMillis;                // Since we've waited long enough, calibrate the timer
-                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
-                return;                                           // Aaaand we're done here.
-            } else {                                              // If we pass the temp check but fail the timer check, we're here too quick.
-                return;                                           // Get out of here, speedy mc loserpants.
-            }
-        } else if(tempSensor < tempWarning) {                     // If we failed the room temp check, are we beneath the shutoff threshold?
-            if(digitalRead(solenoidPin)) {                        // Is the valve being pulled now?
-                unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
-                if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // We're holding it high for the requested time.
-                    previousMillisSol = currentMillis;            // Timer calibrate
-                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
-                    return;                                       // Yay.
-                } else {                                          // OR, Passed the temp check, STILL here too quick.
-                    return;                                       // Yeeted.
-                }
-            } else {                                              // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
-                unsigned long currentMillis = millis();           // Timerrrrrr.
-                if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
-                    previousMillisSol = currentMillis;            // Since we've waited long enough, calibrate the timer
-                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
-                    return;                                       // Doneso.
-                } else {                                          // OR, We passed the temp check but STILL got here too quick.
-                    return;                                       // Loser.
-                }
-            }
-        } else {                                                  // Failed both temp checks, so obviously it's not safe to fire.
+        if(tempSensor >= 0) { // If a temp sensor is installed and enabled,
+            tempSensor = analogRead(tempPin);
+            tempSensor = (tempSensor * 0.32226563) + 0.5;         // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
             #ifdef PRINT_VERBOSE
-                Serial.println("Solenoid over safety threshold; not activating!");
+                Serial.print("Current Temp near solenoid: ");
+                Serial.print(tempSensor);
+                Serial.println("*C");
             #endif
-            digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
-            return;                                               // Go away.
+            if(tempSensor < tempNormal) { // Are we at (relatively) normal operating temps?
+                unsigned long currentMillis = millis();
+                if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
+                    previousMillisSol = currentMillis;
+                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                    return;
+                } else { // If we pass the temp check but fail the timer check, we're here too quick.
+                    return;
+                }
+            } else if(tempSensor < tempWarning) { // If we failed the room temp check, are we beneath the shutoff threshold?
+                if(digitalRead(solenoidPin)) {    // Is the valve being pulled now?
+                    unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
+                    if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
+                        previousMillisSol = currentMillis;
+                        digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
+                        return;
+                    } else { // OR, Passed the temp check, STILL here too quick.
+                        return;
+                    }
+                } else { // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
+                    unsigned long currentMillis = millis();
+                    if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
+                        previousMillisSol = currentMillis;
+                        digitalWrite(solenoidPin, !digitalRead(solenoidPin));
+                        return;
+                    } else { // OR, We passed the temp check but STILL got here too quick.
+                        return;
+                    }
+                }
+            } else { // Failed both temp checks, so obviously it's not safe to fire.
+                #ifdef PRINT_VERBOSE
+                    Serial.println("Solenoid over safety threshold; not activating!");
+                #endif
+                digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
+                return;
+            }
+        } else { // No temp sensor, so just go ahead.
+            unsigned long currentMillis = millis();                   // Start the timer.
+            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
+                previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
+                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                return;                                               // Aaaand we're done here.
+            } else {                                                  // If we failed the timer check, we're here too quick.
+                return;                                               // Get out of here, speedy mc loserpants.
+            }
         }
     #else                                                         // *The shorter version of this function if we're not using a temp sensor.
         unsigned long currentMillis = millis();                   // Start the timer.
