@@ -2195,6 +2195,7 @@ void ExecGunModeDocked()
     #ifdef LED_ENABLE
         LedUpdate(127, 127, 255);
     #endif // LED_ENABLE
+    unsigned long tempChecked = millis();
     for(;;) {
         buttons.Poll(1);
 
@@ -2333,6 +2334,16 @@ void ExecGunModeDocked()
                 case BtnMask_Pump:
                   Serial.println("Released: 13");
                   break;
+            }
+            unsigned long currentMillis = millis();
+            if(currentMillis - tempChecked >= 1000) {
+                if(tempPin >= 0) {
+                    tempSensor = analogRead(tempPin);
+                    tempSensor = (tempSensor * 0.32226563) + 0.5;
+                    Serial.print("Temperature: ");
+                    Serial.println(tempSensor);
+                }
+                tempChecked = currentMillis;
             }
         }
 
@@ -5429,7 +5440,7 @@ void SolenoidActivation(int solenoidFinalInterval)
         return;                                                   // We're done here now.
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        if(tempSensor >= 0) { // If a temp sensor is installed and enabled,
+        if(tempPin >= 0) { // If a temp sensor is installed and enabled,
             tempSensor = analogRead(tempPin);
             tempSensor = (tempSensor * 0.32226563) + 0.5;         // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
             #ifdef PRINT_VERBOSE
