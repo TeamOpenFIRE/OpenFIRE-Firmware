@@ -1138,7 +1138,7 @@ void FeedbackSet()
     #endif // FOURPIN_LED
     #ifdef CUSTOM_NEOPIXEL
     if(customLEDpin >= 0) {
-        Adafruit_NeoPixel* externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+        externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
     }
     #endif // CUSTOM_NEOPIXEL
 }
@@ -1181,11 +1181,11 @@ void PinsReset()
             }
         #endif // FOURPIN_LED
         #ifdef CUSTOM_NEOPIXEL
+            if(externPixel != nullptr) {
+                delete externPixel;
+            }
             if(customLEDpin >= 0) {
-                if(externPixel) {
-                    delete externPixel;
-                }
-                Adafruit_NeoPixel* externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+                externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
                 externPixel->begin();
             }
         #endif // CUSTOM_NEOPIXEL
@@ -2820,13 +2820,14 @@ void SerialProcessingDocked()
               // Save current profile
               case 'S':
                 Serial.println("Saving preferences...");
+                // Update bindings so LED/Pixel changes are reflected immediately
+                FeedbackSet();
                 // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
                 SavePreferences();
                 // load everything back to commit custom pins setting to memory
                 if(nvPrefsError == SamcoPreferences::Error_Success) {
                     ExtPreferences(true);
                 }
-                FeedbackSet();
                 buttons.Begin();
                 UpdateBindings(lowButtonMode);
                 dockedSaving = false;
