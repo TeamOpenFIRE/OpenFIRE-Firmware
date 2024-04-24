@@ -173,41 +173,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.press(btn.reportCode3);
                                     } else {
                                         bitSet(padMask, btn.reportCode3-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -222,41 +188,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.press(btn.reportCode2);
                                     } else {
                                         bitSet(padMask, btn.reportCode2-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -270,41 +202,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.press(btn.reportCode);
                                     } else {
                                         bitSet(padMask, btn.reportCode-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -334,41 +232,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.release(btn.reportCode3);
                                     } else {
                                         bitClear(padMask, btn.reportCode3-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -383,41 +247,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.release(btn.reportCode2);
                                     } else {
                                         bitClear(padMask, btn.reportCode2-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -431,41 +261,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                                         Gamepad16.release(btn.reportCode);
                                     } else {
                                         bitClear(padMask, btn.reportCode-15);
-                                        switch(padMask) {
-                                            case 1: // 0x00000001
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 2: // 0x00000010
-                                                padMaskConv = GAMEPAD_HAT_DOWN;
-                                                break;
-                                            case 4: // 0x00000100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            case 8: // 0x00001000
-                                                padMaskConv = GAMEPAD_HAT_RIGHT;
-                                                break;
-                                            case 5: // 0x00000101
-                                                padMaskConv = GAMEPAD_HAT_UP_LEFT;
-                                                break;
-                                            case 9: // 0x00001001
-                                                padMaskConv = GAMEPAD_HAT_UP_RIGHT;
-                                                break;
-                                            case 6: // 0x00000110
-                                                padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
-                                                break;
-                                            case 10: // 0x00001010
-                                                padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
-                                                break;
-                                            case 3: // 0x00000011
-                                                padMaskConv = GAMEPAD_HAT_UP;
-                                                break;
-                                            case 12: // 0x00001100
-                                                padMaskConv = GAMEPAD_HAT_LEFT;
-                                                break;
-                                            default: // 0x00000000
-                                                padMaskConv = GAMEPAD_HAT_CENTERED;
-                                                break;
-                                        }
+                                        PadMaskConvert();
                                         Gamepad16.padUpdate(padMaskConv);
                                     }
                                 }
@@ -501,6 +297,45 @@ uint32_t LightgunButtons::Repeat()
         repeat = 0;
     }
     return repeat;
+}
+
+void LightgunButtons::PadMaskConvert()
+{
+    switch(padMask) {
+        case 1: // 0x00000001
+            padMaskConv = GAMEPAD_HAT_UP;
+            break;
+        case 2: // 0x00000010
+            padMaskConv = GAMEPAD_HAT_DOWN;
+            break;
+        case 4: // 0x00000100
+            padMaskConv = GAMEPAD_HAT_LEFT;
+            break;
+        case 8: // 0x00001000
+            padMaskConv = GAMEPAD_HAT_RIGHT;
+            break;
+        case 5: // 0x00000101
+            padMaskConv = GAMEPAD_HAT_UP_LEFT;
+            break;
+        case 9: // 0x00001001
+            padMaskConv = GAMEPAD_HAT_UP_RIGHT;
+            break;
+        case 6: // 0x00000110
+            padMaskConv = GAMEPAD_HAT_DOWN_LEFT;
+            break;
+        case 10: // 0x00001010
+            padMaskConv = GAMEPAD_HAT_DOWN_RIGHT;
+            break;
+        case 3: // 0x00000011
+            padMaskConv = GAMEPAD_HAT_UP;
+            break;
+        case 12: // 0x00001100
+            padMaskConv = GAMEPAD_HAT_LEFT;
+            break;
+        default: // 0x00000000
+            padMaskConv = GAMEPAD_HAT_CENTERED;
+            break;
+    }
 }
 
 int LightgunButtons::MaskToIndex(uint32_t mask)
