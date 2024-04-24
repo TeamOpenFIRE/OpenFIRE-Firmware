@@ -683,7 +683,6 @@ bool offYAxis = false;
     unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
     bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
     #ifdef USES_TEMP
-        int tempSensor;                          // Temp sensor changes over time, so just initialize the variable here ig.
         const unsigned int solenoidWarningInterval = solenoidFastInterval * 3; // for if solenoid is getting toasty.
     #endif // USES_TEMP
 #endif // USES_SOLENOID
@@ -2338,8 +2337,8 @@ void ExecGunModeDocked()
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
                 if(tempPin >= 0) {
-                    tempSensor = analogRead(tempPin);
-                    tempSensor = (tempSensor * 0.32226563) + 0.5;
+                    int tempSensor = analogRead(tempPin);
+                    tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100;
                     Serial.print("Temperature: ");
                     Serial.println(tempSensor);
                 }
@@ -5441,8 +5440,8 @@ void SolenoidActivation(int solenoidFinalInterval)
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
         if(tempPin >= 0) { // If a temp sensor is installed and enabled,
-            tempSensor = analogRead(tempPin);
-            tempSensor = (tempSensor * 0.32226563) + 0.5;         // Multiply for accurate Celsius reading from 3.3v signal. (rounded up)
+            int tempSensor = analogRead(tempPin);
+            tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
             #ifdef PRINT_VERBOSE
                 Serial.print("Current Temp near solenoid: ");
                 Serial.print(tempSensor);
