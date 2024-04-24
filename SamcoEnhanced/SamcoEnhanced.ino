@@ -2827,6 +2827,10 @@ void SerialProcessingDocked()
                 // load everything back to commit custom pins setting to memory
                 if(nvPrefsError == SamcoPreferences::Error_Success) {
                     ExtPreferences(true);
+                    #ifdef LED_ENABLE
+                    // Save op above resets color, so re-set it back to docked idle color
+                    LedUpdate(127, 127, 255);
+                    #endif // LED_ENABLE
                 }
                 buttons.Begin();
                 UpdateBindings(lowButtonMode);
