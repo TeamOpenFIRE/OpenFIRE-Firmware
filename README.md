@@ -44,7 +44,7 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
 
 ## Requirements
 - An Arduino-compatible microcontroller based on an **RP2040**.
-  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, most pins available),* Adafruit [Kee Boar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor, compatible with [GUN4IR boards](https://www.gun4ir.com/products/universal-gun4ir-diy-pcb****)),* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596))*
+  * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, most pins available),* Adafruit [Kee Boar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor, compatible with [GUN4IR boards](https://www.gun4ir.com/products/universal-gun4ir-diy-pcb)),* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(compatible with [SAMCO boards](https://www.ebay.com/itm/184699412596))*
   * Keep in mind the differences in pinouts, as it will always be different between builds and boards!
 - **DFRobot IR Positioning Camera SEN0158:** [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html) | [Mirrors list](https://octopart.com/sen0158-dfrobot-81833633)
 - **4 IR LED emitters:** regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [Build tutorial here!](https://www.youtube.com/watch?v=dNoWT8CaGRc)
@@ -52,6 +52,9 @@ Based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which 
      * *Requires a DC power extension cable &/or DC pigtail, and a separate adjustable 12-24V power supply.*
    * Optional: **Any 5V gamepad rumble motor,** w/ associated relay board. [Build tutorial here!](https://www.youtube.com/watch?v=LiJ5rE-MeHw) [Easy driver board here](https://oshpark.com/shared_projects/VdsmUaSm)
    * Optional: **Any 2-way SPDT switches,** to adjust state of rumble/solenoid/rapid fire in hardware *(can be adjusted in software from pause mode if not available!)*
+ 
+## Installation:
+Grab the latest *.UF2* binary for your board from the [releases page](https://github.com/SeongGino/ir-light-gun-plus/releases/latest), and drag'n'drop the file to your microcontroller while booted into Bootloader mode (RP2040 is automatically mounted like this when no program is loaded, or can be forced into this mode by holding BOOTSEL while plugging it into the computer - it will appear as a removable storage device called **RPI-RP2**).
 
 ## Additional information
 [Check out the enclosed instruction book!](SamcoEnhanced/README.md) Also see the README files in `libraries` for more information on library functionality.
@@ -62,26 +65,17 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## Known Issues (want to fix sooner rather than later):
 - Calibrating while serial activity is ongoing has a chance of causing the gun to lock up (exact cause still being investigated).
-- MAMEHooker supports the main force feedback/lamp outputs and the offscreen button modeset, but is missing and will not react to the screen ratio or other modesets.
-  * Are there games that have issues with this? It really should be resolved by the game/emulator, not the gun.
-  * LED pulses sent rapidly may reset at the ON-falling position, but the effect looks kind of good actually. Is this really a bug?
+- Camera failing initialization will cause the board to lock up
+  * Add extra feedback in the initial docking message for the GUI to alert the user of the camera not working.?
 - Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
 
 > [!NOTE]
 > Solenoid *may or may not* cause EMI disconnects with certain wiring. **This is not caused by GUN4ALL,** but is indicative of too-thin wiring on the cables going to/from the solenoid driver. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
 
-## TODO (can and will implement, just not now):
+## TODO:
 - (Re-)expose button function remapping.
 - Should implement support for rumble as an alternative force-feedback system (`RUMBLE_FF`).
-- Detect temp monitor in a more graceful way to determine which solenoid activation path to use, so we don't need to have different firmwares with TMP enabled/disabled.
-- Code is still kind of a mess, so I should clean things up at some point maybe kinda.
-
-## Wishlist (things I want to but don't know how/can't do yet):
-- Console support? [It's definitely possible!](https://github.com/88hcsif/IR-Light-Gun)
-  * May be redundant, since PCs can emulate the consoles that this would be able to support anyways (GCon 2)...
-- RP2040 has dual core support, currently handles input polling in parallel; any other boards that have dual cores?
-  * ESP boards seem to have some support, but they're much more a pain in the butt to implement than the simple setup1()/loop1() the RP2040 needs.
-- Support for diamonds LED arrangement to be setup-compatible with GUN4IR (**help wanted here!** [Discussed in this issue](https://github.com/SeongGino/ir-light-gun-plus/issues/6)).
+- Some code functions should be offloaded to classes (a lot of core functionality/variables are all shoved into `SamcoEnhanced.ino` atm).
 
 ## Thanks:
 * Samuel Ballantyne, for his SAMCO project which inspired my madness in the first place.
