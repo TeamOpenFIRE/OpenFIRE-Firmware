@@ -100,6 +100,10 @@ extern TinyUSBDevices_ TinyUSBDevices;
 	0xC0, \
 	0xC0
 
+
+// From Seong:
+// Look, if SOMEONE ELSE wants to touch these descriptors, be my guest.
+// I don't wanna look at this header file ever again tbh
 #define TUD_HID_REPORT_DESC_GAMEPAD16(...) \
           0x05, 0x01, \
 			0x09, 0x05, \
@@ -138,7 +142,6 @@ extern TinyUSBDevices_ TinyUSBDevices;
               0xc0,       \
 			0xc0
 #endif // USE_TINYUSB
-// I really... REAAAAALLY HATE these descriptors
 
 // 5 button absolute mouse
 class AbsMouse5_
