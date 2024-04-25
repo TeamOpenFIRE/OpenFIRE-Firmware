@@ -65,9 +65,8 @@ For reference, the default schematic and (general) layout for the build and its 
 
 ## Known Issues (want to fix sooner rather than later):
 - Calibrating while serial activity is ongoing has a chance of causing the gun to lock up (exact cause still being investigated).
-- Camera failing initialization will cause the board to lock up
-  * Add extra feedback in the initial docking message for the GUI to alert the user of the camera not working.?
-- Temperature sensor *should* work, but haven't tested yet; there be ~~[elf goddesses](https://www.youtube.com/watch?v=DSgw9RKpaKY)~~ dargons.
+- Camera failing initialization will cause the board to lock itself in a "Device not available" loop.
+  * Add extra feedback in the initial docking message for the GUI to alert the user of the camera not working?
 
 > [!NOTE]
 > Solenoid *may or may not* cause EMI disconnects with certain wiring. **This is not caused by GUN4ALL,** but is indicative of too-thin wiring on the cables going to/from the solenoid driver. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
