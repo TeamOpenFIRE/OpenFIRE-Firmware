@@ -14,8 +14,8 @@
  * @author [That One Seong](SeongsSeongs@gmail.com)
  * @date 2023
  */
-#define G4ALL_VERSION 4.1
-#define G4ALL_CODENAME "Song of Edo"
+#define G4ALL_VERSION 4.2
+#define G4ALL_CODENAME "Fault Carol"
 
 #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 #define G4ALL_BOARD "adafruitItsyRP2040"
@@ -25,6 +25,8 @@
 #define G4ALL_BOARD "arduinoNanoRP2040"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
 #define G4ALL_BOARD "rpipico"
+#else
+#define G4ALL_BOARD "generic"
 #endif // board
 
  // For custom builders, remember to check (COMPILING.md) for IDE instructions!
@@ -337,7 +339,7 @@ int8_t btnPedal = -1;
 int8_t btnPump = -1;
 int8_t btnHome = -1;
 
-#else // For the Raspberry Pi Pico
+#elifdef ARDUINO_RASPBERRY_PI_PICO // For the Raspberry Pi Pico
 
 #ifdef USES_SWITCHES
     int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
@@ -404,6 +406,74 @@ int8_t btnGunRight = 9;
 int8_t btnPedal = 14;
 int8_t btnPump = 13;
 int8_t btnHome = 5;
+
+#else // for Generic - basically no pins mapped by default at all
+
+#ifdef USES_SWITCHES
+    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
+    #ifdef USES_SOLENOID
+        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
+    #endif // USES_SOLENOID
+    #ifdef USES_RUMBLE
+        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
+    #endif // USES_RUMBLE
+#endif // USES_SWITCHES
+
+#ifdef USES_RUMBLE
+    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
+    // TODO: actually finish this.
+    //#define RUMBLE_FF
+    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
+        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
+    #endif // RUMBLE_FF && USES_SOLENOID
+    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
+#endif // USES_RUMBLE
+
+#ifdef USES_SOLENOID
+    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
+    #ifdef USES_TEMP    
+        int8_t tempPin = -1;                         // What's the pin number of the temp sensor? Needs to be analog.
+    #endif // USES_TEMP
+#endif // USES_SOLENOID
+
+  // Remember: ANALOG PINS ONLY!
+#ifdef USES_ANALOG
+    int8_t analogPinX = -1;
+    int8_t analogPinY = -1;
+#endif // USES_ANALOG
+
+  // Remember: PWM PINS ONLY!
+#ifdef FOURPIN_LED
+    #define LED_ENABLE
+    int8_t PinR = -1;
+    int8_t PinG = -1;
+    int8_t PinB = -1;
+    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
+    bool commonAnode = true;
+#endif // FOURPIN_LED
+
+  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPixel.h>
+    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
+#endif // CUSTOM_NEOPIXEL
+
+int8_t rumblePin = -1;                            // What's the pin number of the rumble output? Needs to be digital.
+int8_t solenoidPin = -1;                          // What's the pin number of the solenoid output? Needs to be digital.
+int8_t btnTrigger = -1;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
+int8_t btnGunA = -1;                              // <-- GCon 1-spec
+int8_t btnGunB = -1;                              // <-- GCon 1-spec
+int8_t btnGunC = -1;                              // Everything below are for GCon 2-spec only 
+int8_t btnStart = -1;
+int8_t btnSelect = -1;
+int8_t btnGunUp = -1;
+int8_t btnGunDown = -1;
+int8_t btnGunLeft = -1;
+int8_t btnGunRight = -1;
+int8_t btnPedal = -1;
+int8_t btnPump = -1;
+int8_t btnHome = -1;
 
 #endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 
