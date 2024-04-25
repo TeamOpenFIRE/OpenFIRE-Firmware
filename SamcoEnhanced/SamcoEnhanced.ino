@@ -933,6 +933,8 @@ AbsMouse5_ AbsMouse5(2);
 AbsMouse5_ AbsMouse5(1);
 #endif
 
+//-----------------------------------------------------------------------------------------------------
+// The main show!
 void setup() {
     Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
     Serial.setTimeout(0);
@@ -1056,7 +1058,8 @@ void setup() {
     }
 }
 
-// inits and enables devices, if valid
+// inits and/or re-sets feedback pins using currently loaded pin values
+// is run both in setup and at runtime
 void FeedbackSet()
 {
     #ifdef USES_RUMBLE
@@ -1121,7 +1124,8 @@ void FeedbackSet()
     #endif // CUSTOM_NEOPIXEL
 }
 
-// resets feedback pins to defaults
+// clears currently loaded feedback pins
+// is run both in setup and at runtime
 void PinsReset()
 {
     #ifdef USES_RUMBLE
@@ -1171,6 +1175,8 @@ void PinsReset()
 }
 
 #ifdef USE_TINYUSB
+// Initializes TinyUSB identifier
+// Values are pulled from EEPROM values that were loaded earlier in setup()
 void TinyUSBInit()
 {
     TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
@@ -1395,11 +1401,15 @@ void NoHardwareTimerCamTickMillis()
 #endif // SAMCO_NO_HW_TIMER
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
+// Second core setup
+// does... nothing, since timing is kinda important.
 void setup1()
 {
     // i sleep
 }
 
+// Second core main loop
+// currently handles all button & serial processing when Core 0 is in ExecRunMode()
 void loop1()
 {
     while(gunMode == GunMode_Run) {
@@ -1534,6 +1544,8 @@ void loop1()
 }
 #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
 
+// Main core events hub
+// splits off into subsequent ExecModes depending on circumstances
 void loop()
 {
     #ifdef SAMCO_NO_HW_TIMER
@@ -1853,6 +1865,7 @@ void loop()
 /* --------------------------- METHODS ------------------------- */
 /*        -----------------------------------------------        */
 
+// Main core loop
 void ExecRunMode()
 {
 #ifdef DEBUG_SERIAL
@@ -2537,7 +2550,8 @@ void UpdateLastSeen()
     }
 }
 
-void TriggerFire()                                               // If we pressed the trigger,
+// Handles events when trigger is pulled/held
+void TriggerFire()
 {
     if(!buttons.offScreen &&                                     // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
     !offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
@@ -2665,7 +2679,8 @@ void TriggerFire()                                               // If we presse
     triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
 }
 
-void TriggerNotFire()                                       // ...Or we just didn't press the trigger this cycle.   
+// Handles events when trigger is released
+void TriggerNotFire()
 {
     triggerHeld = false;                                    // Disable the holding function
     if(buttonPressed) {
@@ -3529,7 +3544,7 @@ void SerialProcessingDocked()
 
 #ifdef MAMEHOOKER
 // Reading the input from the serial buffer.
-// for normal runmode runtime use w/ e.g. MAMEHOOKER/general scripts
+// for normal runmode runtime use w/ e.g. Mamehook et al
 void SerialProcessing()
 {
     // So, APPARENTLY there is a map of what the serial commands are, at least wrt gun controllers.
@@ -3928,12 +3943,12 @@ void SerialProcessing()
     }
 }
 
-void SerialHandling()                                              // Where we let the serial in stream handle things.
-{   // As far as I know, DemulShooter/MAMEHOOKER handles all the timing and safety for us.
+// Handling the serial events received from SerialProcessing()
+void SerialHandling()
+{   // The Mamehook feedback system handles all the timing and safety for us.
     // So all we have to do is just read and process what it sends us at face value.
     // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
 
-    // Further MY OWN goals? FURTHER THIS, MOTHERFUCKER:
     #ifdef USES_SOLENOID
       if(solenoidActive) {
           if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
@@ -4101,6 +4116,7 @@ void SerialHandling()                                              // Where we l
     #endif // LED_ENABLE
 }
 
+// Trigger execution path while in Serial handoff mode - pulled
 void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
@@ -4114,6 +4130,7 @@ void TriggerFireSimple()
     }
 }
 
+// Trigger execution path while in Serial handoff mode - released
 void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
@@ -4136,6 +4153,7 @@ void SendEscapeKey()
     Keyboard.release(KEY_ESC);
 }
 
+// Macro for functions to run when gun enters new gunmode
 void SetMode(GunMode_e newMode)
 {
     if(gunMode == newMode) {
@@ -4216,6 +4234,9 @@ void SetRunMode(RunMode_e newMode)
     }
 }
 
+// Simple Pause Menu scrolling function
+// Bool determines if it's incrementing or decrementing the list
+// LEDs update according to the setting being scrolled onto, if any.
 void SetPauseModeSelection(bool isIncrement)
 {
     if(isIncrement) {
@@ -4347,6 +4368,9 @@ void SetPauseModeSelection(bool isIncrement)
     }
 }
 
+// Simple Pause Mode - scrolls up/down profiles list
+// Bool determines if it's incrementing or decrementing the list
+// LEDs update according to the profile being scrolled on, if any.
 void SetProfileSelection(bool isIncrement)
 {
     if(isIncrement) {
@@ -4370,6 +4394,7 @@ void SetProfileSelection(bool isIncrement)
     return;
 }
 
+// Main routine that prints information to connected serial monitor when the gun enters Pause Mode.
 void PrintResults()
 {
     if(millis() - lastPrintMillis < 100) {
@@ -4409,6 +4434,7 @@ void PrintResults()
     lastPrintMillis = millis();
 }
 
+// what does this do again? lol
 void PrintCalInterval()
 {
     if(millis() - lastPrintMillis < 100 || dockedCalibrating) {
@@ -4416,26 +4442,6 @@ void PrintCalInterval()
     }
     PrintCal();
     lastPrintMillis = millis();
-}
-
-void PrintCal()
-{
-    Serial.print("Calibration: Center x,y: ");
-    Serial.print(xCenter);
-    Serial.print(",");
-    Serial.print(yCenter);
-    Serial.print(" Scale x,y: ");
-    Serial.print(xScale, 3);
-    Serial.print(",");
-    Serial.println(yScale, 3);
-}
-
-void PrintRunMode()
-{
-    if(runMode < RunMode_Count) {
-        Serial.print("Mode: ");
-        Serial.println(RunModeLabels[runMode]);
-    }
 }
 
 // helper in case this changes
@@ -4450,6 +4456,7 @@ uint16_t CalScaleFloatToPref(float scale)
     return (uint16_t)(scale * 1000.0f);
 }
 
+// Subroutine that prints all stored preferences information in a table
 void PrintPreferences()
 {
     if(!(stateFlags & StateFlag_PrintPreferences) || !Serial.dtr()) {
@@ -4499,6 +4506,30 @@ void PrintPreferences()
     }
 }
 
+// Subroutine that prints current calibration profile
+void PrintCal()
+{
+    Serial.print("Calibration: Center x,y: ");
+    Serial.print(xCenter);
+    Serial.print(",");
+    Serial.print(yCenter);
+    Serial.print(" Scale x,y: ");
+    Serial.print(xScale, 3);
+    Serial.print(",");
+    Serial.println(yScale, 3);
+}
+
+// Subroutine that prints current runmode
+void PrintRunMode()
+{
+    if(runMode < RunMode_Count) {
+        Serial.print("Mode: ");
+        Serial.println(RunModeLabels[runMode]);
+    }
+}
+
+// Prints basic storage device information
+// an estimation of storage used, though doesn't take extended prefs into account.
 void PrintNVStorage()
 {
 #ifdef SAMCO_FLASH_ENABLE
@@ -4521,6 +4552,7 @@ void PrintNVStorage()
 #endif // SAMCO_FLASH_ENABLE
 }
 
+// Prints error to connected serial monitor if no storage device is present
 void PrintNVPrefsError()
 {
     if(nvPrefsError != SamcoPreferences::Error_Success) {
@@ -4534,6 +4566,7 @@ void PrintNVPrefsError()
     }
 }
 
+// Extra settings to print to connected serial monitor when entering Pause Mode
 void PrintExtras()
 {
     Serial.print("Offscreen button mode enabled: ");
@@ -4583,6 +4616,7 @@ void PrintExtras()
     Serial.println(G4ALL_CODENAME);
 }
 
+// Loads preferences from EEPROM, then verifies.
 void LoadPreferences()
 {
     if(!nvAvailable) {
@@ -4597,6 +4631,7 @@ void LoadPreferences()
     VerifyPreferences();
 }
 
+// Profile sanity checks
 void VerifyPreferences()
 {
     // center 0 is used as "no cal data"
@@ -4650,6 +4685,8 @@ void ApplyInitialPrefs()
     }
 }
 
+// Saves profile settings to EEPROM
+// Blinks LEDs (if any) on success or failure.
 void SavePreferences()
 {
     // Unless the user's Docked,
@@ -4697,6 +4734,8 @@ void SavePreferences()
     }
 }
 
+// Saves &/or loads extended preferences (booleans, pin mappings, general settings, TinyUSB ID) from EEPROM
+// boolean determines if it's a save or load operation (defaults to save)
 void ExtPreferences(bool isLoad)
 {
     uint8_t tempBools = 0b00000000;
@@ -4995,7 +5034,7 @@ void PrintSelectedProfile()
     Serial.println(profileDesc[selectedProfile].profileLabel);
 }
 
-// select a profile
+// applies loaded gun profile settings
 bool SelectCalProfile(unsigned int profile)
 {
     if(profile >= ProfileCount) {
@@ -5028,6 +5067,7 @@ bool SelectCalProfile(unsigned int profile)
     return valid;
 }
 
+// applies loaded screen calibration profile
 bool SelectCalPrefs(unsigned int profile)
 {
     if(profile >= ProfileCount) {
@@ -5081,6 +5121,7 @@ void ApplyCalToProfile()
 
 #ifdef LED_ENABLE
 // initializes system and 4pin RGB LEDs.
+// ONLY to be used from setup()
 void LedInit()
 {
     // init DotStar and/or NeoPixel to red during setup()
@@ -5111,6 +5152,7 @@ void LedInit()
     LedUpdate(255, 0, 0);
 }
 
+// 32-bit packed color value update across all LED units
 void SetLedPackedColor(uint32_t color)
 {
 #ifdef DOTSTAR_ENABLE
@@ -5211,6 +5253,7 @@ void LedUpdate(byte r, byte g, byte b)
     #endif // NANO_RP2040
 }
 
+// Macro that sets LEDs color depending on the mode it's set to
 void SetLedColorFromMode()
 {
     switch(gunMode) {
@@ -5235,7 +5278,8 @@ void SetLedColorFromMode()
 }
 #endif // LED_ENABLE
 
-// ADDITIONS HERE:
+// Pause mode offscreen trigger mode toggle widget
+// Blinks LEDs (if any) according to enabling or disabling this obtuse setting for finnicky/old programs that need right click as an offscreen shot substitute.
 void OffscreenToggle()
 {
     offscreenButton = !offscreenButton;
@@ -5276,6 +5320,8 @@ void OffscreenToggle()
     }
 }
 
+// Pause mode autofire factor toggle widget
+// Does a test fire demonstrating the autofire speed being toggled
 void AutofireSpeedToggle(byte setting)
 {
     // If a number is passed, assume this is from Serial and directly set it.
@@ -5319,6 +5365,7 @@ void AutofireSpeedToggle(byte setting)
 }
 
 /*
+// Unused since runtime burst fire toggle was removed from pause mode, and is accessed from the serial command M8x1
 void BurstFireToggle()
 {
     burstFireActive = !burstFireActive;                           // Toggle burst fire mode.
@@ -5358,6 +5405,8 @@ void BurstFireToggle()
 */
 
 #ifdef USES_RUMBLE
+// Pause mode rumble enabling widget
+// Does a cute rumble pattern when on, or blinks LEDs (if any)
 void RumbleToggle()
 {
     rumbleActive = !rumbleActive;                                 // Toggle
@@ -5392,6 +5441,8 @@ void RumbleToggle()
 #endif // USES_RUMBLE
 
 #ifdef USES_SOLENOID
+// Pause mode solenoid enabling widget
+// Does a cute solenoid engagement, or blinks LEDs (if any)
 void SolenoidToggle()
 {
     solenoidActive = !solenoidActive;                             // Toggle
@@ -5426,6 +5477,7 @@ void SolenoidToggle()
 #endif // USES_SOLENOID
 
 #ifdef USES_SOLENOID
+// Subroutine managing solenoid state and temperature monitoring (if any)
 void SolenoidActivation(int solenoidFinalInterval)
 {
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
@@ -5503,6 +5555,7 @@ void SolenoidActivation(int solenoidFinalInterval)
 #endif // USES_SOLENOID
 
 #ifdef USES_RUMBLE
+// Subroutine managing rumble state
 void RumbleActivation()
 {
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
@@ -5522,6 +5575,7 @@ void RumbleActivation()
 }
 #endif // USES_RUMBLE
 
+// Solenoid 3-shot burst firing subroutine
 void BurstFire()
 {
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
@@ -5537,7 +5591,7 @@ void BurstFire()
                 SolenoidActivation(solenoidFastInterval);         // And start trying to activate the dingus.
             }
         #endif // USES_SOLENOID
-        return;                                                   // Go on.
+        return;
     } else {  // If we're at three bullets fired,
         burstFiring = false;                                      // Disable the currently firing tag,
         burstFireCount = 0;                                       // And set the count off.
@@ -5545,10 +5599,12 @@ void BurstFire()
     }
 }
 
-// Updates the button array with new bindings, if any.
+// Updates the button array with new pin mappings and control bindings, if any.
 void UpdateBindings(bool offscreenEnable)
 {
-    // TODO: might still need to use pointers to the pins instead of lowkey memcopying, but at least this is less aneurysm-inducing.
+    // Updates pins
+    // TODO: might still need to use pointers to the pins in the first place instead of lowkey memcopying,
+    // but at least this is less aneurysm-inducing than what it used to be.
     LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = btnTrigger;
     LightgunButtons::ButtonDesc[BtnIdx_A].pin = btnGunA;
     LightgunButtons::ButtonDesc[BtnIdx_B].pin = btnGunB;
@@ -5562,6 +5618,8 @@ void UpdateBindings(bool offscreenEnable)
     LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = btnPedal;
     LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = btnPump;
     LightgunButtons::ButtonDesc[BtnIdx_Home].pin = btnHome;
+
+    // Updates button functions for low-button mode
     if(offscreenEnable) {
         LightgunButtons::ButtonDesc[1].reportType2 = LightgunButtons::ReportType_Keyboard;
         LightgunButtons::ButtonDesc[1].reportCode2 = playerStartBtn;
