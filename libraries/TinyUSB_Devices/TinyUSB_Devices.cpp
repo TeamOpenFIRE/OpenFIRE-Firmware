@@ -103,6 +103,10 @@ void AbsMouse5_::report(void)
 	buffer[2] = (_x >> 8) & 0xFF;
 	buffer[3] = _y & 0xFF;
 	buffer[4] = (_y >> 8) & 0xFF;
+    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Mouse) {
+      delay(1);
+      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Mouse;
+    }
 #if defined(_USING_HID)
 	HID().SendReport(_reportId, buffer, 5);
 #endif // _USING_HID
@@ -156,6 +160,10 @@ void AbsMouse5_::release(uint8_t button)
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
+    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Keyboard) {
+      delay(1);
+      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Keyboard;
+    }
     usbHid.keyboardReport(KeyboardReportID,keys->modifiers,keys->keys);
   }
   
@@ -457,6 +465,10 @@ void AbsMouse5_::release(uint8_t button)
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
+    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Gamepad) {
+      delay(1);
+      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Gamepad;
+    }
     tud_hid_report(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
   }
 
