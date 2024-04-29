@@ -51,6 +51,12 @@ class TinyUSBDevices_ {
 public:
   TinyUSBDevices_(void);
   void begin(byte polRate);
+  enum USBChannelType_e {
+    USBChannel_Mouse = 0,
+    USBChannel_Keyboard,
+    USBChannel_Gamepad
+  };
+  uint8_t USBChannelLast = USBChannel_Mouse;
 };
 extern TinyUSBDevices_ TinyUSBDevices;
 
