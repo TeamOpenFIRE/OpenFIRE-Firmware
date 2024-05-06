@@ -132,10 +132,6 @@ uint16_t pauseHoldLength = 4000;                      // How long the combo shou
 //#define DEBUG_SERIAL 1
 //#define DEBUG_SERIAL 2
 
-// extra position glitch filtering, 
-// not required after discoverving the DFRobotIRPositionEx atomic read technique
-//#define EXTRA_POS_GLITCH_FILTER
-
 // numbered index of buttons, must match ButtonDesc[] order
 enum ButtonIndex_e {
     BtnIdx_Trigger = 0,
@@ -441,19 +437,6 @@ bool dockedCalibrating = false;                      // If set, calibration will
 unsigned long testLastStamp;                         // Timestamp of last print in test mode.
 const byte testPrintInterval = 50;                   // Minimum time allowed between test mode printouts.
 
-#ifdef EXTRA_POS_GLITCH_FILTER00
-int badFinalTick = 0;
-int badMoveTick = 0;
-int badFinalCount = 0;
-int badMoveCount = 0;
-
-// number of consecutive bad move values to filter
-constexpr unsigned int BadMoveCountThreshold = 3;
-
-// Used to filter out large jumps/glitches
-constexpr int BadMoveThreshold = 49 * CamToMouseMult;
-#endif // EXTRA_POS_GLITCH_FILTER
-
 // profile in use
 unsigned int selectedProfile = 0;
 
@@ -561,25 +544,6 @@ Adafruit_NeoPixel* externPixel;
 uint16_t customLEDcount = 1;
 #endif // CUSTOM_NEOPIXEL
 
-// flash transport instance
-#if defined(EXTERNAL_FLASH_USE_QSPI)
-    Adafruit_FlashTransport_QSPI flashTransport;
-#elif defined(EXTERNAL_FLASH_USE_SPI)
-    Adafruit_FlashTransport_SPI flashTransport(EXTERNAL_FLASH_USE_CS, EXTERNAL_FLASH_USE_SPI);
-#endif
-
-#ifdef SAMCO_FLASH_ENABLE
-// Adafruit_SPIFlashBase non-volatile storage
-// flash instance
-Adafruit_SPIFlashBase flash(&flashTransport);
-
-static const char* NVRAMlabel = "Flash";
-
-// flag to indicate if non-volatile storage is available
-// this will enable in setup()
-bool nvAvailable = false;
-#endif // SAMCO_FLASH_ENABLE
-
 #ifdef SAMCO_EEPROM_ENABLE
 // EEPROM non-volatile storage
 static const char* NVRAMlabel = "EEPROM";
@@ -598,19 +562,8 @@ SamcoPreferences samcoPreferences;
 // number of times the IR camera will update per second
 constexpr unsigned int IRCamUpdateRate = 209;
 
-#ifdef SAMCO_NO_HW_TIMER
-// use the millis() or micros() counter instead
-unsigned long irPosUpdateTime = 0;
-// will set this to 1 when the IR position can update
-unsigned int irPosUpdateTick = 0;
-
-#define SAMCO_NO_HW_TIMER_UPDATE() NoHardwareTimerCamTickMillis()
-//define SAMCO_NO_HW_TIMER_UPDATE() NoHardwareTimerCamTickMicros()
-
-#else
 // timer will set this to 1 when the IR position can update
 volatile unsigned int irPosUpdateTick = 0;
-#endif // SAMCO_NO_HW_TIMER
 
 #ifdef DEBUG_SERIAL
 static unsigned long serialDbMs = 0;
@@ -899,153 +852,11 @@ void TinyUSBInit()
 
 void startIrCamTimer(int frequencyHz)
 {
-#if defined(SAMCO_SAMD21)
-    startTimerEx(&TC4->COUNT16, GCLK_CLKCTRL_ID_TC4_TC5, TC4_IRQn, frequencyHz);
-#elif defined(SAMCO_SAMD51)
-    startTimerEx(&TC3->COUNT16, TC3_GCLK_ID, TC3_IRQn, frequencyHz);
-#elif defined(SAMCO_ATMEGA32U4)
-    startTimer3(frequencyHz);
-#elif defined(SAMCO_RP2040)
     rp2040EnablePWMTimer(0, frequencyHz);
     irq_set_exclusive_handler(PWM_IRQ_WRAP, rp2040pwmIrq);
     irq_set_enabled(PWM_IRQ_WRAP, true);
-#endif
 }
 
-#if defined(SAMCO_SAMD21)
-void startTimerEx(TcCount16* ptc, uint16_t gclkCtrlId, IRQn_Type irqn, int frequencyHz)
-{
-    // use Generic clock generator 0
-    GCLK->CLKCTRL.reg = (uint16_t)(GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 | gclkCtrlId);
-    while(GCLK->STATUS.bit.SYNCBUSY == 1); // wait for sync
-    
-    ptc->CTRLA.bit.ENABLE = 0;
-    while(ptc->STATUS.bit.SYNCBUSY == 1); // wait for sync
-    
-    // Use the 16-bit timer
-    ptc->CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
-    while(ptc->STATUS.bit.SYNCBUSY == 1); // wait for sync
-    
-    // Use match mode so that the timer counter resets when the count matches the compare register
-    ptc->CTRLA.reg |= TC_CTRLA_WAVEGEN_MFRQ;
-    while(ptc->STATUS.bit.SYNCBUSY == 1); // wait for sync
-    
-    // Set prescaler
-    ptc->CTRLA.reg |= TIMER_TC_CTRLA_PRESCALER_DIV;
-    while(ptc->STATUS.bit.SYNCBUSY == 1); // wait for sync
-    
-    setTimerFrequency(ptc, frequencyHz);
-    
-    // Enable the compare interrupt
-    ptc->INTENSET.reg = 0;
-    ptc->INTENSET.bit.MC0 = 1;
-    
-    NVIC_EnableIRQ(irqn);
-    
-    ptc->CTRLA.bit.ENABLE = 1;
-    while(ptc->STATUS.bit.SYNCBUSY == 1); // wait for sync
-}
-
-void TC4_Handler()
-{
-    // If this interrupt is due to the compare register matching the timer count
-    if(TC4->COUNT16.INTFLAG.bit.MC0 == 1) {
-        // clear interrupt
-        TC4->COUNT16.INTFLAG.bit.MC0 = 1;
-
-        irPosUpdateTick = 1;
-    }
-}
-#endif // SAMCO_SAMD21
-
-#if defined(SAMCO_SAMD51)
-void startTimerEx(TcCount16* ptc, uint16_t gclkCtrlId, IRQn_Type irqn, int frequencyHz)
-{
-    // use Generic clock generator 0
-    GCLK->PCHCTRL[gclkCtrlId].reg = GCLK_PCHCTRL_GEN_GCLK0 | GCLK_PCHCTRL_CHEN;
-    while(GCLK->SYNCBUSY.reg); // wait for sync
-    
-    ptc->CTRLA.bit.ENABLE = 0;
-    while(ptc->SYNCBUSY.bit.STATUS == 1); // wait for sync
-    
-    // Use the 16-bit timer
-    ptc->CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
-    while(ptc->SYNCBUSY.bit.STATUS == 1); // wait for sync
-    
-    // Use match mode so that the timer counter resets when the count matches the compare register
-    ptc->WAVE.bit.WAVEGEN = TC_WAVE_WAVEGEN_MFRQ;
-    while(ptc->SYNCBUSY.bit.STATUS == 1); // wait for sync
-    
-    // Set prescaler
-    ptc->CTRLA.reg |= TIMER_TC_CTRLA_PRESCALER_DIV;
-    while(ptc->SYNCBUSY.bit.STATUS == 1); // wait for sync
-    
-    setTimerFrequency(ptc, frequencyHz);
-    
-    // Enable the compare interrupt
-    ptc->INTENSET.reg = 0;
-    ptc->INTENSET.bit.MC0 = 1;
-    
-    NVIC_EnableIRQ(irqn);
-    
-    ptc->CTRLA.bit.ENABLE = 1;
-    while(ptc->SYNCBUSY.bit.STATUS == 1); // wait for sync
-}
-
-void TC3_Handler()
-{
-    // If this interrupt is due to the compare register matching the timer count
-    if(TC3->COUNT16.INTFLAG.bit.MC0 == 1) {
-        // clear interrupt
-        TC3->COUNT16.INTFLAG.bit.MC0 = 1;
-
-        irPosUpdateTick = 1;
-    }
-}
-#endif // SAMCO_SAMD51
-
-#if defined(SAMCO_SAMD21) || defined(SAMCO_SAMD51)
-void setTimerFrequency(TcCount16* ptc, int frequencyHz)
-{
-    int compareValue = (F_CPU / (TIMER_PRESCALER_DIV * frequencyHz));
-
-    // Make sure the count is in a proportional position to where it was
-    // to prevent any jitter or disconnect when changing the compare value.
-    ptc->COUNT.reg = map(ptc->COUNT.reg, 0, ptc->CC[0].reg, 0, compareValue);
-    ptc->CC[0].reg = compareValue;
-
-#if defined(SAMCO_SAMD21)
-    while(ptc->STATUS.bit.SYNCBUSY == 1);
-#elif defined(SAMCO_SAMD51)
-    while(ptc->SYNCBUSY.bit.STATUS == 1);
-#endif
-}
-#endif
-
-#ifdef SAMCO_ATMEGA32U4
-void startTimer3(unsigned long frequencyHz)
-{
-    // disable comapre output mode
-    TCCR3A = 0;
-    
-    //set the pre-scalar to 8 and set Clear on Compare
-    TCCR3B = (1 << CS31) | (1 << WGM32); 
-    
-    // set compare value
-    OCR3A = F_CPU / (8UL * frequencyHz);
-    
-    // enable Timer 3 Compare A interrupt
-    TIMSK3 = 1 << OCIE3A;
-}
-
-// Timer3 compare A interrupt
-ISR(TIMER3_COMPA_vect)
-{
-    irPosUpdateTick = 1;
-}
-#endif // SAMCO_ATMEGA32U4
-
-#ifdef ARDUINO_ARCH_RP2040
 void rp2040EnablePWMTimer(unsigned int slice_num, unsigned int frequency)
 {
     pwm_config pwmcfg = pwm_get_default_config();
@@ -1074,27 +885,6 @@ void rp2040pwmIrq(void)
     pwm_hw->intr = 0xff;
     irPosUpdateTick = 1;
 }
-#endif
-
-#ifdef SAMCO_NO_HW_TIMER
-void NoHardwareTimerCamTickMicros()
-{
-    unsigned long us = micros();
-    if(us - irPosUpdateTime >= 1000000UL / IRCamUpdateRate) {
-        irPosUpdateTime = us;
-        irPosUpdateTick = 1;
-    }
-}
-
-void NoHardwareTimerCamTickMillis()
-{
-    unsigned long ms = millis();
-    if(ms - irPosUpdateTime >= (1000UL + (IRCamUpdateRate / 2)) / IRCamUpdateRate) {
-        irPosUpdateTime = ms;
-        irPosUpdateTick = 1;
-    }
-}
-#endif // SAMCO_NO_HW_TIMER
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
 // Second core setup
@@ -1244,10 +1034,6 @@ void loop1()
 // splits off into subsequent ExecModes depending on circumstances
 void loop()
 {
-    #ifdef SAMCO_NO_HW_TIMER
-        SAMCO_NO_HW_TIMER_UPDATE();
-    #endif // SAMCO_NO_HW_TIMER
-    
     // poll/update button states with 1ms interval so debounce mask is more effective
     buttons.Poll(1);
     buttons.Repeat();
@@ -1634,10 +1420,6 @@ void ExecRunMode()
         #endif // MAMEHOOKER
         #endif // DUAL_CORE
 
-        #ifdef SAMCO_NO_HW_TIMER
-            SAMCO_NO_HW_TIMER_UPDATE();
-        #endif // SAMCO_NO_HW_TIMER
-
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
             GetPosition();
@@ -1849,9 +1631,6 @@ void ExecRunModeProcessing()
             return;
         }
 
-        #ifdef SAMCO_NO_HW_TIMER
-            SAMCO_NO_HW_TIMER_UPDATE();
-        #endif // SAMCO_NO_HW_TIMER
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
         
@@ -1903,10 +1682,6 @@ void ExecGunModeDocked()
         }
 
         if(dockedCalibrating) {
-            #ifdef SAMCO_NO_HW_TIMER
-                SAMCO_NO_HW_TIMER_UPDATE();
-            #endif // SAMCO_NO_HW_TIMER
-
             if(irPosUpdateTick) {
                 irPosUpdateTick = 0;
                 GetPosition();
@@ -2184,21 +1959,8 @@ void GetPosition()
     int error = dfrIRPos.basicAtomic(DFRobotIRPositionEx::Retry_2);
     if(error == DFRobotIRPositionEx::Error_Success) {
         mySamco.begin(dfrIRPos.xPositions(), dfrIRPos.yPositions(), dfrIRPos.seen(), xCenter, yCenter);
-#ifdef EXTRA_POS_GLITCH_FILTER
-        if((abs(mySamco.X() - finalX) > BadMoveThreshold || abs(mySamco.Y() - finalY) > BadMoveThreshold) && badFinalTick < BadMoveCountThreshold) {
-            ++badFinalTick;
-        } else {
-            if(badFinalTick) {
-                badFinalCount++;
-                badFinalTick = 0;
-            }
-            finalX = mySamco.X();
-            finalY = mySamco.Y();
-        }
-#else
         finalX = mySamco.x();
         finalY = mySamco.y();
-#endif // EXTRA_POS_GLITCH_FILTER
 
         UpdateLastSeen();
      
@@ -5338,12 +5100,6 @@ void PrintDebugSerial()
 {
     // only print every second
     if(millis() - serialDbMs >= 1000 && Serial.dtr()) {
-#ifdef EXTRA_POS_GLITCH_FILTER
-        Serial.print("bad final count ");
-        Serial.print(badFinalCount);
-        Serial.print(", bad move count ");
-        Serial.println(badMoveCount);
-#endif // EXTRA_POS_GLITCH_FILTER
         Serial.print("mode ");
         Serial.print(gunMode);
         Serial.print(", IR pos fps ");
