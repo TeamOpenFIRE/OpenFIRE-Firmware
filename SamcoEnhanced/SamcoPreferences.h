@@ -17,10 +17,6 @@
 #include <SamcoBoard.h>
 #include <stdint.h>
 
-#ifdef SAMCO_FLASH_ENABLE
-class Adafruit_SPIFlashBase;
-#endif // SAMCO_FLASH_ENABLE
-
 /// @brief Static instance of preferences to save in non-volatile memory
 class SamcoPreferences
 {
@@ -74,24 +70,6 @@ public:
     /// @brief Required size for the preferences
     static unsigned int Size() { return sizeof(ProfileData_t) * preferences.profileCount + sizeof(HeaderId_u) + sizeof(preferences.profile); }
 
-#ifdef SAMCO_FLASH_ENABLE
-
-    /// @brief Load preferences
-    /// @return An error code from Errors_e
-    static int Load(Adafruit_SPIFlashBase& flash);
-
-    /// @brief Save preferences
-    /// @return An error code from Errors_e
-    static int Save(Adafruit_SPIFlashBase& flash);
-
-    /// @brief Get a string for a given error code
-    static const char* ErrorCodeToString(int error);
-
-private:
-    // error text table
-    static const char* ErrorText[6];
-
-#else
     /// @brief Load preferences
     /// @return An error code from Errors_e
     static int Load();
@@ -111,8 +89,6 @@ private:
     /// @brief Resets preferences with a zero-fill to the EEPROM.
     /// @return Nothing
     static void ResetPreferences();
-
-#endif
 };
 
 #endif // _SAMCOPREFERENCES_H_
