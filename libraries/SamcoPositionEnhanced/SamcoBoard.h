@@ -13,6 +13,18 @@
 #ifndef _SAMCOBOARD_H_
 #define _SAMCOBOARD_H_
 
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+#define OPENFIRE_BOARD "adafruitItsyRP2040"
+#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
+#define OPENFIRE_BOARD "adafruitKB2040"
+#elifdef ARDUINO_NANO_RP2040_CONNECT
+#define OPENFIRE_BOARD "arduinoNanoRP2040"
+#elifdef ARDUINO_RASPBERRY_PI_PICO
+#define OPENFIRE_BOARD "rpipico"
+#else
+#define OPENFIRE_BOARD "generic"
+#endif // board
+
 //// COMPATIBILIY FLAGS
 // sadly even Arduino doesn't have ideal defines... very odd there is a generic __SAMD51__, but not __SAMD21__?
 // I'll add that anyway along with the known ItsyBitsy defines that are the supported boards
