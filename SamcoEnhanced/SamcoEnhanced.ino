@@ -1,33 +1,21 @@
 /*!
  * @file SamcoEnhanced.ino
- * @brief IR-GUN4ALL - 4IR LED Lightgun sketch w/ support for force feedback and other features.
- * Based on Prow's Enhanced Fork from https://github.com/Prow7/ir-light-gun,
+ * @brief OpenFIRE - 4IR LED Lightgun sketch w/ support for force feedback and other features.
+ * Forked from IR-GUN4ALL v4.2, which is based on Prow's Enhanced Fork from https://github.com/Prow7/ir-light-gun,
  * Which in itself is based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/samuelballantyne/IR-Light-Gun
  *
  * @copyright Samco, https://github.com/samuelballantyne, June 2020
  * @copyright Mike Lynch, July 2021
- * @copyright That One Seong, https://github.com/SeongGino, October 2023
+ * @copyright That One Seong, https://github.com/SeongGino, 2024
  * @copyright GNU Lesser General Public License
  *
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @date 2023
+ * @date 2024
  */
-#define G4ALL_VERSION 4.2
-#define G4ALL_CODENAME "Fault Carol"
-
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
-#define G4ALL_BOARD "adafruitItsyRP2040"
-#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
-#define G4ALL_BOARD "adafruitKB2040"
-#elifdef ARDUINO_NANO_RP2040_CONNECT
-#define G4ALL_BOARD "arduinoNanoRP2040"
-#elifdef ARDUINO_RASPBERRY_PI_PICO
-#define G4ALL_BOARD "rpipico"
-#else
-#define G4ALL_BOARD "generic"
-#endif // board
+#define OPENFIRE_VERSION 4.2
+#define OPENFIRE_CODENAME "Fault Carol-dev"
 
  // For custom builders, remember to check (COMPILING.md) for IDE instructions!
  // ISSUERS: REMEMBER TO SPECIFY YOUR USING A CUSTOM BUILD & WHAT CHANGES ARE MADE TO THE SKETCH; OTHERWISE YOUR ISSUE MAY BE CLOSED!
@@ -74,6 +62,7 @@
 #include <SamcoConst.h>
 #include "SamcoColours.h"
 #include "SamcoPreferences.h"
+#include "SamcoPresets.h"
 
 #ifdef ARDUINO_ARCH_RP2040
   #include <hardware/pwm.h>
@@ -83,7 +72,7 @@
 #endif
 
 
-    // IMPORTANT ADDITIONS HERE ------------------------------------------------------------------------------- (*****THE HARDWARE SETTINGS YOU WANNA TWEAK!*****)
+    // GLOBAL PREDEFINES ----------------------------------------------------------------------------------------------------------
   // Enables input processing on the second core, if available. Currently exclusive to Raspberry Pi Pico, or boards based on the RP2040.
   // Isn't necessarily faster, but might make responding to force feedback more consistent.
   // If unsure, leave this uncommented - it only affects RP2040 anyways.
@@ -107,375 +96,10 @@
   // If unsure, leave uncommented - serial activity is used for configuration, and undefining this will cause errors.
 #define MAMEHOOKER
 
-  // Leave this uncommented if your build uses hardware switches, or comment out to disable all references to hw switch functionality.
-#define USES_SWITCHES
-
-  // Leave this uncommented if your build uses a rumble motor; comment out to disable any references to rumble functionality.
-#define USES_RUMBLE
-
-  // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
-#define USES_SOLENOID
-#ifdef USES_SOLENOID
-    // Uncomment if your build uses a TMP36 temperature sensor for a solenoid, or comment out if your solenoid doesn't need babysitting.
-    #define USES_TEMP
-#endif // USES_SOLENOID
-
-  // Leave this uncommented if your build uses an analog stick.
-#define USES_ANALOG
-
-  // Leave this uncommented if your build uses a four pin RGB LED.
-#define FOURPIN_LED
-
-  // Leave this uncommented if your build uses an external NeoPixel.
-#define CUSTOM_NEOPIXEL
-
   // Which software extras should be activated? Set here if your build doesn't use toggle switches.
 bool autofireActive = false;                          // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
 bool offscreenButton = false;                         // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
 bool burstFireActive = false;                         // Is the solenoid firing in burst fire mode? false = default, true = 3-shot burst firing mode
-
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040 // For the Adafruit ItsyBitsy RP2040
-#ifdef USES_SWITCHES
-    int8_t autofireSwitch = 18;                   // What's the pin number of the autofire switch? Digital.
-    #ifdef USES_RUMBLE
-        int8_t rumbleSwitch = 19;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        int8_t solenoidSwitch = 20;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SOLENOID
-#endif // USES_SWITCHES
-
-#ifdef USES_RUMBLE
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
-#endif // USES_RUMBLE
-
-#ifdef USES_SOLENOID
-    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_TEMP    
-        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-  // Remember: ANALOG PINS ONLY!
-#ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
-#endif // USES_ANALOG
-
-  // Remember: PWM PINS ONLY!
-#ifdef FOURPIN_LED
-    #define LED_ENABLE
-    int8_t PinR = -1;
-    int8_t PinG = -1;
-    int8_t PinB = -1;
-    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
-    bool commonAnode = true;
-#endif // FOURPIN_LED
-
-  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-#ifdef CUSTOM_NEOPIXEL
-    #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-#endif // CUSTOM_NEOPIXEL
-
-  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-int8_t rumblePin = 24;                            // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = 25;                          // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = 6;                            // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = 7;                               // <-- GCon 1-spec
-int8_t btnGunB = 8;                               // <-- GCon 1-spec
-int8_t btnGunC = 9;                               // Everything below are for GCon 2-spec only 
-int8_t btnStart = 10;
-int8_t btnSelect = 11;
-int8_t btnGunUp = 1;
-int8_t btnGunDown = 0;
-int8_t btnGunLeft = 4;
-int8_t btnGunRight = 5;
-int8_t btnPedal = 12;
-int8_t btnPump = -1;
-int8_t btnHome = -1;
-
-#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040           // For the Adafruit KB2040 - GUN4IR-compatible defaults
-#ifdef USES_SWITCHES
-    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
-    #ifdef USES_RUMBLE
-        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SOLENOID
-#endif // USES_SWITCHES
-
-#ifdef USES_RUMBLE
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                     // Are we allowed to do rumble? Default to off.
-#endif // USES_RUMBLE
-
-#ifdef USES_SOLENOID
-    bool solenoidActive = true;                   // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_TEMP    
-        int8_t tempPin = A0;                      // What's the pin number of the temp sensor? Needs to be analog.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-  // Remember: ANALOG PINS ONLY!
-#ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
-#endif // USES_ANALOG
-
-  // Remember: PWM PINS ONLY!
-#ifdef FOURPIN_LED
-    #define LED_ENABLE
-    int8_t PinR = -1;
-    int8_t PinG = -1;
-    int8_t PinB = -1;
-    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
-    bool commonAnode = true;
-#endif // FOURPIN_LED
-
-  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-#ifdef CUSTOM_NEOPIXEL
-    #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-#endif // CUSTOM_NEOPIXEL
-
-  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-int8_t rumblePin = 5;                             // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = 7;                           // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = A2;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = A3;                              // <-- GCon 1-spec
-int8_t btnGunB = 4;                               // <-- GCon 1-spec
-int8_t btnGunC = 6;                               // Everything below are for GCon 2-spec only 
-int8_t btnStart = 9;
-int8_t btnSelect = 8;
-int8_t btnGunUp = 18;
-int8_t btnGunDown = 20;
-int8_t btnGunLeft = 19;
-int8_t btnGunRight = 10;
-int8_t btnPedal = -1;
-int8_t btnPump = -1;
-int8_t btnHome = A1;
-
-#elifdef ARDUINO_NANO_RP2040_CONNECT
-// todo: finalize arduino nano layout soon - these are just test values for now.
-#ifdef USES_SWITCHES
-    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
-    #ifdef USES_RUMBLE
-        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SOLENOID
-#endif // USES_SWITCHES
-
-#ifdef USES_RUMBLE
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
-#endif // USES_RUMBLE
-
-#ifdef USES_SOLENOID
-    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_TEMP    
-        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-  // Remember: ANALOG PINS ONLY!
-#ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
-#endif // USES_ANALOG
-
-  // Remember: PWM PINS ONLY!
-#ifdef FOURPIN_LED
-    #define LED_ENABLE
-    int8_t PinR = -1;
-    int8_t PinG = -1;
-    int8_t PinB = -1;
-    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
-    bool commonAnode = true;
-#endif // FOURPIN_LED
-
-  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-#ifdef CUSTOM_NEOPIXEL
-    #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-#endif // CUSTOM_NEOPIXEL
-
-  // Pins setup - where do things be plugged into like? Uses GPIO codes ONLY! See also: https://learn.adafruit.com/adafruit-itsybitsy-rp2040/pinouts
-int8_t rumblePin = 17;
-int8_t solenoidPin = 16;
-int8_t btnTrigger = 15;
-int8_t btnGunA = 0;
-int8_t btnGunB = 1;
-int8_t btnGunC = 18;
-int8_t btnStart = 19;
-int8_t btnSelect = 20;
-int8_t btnGunUp = -1;
-int8_t btnGunDown = -1;
-int8_t btnGunLeft = -1;
-int8_t btnGunRight = -1;
-int8_t btnPedal = -1;
-int8_t btnPump = -1;
-int8_t btnHome = -1;
-
-#elifdef ARDUINO_RASPBERRY_PI_PICO // For the Raspberry Pi Pico
-
-#ifdef USES_SWITCHES
-    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
-    #ifdef USES_SOLENOID
-        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SOLENOID
-    #ifdef USES_RUMBLE
-        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_RUMBLE
-#endif // USES_SWITCHES
-
-#ifdef USES_RUMBLE
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
-#endif // USES_RUMBLE
-
-#ifdef USES_SOLENOID
-    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_TEMP    
-        int8_t tempPin = A2;                         // What's the pin number of the temp sensor? Needs to be analog.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-  // Remember: ANALOG PINS ONLY!
-#ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
-#endif // USES_ANALOG
-
-  // Remember: PWM PINS ONLY!
-#ifdef FOURPIN_LED
-    #define LED_ENABLE
-    int8_t PinR = 10;
-    int8_t PinG = 11;
-    int8_t PinB = 12;
-    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
-    bool commonAnode = true;
-#endif // FOURPIN_LED
-
-  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-#ifdef CUSTOM_NEOPIXEL
-    #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-#endif // CUSTOM_NEOPIXEL
-
-int8_t rumblePin = 17;                            // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = 16;                          // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = 15;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = 0;                               // <-- GCon 1-spec
-int8_t btnGunB = 1;                               // <-- GCon 1-spec
-int8_t btnGunC = 2;                               // Everything below are for GCon 2-spec only 
-int8_t btnStart = 3;
-int8_t btnSelect = 4;
-int8_t btnGunUp = 6;
-int8_t btnGunDown = 7;
-int8_t btnGunLeft = 8;
-int8_t btnGunRight = 9;
-int8_t btnPedal = 14;
-int8_t btnPump = 13;
-int8_t btnHome = 5;
-
-#else // for Generic - basically no pins mapped by default at all
-
-#ifdef USES_SWITCHES
-    int8_t autofireSwitch = -1;                   // What's the pin number of the autofire switch? Digital.
-    #ifdef USES_SOLENOID
-        int8_t solenoidSwitch = -1;               // What's the pin number of the solenoid switch? Digital.
-    #endif // USES_SOLENOID
-    #ifdef USES_RUMBLE
-        int8_t rumbleSwitch = -1;                 // What's the pin number of the rumble switch? Digital.
-    #endif // USES_RUMBLE
-#endif // USES_SWITCHES
-
-#ifdef USES_RUMBLE
-    // If you'd rather not use a solenoid for force-feedback effects, this will change all on-screen force feedback events to use the motor instead.
-    // TODO: actually finish this.
-    //#define RUMBLE_FF
-    #if defined(RUMBLE_FF) && defined(USES_SOLENOID)
-        #error Rumble Force-feedback is incompatible with Solenoids! Use either one or the other.
-    #endif // RUMBLE_FF && USES_SOLENOID
-    bool rumbleActive = true;                        // Are we allowed to do rumble? Default to off.
-#endif // USES_RUMBLE
-
-#ifdef USES_SOLENOID
-    bool solenoidActive = true;                      // Are we allowed to use a solenoid? Default to off.
-    #ifdef USES_TEMP    
-        int8_t tempPin = -1;                         // What's the pin number of the temp sensor? Needs to be analog.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-  // Remember: ANALOG PINS ONLY!
-#ifdef USES_ANALOG
-    int8_t analogPinX = -1;
-    int8_t analogPinY = -1;
-#endif // USES_ANALOG
-
-  // Remember: PWM PINS ONLY!
-#ifdef FOURPIN_LED
-    #define LED_ENABLE
-    int8_t PinR = -1;
-    int8_t PinG = -1;
-    int8_t PinB = -1;
-    // Set if your LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
-    bool commonAnode = true;
-#endif // FOURPIN_LED
-
-  // Any digital pin is fine for NeoPixels. Currently we only use the first "pixel".
-#ifdef CUSTOM_NEOPIXEL
-    #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
-    int8_t customLEDpin = -1;                      // Pin number for the custom NeoPixel (strip) being used.
-#endif // CUSTOM_NEOPIXEL
-
-int8_t rumblePin = -1;                            // What's the pin number of the rumble output? Needs to be digital.
-int8_t solenoidPin = -1;                          // What's the pin number of the solenoid output? Needs to be digital.
-int8_t btnTrigger = -1;                           // Programmer's note: made this just to simplify the trigger pull detection, guh.
-int8_t btnGunA = -1;                              // <-- GCon 1-spec
-int8_t btnGunB = -1;                              // <-- GCon 1-spec
-int8_t btnGunC = -1;                              // Everything below are for GCon 2-spec only 
-int8_t btnStart = -1;
-int8_t btnSelect = -1;
-int8_t btnGunUp = -1;
-int8_t btnGunDown = -1;
-int8_t btnGunLeft = -1;
-int8_t btnGunRight = -1;
-int8_t btnPedal = -1;
-int8_t btnPump = -1;
-int8_t btnHome = -1;
-
-#endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 
 bool lowButtonMode = false;                           // Flag that determines if buttons A/B will be Start/Select when pointing offscreen; for Sega Stunner and GunCon 1-spec guns mainly.
 uint16_t autofireWaitFactor = 3;                      // This is the default time to wait between rapid fire pulses (from 2-4)
@@ -548,25 +172,27 @@ enum ButtonMask_e {
 
 //// TODO: Try pointers for the button functions rather than direct declaration?
 
+BoardPins pinsDb;
+
 // Button descriptor
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
 LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, PAD_RT, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
-    {btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
-    {btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, PAD_Y, 15, BTN_AG_MASK2},
-    {btnStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, PAD_START, 20, BTN_AG_MASK2},
-    {btnSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, PAD_SELECT, 20, BTN_AG_MASK2},
-    {btnGunUp, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2},
-    {btnGunDown, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},
-    {btnGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
-    {btnGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
-    {btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
-    {btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
-    {btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
-    {btnHome, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
+    {pinsDb.btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, PAD_RT, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
+    {pinsDb.btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
+    {pinsDb.btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, PAD_Y, 15, BTN_AG_MASK2},
+    {pinsDb.btnStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, PAD_START, 20, BTN_AG_MASK2},
+    {pinsDb.btnSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, PAD_SELECT, 20, BTN_AG_MASK2},
+    {pinsDb.btnGunUp, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2},
+    {pinsDb.btnGunDown, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},
+    {pinsDb.btnGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
+    {pinsDb.btnGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
+    {pinsDb.btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
+    {pinsDb.btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
+    {pinsDb.btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
+    {pinsDb.btnHome, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
 };
 
 // button count constant
@@ -1133,41 +759,41 @@ void setup() {
 void FeedbackSet()
 {
     #ifdef USES_RUMBLE
-        if(rumblePin >= 0) {
-            pinMode(rumblePin, OUTPUT);
+        if(pinsDb.rumblePin >= 0) {
+            pinMode(pinsDb.rumblePin, OUTPUT);
         } else {
             rumbleActive = false;
         }
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
-        if(solenoidPin >= 0) {
-            pinMode(solenoidPin, OUTPUT);
+        if(pinsDb.solenoidPin >= 0) {
+            pinMode(pinsDb.solenoidPin, OUTPUT);
         } else {
             solenoidActive = false;
         }
     #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(rumbleSwitch >= 0) {
-                pinMode(rumbleSwitch, INPUT_PULLUP);
+            if(pinsDb.rumbleSwitch >= 0) {
+                pinMode(pinsDb.rumbleSwitch, INPUT_PULLUP);
             }
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-            if(solenoidSwitch >= 0) {
-                pinMode(solenoidSwitch, INPUT_PULLUP);
+            if(pinsDb.solenoidSwitch >= 0) {
+                pinMode(pinsDb.solenoidSwitch, INPUT_PULLUP);
             }  
         #endif // USES_SOLENOID
-        if(autofireSwitch >= 0) {
-            pinMode(autofireSwitch, INPUT_PULLUP);
+        if(pinsDb.autofireSwitch >= 0) {
+            pinMode(pinsDb.autofireSwitch, INPUT_PULLUP);
         }
     #endif // USES_SWITCHES
     #ifdef USES_ANALOG
         analogReadResolution(12);
         #ifdef USES_TEMP
-        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY &&
-        analogPinX != tempPin && analogPinY != tempPin) {
+        if(pinsDb.analogPinX >= 0 && pinsDb.analogPinY >= 0 && pinsDb.analogPinX != pinsDb.analogPinY &&
+        pinsDb.analogPinX != pinsDb.tempPin && pinsDb.analogPinY != pinsDb.tempPin) {
         #else
-        if(analogPinX >= 0 && analogPinY >= 0 && analogPinX != analogPinY) {
+        if(pinsDb.analogPinX >= 0 && pinsDb.analogPinY >= 0 && pinsDb.analogPinX != pinsDb.analogPinY) {
         #endif // USES_TEMP
             //pinMode(analogPinX, INPUT);
             //pinMode(analogPinY, INPUT);
@@ -1177,19 +803,19 @@ void FeedbackSet()
         }
     #endif // USES_ANALOG
     #if defined(LED_ENABLE) && defined(FOURPIN_LED)
-    if(PinR < 0 || PinG < 0 || PinB < 0) {
+    if(pinsDb.PinR < 0 || pinsDb.PinG < 0 || pinsDb.PinB < 0) {
         Serial.println("RGB values not valid! Disabling four pin access.");
         ledIsValid = false;
     } else {
-        pinMode(PinR, OUTPUT);
-        pinMode(PinG, OUTPUT);
-        pinMode(PinB, OUTPUT);
+        pinMode(pinsDb.PinR, OUTPUT);
+        pinMode(pinsDb.PinG, OUTPUT);
+        pinMode(pinsDb.PinB, OUTPUT);
         ledIsValid = true;
     }
     #endif // FOURPIN_LED
     #ifdef CUSTOM_NEOPIXEL
-    if(customLEDpin >= 0) {
-        externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+    if(pinsDb.customLEDpin >= 0) {
+        externPixel = new Adafruit_NeoPixel(customLEDcount, pinsDb.customLEDpin, NEO_GRB + NEO_KHZ800);
     }
     #endif // CUSTOM_NEOPIXEL
 }
@@ -1199,45 +825,45 @@ void FeedbackSet()
 void PinsReset()
 {
     #ifdef USES_RUMBLE
-        if(rumblePin >= 0) {
-            pinMode(rumblePin, INPUT);
+        if(pinsDb.rumblePin >= 0) {
+            pinMode(pinsDb.rumblePin, INPUT);
         }
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
-        if(solenoidPin >= 0) {
-            pinMode(solenoidPin, INPUT);
+        if(pinsDb.solenoidPin >= 0) {
+            pinMode(pinsDb.solenoidPin, INPUT);
         }
     #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(rumbleSwitch >= 0) {
-                pinMode(rumbleSwitch, INPUT);
+            if(pinsDb.rumbleSwitch >= 0) {
+                pinMode(pinsDb.rumbleSwitch, INPUT);
             }
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-            if(solenoidSwitch >= 0) {
-                pinMode(solenoidSwitch, INPUT);
+            if(pinsDb.solenoidSwitch >= 0) {
+                pinMode(pinsDb.solenoidSwitch, INPUT);
             }  
         #endif // USES_SOLENOID
-        if(autofireSwitch >= 0) {
-            pinMode(autofireSwitch, INPUT);
+        if(pinsDb.autofireSwitch >= 0) {
+            pinMode(pinsDb.autofireSwitch, INPUT);
         }
     #endif // USES_SWITCHES
     #ifdef LED_ENABLE
         LedOff();
         #ifdef FOURPIN_LED
             if(ledIsValid) {
-                pinMode(PinR, INPUT);
-                pinMode(PinG, INPUT);
-                pinMode(PinB, INPUT);
+                pinMode(pinsDb.PinR, INPUT);
+                pinMode(pinsDb.PinG, INPUT);
+                pinMode(pinsDb.PinB, INPUT);
             }
         #endif // FOURPIN_LED
         #ifdef CUSTOM_NEOPIXEL
             if(externPixel != nullptr) {
                 delete externPixel;
             }
-            if(customLEDpin >= 0) {
-                externPixel = new Adafruit_NeoPixel(customLEDcount, customLEDpin, NEO_GRB + NEO_KHZ800);
+            if(pinsDb.customLEDpin >= 0) {
+                externPixel = new Adafruit_NeoPixel(customLEDcount, pinsDb.customLEDpin, NEO_GRB + NEO_KHZ800);
                 externPixel->begin();
             }
         #endif // CUSTOM_NEOPIXEL
@@ -1552,11 +1178,11 @@ void loop1()
                 if(t - pauseHoldStartstamp > pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     #ifdef USES_SOLENOID
-                        digitalWrite(solenoidPin, LOW);
+                        digitalWrite(pinsDb.solenoidPin, LOW);
                         solenoidFirstShot = false;
                     #endif // USES_SOLENOID
                     #ifdef USES_RUMBLE
-                        digitalWrite(rumblePin, LOW);
+                        digitalWrite(pinsDb.rumblePin, LOW);
                         rumbleHappening = false;
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
@@ -1573,11 +1199,11 @@ void loop1()
             if(buttons.pressedReleased == EnterPauseModeBtnMask) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
-                    digitalWrite(solenoidPin, LOW);
+                    digitalWrite(pinsDb.solenoidPin, LOW);
                     solenoidFirstShot = false;
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    digitalWrite(rumblePin, LOW);
+                    digitalWrite(pinsDb.rumblePin, LOW);
                     rumbleHappening = false;
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
@@ -1592,11 +1218,11 @@ void loop1()
             } else if(buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
-                    digitalWrite(solenoidPin, LOW);
+                    digitalWrite(pinsDb.solenoidPin, LOW);
                     solenoidFirstShot = false;
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    digitalWrite(rumblePin, LOW);
+                    digitalWrite(pinsDb.rumblePin, LOW);
                     rumbleHappening = false;
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
@@ -1633,9 +1259,9 @@ void loop()
 
     if(holdToPause && pauseHoldStarted) {
         #ifdef USES_RUMBLE
-            analogWrite(rumblePin, rumbleIntensity);
+            analogWrite(pinsDb.rumblePin, rumbleIntensity);
             delay(300);
-            digitalWrite(rumblePin, LOW);
+            digitalWrite(pinsDb.rumblePin, LOW);
         #endif // USES_RUMBLE
         while(buttons.debounced != 0) {
             // Should release the buttons to continue, pls.
@@ -1800,9 +1426,9 @@ void loop()
                         }
                         #ifdef USES_RUMBLE
                             for(byte i = 0; i < 3; i++) {
-                                analogWrite(rumblePin, rumbleIntensity);
+                                analogWrite(pinsDb.rumblePin, rumbleIntensity);
                                 delay(80);
-                                digitalWrite(rumblePin, LOW);
+                                digitalWrite(pinsDb.rumblePin, LOW);
                                 delay(50);
                             }
                         #endif // USES_RUMBLE
@@ -1838,11 +1464,11 @@ void loop()
             } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle(0);
             #ifdef USES_RUMBLE
-                } else if(buttons.pressedReleased == RumbleToggleBtnMask && rumbleSwitch >= 0) {
+                } else if(buttons.pressedReleased == RumbleToggleBtnMask && pinsDb.rumbleSwitch >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && solenoidSwitch >= 0) {
+                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && pinsDb.solenoidSwitch >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
             } else {
@@ -1955,17 +1581,17 @@ void ExecRunMode()
         // Only sets these values if the switches are mapped to valid pins.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
-                if(rumbleSwitch >= 0) {
-                    rumbleActive = !digitalRead(rumbleSwitch);
+                if(pinsDb.rumbleSwitch >= 0) {
+                    rumbleActive = !digitalRead(pinsDb.rumbleSwitch);
                 }
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                if(solenoidSwitch >= 0) {
-                    solenoidActive = !digitalRead(solenoidSwitch);
+                if(pinsDb.solenoidSwitch >= 0) {
+                    solenoidActive = !digitalRead(pinsDb.solenoidSwitch);
                 }
             #endif // USES_SOLENOID
-            if(autofireSwitch >= 0) {
-                autofireActive = !digitalRead(autofireSwitch);
+            if(pinsDb.autofireSwitch >= 0) {
+                autofireActive = !digitalRead(pinsDb.autofireSwitch);
             }
         #endif // USES_SWITCHES
 
@@ -2410,8 +2036,8 @@ void ExecGunModeDocked()
             }
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
-                if(tempPin >= 0) {
-                    int tempSensor = analogRead(tempPin);
+                if(pinsDb.tempPin >= 0) {
+                    int tempSensor = analogRead(pinsDb.tempPin);
                     tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100;
                     Serial.print("Temperature: ");
                     Serial.println(tempSensor);
@@ -2657,16 +2283,16 @@ void TriggerFire()
                         BurstFire();                                // Process it.
                     } else if(autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
                     !burstFireActive) {          // (WITHOUT burst firing enabled)
-                        if(digitalRead(solenoidPin)) {              // Is the solenoid engaged?
+                        if(digitalRead(pinsDb.solenoidPin)) {              // Is the solenoid engaged?
                             SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
                         } else {                                    // Or if it's not,
                             SolenoidActivation(solenoidFastInterval * autofireWaitFactor); // We're holding it for longer.
                         }
                     } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
-                        if(digitalRead(solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
+                        if(digitalRead(pinsDb.solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
                             unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
                             if(currentMillis - previousMillisSol >= solenoidNormalInterval) { // If we finally surpassed the wait threshold...
-                                digitalWrite(solenoidPin, LOW);     // Let it go.
+                                digitalWrite(pinsDb.solenoidPin, LOW);     // Let it go.
                             }
                         } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
                             unsigned long currentMillis = millis(); // Initialize timer.
@@ -2676,7 +2302,7 @@ void TriggerFire()
                             }
                         }
                     } else if(!burstFireActive) {                   // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
-                        if(digitalRead(solenoidPin)) {              // Are we engaged right now?
+                        if(digitalRead(pinsDb.solenoidPin)) {              // Are we engaged right now?
                             SolenoidActivation(solenoidNormalInterval); // Turn it off with this timer.
                         } else {                                    // Or we're not engaged.
                             SolenoidActivation(solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
@@ -2733,12 +2359,12 @@ void TriggerFire()
             if(burstFiring) {                                  // If we're in a burst firing sequence,
                 BurstFire();
             #ifdef USES_SOLENOID
-                } else if(digitalRead(solenoidPin) &&
+                } else if(digitalRead(pinsDb.solenoidPin) &&
                 !burstFireActive) {                               // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
                     unsigned long currentMillis = millis();         // Calibrate current time
                     if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
                         previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                        digitalWrite(solenoidPin, LOW);             // Turn it off already, dangit.
+                        digitalWrite(pinsDb.solenoidPin, LOW);             // Turn it off already, dangit.
                     }
             #elif RUMBLE_FF
                 } else if(rumbleHappening && !burstFireActive) {
@@ -2780,7 +2406,7 @@ void TriggerNotFire()
                 unsigned long currentMillis = millis();         // Start the timer
                 if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
                     previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                    digitalWrite(solenoidPin, LOW);             // Make sure to turn it off.
+                    digitalWrite(pinsDb.solenoidPin, LOW);             // Make sure to turn it off.
                 }
             }
         }
@@ -2798,8 +2424,8 @@ void TriggerNotFire()
 #ifdef USES_ANALOG
 void AnalogStickPoll()
 {
-    unsigned int analogValueX = analogRead(analogPinX);
-    unsigned int analogValueY = analogRead(analogPinY);
+    unsigned int analogValueX = analogRead(pinsDb.analogPinX);
+    unsigned int analogValueY = analogRead(pinsDb.analogPinY);
     Gamepad16.moveStick(analogValueX, analogValueY);
 }
 #endif // USES_ANALOG
@@ -3009,102 +2635,102 @@ void SerialProcessingDocked()
                             break;
                           case 1:
                             serialInput = Serial.read(); // nomf
-                            btnTrigger = Serial.parseInt();
-                            btnTrigger = constrain(btnTrigger, -1, 40);
+                            pinsDb.btnTrigger = Serial.parseInt();
+                            pinsDb.btnTrigger = constrain(pinsDb.btnTrigger, -1, 40);
                             Serial.println("OK: Set trigger button pin.");
                             break;
                           case 2:
                             serialInput = Serial.read(); // nomf
-                            btnGunA = Serial.parseInt();
-                            btnGunA = constrain(btnGunA, -1, 40);
+                            pinsDb.btnGunA = Serial.parseInt();
+                            pinsDb.btnGunA = constrain(pinsDb.btnGunA, -1, 40);
                             Serial.println("OK: Set A button pin.");
                             break;
                           case 3:
                             serialInput = Serial.read(); // nomf
-                            btnGunB = Serial.parseInt();
-                            btnGunB = constrain(btnGunB, -1, 40);
+                            pinsDb.btnGunB = Serial.parseInt();
+                            pinsDb.btnGunB = constrain(pinsDb.btnGunB, -1, 40);
                             Serial.println("OK: Set B button pin.");
                             break;
                           case 4:
                             serialInput = Serial.read(); // nomf
-                            btnGunC = Serial.parseInt();
-                            btnGunC = constrain(btnGunC, -1, 40);
+                            pinsDb.btnGunC = Serial.parseInt();
+                            pinsDb.btnGunC = constrain(pinsDb.btnGunC, -1, 40);
                             Serial.println("OK: Set C button pin.");
                             break;
                           case 5:
                             serialInput = Serial.read(); // nomf
-                            btnStart = Serial.parseInt();
-                            btnStart = constrain(btnStart, -1, 40);
+                            pinsDb.btnStart = Serial.parseInt();
+                            pinsDb.btnStart = constrain(pinsDb.btnStart, -1, 40);
                             Serial.println("OK: Set Start button pin.");
                             break;
                           case 6:
                             serialInput = Serial.read(); // nomf
-                            btnSelect = Serial.parseInt();
-                            btnSelect = constrain(btnSelect, -1, 40);
+                            pinsDb.btnSelect = Serial.parseInt();
+                            pinsDb.btnSelect = constrain(pinsDb.btnSelect, -1, 40);
                             Serial.println("OK: Set Select button pin.");
                             break;
                           case 7:
                             serialInput = Serial.read(); // nomf
-                            btnGunUp = Serial.parseInt();
-                            btnGunUp = constrain(btnGunUp, -1, 40);
+                            pinsDb.btnGunUp = Serial.parseInt();
+                            pinsDb.btnGunUp = constrain(pinsDb.btnGunUp, -1, 40);
                             Serial.println("OK: Set D-Pad Up button pin.");
                             break;
                           case 8:
                             serialInput = Serial.read(); // nomf
-                            btnGunDown = Serial.parseInt();
-                            btnGunDown = constrain(btnGunDown, -1, 40);
+                            pinsDb.btnGunDown = Serial.parseInt();
+                            pinsDb.btnGunDown = constrain(pinsDb.btnGunDown, -1, 40);
                             Serial.println("OK: Set D-Pad Down button pin.");
                             break;
                           case 9:
                             serialInput = Serial.read(); // nomf
-                            btnGunLeft = Serial.parseInt();
-                            btnGunLeft = constrain(btnGunLeft, -1, 40);
+                            pinsDb.btnGunLeft = Serial.parseInt();
+                            pinsDb.btnGunLeft = constrain(pinsDb.btnGunLeft, -1, 40);
                             Serial.println("OK: Set D-Pad Left button pin.");
                             break;
                           case 10:
                             serialInput = Serial.read(); // nomf
-                            btnGunRight = Serial.parseInt();
-                            btnGunRight = constrain(btnGunRight, -1, 40);
+                            pinsDb.btnGunRight = Serial.parseInt();
+                            pinsDb.btnGunRight = constrain(pinsDb.btnGunRight, -1, 40);
                             Serial.println("OK: Set D-Pad Right button pin.");
                             break;
                           case 11:
                             serialInput = Serial.read(); // nomf
-                            btnPedal = Serial.parseInt();
-                            btnPedal = constrain(btnPedal, -1, 40);
+                            pinsDb.btnPedal = Serial.parseInt();
+                            pinsDb.btnPedal = constrain(pinsDb.btnPedal, -1, 40);
                             Serial.println("OK: Set External Pedal button pin.");
                             break;
                           case 12:
                             serialInput = Serial.read(); // nomf
-                            btnHome = Serial.parseInt();
-                            btnHome = constrain(btnHome, -1, 40);
+                            pinsDb.btnHome = Serial.parseInt();
+                            pinsDb.btnHome = constrain(pinsDb.btnHome, -1, 40);
                             Serial.println("OK: Set Home button pin.");
                             break;
                           case 13:
                             serialInput = Serial.read(); // nomf
-                            btnPump = Serial.parseInt();
-                            btnPump = constrain(btnPump, -1, 40);
+                            pinsDb.btnPump = Serial.parseInt();
+                            pinsDb.btnPump = constrain(pinsDb.btnPump, -1, 40);
                             Serial.println("OK: Set Pump Action button pin.");
                             break;
                           #ifdef USES_RUMBLE
                           case 14:
                             serialInput = Serial.read(); // nomf
-                            rumblePin = Serial.parseInt();
-                            rumblePin = constrain(rumblePin, -1, 40);
+                            pinsDb.rumblePin = Serial.parseInt();
+                            pinsDb.rumblePin = constrain(pinsDb.rumblePin, -1, 40);
                             Serial.println("OK: Set Rumble signal pin.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
                           case 15:
                             serialInput = Serial.read(); // nomf
-                            solenoidPin = Serial.parseInt();
-                            solenoidPin = constrain(solenoidPin, -1, 40);
+                            pinsDb.solenoidPin = Serial.parseInt();
+                            pinsDb.solenoidPin = constrain(pinsDb.solenoidPin, -1, 40);
                             Serial.println("OK: Set Solenoid signal pin.");
                             break;
                           #ifdef USES_TEMP
                           case 16:
                             serialInput = Serial.read(); // nomf
-                            tempPin = Serial.parseInt();
-                            tempPin = constrain(tempPin, -1, 40);
+                            pinsDb.tempPin = Serial.parseInt();
+                            pinsDb.tempPin = constrain(pinsDb.tempPin, -1, 40);
                             Serial.println("OK: Set Temperature Sensor pin.");
                             break;
                           #endif
@@ -3113,65 +2739,65 @@ void SerialProcessingDocked()
                           #ifdef USES_RUMBLE
                           case 17:
                             serialInput = Serial.read(); // nomf
-                            rumbleSwitch = Serial.parseInt();
-                            rumbleSwitch = constrain(rumbleSwitch, -1, 40);
+                            pinsDb.rumbleSwitch = Serial.parseInt();
+                            pinsDb.rumbleSwitch = constrain(pinsDb.rumbleSwitch, -1, 40);
                             Serial.println("OK: Set Rumble Switch pin.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
                           case 18:
                             serialInput = Serial.read(); // nomf
-                            solenoidSwitch = Serial.parseInt();
-                            solenoidSwitch = constrain(solenoidSwitch, -1, 40);
+                            pinsDb.solenoidSwitch = Serial.parseInt();
+                            pinsDb.solenoidSwitch = constrain(pinsDb.solenoidSwitch, -1, 40);
                             Serial.println("OK: Set Solenoid Switch pin.");
                             break;
                           #endif
                           case 19:
                             serialInput = Serial.read(); // nomf
-                            autofireSwitch = Serial.parseInt();
-                            autofireSwitch = constrain(autofireSwitch, -1, 40);
+                            pinsDb.autofireSwitch = Serial.parseInt();
+                            pinsDb.autofireSwitch = constrain(pinsDb.autofireSwitch, -1, 40);
                             Serial.println("OK: Set Autofire Switch pin.");
                             break;
                           #endif
                           #ifdef FOURPIN_LED
                           case 20:
                             serialInput = Serial.read(); // nomf
-                            PinR = Serial.parseInt();
-                            PinR = constrain(PinR, -1, 40);
+                            pinsDb.PinR = Serial.parseInt();
+                            pinsDb.PinR = constrain(pinsDb.PinR, -1, 40);
                             Serial.println("OK: Set RGB LED R pin.");
                             break;
                           case 21:
                             serialInput = Serial.read(); // nomf
-                            PinG = Serial.parseInt();
-                            PinG = constrain(PinG, -1, 40);
+                            pinsDb.PinG = Serial.parseInt();
+                            pinsDb.PinG = constrain(pinsDb.PinG, -1, 40);
                             Serial.println("OK: Set RGB LED G pin.");
                             break;
                           case 22:
                             serialInput = Serial.read(); // nomf
-                            PinB = Serial.parseInt();
-                            PinB = constrain(PinB, -1, 40);
+                            pinsDb.PinB = Serial.parseInt();
+                            pinsDb.PinB = constrain(pinsDb.PinB, -1, 40);
                             Serial.println("OK: Set RGB LED B pin.");
                             break;
                           #endif
                           #ifdef CUSTOM_NEOPIXEL
                           case 23:
                             serialInput = Serial.read(); // nomf
-                            customLEDpin = Serial.parseInt();
-                            customLEDpin = constrain(customLEDpin, -1, 40);
+                            pinsDb.customLEDpin = Serial.parseInt();
+                            pinsDb.customLEDpin = constrain(pinsDb.customLEDpin, -1, 40);
                             Serial.println("OK: Set Custom NeoPixel pin.");
                             break;
                           #endif
                           #ifdef USES_ANALOG
                           case 24:
                             serialInput = Serial.read(); // nomf
-                            analogPinX = Serial.parseInt();
-                            analogPinX = constrain(analogPinX, -1, 40);
+                            pinsDb.analogPinX = Serial.parseInt();
+                            pinsDb.analogPinX = constrain(pinsDb.analogPinX, -1, 40);
                             Serial.println("OK: Set Analog X pin.");
                             break;
                           case 25:
                             serialInput = Serial.read(); // nomf
-                            analogPinY = Serial.parseInt();
-                            analogPinY = constrain(analogPinY, -1, 40);
+                            pinsDb.analogPinY = Serial.parseInt();
+                            pinsDb.analogPinY = constrain(pinsDb.analogPinY, -1, 40);
                             Serial.println("OK: Set Analog Y pin.");
                             break;
                           #endif
@@ -3363,28 +2989,28 @@ void SerialProcessingDocked()
                 // Temp pin mappings
                 int8_t tempMappings[] = {
                     customPinsInUse,            // custom pin enabled - disabled by default
-                    btnTrigger,
-                    btnGunA,
-                    btnGunB,
-                    btnGunC,
-                    btnStart,
-                    btnSelect,
-                    btnGunUp,
-                    btnGunDown,
-                    btnGunLeft,
-                    btnGunRight,
-                    btnPedal,
-                    btnHome,
-                    btnPump,
+                    pinsDb.btnTrigger,
+                    pinsDb.btnGunA,
+                    pinsDb.btnGunB,
+                    pinsDb.btnGunC,
+                    pinsDb.btnStart,
+                    pinsDb.btnSelect,
+                    pinsDb.btnGunUp,
+                    pinsDb.btnGunDown,
+                    pinsDb.btnGunLeft,
+                    pinsDb.btnGunRight,
+                    pinsDb.btnPedal,
+                    pinsDb.btnHome,
+                    pinsDb.btnPump,
                     #ifdef USES_RUMBLE
-                    rumblePin,
+                    pinsDb.rumblePin,
                     #else
                     -1,
                     #endif // USES_RUMBLE
                     #ifdef USES_SOLENOID
-                    solenoidPin,
+                    pinsDb.solenoidPin,
                     #ifdef USES_TEMP
-                    tempPin,
+                    pinsDb.tempPin,
                     #else
                     -1,
                     #endif // USES_TEMP
@@ -3393,36 +3019,36 @@ void SerialProcessingDocked()
                     #endif // USES_SOLENOID
                     #ifdef USES_SWITCHES
                     #ifdef USES_RUMBLE
-                    rumbleSwitch,
+                    pinsDb.rumbleSwitch,
                     #else
                     -1,
                     #endif // USES_RUMBLE
                     #ifdef USES_SOLENOID
-                    solenoidSwitch,
+                    pinsDb.solenoidSwitch,
                     #else
                     -1,
                     #endif // USES_SOLENOID
-                    autofireSwitch,
+                    pinsDb.autofireSwitch,
                     #else
                     -1,
                     #endif // USES_SWITCHES
                     #ifdef FOURPIN_LED
-                    PinR,
-                    PinG,
-                    PinB,
+                    pinsDb.PinR,
+                    pinsDb.PinG,
+                    pinsDb.PinB,
                     #else
                     -1,
                     -1,
                     -1,
                     #endif // FOURPIN_LED
                     #ifdef CUSTOM_NEOPIXEL
-                    customLEDpin,
+                    pinsDb.customLEDpin,
                     #else
                     -1,
                     #endif // CUSTOM_NEOPIXEL
                     #ifdef USES_ANALOG
-                    analogPinX,
-                    analogPinY,
+                    pinsDb.analogPinX,
+                    pinsDb.analogPinY,
                     #else
                     -1,
                     -1,
@@ -3598,13 +3224,13 @@ void SerialProcessingDocked()
               case 't':
                 serialInput = Serial.read();
                 if(serialInput == 's') {
-                  digitalWrite(solenoidPin, HIGH);
+                  digitalWrite(pinsDb.solenoidPin, HIGH);
                   delay(solenoidNormalInterval);
-                  digitalWrite(solenoidPin, LOW);
+                  digitalWrite(pinsDb.solenoidPin, LOW);
                 } else if(serialInput == 'r') {
-                  analogWrite(rumblePin, rumbleIntensity);
+                  analogWrite(pinsDb.rumblePin, rumbleIntensity);
                   delay(rumbleInterval);
-                  digitalWrite(rumblePin, LOW);
+                  digitalWrite(pinsDb.rumblePin, LOW);
                 }
                 break;
           }
@@ -3643,12 +3269,12 @@ void SerialProcessing()
           } else {
               serialMode = true;                                         // Set it on, then!
               #ifdef USES_RUMBLE
-                  digitalWrite(rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
+                  digitalWrite(pinsDb.rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
                   rumbleHappened = false;
                   rumbleHappening = false;
               #endif // USES_RUMBLE
               #ifdef USES_SOLENOID
-                  digitalWrite(solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
+                  digitalWrite(pinsDb.solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
                   solenoidFirstShot = false;
               #endif // USES_SOLENOID
               triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
@@ -3721,13 +3347,13 @@ void SerialProcessing()
                   LedOff();                                          // Turn it off, and let lastSeen handle it from here.
               #endif // LED_ENABLE
               #ifdef USES_RUMBLE
-                  digitalWrite(rumblePin, LOW);
+                  digitalWrite(pinsDb.rumblePin, LOW);
                   serialRumbPulseStage = 0;
                   serialRumbPulses = 0;
                   serialRumbPulsesLast = 0;
               #endif // USES_RUMBLE
               #ifdef USES_SOLENOID
-                  digitalWrite(solenoidPin, LOW);
+                  digitalWrite(pinsDb.solenoidPin, LOW);
                   serialSolPulseOn = false;
                   serialSolPulses = 0;
                   serialSolPulsesLast = 0;
@@ -4022,10 +3648,10 @@ void SerialHandling()
     #ifdef USES_SOLENOID
       if(solenoidActive) {
           if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
-              digitalWrite(solenoidPin, HIGH);                           // Make it go!
+              digitalWrite(pinsDb.solenoidPin, HIGH);                           // Make it go!
           } else if(bitRead(serialQueue, 1)) {                      // if the solenoid pulse bit is on,
               if(!serialSolPulsesLast) {                            // Have we started pulsing?
-                  analogWrite(solenoidPin, 178);                         // Start pulsing it on!
+                  analogWrite(pinsDb.solenoidPin, 178);                         // Start pulsing it on!
                   serialSolPulseOn = true;                               // Set that the pulse cycle is in on.
                   serialSolPulsesLast = 1;                               // Start the sequence.
                   serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
@@ -4033,12 +3659,12 @@ void SerialHandling()
                   unsigned long currentMillis = millis();                // Calibrate timer.
                   if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we passed the set interval length between stages?
                       if(serialSolPulseOn) {                        // If we're currently pulsing on,
-                          analogWrite(solenoidPin, 122);                 // Start pulsing it off.
+                          analogWrite(pinsDb.solenoidPin, 122);                 // Start pulsing it off.
                           serialSolPulseOn = false;                      // Set that we're in off.
                           serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       } else {                                      // Or if we're pulsing off,
-                          analogWrite(solenoidPin, 178);                 // Start pulsing it on.
+                          analogWrite(pinsDb.solenoidPin, 178);                 // Start pulsing it on.
                           serialSolPulseOn = true;                       // Set that we're in on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
@@ -4046,25 +3672,25 @@ void SerialHandling()
               } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
                   unsigned long currentMillis = millis();                // Calibrate timer.
                   if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
-                      digitalWrite(solenoidPin, LOW);                    // Finally shut it off for good.
+                      digitalWrite(pinsDb.solenoidPin, LOW);                    // Finally shut it off for good.
                       bitClear(serialQueue, 1);                          // Set the pulse bit as off.
                   }
               }
           } else {  // or if it's not,
-              digitalWrite(solenoidPin, LOW);                            // turn it off!
+              digitalWrite(pinsDb.solenoidPin, LOW);                            // turn it off!
           }
       } else {
-          digitalWrite(solenoidPin, LOW);
+          digitalWrite(pinsDb.solenoidPin, LOW);
       }
   #endif // USES_SOLENOID
   #ifdef USES_RUMBLE
       if(rumbleActive) {
           if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
-              analogWrite(rumblePin, rumbleIntensity);              // turn/keep it on.
+              analogWrite(pinsDb.rumblePin, rumbleIntensity);              // turn/keep it on.
               //bitClear(serialQueue, 3);
           } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
               if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
-                  analogWrite(rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
+                  analogWrite(pinsDb.rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
                   serialRumbPulseStage = 0;                              // Set that we're at stage 0.
                   serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
               } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
@@ -4072,17 +3698,17 @@ void SerialHandling()
                   if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
                       switch(serialRumbPulseStage) {                     // If so, let's start processing.
                           case 0:                                        // Basically, each case
-                              analogWrite(rumblePin, 255);               // bumps up the intensity, (lowest to rising)
+                              analogWrite(pinsDb.rumblePin, 255);               // bumps up the intensity, (lowest to rising)
                               serialRumbPulseStage++;                    // and increments the stage of the pulse.
                               serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
                               break;                                     // Then quits the switch.
                           case 1:
-                              analogWrite(rumblePin, 120);               // (rising to peak)
+                              analogWrite(pinsDb.rumblePin, 120);               // (rising to peak)
                               serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
                               break;
                           case 2:
-                              analogWrite(rumblePin, 75);                // (peak to falling,)
+                              analogWrite(pinsDb.rumblePin, 75);                // (peak to falling,)
                               serialRumbPulseStage = 0;
                               serialRumbPulsesLast++;
                               serialRumbPulsesLastUpdate = millis();
@@ -4090,14 +3716,14 @@ void SerialHandling()
                       }
                   }
               } else {                                              // ...or the pulses count is complete.
-                  digitalWrite(rumblePin, LOW);                          // turn off the motor,
+                  digitalWrite(pinsDb.rumblePin, LOW);                          // turn off the motor,
                   bitClear(serialQueue, 3);                              // and set the rumble pulses bit off, now that we've completed it.
               }
           } else {                                                  // ...or we're being told to turn it off outright.
-              digitalWrite(rumblePin, LOW);                              // Do that then.
+              digitalWrite(pinsDb.rumblePin, LOW);                              // Do that then.
           }
       } else {
-          digitalWrite(rumblePin, LOW);
+          digitalWrite(pinsDb.rumblePin, LOW);
       }
   #endif // USES_RUMBLE
   #ifdef LED_ENABLE
@@ -4269,10 +3895,10 @@ void SetMode(GunMode_e newMode)
     case GunMode_Docked:
         stateFlags |= StateFlag_SavePreferencesEn;
         if(!dockedCalibrating) {
-            Serial.println("GUN4ALL");
-            Serial.println(G4ALL_VERSION, 1);
-            Serial.println(G4ALL_CODENAME);
-            Serial.println(G4ALL_BOARD);
+            Serial.println("OpenFIRE");
+            Serial.println(OPENFIRE_VERSION, 1);
+            Serial.println(OPENFIRE_CODENAME);
+            Serial.println(OPENFIRE_BOARD);
             Serial.println(selectedProfile);
         }
         break;
@@ -4319,26 +3945,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    rumbleSwitch >= 0 && rumblePin >= 0) {
+                    pinsDb.rumbleSwitch >= 0 && pinsDb.rumblePin >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    solenoidSwitch >= 0 && solenoidPin >= 0) {
+                    pinsDb.solenoidSwitch >= 0 && pinsDb.solenoidPin >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
             #else
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    rumblePin >= 0) {
+                    pinsDb.rumblePin >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    solenoidPin >= 0) {
+                    pinsDb.solenoidPin >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
@@ -4352,26 +3978,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    solenoidSwitch >= 0 && solenoidPin >= 0) {
+                    pinsDb.solenoidSwitch >= 0 && pinsDb.solenoidPin >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    rumbleSwitch >= 0 && rumblePin >= 0) {
+                    pinsDb.rumbleSwitch >= 0 && pinsDb.rumblePin >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
             #else
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    solenoidPin >= 0) {
+                    pinsDb.solenoidPin >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    rumblePin >= 0) {
+                    pinsDb.rumblePin >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
@@ -4681,9 +4307,9 @@ void PrintExtras()
     #endif // DUAL_CORE
     #endif // ARDUINO_ARCH_RP2040
     Serial.print("Firmware version: v");
-    Serial.print(G4ALL_VERSION, 1);
+    Serial.print(OPENFIRE_VERSION, 1);
     Serial.print(" - ");
-    Serial.println(G4ALL_CODENAME);
+    Serial.println(OPENFIRE_CODENAME);
 }
 
 // Loads preferences from EEPROM, then verifies.
@@ -4830,28 +4456,28 @@ void ExtPreferences(bool isLoad)
     // Temp pin mappings
     int8_t tempMappings[] = {
       customPinsInUse,            // custom pin enabled - disabled by default
-      btnTrigger,
-      btnGunA,
-      btnGunB,
-      btnGunC,
-      btnStart,
-      btnSelect,
-      btnGunUp,
-      btnGunDown,
-      btnGunLeft,
-      btnGunRight,
-      btnPedal,
-      btnHome,
-      btnPump,
+      pinsDb.btnTrigger,
+      pinsDb.btnGunA,
+      pinsDb.btnGunB,
+      pinsDb.btnGunC,
+      pinsDb.btnStart,
+      pinsDb.btnSelect,
+      pinsDb.btnGunUp,
+      pinsDb.btnGunDown,
+      pinsDb.btnGunLeft,
+      pinsDb.btnGunRight,
+      pinsDb.btnPedal,
+      pinsDb.btnHome,
+      pinsDb.btnPump,
       #ifdef USES_RUMBLE
-      rumblePin,
+      pinsDb.rumblePin,
       #else
       -1,
       #endif // USES_RUMBLE
       #ifdef USES_SOLENOID
-      solenoidPin,
+      pinsDb.solenoidPin,
       #ifdef USES_TEMP
-      tempPin,
+      pinsDb.tempPin,
       #else
       -1,
       #endif // USES_TEMP
@@ -4860,36 +4486,36 @@ void ExtPreferences(bool isLoad)
       #endif // USES_SOLENOID
       #ifdef USES_SWITCHES
       #ifdef USES_RUMBLE
-      rumbleSwitch,
+      pinsDb.rumbleSwitch,
       #else
       -1,
       #endif // USES_RUMBLE
       #ifdef USES_SOLENOID
-      solenoidSwitch,
+      pinsDb.solenoidSwitch,
       #else
       -1,
       #endif // USES_SOLENOID
-      autofireSwitch,
+      pinsDb.autofireSwitch,
       #else
       -1,
       #endif // USES_SWITCHES
       #ifdef FOURPIN_LED
-      PinR,
-      PinG,
-      PinB,
+      pinsDb.PinR,
+      pinsDb.PinG,
+      pinsDb.PinB,
       #else
       -1,
       -1,
       -1,
       #endif // FOURPIN_LED
       #ifdef CUSTOM_NEOPIXEL
-      customLEDpin,
+      pinsDb.customLEDpin,
       #else
       -1,
       #endif // CUSTOM_NEOPIXEL
       #ifdef USES_ANALOG
-      analogPinX,
-      analogPinY,
+      pinsDb.analogPinX,
+      pinsDb.analogPinY,
       #else
       -1,
       -1,
@@ -4944,48 +4570,48 @@ void ExtPreferences(bool isLoad)
         // Set pins, if allowed.
         customPinsInUse = tempMappings[0];
         if(customPinsInUse) {
-            btnTrigger = tempMappings[1];
-            btnGunA = tempMappings[2];
-            btnGunB = tempMappings[3];
-            btnGunC = tempMappings[4];
-            btnStart = tempMappings[5];
-            btnSelect = tempMappings[6];
-            btnGunUp = tempMappings[7];
-            btnGunDown = tempMappings[8];
-            btnGunLeft = tempMappings[9];
-            btnGunRight = tempMappings[10];
-            btnPedal = tempMappings[11];
-            btnHome = tempMappings[12];
-            btnPump = tempMappings[13];
+            pinsDb.btnTrigger = tempMappings[1];
+            pinsDb.btnGunA = tempMappings[2];
+            pinsDb.btnGunB = tempMappings[3];
+            pinsDb.btnGunC = tempMappings[4];
+            pinsDb.btnStart = tempMappings[5];
+            pinsDb.btnSelect = tempMappings[6];
+            pinsDb.btnGunUp = tempMappings[7];
+            pinsDb.btnGunDown = tempMappings[8];
+            pinsDb.btnGunLeft = tempMappings[9];
+            pinsDb.btnGunRight = tempMappings[10];
+            pinsDb.btnPedal = tempMappings[11];
+            pinsDb.btnHome = tempMappings[12];
+            pinsDb.btnPump = tempMappings[13];
             #ifdef USES_RUMBLE
-            rumblePin = tempMappings[14];
+            pinsDb.rumblePin = tempMappings[14];
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-            solenoidPin = tempMappings[15];
+            pinsDb.solenoidPin = tempMappings[15];
             #ifdef USES_TEMP
-            tempPin = tempMappings[16];
+            pinsDb.tempPin = tempMappings[16];
             #endif // USES_TEMP
             #endif // USES_SOLENOID
             #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
-            rumbleSwitch = tempMappings[17];
+            pinsDb.rumbleSwitch = tempMappings[17];
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-            solenoidSwitch = tempMappings[18];
+            pinsDb.solenoidSwitch = tempMappings[18];
             #endif // USES_SOLENOID
-            autofireSwitch = tempMappings[19];
+            pinsDb.autofireSwitch = tempMappings[19];
             #endif // USES_SWITCHES
             #ifdef FOURPIN_LED
-            PinR = tempMappings[20];
-            PinG = tempMappings[21];
-            PinB = tempMappings[22];
+            pinsDb.PinR = tempMappings[20];
+            pinsDb.PinG = tempMappings[21];
+            pinsDb.PinB = tempMappings[22];
             #endif // FOURPIN_LED
             #ifdef CUSTOM_NEOPIXEL
-            customLEDpin = tempMappings[23];
+            pinsDb.customLEDpin = tempMappings[23];
             #endif // CUSTOM_NEOPIXEL
             #ifdef USES_ANALOG
-            analogPinX = tempMappings[24];
-            analogPinY = tempMappings[25];
+            pinsDb.analogPinX = tempMappings[24];
+            pinsDb.analogPinY = tempMappings[25];
             #endif // USES_ANALOG
         }
 
@@ -5209,7 +4835,7 @@ void LedInit()
         neopixel.begin();
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
-        if(customLEDpin >= 0) {
+        if(pinsDb.customLEDpin >= 0) {
             externPixel->begin();
         }
     #endif // CUSTOM_NEOPIXEL
@@ -5234,7 +4860,7 @@ void SetLedPackedColor(uint32_t color)
     neopixel.show();
 #endif // NEOPIXEL_PIN
 #ifdef CUSTOM_NEOPIXEL
-    if(customLEDpin >= 0) {
+    if(pinsDb.customLEDpin >= 0) {
         externPixel->fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
         externPixel->show();
     }
@@ -5249,9 +4875,9 @@ void SetLedPackedColor(uint32_t color)
             g = ~g;
             b = ~b;
         }
-        analogWrite(PinR, r);
-        analogWrite(PinG, g);
-        analogWrite(PinB, b);
+        analogWrite(pinsDb.PinR, r);
+        analogWrite(pinsDb.PinG, g);
+        analogWrite(pinsDb.PinB, b);
     }
 #endif // FOURPIN_LED
 #ifdef ARDUINO_NANO_RP2040_CONNECT
@@ -5284,7 +4910,7 @@ void LedUpdate(byte r, byte g, byte b)
         neopixel.show();
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
-        if(customLEDpin >= 0) {
+        if(pinsDb.customLEDpin >= 0) {
             for(byte i = 0; i < customLEDcount; i++) {
                 externPixel->setPixelColor(i, r, g, b);
             }
@@ -5298,9 +4924,9 @@ void LedUpdate(byte r, byte g, byte b)
                 g = ~g;
                 b = ~b;
             }
-            analogWrite(PinR, r);
-            analogWrite(PinG, g);
-            analogWrite(PinB, b);
+            analogWrite(pinsDb.PinR, r);
+            analogWrite(pinsDb.PinG, g);
+            analogWrite(pinsDb.PinB, b);
         }
     #endif // FOURPIN_LED
     #ifdef ARDUINO_NANO_RP2040_CONNECT
@@ -5359,13 +4985,13 @@ void OffscreenToggle()
             SetLedPackedColor(WikiColor::Ghost_white);            // Set a color,
         #endif // LED_ENABLE
         #ifdef USES_RUMBLE
-            digitalWrite(rumblePin, HIGH);                        // Set rumble on
+            digitalWrite(pinsDb.rumblePin, HIGH);                        // Set rumble on
             delay(125);                                           // For this long,
-            digitalWrite(rumblePin, LOW);                         // Then flick it off,
+            digitalWrite(pinsDb.rumblePin, LOW);                         // Then flick it off,
             delay(150);                                           // wait a little,
-            digitalWrite(rumblePin, HIGH);                        // Flick it back on
+            digitalWrite(pinsDb.rumblePin, HIGH);                        // Flick it back on
             delay(200);                                           // For a bit,
-            digitalWrite(rumblePin, LOW);                         // and then turn it off,
+            digitalWrite(pinsDb.rumblePin, LOW);                         // and then turn it off,
         #else
             delay(450);
         #endif // USES_RUMBLE
@@ -5421,9 +5047,9 @@ void AutofireSpeedToggle(byte setting)
         #endif // LED_ENABLE
         #ifdef USES_SOLENOID
             for(byte i = 0; i < 5; i++) {                             // And demonstrate the new autofire factor five times!
-                digitalWrite(solenoidPin, HIGH);
+                digitalWrite(pinsDb.solenoidPin, HIGH);
                 delay(solenoidFastInterval);
-                digitalWrite(solenoidPin, LOW);
+                digitalWrite(pinsDb.solenoidPin, LOW);
                 delay(solenoidFastInterval * autofireWaitFactor);
             }
         #endif // USES_SOLENOID
@@ -5485,9 +5111,9 @@ void RumbleToggle()
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
         #endif // LED_ENABLE
-        digitalWrite(rumblePin, HIGH);                            // Pulse the motor on to notify the user,
+        digitalWrite(pinsDb.rumblePin, HIGH);                            // Pulse the motor on to notify the user,
         delay(300);                                               // Hold that,
-        digitalWrite(rumblePin, LOW);                             // Then turn off,
+        digitalWrite(pinsDb.rumblePin, LOW);                             // Then turn off,
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
@@ -5521,9 +5147,9 @@ void SolenoidToggle()
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
         #endif // LED_ENABLE
-        digitalWrite(solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
+        digitalWrite(pinsDb.solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
         delay(300);                                               // Hold it that way for a bit,
-        digitalWrite(solenoidPin, LOW);                           // Release it,
+        digitalWrite(pinsDb.solenoidPin, LOW);                           // Release it,
         #ifdef LED_ENABLE
             SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
@@ -5553,12 +5179,12 @@ void SolenoidActivation(int solenoidFinalInterval)
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
         unsigned long currentMillis = millis();                   // Initialize timer.
         previousMillisSol = currentMillis;                        // Calibrate the timer for future calcs.
-        digitalWrite(solenoidPin, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
+        digitalWrite(pinsDb.solenoidPin, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
         return;                                                   // We're done here now.
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        if(tempPin >= 0) { // If a temp sensor is installed and enabled,
-            int tempSensor = analogRead(tempPin);
+        if(pinsDb.tempPin >= 0) { // If a temp sensor is installed and enabled,
+            int tempSensor = analogRead(pinsDb.tempPin);
             tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
             #ifdef PRINT_VERBOSE
                 Serial.print("Current Temp near solenoid: ");
@@ -5569,17 +5195,17 @@ void SolenoidActivation(int solenoidFinalInterval)
                 unsigned long currentMillis = millis();
                 if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
                     previousMillisSol = currentMillis;
-                    digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                    digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
                     return;
                 } else { // If we pass the temp check but fail the timer check, we're here too quick.
                     return;
                 }
             } else if(tempSensor < tempWarning) { // If we failed the room temp check, are we beneath the shutoff threshold?
-                if(digitalRead(solenoidPin)) {    // Is the valve being pulled now?
+                if(digitalRead(pinsDb.solenoidPin)) {    // Is the valve being pulled now?
                     unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
                     if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
                         previousMillisSol = currentMillis;
-                        digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // Flip, flop.
+                        digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // Flip, flop.
                         return;
                     } else { // OR, Passed the temp check, STILL here too quick.
                         return;
@@ -5588,7 +5214,7 @@ void SolenoidActivation(int solenoidFinalInterval)
                     unsigned long currentMillis = millis();
                     if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
                         previousMillisSol = currentMillis;
-                        digitalWrite(solenoidPin, !digitalRead(solenoidPin));
+                        digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin));
                         return;
                     } else { // OR, We passed the temp check but STILL got here too quick.
                         return;
@@ -5598,14 +5224,14 @@ void SolenoidActivation(int solenoidFinalInterval)
                 #ifdef PRINT_VERBOSE
                     Serial.println("Solenoid over safety threshold; not activating!");
                 #endif
-                digitalWrite(solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
+                digitalWrite(pinsDb.solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
                 return;
             }
         } else { // No temp sensor, so just go ahead.
             unsigned long currentMillis = millis();                   // Start the timer.
             if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
                 previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-                digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
                 return;                                               // Aaaand we're done here.
             } else {                                                  // If we failed the timer check, we're here too quick.
                 return;                                               // Get out of here, speedy mc loserpants.
@@ -5615,7 +5241,7 @@ void SolenoidActivation(int solenoidFinalInterval)
         unsigned long currentMillis = millis();                   // Start the timer.
         if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
             previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-            digitalWrite(solenoidPin, !digitalRead(solenoidPin)); // run the solenoid into the state we've just inverted it to.
+            digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
             return;                                               // Aaaand we're done here.
         } else {                                                  // If we failed the timer check, we're here too quick.
             return;                                               // Get out of here, speedy mc loserpants.
@@ -5631,14 +5257,14 @@ void RumbleActivation()
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
         unsigned long currentMillis = millis();                   // Calibrate a timer to set how long we've been rumbling.
         if(currentMillis - previousMillisRumble >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
-            digitalWrite(rumblePin, LOW);                         // Make sure the rumble is OFF.
+            digitalWrite(pinsDb.rumblePin, LOW);                         // Make sure the rumble is OFF.
             rumbleHappening = false;                              // This rumble command is done now.
             rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
         }
         return;                                                   // Alright we done here (if we did this before already)
     } else {                                                      // OR, we're rumbling for the first time.
         previousMillisRumble = millis();                          // Mark this as the start of this rumble command.
-        analogWrite(rumblePin, rumbleIntensity);                  // Set the motor on.
+        analogWrite(pinsDb.rumblePin, rumbleIntensity);                  // Set the motor on.
         rumbleHappening = true;                                   // Mark that we're in a rumble command rn.
         return;                                                   // Now geddoutta here.
     }
@@ -5650,11 +5276,11 @@ void BurstFire()
 {
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
         #ifdef USES_SOLENOID
-            if(!digitalRead(solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
+            if(!digitalRead(pinsDb.solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
             (burstFireCount == burstFireCountLast)) {
                 burstFireCount++;                                 // Increment the counter.
             }
-            if(!digitalRead(solenoidPin)) {  // Now, is the solenoid NOT on right now?
+            if(!digitalRead(pinsDb.solenoidPin)) {  // Now, is the solenoid NOT on right now?
                 SolenoidActivation(solenoidFastInterval * 2);     // Hold it off a bit longer,
             } else {                         // or if it IS on,
                 burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
@@ -5675,19 +5301,19 @@ void UpdateBindings(bool offscreenEnable)
     // Updates pins
     // TODO: might still need to use pointers to the pins in the first place instead of lowkey memcopying,
     // but at least this is less aneurysm-inducing than what it used to be.
-    LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = btnTrigger;
-    LightgunButtons::ButtonDesc[BtnIdx_A].pin = btnGunA;
-    LightgunButtons::ButtonDesc[BtnIdx_B].pin = btnGunB;
-    LightgunButtons::ButtonDesc[BtnIdx_Reload].pin = btnGunC;
-    LightgunButtons::ButtonDesc[BtnIdx_Start].pin = btnStart;
-    LightgunButtons::ButtonDesc[BtnIdx_Select].pin = btnSelect;
-    LightgunButtons::ButtonDesc[BtnIdx_Up].pin = btnGunUp;
-    LightgunButtons::ButtonDesc[BtnIdx_Down].pin = btnGunDown;
-    LightgunButtons::ButtonDesc[BtnIdx_Left].pin = btnGunLeft;
-    LightgunButtons::ButtonDesc[BtnIdx_Right].pin = btnGunRight;
-    LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = btnPedal;
-    LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = btnPump;
-    LightgunButtons::ButtonDesc[BtnIdx_Home].pin = btnHome;
+    LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = pinsDb.btnTrigger;
+    LightgunButtons::ButtonDesc[BtnIdx_A].pin = pinsDb.btnGunA;
+    LightgunButtons::ButtonDesc[BtnIdx_B].pin = pinsDb.btnGunB;
+    LightgunButtons::ButtonDesc[BtnIdx_Reload].pin = pinsDb.btnGunC;
+    LightgunButtons::ButtonDesc[BtnIdx_Start].pin = pinsDb.btnStart;
+    LightgunButtons::ButtonDesc[BtnIdx_Select].pin = pinsDb.btnSelect;
+    LightgunButtons::ButtonDesc[BtnIdx_Up].pin = pinsDb.btnGunUp;
+    LightgunButtons::ButtonDesc[BtnIdx_Down].pin = pinsDb.btnGunDown;
+    LightgunButtons::ButtonDesc[BtnIdx_Left].pin = pinsDb.btnGunLeft;
+    LightgunButtons::ButtonDesc[BtnIdx_Right].pin = pinsDb.btnGunRight;
+    LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = pinsDb.btnPedal;
+    LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = pinsDb.btnPump;
+    LightgunButtons::ButtonDesc[BtnIdx_Home].pin = pinsDb.btnHome;
 
     // Updates button functions for low-button mode
     if(offscreenEnable) {
