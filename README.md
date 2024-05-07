@@ -44,8 +44,6 @@ For reference, the default schematic and (general) layout for the build and its 
 ## TODO:
 - (Re-)expose button function remapping.
 - Should implement support for rumble as an alternative force-feedback system (currently under `RUMBLE_FF` define, but should be a normal toggleable option).
-- Some code functions should be offloaded to classes (a lot of core functionality/variables are all shoved into `SamcoEnhanced.ino` atm).
-- Remove non-RP2040-related code/references?
 
 ## Thanks:
 * Samuel Ballantyne, for his SAMCO project which inspired this madness in the first place.
