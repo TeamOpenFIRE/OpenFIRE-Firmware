@@ -81,8 +81,8 @@
   // Here we define the Manufacturer Name/Device Name/PID:VID of the gun as will be displayed by the operating system.
   // For multiplayer, different guns need different IDs!
   // If unsure, or are only using one gun, just leave these at their defaults!
-#define MANUFACTURER_NAME "3DP"
-#define DEVICE_NAME "GUN4ALL-Con"
+#define MANUFACTURER_NAME "OpenFIRE"
+#define DEVICE_NAME "FIRE-Con"
 #define DEVICE_VID 0x0920
 #define DEVICE_PID 0x1998
 
