@@ -270,6 +270,44 @@ void SamcoPreferences::LoadPresets()
     pins.bPump = -1;
     pins.bHome = -1;
 
+    #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
+
+    #ifdef USES_SOLENOID
+        #ifdef USES_TEMP    
+            pins.aTMP36 = A3;
+        #endif // USES_TEMP
+    #endif // USES_SOLENOID
+
+      // Remember: PWM PINS ONLY!
+    #ifdef FOURPIN_LED
+        #define LED_ENABLE
+        pins.oLedR = -1;
+        pins.oLedG = -1;
+        pins.oLedB = -1;
+    #endif // FOURPIN_LED
+
+      // Any digital pin is fine for NeoPixels.
+    #ifdef CUSTOM_NEOPIXEL
+        #define LED_ENABLE
+        pins.oPixel = -1
+    #endif // CUSTOM_NEOPIXEL
+
+    pins.oRumble = 17;
+    pins.oSolenoid = 16;
+    pins.bTrigger = 0;
+    pins.bGunA = 1;
+    pins.bGunB = 2;
+    pins.bGunC = 3;
+    pins.bStart = 4;
+    pins.bSelect = 5;
+    pins.bGunUp = -1;
+    pins.bGunDown = -1;
+    pins.bGunLeft = -1;
+    pins.bGunRight = -1;
+    pins.bPedal = -1;
+    pins.bPump = -1;
+    pins.bHome = -1;
+
     // For the Raspberry Pi Pico
     #elifdef ARDUINO_RASPBERRY_PI_PICO
 
@@ -311,9 +349,24 @@ void SamcoPreferences::LoadPresets()
 
     #endif // ARDUINO_BOARD
 
-    toggles.solenoidActive = true;
-    toggles.rumbleActive = true;
-    toggles.autofireActive = false;
+    PresetCam();
+}
+
+void SamcoPreferences::PresetCam()
+{
+    #if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
+    pins.pCamSCL = 3;
+    pins.pCamSDA = 2;
+    #elifdef ARDUINO_NANO_RP2040_CONNECT
+    pins.pCamSCL = 13;
+    pins.pCamSDA = 12;
+    #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
+    pins.pCamSCL = 15;
+    pins.pCamSDA = 14;
+    #else // RASPBERRY_PI_PICO et al
+    pins.pCamSCL = 21;
+    pins.pCamSDA = 20;
+    #endif // ARDUINO_BOARD
 }
 
 #else

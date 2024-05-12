@@ -613,50 +613,8 @@ void setup() {
         TinyUSBInit();
     #endif // USE_TINYUSB
 
-    #if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
-        // ItsyBitsy only exposes I2C1 pins by default, and KB2040 is meant to be GUN4IR compatible, whose schematic which uses these pins.
-        dfrIRPos = new DFRobotIRPositionEx(Wire1);
-        // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040 and KB2040
-        Wire1.setSDA(2);
-        Wire1.setSCL(3);
-    #else
-        // Every other board (afaik) don't have this limitation.
-        dfrIRPos = new DFRobotIRPositionEx(Wire);
-        #ifdef ARDUINO_NANO_RP2040_CONNECT
-            Wire.setSDA(12);
-            Wire.setSCL(13);
-        #else // assumes ARDUINO_RASPBERRY_PI_PICO
-            Wire.setSDA(20);
-            Wire.setSCL(21);
-        #endif // board
-    #endif
-
-    // Check if custom pins are in use and if pins are valid at a surface level
-    if(SamcoPreferences::toggles.customPinsInUse &&
-       SamcoPreferences::pins.pCamSDA >= 0 &&
-       SamcoPreferences::pins.pCamSCL >= 0 &&
-       SamcoPreferences::pins.pCamSDA != SamcoPreferences::pins.pCamSCL) {
-        // Sanity check: which channel do these pins correlate to?
-        if(bitRead(SamcoPreferences::pins.pCamSCL, 1) && bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
-            // I2C1
-            if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
-                // SDA/SCL are indeed on verified correct pins
-                Wire1.setSDA(SamcoPreferences::pins.pCamSDA);
-                Wire1.setSCL(SamcoPreferences::pins.pCamSCL);
-                delete dfrIRPos;
-                dfrIRPos = new DFRobotIRPositionEx(Wire1);
-            }
-        } else if(!bitRead(SamcoPreferences::pins.pCamSCL, 1) && !bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
-            // I2C0
-            if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
-                // SDA/SCL are indeed on verified correct pins
-                Wire.setSDA(SamcoPreferences::pins.pCamSDA);
-                Wire.setSCL(SamcoPreferences::pins.pCamSCL);
-                delete dfrIRPos;
-                dfrIRPos = new DFRobotIRPositionEx(Wire);
-            }
-        }
-    }
+    // Initialize DFRobot Camera Wires & Object
+    CameraSet();
 
     // initialize buttons & feedback devices
     buttons.Begin();
@@ -664,9 +622,6 @@ void setup() {
     #ifdef LED_ENABLE
         LedInit();
     #endif // LED_ENABLE
-
-    // Start IR Camera with basic data format
-    dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
     // Initializing the USB devices chunk.
@@ -734,6 +689,37 @@ void setup() {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
     }
+}
+
+// (Re-)initializes DFRobot Camera object with wire set by current pins.
+void CameraSet()
+{
+    if(dfrIRPos != nullptr) {
+        delete dfrIRPos;
+    }
+    // Sanity check: which channel do these pins correlate to?
+    if(!SamcoPreferences::toggles.customPinsInUse) {
+        SamcoPreferences::PresetCam();
+    }
+    if(bitRead(SamcoPreferences::pins.pCamSCL, 1) && bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
+        // I2C1
+        if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
+            // SDA/SCL are indeed on verified correct pins
+            Wire1.setSDA(SamcoPreferences::pins.pCamSDA);
+            Wire1.setSCL(SamcoPreferences::pins.pCamSCL);
+        }
+        dfrIRPos = new DFRobotIRPositionEx(Wire1);
+    } else if(!bitRead(SamcoPreferences::pins.pCamSCL, 1) && !bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
+        // I2C0
+        if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
+            // SDA/SCL are indeed on verified correct pins
+            Wire.setSDA(SamcoPreferences::pins.pCamSDA);
+            Wire.setSCL(SamcoPreferences::pins.pCamSCL);
+        }
+        dfrIRPos = new DFRobotIRPositionEx(Wire);
+    }
+    // Start IR Camera with basic data format
+    dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
 }
 
 // inits and/or re-sets feedback pins using currently loaded pin values
@@ -2338,6 +2324,7 @@ void SerialProcessingDocked()
                     }
                     #endif // LED_ENABLE
                 }
+                CameraSet();
                 UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
                 buttons.Begin();
                 dockedSaving = false;

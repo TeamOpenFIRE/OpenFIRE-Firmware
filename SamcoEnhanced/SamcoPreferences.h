@@ -199,6 +199,10 @@ public:
     /// @brief Sets pre-set values according to the board
     /// @return Nothing
     static void LoadPresets();
+
+    /// @brief Sets pre-set camera pins according to the board
+    /// @return Nothing
+    static void PresetCam();
 };
 
 #endif // _SAMCOPREFERENCES_H_
