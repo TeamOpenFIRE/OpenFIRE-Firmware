@@ -298,8 +298,8 @@ enum RunMode_e {
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
     {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Bringus"},
     {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Brongus"},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broonga"},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace"}
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broongas"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace L'sia"}
 };
 //  ------------------------------------------------------------------------------------------------------
 
@@ -538,9 +538,6 @@ bool nvAvailable = true;
 // non-volatile preferences error code
 int nvPrefsError = SamcoPreferences::Error_NoStorage;
 
-// preferences instance
-SamcoPreferences samcoPreferences;
-
 // number of times the IR camera will update per second
 constexpr unsigned int IRCamUpdateRate = 209;
 
@@ -574,7 +571,9 @@ void setup() {
     Serial.setTimeout(0);
  
     // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
-    EEPROM.begin(1024); 
+    EEPROM.begin(1024);
+
+    SamcoPreferences::LoadPresets();
     
     if(nvAvailable) {
         LoadPreferences();
@@ -4038,7 +4037,7 @@ void LoadPreferences()
 #ifdef SAMCO_FLASH_ENABLE
     nvPrefsError = SamcoPreferences::Load(flash);
 #else
-    nvPrefsError = samcoPreferences.LoadProfiles();
+    nvPrefsError = SamcoPreferences::LoadProfiles();
 #endif // SAMCO_FLASH_ENABLE
     VerifyPreferences();
 }
@@ -4095,17 +4094,17 @@ void SavePreferences()
     SamcoPreferences::profiles.selectedProfile = (uint8_t)selectedProfile;
 
 #ifdef SAMCO_FLASH_ENABLE
-    nvPrefsError = samcoPreferences.Save(flash);
+    nvPrefsError = SamcoPreferences::Save(flash);
 #else
-    nvPrefsError = samcoPreferences.SaveProfiles();
+    nvPrefsError = SamcoPreferences::SaveProfiles();
 #endif // SAMCO_FLASH_ENABLE
     if(nvPrefsError == SamcoPreferences::Error_Success) {
         Serial.print("Settings saved to ");
         Serial.println(NVRAMlabel);
-        samcoPreferences.SaveToggles();
-        samcoPreferences.SavePins();
-        samcoPreferences.SaveSettings();
-        samcoPreferences.SaveUSBID();
+        SamcoPreferences::SaveToggles();
+        SamcoPreferences::SavePins();
+        SamcoPreferences::SaveSettings();
+        SamcoPreferences::SaveUSBID();
         #ifdef LED_ENABLE
             for(byte i = 0; i < 3; i++) {
                 LedUpdate(25,25,255);

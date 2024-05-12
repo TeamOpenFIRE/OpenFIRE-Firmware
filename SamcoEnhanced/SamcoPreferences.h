@@ -48,7 +48,7 @@ public:
         uint32_t buttonMask : 16;   // Button mask assigned to this profile
         bool irLayout;              // square or diamond IR for this display?
         uint32_t color   : 24;      // packed color blob per profile
-        char name[8];               // Profile display name
+        char name[16];               // Profile display name
     } __attribute__ ((packed)) ProfileData_t;
 
     /// @brief Preferences that can be stored in flash
@@ -67,10 +67,10 @@ public:
     static Preferences_t profiles;
 
     typedef struct TogglesMap_s {
-        bool customPinsInUse = 0;       // Are we using custom pins mapping?
+        bool customPinsInUse = false;   // Are we using custom pins mapping?
         bool rumbleActive = true;       // Are we allowed to do rumble?
         bool solenoidActive = true;     // Are we allowed to use a solenoid?
-        bool autofireActive = true;     // Is autofire enabled?
+        bool autofireActive = false;    // Is autofire enabled?
         bool simpleMenu = false;        // Is simple pause menu active?
         bool holdToPause = false;       // Is holding A/B buttons to enter pause mode allowed?
         bool commonAnode = true;        // If LED is Common Anode (+, connects to 5V) rather than Common Cathode (-, connects to GND)
@@ -115,18 +115,18 @@ public:
     static PinsMap_t pins;
 
     typedef struct SettingsMap_s {
-        uint8_t rumbleIntensity;
-        uint16_t rumbleInterval;
-        uint16_t solenoidNormalInterval;
-        uint16_t solenoidFastInterval;
-        uint16_t solenoidLongInterval;
-        uint8_t autofireWaitFactor;
-        uint16_t pauseHoldLength;
-        uint8_t customLEDcount;
-        uint8_t customLEDstatic;
-        uint32_t customLEDcolor1;
-        uint32_t customLEDcolor2;
-        uint32_t customLEDcolor3;
+        uint8_t rumbleIntensity = 255;
+        uint16_t rumbleInterval = 150;
+        uint16_t solenoidNormalInterval = 45;
+        uint16_t solenoidFastInterval = 30;
+        uint16_t solenoidLongInterval = 500;
+        uint8_t autofireWaitFactor = 3;
+        uint16_t pauseHoldLength = 2500;
+        uint8_t customLEDcount = 1;
+        uint8_t customLEDstatic = 0;
+        uint32_t customLEDcolor1 = 0xFF0000;
+        uint32_t customLEDcolor2 = 0x00FF00;
+        uint32_t customLEDcolor3 = 0x0000FF;
     } SettingsMap_t;
 
     static SettingsMap_t settings;
@@ -195,6 +195,10 @@ public:
     /// @brief Resets preferences with a zero-fill to the EEPROM.
     /// @return Nothing
     static void ResetPreferences();
+
+    /// @brief Sets pre-set values according to the board
+    /// @return Nothing
+    static void LoadPresets();
 };
 
 #endif // _SAMCOPREFERENCES_H_

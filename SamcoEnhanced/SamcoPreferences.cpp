@@ -151,6 +151,171 @@ void SamcoPreferences::ResetPreferences()
     EEPROM.commit();
 }
 
+void SamcoPreferences::LoadPresets()
+{
+    // For the Adafruit ItsyBitsy RP2040
+    #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+
+    #ifdef USES_SOLENOID
+        #ifdef USES_TEMP    
+            pins.aTMP36 = A2;
+        #endif // USES_TEMP
+    #endif // USES_SOLENOID
+
+      // Remember: PWM PINS ONLY!
+    #ifdef FOURPIN_LED
+        #define LED_ENABLE
+        pins.oLedR = -1;
+        pins.oLedG = -1;
+        pins.oLedB = -1;
+    #endif // FOURPIN_LED
+
+      // Any digital pin is fine for NeoPixels.
+    #ifdef CUSTOM_NEOPIXEL
+        #define LED_ENABLE
+        pins.customLEDpin = -1;
+    #endif // CUSTOM_NEOPIXEL
+
+    pins.oRumble = 24;
+    pins.oSolenoid = 25;
+    pins.bTrigger = 6;
+    pins.bGunA = 7;
+    pins.bGunB = 8;
+    pins.bGunC = 9;
+    pins.bStart = 10;
+    pins.bSelect = 11;
+    pins.bGunUp = 1;
+    pins.bGunDown = 0;
+    pins.bGunLeft = 4;
+    pins.bGunRight = 5;
+    pins.bPedal = 12;
+    pins.bPump = -1;
+    pins.bHome = -1;
+
+    // For the Adafruit KB2040 - GUN4IR-compatible defaults
+    #elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
+
+    #ifdef USES_SOLENOID
+        #ifdef USES_TEMP    
+            pins.aTMP36 = A0;
+        #endif // USES_TEMP
+    #endif // USES_SOLENOID
+
+      // Remember: PWM PINS ONLY!
+    #ifdef FOURPIN_LED
+        #define LED_ENABLE
+        pins.oLedR = -1;
+        pins.oLedG = -1;
+        pins.oLedB = -1;
+    #endif // FOURPIN_LED
+
+      // Any digital pin is fine for NeoPixels.
+    #ifdef CUSTOM_NEOPIXEL
+        #define LED_ENABLE
+        pins.oPixel = -1;
+    #endif // CUSTOM_NEOPIXEL
+
+    pins.oRumble = 5;
+    pins.oSolenoid = 7;
+    pins.bTrigger = A2;
+    pins.bGunA = A3;
+    pins.bGunB = 4;
+    pins.bGunC = 6;
+    pins.bStart = 9;
+    pins.bSelect = 8;
+    pins.bGunUp = 18;
+    pins.bGunDown = 20;
+    pins.bGunLeft = 19;
+    pins.bGunRight = 10;
+    pins.bPedal = -1;
+    pins.bPump = -1;
+    pins.bHome = A1;
+
+    #elifdef ARDUINO_NANO_RP2040_CONNECT
+
+    #ifdef USES_SOLENOID
+        #ifdef USES_TEMP    
+            pins.aTMP36 = A2;
+        #endif // USES_TEMP
+    #endif // USES_SOLENOID
+
+      // Remember: PWM PINS ONLY!
+    #ifdef FOURPIN_LED
+        #define LED_ENABLE
+        pins.oLedR = -1;
+        pins.oLedG = -1;
+        pins.oLedB = -1;
+    #endif // FOURPIN_LED
+
+      // Any digital pin is fine for NeoPixels.
+    #ifdef CUSTOM_NEOPIXEL
+        #define LED_ENABLE
+        pins.oPixel = -1;
+    #endif // CUSTOM_NEOPIXEL
+
+      // Button Pins setup
+    pins.oRumble = 17;
+    pins.oSolenoid = 16;
+    pins.bTrigger = 15;
+    pins.bGunA = 0;
+    pins.bGunB = 1;
+    pins.bGunC = 18;
+    pins.bStart = 19;
+    pins.bSelect = 20;
+    pins.bGunUp = -1;
+    pins.bGunDown = -1;
+    pins.bGunLeft = -1;
+    pins.bGunRight = -1;
+    pins.bPedal = -1;
+    pins.bPump = -1;
+    pins.bHome = -1;
+
+    // For the Raspberry Pi Pico
+    #elifdef ARDUINO_RASPBERRY_PI_PICO
+
+    #ifdef USES_SOLENOID
+        #ifdef USES_TEMP    
+            pins.aTMP36 = A2;
+        #endif // USES_TEMP
+    #endif // USES_SOLENOID
+
+      // Remember: PWM PINS ONLY!
+    #ifdef FOURPIN_LED
+        #define LED_ENABLE
+        pins.oLedR = 10;
+        pins.oLedG = 11;
+        pins.oLedB = 12;
+    #endif // FOURPIN_LED
+
+      // Any digital pin is fine for NeoPixels.
+    #ifdef CUSTOM_NEOPIXEL
+        #define LED_ENABLE
+        pins.oPixel = -1
+    #endif // CUSTOM_NEOPIXEL
+
+    pins.oRumble = 17;
+    pins.oSolenoid = 16;
+    pins.bTrigger = 15;
+    pins.bGunA = 0;
+    pins.bGunB = 1;
+    pins.bGunC = 2;
+    pins.bStart = 3;
+    pins.bSelect = 4;
+    pins.bGunUp = 6;
+    pins.bGunDown = 7;
+    pins.bGunLeft = 8;
+    pins.bGunRight = 9;
+    pins.bPedal = 14;
+    pins.bPump = 13;
+    pins.bHome = 5;
+
+    #endif // ARDUINO_BOARD
+
+    toggles.solenoidActive = true;
+    toggles.rumbleActive = true;
+    toggles.autofireActive = false;
+}
+
 #else
 
 int SamcoPreferences::Load()
