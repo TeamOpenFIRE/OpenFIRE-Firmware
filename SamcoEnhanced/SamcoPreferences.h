@@ -45,6 +45,7 @@ public:
         uint32_t yCenter : 12;      
         uint32_t irSensitivity : 3;
         uint32_t runMode : 5;       // Averaging mode
+        uint32_t buttonMask : 16;   // Button mask assigned to this profile
         bool irLayout;              // square or diamond IR for this display?
         uint32_t color   : 24;      // packed color blob per profile
         char name[8];               // Profile display name

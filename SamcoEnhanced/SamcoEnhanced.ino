@@ -296,36 +296,12 @@ enum RunMode_e {
 // if you have original Samco calibration values, multiply by 4 for the center position and
 // scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0}
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Bringus"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Brongus"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broonga"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace"}
 };
 //  ------------------------------------------------------------------------------------------------------
-// profile descriptor
-typedef struct ProfileDesc_s {
-    // button(s) to select the profile
-    uint32_t buttonMask;
-    
-    // LED colour
-    uint32_t color;
-
-    // button label
-    const char* buttonLabel;
-    
-    // optional profile label
-    const char* profileLabel;
-} ProfileDesc_t;
-
-// profile descriptor
-static const ProfileDesc_t profileDesc[ProfileCount] = {
-    {BtnMask_A, WikiColor::Cerulean_blue, "A", "TV Fisheye Lens"},
-    {BtnMask_B, WikiColor::Cornflower_blue, "B", "TV Wide-angle Lens"},
-    {BtnMask_Start, WikiColor::Green, "Start", "TV"},
-    {BtnMask_Select, WikiColor::Green_Lizard, "Select", "Monitor"}
-};
-
-
 
 // overall calibration defaults, no need to change if data saved to NV memory or populate the profile table
 // see profileData[] array below for specific profile defaults
@@ -453,13 +429,17 @@ SamcoPositionEnhanced mySamco;
 enum GunMode_e {
     GunMode_Init = -1,
     GunMode_Run = 0,
-    GunMode_CalHoriz = 1,
-    GunMode_CalVert = 2,
-    GunMode_CalCenter = 3,
-    GunMode_Pause = 4,
-    GunMode_Docked = 5
+    GunMode_Calibration = 1,
+    GunMode_Pause = 2,
+    GunMode_Docked = 3
 };
 GunMode_e gunMode = GunMode_Init;   // initial mode
+
+enum CaliStage_e {
+    Cali_Center = 0,
+    Cali_Vertical,
+    Cali_Horizontal
+};
 
 enum PauseModeSelection_e {
     PauseMode_Calibrate = 0,
@@ -716,7 +696,7 @@ void setup() {
     profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
-        SetMode(GunMode_CalCenter);
+        SetMode(GunMode_Calibration);
         Serial.println("Pull the trigger to start your first calibration!");
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
@@ -730,7 +710,7 @@ void setup() {
             }
             if(gunMode == GunMode_Docked) {
                 ExecGunModeDocked();
-                SetMode(GunMode_CalCenter);
+                SetMode(GunMode_Calibration);
             }
             buttons.Poll(1);
             buttons.Repeat();
@@ -1115,7 +1095,7 @@ void loop()
                         pauseModeSelection = PauseMode_Calibrate;
                         if(!serialMode) {
                             Serial.print("Switched to profile: ");
-                            Serial.println(profileDesc[selectedProfile].profileLabel);
+                            Serial.println(profileData[selectedProfile].name);
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
@@ -1142,22 +1122,22 @@ void loop()
                 } else if(buttons.pressedReleased == BtnMask_Trigger) {
                     switch(pauseModeSelection) {
                         case PauseMode_Calibrate:
-                          SetMode(GunMode_CalCenter);
+                          SetMode(GunMode_Calibration);
                           if(!serialMode) {
                               Serial.print("Calibrating for current profile: ");
-                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                              Serial.println(profileData[selectedProfile].name);
                           }
                           break;
                         case PauseMode_ProfileSelect:
                           if(!serialMode) {
                               Serial.println("Pick a profile!");
                               Serial.print("Current profile in use: ");
-                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                              Serial.println(profileData[selectedProfile].name);
                           }
                           pauseModeSelectingProfile = true;
                           profileModeSelection = selectedProfile;
                           #ifdef LED_ENABLE
-                              SetLedPackedColor(profileDesc[profileModeSelection].color);
+                              SetLedPackedColor(profileData[selectedProfile].color);
                           #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
@@ -1277,7 +1257,7 @@ void loop()
             } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                 SetMode(GunMode_Run);
             } else if(buttons.pressedReleased == BtnMask_Trigger) {
-                SetMode(GunMode_CalCenter);
+                SetMode(GunMode_Calibration);
             } else if(buttons.pressedReleased == RunModeNormalBtnMask) {
                 SetRunMode(RunMode_Normal);
             } else if(buttons.pressedReleased == RunModeAverageBtnMask) {
@@ -1312,57 +1292,9 @@ void loop()
         case GunMode_Docked:
             ExecGunModeDocked();
             break;
-        case GunMode_CalCenter:
+        case GunMode_Calibration:
             AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
-                Serial.println("Calibrate Center skipped");
-                SetMode(GunMode_CalVert);
-            } else if(buttons.pressed & BtnMask_Trigger) {
-                // trigger pressed, begin center cal 
-                CalCenter();
-                // extra delay to wait for trigger to release (though not required)
-                SetModeWaitNoButtons(GunMode_CalVert, 500);
-            }
-            break;
-        case GunMode_CalVert:
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                    SetMode(GunMode_CalHoriz);
-                } else {
-                    CalVert();
-                }
-            }
-            break;
-        case GunMode_CalHoriz:
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                    ApplyCalToProfile();
-                    if(justBooted) {
-                        // If this is an initial calibration, save it immediately!
-                        SetMode(GunMode_Pause);
-                        SavePreferences();
-                        SetMode(GunMode_Run);
-                    } else if(dockedCalibrating) {
-                        Serial.print("UpdatedProf: ");
-                        Serial.println(selectedProfile);
-                        Serial.println(profileData[selectedProfile].xScale);
-                        Serial.println(profileData[selectedProfile].yScale);
-                        Serial.println(profileData[selectedProfile].xCenter);
-                        Serial.println(profileData[selectedProfile].yCenter);
-                        SetMode(GunMode_Docked);
-                    } else {
-                        SetMode(GunMode_Run);
-                    }
-                } else {
-                    CalHoriz();
-                }
-            }
+            ExecCalMode();
             break;
         default:
             /* ---------------------- LET'S GO --------------------------- */
@@ -1704,7 +1636,7 @@ void ExecRunModeProcessing()
     }
 }
 
-// For use with GUN4ALL-GUI when app connects to this board.
+// For use with the OpenFIRE app when it connects to this board.
 void ExecGunModeDocked()
 {
     buttons.ReportDisable();
@@ -1869,6 +1801,73 @@ void ExecGunModeDocked()
         }
         if(runMode == RunMode_Processing) {
             ExecRunModeProcessing();
+        }
+    }
+}
+
+// Dedicated calibration method
+void ExecCalMode()
+{
+    uint8_t calStage = 0;
+    SetMode(GunMode_Calibration);
+    while(gunMode == GunMode_Calibration) {
+        buttons.Poll();
+
+        switch(calStage) {
+            case Cali_Center:
+              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+                CancelCalibration();
+              } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
+                Serial.println("Calibrate Center skipped");
+                calStage++;
+              } else if(buttons.pressed & BtnMask_Trigger) {
+                // trigger pressed, begin center cal 
+                CalCenter();
+                // extra delay to wait for trigger to release (though not required)
+                SetModeWaitNoButtons(GunMode_Calibration, 500);
+                calStage++;
+              }
+              break;
+            case Cali_Vertical:
+              if((buttons.pressedReleased & CancelCalBtnMask) && !justBooted) {
+                CancelCalibration();
+              } else {
+                if(buttons.pressed & BtnMask_Trigger) {
+                  calStage++;
+                } else {
+                  CalVert();
+                }
+              }
+              break;
+            case Cali_Horizontal:
+              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+                CancelCalibration();
+              } else {
+                if(buttons.pressed & BtnMask_Trigger) {
+                  ApplyCalToProfile();
+                  if(justBooted) {
+                    // If this is an initial calibration, save it immediately!
+                    SetMode(GunMode_Pause);
+                    SavePreferences();
+                    SetMode(GunMode_Run);
+                  } else if(dockedCalibrating) {
+                    Serial.print("UpdatedProf: ");
+                    Serial.println(selectedProfile);
+                    Serial.println(profileData[selectedProfile].xScale);
+                    Serial.println(profileData[selectedProfile].yScale);
+                    Serial.println(profileData[selectedProfile].xCenter);
+                    Serial.println(profileData[selectedProfile].yCenter);
+                    SetMode(GunMode_Docked);
+                  } else {
+                    SetMode(GunMode_Run);
+                  }
+                } else {
+                  CalHoriz();
+                }
+              }
+              break;
+            default:
+              break;
         }
     }
 }
@@ -2318,7 +2317,7 @@ void SerialProcessingDocked()
                         dockedCalibrating = true;
                         //Serial.print("Now calibrating selected profile: ");
                         //Serial.println(profileDesc[selectedProfile].profileLabel);
-                        SetMode(GunMode_CalCenter);
+                        SetMode(GunMode_Calibration);
                     }
                 }
                 break;
@@ -2333,7 +2332,11 @@ void SerialProcessingDocked()
                 if(nvPrefsError == SamcoPreferences::Error_Success) {
                     #ifdef LED_ENABLE
                     // Save op above resets color, so re-set it back to docked idle color
-                    LedUpdate(127, 127, 255);
+                    if(gunMode == GunMode_Docked) {
+                        LedUpdate(127, 127, 255);
+                    } else if(gunMode == GunMode_Pause) {
+                        SetLedPackedColor(profileData[selectedProfile].color);
+                    }
                     #endif // LED_ENABLE
                 }
                 UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
@@ -3591,12 +3594,6 @@ void SetMode(GunMode_e newMode)
     case GunMode_Run:
         stateFlags |= StateFlag_PrintPreferences;
         break;
-    case GunMode_CalHoriz:
-        break;
-    case GunMode_CalVert:
-        break;
-    case GunMode_CalCenter:
-        break;
     case GunMode_Pause:
         break;
     case GunMode_Docked:
@@ -3612,12 +3609,6 @@ void SetMode(GunMode_e newMode)
     case GunMode_Run:
         // begin run mode with all 4 points seen
         lastSeen = 0x0F;        
-        break;
-    case GunMode_CalHoriz:
-        break;
-    case GunMode_CalVert:
-        break;
-    case GunMode_CalCenter:
         break;
     case GunMode_Pause:
         stateFlags |= StateFlag_SavePreferencesEn | StateFlag_PrintSelectedProfile;
@@ -3813,10 +3804,10 @@ void SetProfileSelection(bool isIncrement)
         }
     }
     #ifdef LED_ENABLE
-        SetLedPackedColor(profileDesc[profileModeSelection].color);
+        SetLedPackedColor(profileData[profileModeSelection].color);
     #endif // LED_ENABLE
     Serial.print("Selecting profile: ");
-    Serial.println(profileDesc[profileModeSelection].profileLabel);
+    Serial.println(profileData[profileModeSelection].name);
     return;
 }
 
@@ -3899,20 +3890,15 @@ void PrintPreferences()
     }
     
     Serial.print("Default Profile: ");
-    Serial.println(profileDesc[SamcoPreferences::profiles.selectedProfile].profileLabel);
+    Serial.println(profileData[SamcoPreferences::profiles.selectedProfile].name);
     
     Serial.println("Profiles:");
     for(unsigned int i = 0; i < SamcoPreferences::profiles.profileCount; ++i) {
         // report if a profile has been cal'd
         if(profileData[i].xCenter && profileData[i].yCenter) {
-            size_t len = strlen(profileDesc[i].buttonLabel) + 2;
-            Serial.print(profileDesc[i].buttonLabel);
-            Serial.print(": ");
-            if(profileDesc[i].profileLabel && profileDesc[i].profileLabel[0]) {
-                Serial.print(profileDesc[i].profileLabel);
-                len += strlen(profileDesc[i].profileLabel);
-            }
-            while(len < 26) {
+            size_t len = strlen(profileData[i].name);
+            Serial.print(profileData[i].name);
+            while(len < 10) {
                 Serial.print(' ');
                 ++len;
             }
@@ -4149,7 +4135,7 @@ void SelectCalProfileFromBtnMask(uint32_t mask)
         return;
     }
     for(unsigned int i = 0; i < ProfileCount; ++i) {
-        if(profileDesc[i].buttonMask == mask) {
+        if(profileData[i].buttonMask == mask) {
             SelectCalProfile(i);
             return;
         }
@@ -4231,7 +4217,7 @@ void CancelCalibration()
 void PrintSelectedProfile()
 {
     Serial.print("Profile: ");
-    Serial.println(profileDesc[selectedProfile].profileLabel);
+    Serial.println(profileData[selectedProfile].name);
 }
 
 // applies loaded gun profile settings
@@ -4457,13 +4443,11 @@ void LedUpdate(byte r, byte g, byte b)
 void SetLedColorFromMode()
 {
     switch(gunMode) {
-    case GunMode_CalHoriz:
-    case GunMode_CalVert:
-    case GunMode_CalCenter:
+    case GunMode_Calibration:
         SetLedPackedColor(CalModeColor);
         break;
     case GunMode_Pause:
-        SetLedPackedColor(profileDesc[selectedProfile].color);
+        SetLedPackedColor(profileData[selectedProfile].color);
         break;
     case GunMode_Run:
         if(lastSeen) {
@@ -4500,7 +4484,7 @@ void OffscreenToggle()
             delay(450);
         #endif // USES_RUMBLE
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or we're turning this OFF,
@@ -4514,7 +4498,7 @@ void OffscreenToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4558,7 +4542,7 @@ void AutofireSpeedToggle(byte setting)
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4583,7 +4567,7 @@ void BurstFireToggle()
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {  // Or we flicked it off.
@@ -4597,7 +4581,7 @@ void BurstFireToggle()
             digitalWrite(solenoidPin, LOW);                       // Then off.
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4619,7 +4603,7 @@ void RumbleToggle()
         delay(300);                                               // Hold that,
         digitalWrite(SamcoPreferences::pins.oRumble, LOW);                             // Then turn off,
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
@@ -4633,7 +4617,7 @@ void RumbleToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4655,7 +4639,7 @@ void SolenoidToggle()
         delay(300);                                               // Hold it that way for a bit,
         digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                           // Release it,
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
@@ -4669,7 +4653,7 @@ void SolenoidToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }

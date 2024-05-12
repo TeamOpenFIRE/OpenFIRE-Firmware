@@ -89,7 +89,7 @@ int SamcoPreferences::LoadPins()
 {
     int status = CheckHeader();
     if(status == Error_Success) {
-        EEPROM.get(310, pins);
+        EEPROM.get(350, pins);
         return Error_Success;
     } else {
         return status;
@@ -99,7 +99,7 @@ int SamcoPreferences::LoadPins()
 int SamcoPreferences::SavePins()
 {
     WriteHeader();
-    EEPROM.put(310, pins);
+    EEPROM.put(350, pins);
     EEPROM.commit();
     return Error_Success;
 }
@@ -127,7 +127,7 @@ int SamcoPreferences::LoadUSBID()
 {
     int status = CheckHeader();
     if(status == Error_Success) {
-        EEPROM.get(500, usb);
+        EEPROM.get(900, usb);
         return Error_Success;
     } else {
         return status;
@@ -137,7 +137,7 @@ int SamcoPreferences::LoadUSBID()
 int SamcoPreferences::SaveUSBID()
 {
     WriteHeader();
-    EEPROM.put(500, usb);
+    EEPROM.put(900, usb);
     EEPROM.commit();
     return Error_Success;
 }
