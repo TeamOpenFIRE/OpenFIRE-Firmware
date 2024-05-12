@@ -18,31 +18,46 @@
 #endif // SAMCO_EEPROM_ENABLE
 
 // 4 byte header ID
-const SamcoPreferences::HeaderId_t SamcoPreferences::HeaderId = {'P', 'r', 'o', 'w'};
+const SamcoPreferences::HeaderId_t SamcoPreferences::HeaderId = {'O', 'F', '0', '1'};
 
 #ifdef SAMCO_EEPROM_ENABLE
-int SamcoPreferences::Load()
+void SamcoPreferences::WriteHeader()
+{
+    EEPROM.put(0, HeaderId.u32);
+}
+
+int SamcoPreferences::CheckHeader()
 {
     uint32_t u32;
     EEPROM.get(0, u32);
     if(u32 != HeaderId.u32) {
         return Error_NoData;
+    } else {
+        return Error_Success;
     }
-
-    preferences.profile = EEPROM.read(4);
-    uint8_t* p = ((uint8_t*)preferences.pProfileData);
-    for(unsigned int i = 0; i < sizeof(ProfileData_t) * preferences.profileCount; ++i) {
-        p[i] = EEPROM.read(5 + i);
-    }
-    return Error_Success;
 }
 
-int SamcoPreferences::Save()
+int SamcoPreferences::LoadProfiles()
 {
-    EEPROM.put(0, HeaderId.u32);
-    EEPROM.write(4, preferences.profile);
-    uint8_t* p = ((uint8_t*)preferences.pProfileData);
-    for(unsigned int i = 0; i < sizeof(ProfileData_t) * preferences.profileCount; ++i) {
+    int status = CheckHeader();
+    if(status == Error_Success) {
+        profiles.selectedProfile = EEPROM.read(4);
+        uint8_t* p = ((uint8_t*)profiles.pProfileData);
+        for(unsigned int i = 0; i < sizeof(ProfileData_t) * profiles.profileCount; ++i) {
+            p[i] = EEPROM.read(5 + i);
+        }
+        return Error_Success;
+    } else {
+        return status;
+    }
+}
+
+int SamcoPreferences::SaveProfiles()
+{
+    WriteHeader();
+    EEPROM.update(4, profiles.selectedProfile);
+    uint8_t* p = ((uint8_t*)profiles.pProfileData);
+    for(unsigned int i = 0; i < sizeof(ProfileData_t) * profiles.profileCount; ++i) {
         EEPROM.write(5 + i, p[i]);
     }
 
@@ -51,46 +66,78 @@ int SamcoPreferences::Save()
     return Error_Success;
 }
 
-void SamcoPreferences::LoadExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings)
+int SamcoPreferences::LoadToggles()
 {
-    // Sizes of the arrays: dataBools = 1, dataMappings = 27, dataSettings = 8
-    // Basic booleans
-    (*dataBools) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1);
-
-    // Custom Pins (checks if this feature is enabled first, but space is always reserved)
-    (*dataMappings) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2);
-    if(*dataMappings) { // dataMappings[0] corresponds to the custom pin bool.
-        for(uint8_t i = 1; i < 27; ++i) {
-            *(dataMappings + i) = EEPROM.read(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i);
-        }
+    int status = CheckHeader();
+    if(status == Error_Success) {
+        EEPROM.get(300, toggles);
+        return Error_Success;
+    } else {
+        return status;
     }
-
-    // Main Settings
-    uint8_t n = 0;
-    for(uint8_t i = 0; i < 8; ++i) {
-        EEPROM.get(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1 + 27 + 1 + n, *(dataSettings + i));
-        n += 2;
-    }
-    return;
 }
 
-int SamcoPreferences::SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uint16_t *dataSettings)
+int SamcoPreferences::SaveToggles()
 {
-    // Basic booleans
-    EEPROM.update(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1, *dataBools);
+    WriteHeader();
+    EEPROM.put(300, toggles);
+    EEPROM.commit();
+    return Error_Success;
+}
 
-    // Custom Pins (always gets saved, regardless of if it's used or not)
-    for(uint8_t i = 0; i < 27; ++i) {
-        EEPROM.update(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 2 + i, *(dataMappings + i));
+int SamcoPreferences::LoadPins()
+{
+    int status = CheckHeader();
+    if(status == Error_Success) {
+        EEPROM.get(310, pins);
+        return Error_Success;
+    } else {
+        return status;
     }
+}
 
-    // Main Settings
-    uint8_t n = 0;
-    for(uint8_t i = 0; i < 8; ++i) {
-        EEPROM.put(5 + (sizeof(ProfileData_t) * preferences.profileCount) + 1 + 27 + 1 + n, *(dataSettings + i));
-        n += 2;
+int SamcoPreferences::SavePins()
+{
+    WriteHeader();
+    EEPROM.put(310, pins);
+    EEPROM.commit();
+    return Error_Success;
+}
+
+int SamcoPreferences::LoadSettings()
+{
+    int status = CheckHeader();
+    if(status == Error_Success) {
+        EEPROM.get(400, settings);
+        return Error_Success;
+    } else {
+        return status;
     }
+}
 
+int SamcoPreferences::SaveSettings()
+{
+    WriteHeader();
+    EEPROM.put(400, settings);
+    EEPROM.commit();
+    return Error_Success;
+}
+
+int SamcoPreferences::LoadUSBID()
+{
+    int status = CheckHeader();
+    if(status == Error_Success) {
+        EEPROM.get(500, usb);
+        return Error_Success;
+    } else {
+        return status;
+    }
+}
+
+int SamcoPreferences::SaveUSBID()
+{
+    WriteHeader();
+    EEPROM.put(500, usb);
     EEPROM.commit();
     return Error_Success;
 }
@@ -98,7 +145,7 @@ int SamcoPreferences::SaveExtended(uint8_t *dataBools, int8_t *dataMappings, uin
 void SamcoPreferences::ResetPreferences()
 {
     for(uint16_t i = 0; i < EEPROM.length(); ++i) {
-        EEPROM.write(i, 0);
+        EEPROM.update(i, 0);
     }
 
     EEPROM.commit();
