@@ -21,6 +21,8 @@
 #define OPENFIRE_BOARD "adafruitKB2040"
 #elifdef ARDUINO_NANO_RP2040_CONNECT
 #define OPENFIRE_BOARD "arduinoNanoRP2040"
+#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
+#define OPENFIRE_BOARD "waveshareZero"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
 #define OPENFIRE_BOARD "rpipico"
 #else
@@ -54,11 +56,14 @@
 #endif // determine SAMCO_xxx board
 
 //// ONBOARD LEDS
-// specific ItsyBitsy board configuration
-#if defined(NEOPIXEL_POWER)
-    // included NeoPixel on compatible Adafruit boards
-    #define NEOPIXEL_PIN PIN_NEOPIXEL
+// Defines for built-in NeoPixels for select boards
+#ifdef NEOPIXEL_POWER
+    // included NeoPixel on compatible Adafruit boards has a power pin to set active to enable
     #define NEOPIXEL_ENABLEPIN NEOPIXEL_POWER
 #endif // NEOPIXEL_POWER
+#ifdef PIN_NEOPIXEL
+    // Waveshare RP2040 Zero has a Pixel, but no enable pin, for example
+    #define NEOPIXEL_PIN PIN_NEOPIXEL
+#endif // PIN_NEOPIXEL
 
 #endif // _SAMCOBOARD_H_
