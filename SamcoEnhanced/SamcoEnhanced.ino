@@ -4089,7 +4089,9 @@ void SavePreferences()
         Serial.print("Settings saved to ");
         Serial.println(NVRAMlabel);
         SamcoPreferences::SaveToggles();
-        SamcoPreferences::SavePins();
+        if(SamcoPreferences::toggles.customPinsInUse) {
+            SamcoPreferences::SavePins();
+        }
         SamcoPreferences::SaveSettings();
         SamcoPreferences::SaveUSBID();
         #ifdef LED_ENABLE
