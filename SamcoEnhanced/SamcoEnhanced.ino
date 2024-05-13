@@ -3914,7 +3914,7 @@ void PrintPreferences()
         if(profileData[i].xCenter && profileData[i].yCenter) {
             size_t len = strlen(profileData[i].name);
             Serial.print(profileData[i].name);
-            while(len < 10) {
+            while(len < 18) {
                 Serial.print(' ');
                 ++len;
             }
@@ -3929,7 +3929,13 @@ void PrintPreferences()
             Serial.print(" IR: ");
             Serial.print((unsigned int)profileData[i].irSensitivity);
             Serial.print(" Mode: ");
-            Serial.println((unsigned int)profileData[i].runMode);
+            Serial.print((unsigned int)profileData[i].runMode);
+            Serial.print(" Layout: ");
+            if(profileData[i].irLayout) {
+              Serial.println("Diamond");
+            } else {
+              Serial.println("Square");
+            }
         }
     }
 }
