@@ -2705,31 +2705,22 @@ void SerialProcessingDocked()
                               serialInput = Serial.read(); // nomf
                               SamcoPreferences::usb.devicePID = Serial.parseInt();
                               Serial.println("OK: Updated TinyUSB Device ID.");
-                              EEPROM.put(EEPROM.length() - 22, SamcoPreferences::usb.devicePID);
-                              #ifdef ARDUINO_ARCH_RP2040
-                                  EEPROM.commit();
-                              #endif // ARDUINO_ARCH_RP2040
                               break;
                             }
                           // Device name
                           case '1':
                             serialInput = Serial.read(); // nomf
+                            // clears name
                             for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
                                 SamcoPreferences::usb.deviceName[i] = '\0';
                             }
-                            for(byte i = 0; i < 15; i++) {
+                            for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
                                 SamcoPreferences::usb.deviceName[i] = Serial.read();
                                 if(!Serial.available()) {
                                     break;
                                 }
                             }
                             Serial.println("OK: Updated TinyUSB Device String.");
-                            for(byte i = 0; i < 16; i++) {
-                                EEPROM.update(EEPROM.length() - 18 + i, SamcoPreferences::usb.deviceName[i]);
-                            }
-                            #ifdef ARDUINO_ARCH_RP2040
-                                EEPROM.commit();
-                            #endif // ARDUINO_ARCH_RP2040
                             break;
                         }
                     #endif // USE_TINYUSB
@@ -2780,6 +2771,50 @@ void SerialProcessingDocked()
                                 }
                             }
                             Serial.println("OK: Set Run Mode");
+                            break;
+                          }
+                          case 'l':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t i = serialInput - '0';
+                            i = constrain(i, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t v = serialInput - '0';
+                            v = constrain(v, 0, 1);
+                            profileData[i].irLayout = v;
+                            Serial.println("OK: Set IR layout type");
+                            break;
+                          }
+                          case 'n':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t s = serialInput - '0';
+                            s = constrain(s, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            for(byte i = 0; i < sizeof(profileData[s].name); i++) {
+                                profileData[s].name[i] = '\0';
+                            }
+                            for(byte i = 0; i < sizeof(profileData[s].name); i++) {
+                                profileData[s].name[i] = Serial.read();
+                                if(!Serial.available()) {
+                                    break;
+                                }
+                            }
+                            Serial.println("OK: Set Profile Name");
+                            break;
+                          }
+                          case 'c':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t s = serialInput - '0';
+                            s = constrain(s, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            profileData[s].color = Serial.parseInt();
+                            Serial.println("OK: Set Profile Color");
                             break;
                           }
                         }
@@ -2914,16 +2949,13 @@ void SerialProcessingDocked()
                         Serial.println(profileData[i].yCenter);
                         Serial.println(profileData[i].irSensitivity);
                         Serial.println(profileData[i].runMode);
+                        Serial.println(profileData[i].irLayout);
+                        Serial.println(profileData[i].color);
+                        Serial.println(profileData[i].name);
                     }
                     break;
                   #ifdef USE_TINYUSB
                   case 'n':
-                    for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
-                        SamcoPreferences::usb.deviceName[i] = '\0';
-                    }
-                    for(byte i = 0; i < 16; i++) {
-                        SamcoPreferences::usb.deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
-                    }
                     if(SamcoPreferences::usb.deviceName[0] == '\0') {
                         Serial.println("SERIALREADERR01");
                     } else {
@@ -2931,8 +2963,6 @@ void SerialProcessingDocked()
                     }
                     break;
                   case 'i':
-                    SamcoPreferences::usb.devicePID = 0;
-                    EEPROM.get(EEPROM.length() - 22, SamcoPreferences::usb.devicePID);
                     Serial.println(SamcoPreferences::usb.devicePID);
                     break;
                   #endif // USE_TINYUSB
