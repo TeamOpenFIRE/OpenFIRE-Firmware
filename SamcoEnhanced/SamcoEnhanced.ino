@@ -62,7 +62,6 @@
 #include <SamcoConst.h>
 #include "SamcoColours.h"
 #include "SamcoPreferences.h"
-#include "SamcoPresets.h"
 
 #ifdef ARDUINO_ARCH_RP2040
   #include <hardware/pwm.h>
@@ -96,18 +95,36 @@
   // If unsure, leave uncommented - serial activity is used for configuration, and undefining this will cause errors.
 #define MAMEHOOKER
 
-  // Which software extras should be activated? Set here if your build doesn't use toggle switches.
-bool autofireActive = false;                          // Is solenoid firing in autofire (rapid) mode? false = default single shot, true = autofire
-bool offscreenButton = false;                         // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
-bool burstFireActive = false;                         // Is the solenoid firing in burst fire mode? false = default, true = 3-shot burst firing mode
+  // Leave this uncommented if your build uses hardware switches, or comment out to disable all references to hw switch functionality.
+#define USES_SWITCHES
 
-bool lowButtonMode = false;                           // Flag that determines if buttons A/B will be Start/Select when pointing offscreen; for Sega Stunner and GunCon 1-spec guns mainly.
-uint16_t autofireWaitFactor = 3;                      // This is the default time to wait between rapid fire pulses (from 2-4)
+  // Leave this uncommented if your build uses a rumble motor; comment out to disable any references to rumble functionality.
+#define USES_RUMBLE
+#ifdef USES_RUMBLE
+#endif // USES_RUMBLE
 
-// Menu options:
-bool simpleMenu = false;                              // Flag that determines if Pause Mode will be a simple scrolling menu; else, relies on hotkeys.
-bool holdToPause = false;                             // Flag that determines if Pause Mode is invoked by a button combo hold (EnterPauseModeHoldBtnMask) when pointing offscreen; else, relies on EnterPauseModeBtnMask hotkey.
-uint16_t pauseHoldLength = 4000;                      // How long the combo should be held for, in ms.
+  // Leave this uncommented if your build uses a solenoid, or comment out to disable any references to solenoid functionality.
+#define USES_SOLENOID
+#ifdef USES_SOLENOID
+    // Leave this uncommented for TMP36 temperature sensor support for a solenoid, or comment out to disable references to temperature reading or throttling.
+    #define USES_TEMP
+#endif // USES_SOLENOID
+
+  // Leave this uncommented if your build uses an analog stick.
+#define USES_ANALOG
+
+  // Leave this uncommented if your build uses a four pin RGB LED.
+#define FOURPIN_LED
+#ifdef FOURPIN_LED
+    #define LED_ENABLE
+#endif // FOURPIN_LED
+
+  // Leave this uncommented if your build uses an external NeoPixel.
+#define CUSTOM_NEOPIXEL
+#ifdef CUSTOM_NEOPIXEL
+    #define LED_ENABLE
+    #include <Adafruit_NeoPixel.h>
+#endif // CUSTOM_NEOPIXEL
 
 //--------------------------------------------------------------------------------------------------------------------------------------
 // Sanity checks and assignments for player number -> common keyboard assignments
@@ -166,29 +183,25 @@ enum ButtonMask_e {
     BtnMask_Home = 1 << BtnIdx_Home
 };
 
-//// TODO: Try pointers for the button functions rather than direct declaration?
-
-BoardPins pinsDb;
-
 // Button descriptor
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
 LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {pinsDb.btnTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, PAD_RT, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
-    {pinsDb.btnGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
-    {pinsDb.btnGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, PAD_Y, 15, BTN_AG_MASK2},
-    {pinsDb.btnStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, PAD_START, 20, BTN_AG_MASK2},
-    {pinsDb.btnSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, PAD_SELECT, 20, BTN_AG_MASK2},
-    {pinsDb.btnGunUp, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2},
-    {pinsDb.btnGunDown, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},
-    {pinsDb.btnGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
-    {pinsDb.btnGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
-    {pinsDb.btnGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
-    {pinsDb.btnPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
-    {pinsDb.btnPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
-    {pinsDb.btnHome, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
+    {SamcoPreferences::pins.bTrigger, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, MOUSE_LEFT, LightgunButtons::ReportType_Internal, PAD_RT, 15, BTN_AG_MASK}, // Barry says: "I'll handle this."
+    {SamcoPreferences::pins.bGunA, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, PAD_Y, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, PAD_START, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, PAD_SELECT, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunUp, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunDown, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bHome, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
 };
 
 // button count constant
@@ -283,34 +296,12 @@ enum RunMode_e {
 // if you have original Samco calibration values, multiply by 4 for the center position and
 // scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, 0, 0}
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Bringus"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Brongus"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broongas"},
+    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace L'sia"}
 };
 //  ------------------------------------------------------------------------------------------------------
-// profile descriptor
-typedef struct ProfileDesc_s {
-    // button(s) to select the profile
-    uint32_t buttonMask;
-    
-    // LED colour
-    uint32_t color;
-
-    // button label
-    const char* buttonLabel;
-    
-    // optional profile label
-    const char* profileLabel;
-} ProfileDesc_t;
-
-// profile descriptor
-static const ProfileDesc_t profileDesc[ProfileCount] = {
-    {BtnMask_A, WikiColor::Cerulean_blue, "A", "TV Fisheye Lens"},
-    {BtnMask_B, WikiColor::Cornflower_blue, "B", "TV Wide-angle Lens"},
-    {BtnMask_Start, WikiColor::Green, "Start", "TV"},
-    {BtnMask_Select, WikiColor::Green_Lizard, "Select", "Monitor"}
-};
 
 // overall calibration defaults, no need to change if data saved to NV memory or populate the profile table
 // see profileData[] array below for specific profile defaults
@@ -334,23 +325,20 @@ int moveIndex = 0;
 int conMoveXAxis = 0;   // Constrained mouse postion
 int conMoveYAxis = 0;
 
-  // ADDITIONS HERE: the boring inits related to the things I added.
+  // The boring inits related to the things I added.
 // Offscreen bits:
-//bool offScreen = false;                        // To tell if we're off-screen, if offXAxis & offYAxis are true. Part of LightgunButtons now.
 bool offXAxis = false;                           // Supercedes the inliner every trigger pull, we just check each axis individually.
 bool offYAxis = false;
 
 // Boring values for the solenoid timing stuff:
 #ifdef USES_SOLENOID
+    bool burstFireActive = false;
     unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
     bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
-    uint16_t solenoidNormalInterval = 45;   // Interval for solenoid activation, in ms.
-    uint16_t solenoidFastInterval = 30;     // Interval for faster solenoid activation, in ms.
-    uint16_t solenoidLongInterval = 500;    // for single shot, how long to wait until we start spamming the solenoid? In ms.
     #ifdef USES_TEMP
         uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
         uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-        const unsigned int solenoidWarningInterval = solenoidFastInterval * 5; // for if solenoid is getting toasty.
+        const unsigned int solenoidWarningInterval = SamcoPreferences::settings.solenoidFastInterval * 5; // for if solenoid is getting toasty.
     #endif // USES_TEMP
 #endif // USES_SOLENOID
 
@@ -360,6 +348,7 @@ byte burstFireCountLast = 0;                     // What shot have we last proce
 bool burstFiring = false;                        // Are we in a burst fire command?
 
 // For offscreen button stuff:
+bool offscreenButton = false;                    // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
 bool offscreenBShot = false;                     // For offscreenButton functionality, to track if we shot off the screen.
 bool buttonPressed = false;                      // Sanity check.
 
@@ -421,13 +410,6 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     #endif // USES_SOLENOID
 #endif // MAMEHOOKER
 
-#ifdef USE_TINYUSB
-char deviceName[16] = "GUN4ALL-Con";
-unsigned int devicePID;
-#endif // USE_TINYUSB
-
-bool customPinsInUse = false;                        // For if custom pins defined in the EEPROM are overriding sketch defaults.
-
 unsigned int lastSeen = 0;
 
 bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)
@@ -440,15 +422,6 @@ const byte testPrintInterval = 50;                   // Minimum time allowed bet
 // profile in use
 unsigned int selectedProfile = 0;
 
-// IR positioning camera
-#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
-// ItsyBitsy RP2040 only exposes I2C1 pins on the board, & KB2040 is for GUN4IR board compatibility
-DFRobotIRPositionEx dfrIRPos(Wire1);
-#else // Pico et al does not have this limitation
-//DFRobotIRPosition myDFRobotIRPosition;
-DFRobotIRPositionEx dfrIRPos(Wire);
-#endif
-
 // Samco positioning
 SamcoPositionEnhanced mySamco;
 
@@ -456,13 +429,17 @@ SamcoPositionEnhanced mySamco;
 enum GunMode_e {
     GunMode_Init = -1,
     GunMode_Run = 0,
-    GunMode_CalHoriz = 1,
-    GunMode_CalVert = 2,
-    GunMode_CalCenter = 3,
-    GunMode_Pause = 4,
-    GunMode_Docked = 5
+    GunMode_Calibration = 1,
+    GunMode_Pause = 2,
+    GunMode_Docked = 3
 };
 GunMode_e gunMode = GunMode_Init;   // initial mode
+
+enum CaliStage_e {
+    Cali_Center = 0,
+    Cali_Vertical,
+    Cali_Horizontal
+};
 
 enum PauseModeSelection_e {
     PauseMode_Calibrate = 0,
@@ -503,10 +480,15 @@ static const char* RunModeLabels[RunMode_Count] = {
 };
 
 // preferences saved in non-volatile memory, populated with defaults 
-SamcoPreferences::Preferences_t SamcoPreferences::preferences = {
+SamcoPreferences::Preferences_t SamcoPreferences::profiles = {
     profileData, ProfileCount, // profiles
     0, // default profile
 };
+
+SamcoPreferences::TogglesMap_t SamcoPreferences::toggles;
+SamcoPreferences::PinsMap_t SamcoPreferences::pins;
+SamcoPreferences::SettingsMap_t SamcoPreferences::settings;
+SamcoPreferences::USBMap_t SamcoPreferences::usb;
 
 enum StateFlag_e {
     // print selected profile once per pause state when the COM port is open
@@ -556,9 +538,6 @@ bool nvAvailable = true;
 // non-volatile preferences error code
 int nvPrefsError = SamcoPreferences::Error_NoStorage;
 
-// preferences instance
-SamcoPreferences samcoPreferences;
-
 // number of times the IR camera will update per second
 constexpr unsigned int IRCamUpdateRate = 209;
 
@@ -582,21 +561,19 @@ AbsMouse5_ AbsMouse5(2);
 AbsMouse5_ AbsMouse5(1);
 #endif
 
+// IR positioning camera
+DFRobotIRPositionEx *dfrIRPos;
+
 //-----------------------------------------------------------------------------------------------------
 // The main show!
 void setup() {
     Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
     Serial.setTimeout(0);
  
-#ifdef SAMCO_FLASH_ENABLE
-    // init flash and load saved preferences
-    nvAvailable = flash.begin();
-#else
-#if defined(SAMCO_EEPROM_ENABLE) && defined(ARDUINO_ARCH_RP2040)
     // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
-    EEPROM.begin(1024); 
-#endif // SAMCO_EEPROM_ENABLE/RP2040
-#endif // SAMCO_FLASH_ENABLE
+    EEPROM.begin(1024);
+
+    SamcoPreferences::LoadPresets();
     
     if(nvAvailable) {
         LoadPreferences();
@@ -606,8 +583,28 @@ void setup() {
         } else if(nvPrefsError == SamcoPreferences::Error_Success) {
             Serial.println("Data detected, pulling settings from EEPROM!");
             // use values from preferences
-            ApplyInitialPrefs();
-            ExtPreferences(true);
+            // if default profile is valid then use it
+            if(SamcoPreferences::profiles.selectedProfile < ProfileCount) {
+                // note, just set the value here not call the function to do the set
+                selectedProfile = SamcoPreferences::profiles.selectedProfile;
+
+                // set the current IR camera sensitivity
+                if(profileData[selectedProfile].irSensitivity <= DFRobotIRPositionEx::Sensitivity_Max) {
+                    irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)profileData[selectedProfile].irSensitivity;
+                }
+
+                // set the run mode
+                if(profileData[selectedProfile].runMode < RunMode_Count) {
+                    runMode = (RunMode_e)profileData[selectedProfile].runMode;
+                }
+            }
+            SamcoPreferences::LoadToggles();
+            if(SamcoPreferences::toggles.customPinsInUse) {
+                SamcoPreferences::LoadPins();
+                UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
+            }
+            SamcoPreferences::LoadSettings();
+            SamcoPreferences::LoadUSBID();
         }
     }
  
@@ -616,18 +613,8 @@ void setup() {
         TinyUSBInit();
     #endif // USE_TINYUSB
 
-#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
-    // ensure Wire1 SDA and SCL are correct for the ItsyBitsy RP2040 and KB2040
-    Wire1.setSDA(2);
-    Wire1.setSCL(3);
-#endif
-#ifdef ARDUINO_NANO_RP2040_CONNECT
-    Wire.setSDA(12);
-    Wire.setSCL(13);
-#else // assumes ARDUINO_RASPBERRY_PI_PICO
-    Wire.setSDA(20);
-    Wire.setSCL(21);
-#endif // board
+    // Initialize DFRobot Camera Wires & Object
+    CameraSet();
 
     // initialize buttons & feedback devices
     buttons.Begin();
@@ -635,9 +622,6 @@ void setup() {
     #ifdef LED_ENABLE
         LedInit();
     #endif // LED_ENABLE
-
-    // Start IR Camera with basic data format
-    dfrIRPos.begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
     
 #ifdef USE_TINYUSB
     // Initializing the USB devices chunk.
@@ -666,7 +650,7 @@ void setup() {
     profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
-        SetMode(GunMode_CalCenter);
+        SetMode(GunMode_Calibration);
         Serial.println("Pull the trigger to start your first calibration!");
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
@@ -680,7 +664,7 @@ void setup() {
             }
             if(gunMode == GunMode_Docked) {
                 ExecGunModeDocked();
-                SetMode(GunMode_CalCenter);
+                SetMode(GunMode_Calibration);
             }
             buttons.Poll(1);
             buttons.Repeat();
@@ -707,46 +691,77 @@ void setup() {
     }
 }
 
+// (Re-)initializes DFRobot Camera object with wire set by current pins.
+void CameraSet()
+{
+    if(dfrIRPos != nullptr) {
+        delete dfrIRPos;
+    }
+    // Sanity check: which channel do these pins correlate to?
+    if(!SamcoPreferences::toggles.customPinsInUse) {
+        SamcoPreferences::PresetCam();
+    }
+    if(bitRead(SamcoPreferences::pins.pCamSCL, 1) && bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
+        // I2C1
+        if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
+            // SDA/SCL are indeed on verified correct pins
+            Wire1.setSDA(SamcoPreferences::pins.pCamSDA);
+            Wire1.setSCL(SamcoPreferences::pins.pCamSCL);
+        }
+        dfrIRPos = new DFRobotIRPositionEx(Wire1);
+    } else if(!bitRead(SamcoPreferences::pins.pCamSCL, 1) && !bitRead(SamcoPreferences::pins.pCamSDA, 1)) {
+        // I2C0
+        if(bitRead(SamcoPreferences::pins.pCamSCL, 0) && !bitRead(SamcoPreferences::pins.pCamSDA, 0)) {
+            // SDA/SCL are indeed on verified correct pins
+            Wire.setSDA(SamcoPreferences::pins.pCamSDA);
+            Wire.setSCL(SamcoPreferences::pins.pCamSCL);
+        }
+        dfrIRPos = new DFRobotIRPositionEx(Wire);
+    }
+    // Start IR Camera with basic data format
+    dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
+}
+
 // inits and/or re-sets feedback pins using currently loaded pin values
 // is run both in setup and at runtime
 void FeedbackSet()
 {
     #ifdef USES_RUMBLE
-        if(pinsDb.rumblePin >= 0) {
-            pinMode(pinsDb.rumblePin, OUTPUT);
+        if(SamcoPreferences::pins.oRumble >= 0) {
+            pinMode(SamcoPreferences::pins.oRumble, OUTPUT);
         } else {
-            rumbleActive = false;
+            SamcoPreferences::toggles.rumbleActive = false;
         }
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
-        if(pinsDb.solenoidPin >= 0) {
-            pinMode(pinsDb.solenoidPin, OUTPUT);
+        if(SamcoPreferences::pins.oSolenoid >= 0) {
+            pinMode(SamcoPreferences::pins.oSolenoid, OUTPUT);
         } else {
-            solenoidActive = false;
+            SamcoPreferences::toggles.solenoidActive = false;
         }
     #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(pinsDb.rumbleSwitch >= 0) {
-                pinMode(pinsDb.rumbleSwitch, INPUT_PULLUP);
+            if(SamcoPreferences::pins.sRumble >= 0) {
+                pinMode(SamcoPreferences::pins.sRumble, INPUT_PULLUP);
             }
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-            if(pinsDb.solenoidSwitch >= 0) {
-                pinMode(pinsDb.solenoidSwitch, INPUT_PULLUP);
+            if(SamcoPreferences::pins.sSolenoid >= 0) {
+                pinMode(SamcoPreferences::pins.sSolenoid, INPUT_PULLUP);
             }  
         #endif // USES_SOLENOID
-        if(pinsDb.autofireSwitch >= 0) {
-            pinMode(pinsDb.autofireSwitch, INPUT_PULLUP);
+        if(SamcoPreferences::pins.sAutofire >= 0) {
+            pinMode(SamcoPreferences::pins.sAutofire, INPUT_PULLUP);
         }
     #endif // USES_SWITCHES
     #ifdef USES_ANALOG
         analogReadResolution(12);
         #ifdef USES_TEMP
-        if(pinsDb.analogPinX >= 0 && pinsDb.analogPinY >= 0 && pinsDb.analogPinX != pinsDb.analogPinY &&
-        pinsDb.analogPinX != pinsDb.tempPin && pinsDb.analogPinY != pinsDb.tempPin) {
+        if(SamcoPreferences::pins.aStickX >= 0 && SamcoPreferences::pins.aStickY >= 0 && SamcoPreferences::pins.aStickX != SamcoPreferences::pins.aStickY &&
+        SamcoPreferences::pins.aStickX != SamcoPreferences::pins.aTMP36 && SamcoPreferences::pins.aStickY != SamcoPreferences::pins.aTMP36) {
         #else
-        if(pinsDb.analogPinX >= 0 && pinsDb.analogPinY >= 0 && pinsDb.analogPinX != pinsDb.analogPinY) {
+        if(SamcoPreferences::pins.aStickX >= 0 && SamcoPreferences::pins.aStickY >= 0 && SamcoPreferences::pins.aStickX != SamcoPreferences::pins.aStickY) {
         #endif // USES_TEMP
             //pinMode(analogPinX, INPUT);
             //pinMode(analogPinY, INPUT);
@@ -756,19 +771,19 @@ void FeedbackSet()
         }
     #endif // USES_ANALOG
     #if defined(LED_ENABLE) && defined(FOURPIN_LED)
-    if(pinsDb.PinR < 0 || pinsDb.PinG < 0 || pinsDb.PinB < 0) {
+    if(SamcoPreferences::pins.oLedR < 0 || SamcoPreferences::pins.oLedG < 0 || SamcoPreferences::pins.oLedB < 0) {
         Serial.println("RGB values not valid! Disabling four pin access.");
         ledIsValid = false;
     } else {
-        pinMode(pinsDb.PinR, OUTPUT);
-        pinMode(pinsDb.PinG, OUTPUT);
-        pinMode(pinsDb.PinB, OUTPUT);
+        pinMode(SamcoPreferences::pins.oLedR, OUTPUT);
+        pinMode(SamcoPreferences::pins.oLedG, OUTPUT);
+        pinMode(SamcoPreferences::pins.oLedB, OUTPUT);
         ledIsValid = true;
     }
     #endif // FOURPIN_LED
     #ifdef CUSTOM_NEOPIXEL
-    if(pinsDb.customLEDpin >= 0) {
-        externPixel = new Adafruit_NeoPixel(customLEDcount, pinsDb.customLEDpin, NEO_GRB + NEO_KHZ800);
+    if(SamcoPreferences::pins.oPixel >= 0) {
+        externPixel = new Adafruit_NeoPixel(customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
     }
     #endif // CUSTOM_NEOPIXEL
 }
@@ -778,45 +793,45 @@ void FeedbackSet()
 void PinsReset()
 {
     #ifdef USES_RUMBLE
-        if(pinsDb.rumblePin >= 0) {
-            pinMode(pinsDb.rumblePin, INPUT);
+        if(SamcoPreferences::pins.oRumble >= 0) {
+            pinMode(SamcoPreferences::pins.oRumble, INPUT);
         }
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
-        if(pinsDb.solenoidPin >= 0) {
-            pinMode(pinsDb.solenoidPin, INPUT);
+        if(SamcoPreferences::pins.oSolenoid >= 0) {
+            pinMode(SamcoPreferences::pins.oSolenoid, INPUT);
         }
     #endif // USES_SOLENOID
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(pinsDb.rumbleSwitch >= 0) {
-                pinMode(pinsDb.rumbleSwitch, INPUT);
+            if(SamcoPreferences::pins.sRumble >= 0) {
+                pinMode(SamcoPreferences::pins.sRumble, INPUT);
             }
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-            if(pinsDb.solenoidSwitch >= 0) {
-                pinMode(pinsDb.solenoidSwitch, INPUT);
+            if(SamcoPreferences::pins.sSolenoid >= 0) {
+                pinMode(SamcoPreferences::pins.sSolenoid, INPUT);
             }  
         #endif // USES_SOLENOID
-        if(pinsDb.autofireSwitch >= 0) {
-            pinMode(pinsDb.autofireSwitch, INPUT);
+        if(SamcoPreferences::pins.sAutofire >= 0) {
+            pinMode(SamcoPreferences::pins.sAutofire, INPUT);
         }
     #endif // USES_SWITCHES
     #ifdef LED_ENABLE
         LedOff();
         #ifdef FOURPIN_LED
             if(ledIsValid) {
-                pinMode(pinsDb.PinR, INPUT);
-                pinMode(pinsDb.PinG, INPUT);
-                pinMode(pinsDb.PinB, INPUT);
+                pinMode(SamcoPreferences::pins.oLedR, INPUT);
+                pinMode(SamcoPreferences::pins.oLedG, INPUT);
+                pinMode(SamcoPreferences::pins.oLedB, INPUT);
             }
         #endif // FOURPIN_LED
         #ifdef CUSTOM_NEOPIXEL
             if(externPixel != nullptr) {
                 delete externPixel;
             }
-            if(pinsDb.customLEDpin >= 0) {
-                externPixel = new Adafruit_NeoPixel(customLEDcount, pinsDb.customLEDpin, NEO_GRB + NEO_KHZ800);
+            if(SamcoPreferences::pins.oPixel >= 0) {
+                externPixel = new Adafruit_NeoPixel(customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
                 externPixel->begin();
             }
         #endif // CUSTOM_NEOPIXEL
@@ -829,19 +844,12 @@ void PinsReset()
 void TinyUSBInit()
 {
     TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
-    for(byte i = 0; i < sizeof(deviceName); i++) {
-        deviceName[i] = '\0';
-    }
-    for(byte i = 0; i < 16; i++) {
-        deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
-    }
-    EEPROM.get(EEPROM.length() - 22, devicePID);
-    if(devicePID) {
-        TinyUSBDevice.setID(DEVICE_VID, devicePID);
-        if(deviceName[0] == '\0') {
+    if(SamcoPreferences::usb.devicePID) {
+        TinyUSBDevice.setID(DEVICE_VID, SamcoPreferences::usb.devicePID);
+        if(SamcoPreferences::usb.deviceName[0] == '\0') {
             TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
         } else {
-            TinyUSBDevice.setProductDescriptor(deviceName);
+            TinyUSBDevice.setProductDescriptor(SamcoPreferences::usb.deviceName);
         }
     } else {
         TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
@@ -950,7 +958,7 @@ void loop1()
             SendEscapeKey();
         }
 
-        if(holdToPause) {
+        if(SamcoPreferences::toggles.holdToPause) {
             if((buttons.debounced == EnterPauseModeHoldBtnMask)
             && !lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
@@ -965,14 +973,14 @@ void loop1()
                 }
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
-                if(t - pauseHoldStartstamp > pauseHoldLength) {
+                if(t - pauseHoldStartstamp > SamcoPreferences::settings.pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     #ifdef USES_SOLENOID
-                        digitalWrite(pinsDb.solenoidPin, LOW);
+                        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                         solenoidFirstShot = false;
                     #endif // USES_SOLENOID
                     #ifdef USES_RUMBLE
-                        digitalWrite(pinsDb.rumblePin, LOW);
+                        digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                         rumbleHappening = false;
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
@@ -989,11 +997,11 @@ void loop1()
             if(buttons.pressedReleased == EnterPauseModeBtnMask) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
-                    digitalWrite(pinsDb.solenoidPin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                     solenoidFirstShot = false;
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    digitalWrite(pinsDb.rumblePin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                     rumbleHappening = false;
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
@@ -1008,11 +1016,11 @@ void loop1()
             } else if(buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
-                    digitalWrite(pinsDb.solenoidPin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                     solenoidFirstShot = false;
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    digitalWrite(pinsDb.rumblePin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                     rumbleHappening = false;
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
@@ -1043,11 +1051,11 @@ void loop()
     }
     #endif // MAMEHOOKER
 
-    if(holdToPause && pauseHoldStarted) {
+    if(SamcoPreferences::toggles.holdToPause && pauseHoldStarted) {
         #ifdef USES_RUMBLE
-            analogWrite(pinsDb.rumblePin, rumbleIntensity);
+            analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
             delay(300);
-            digitalWrite(pinsDb.rumblePin, LOW);
+            digitalWrite(SamcoPreferences::pins.oRumble, LOW);
         #endif // USES_RUMBLE
         while(buttons.debounced != 0) {
             // Should release the buttons to continue, pls.
@@ -1060,7 +1068,7 @@ void loop()
 
     switch(gunMode) {
         case GunMode_Pause:
-            if(simpleMenu) {
+            if(SamcoPreferences::toggles.simpleMenu) {
                 if(pauseModeSelectingProfile) {
                     if(buttons.pressedReleased == BtnMask_A) {
                         SetProfileSelection(false);
@@ -1072,7 +1080,7 @@ void loop()
                         pauseModeSelection = PauseMode_Calibrate;
                         if(!serialMode) {
                             Serial.print("Switched to profile: ");
-                            Serial.println(profileDesc[selectedProfile].profileLabel);
+                            Serial.println(profileData[selectedProfile].name);
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
@@ -1099,22 +1107,22 @@ void loop()
                 } else if(buttons.pressedReleased == BtnMask_Trigger) {
                     switch(pauseModeSelection) {
                         case PauseMode_Calibrate:
-                          SetMode(GunMode_CalCenter);
+                          SetMode(GunMode_Calibration);
                           if(!serialMode) {
                               Serial.print("Calibrating for current profile: ");
-                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                              Serial.println(profileData[selectedProfile].name);
                           }
                           break;
                         case PauseMode_ProfileSelect:
                           if(!serialMode) {
                               Serial.println("Pick a profile!");
                               Serial.print("Current profile in use: ");
-                              Serial.println(profileDesc[selectedProfile].profileLabel);
+                              Serial.println(profileData[selectedProfile].name);
                           }
                           pauseModeSelectingProfile = true;
                           profileModeSelection = selectedProfile;
                           #ifdef LED_ENABLE
-                              SetLedPackedColor(profileDesc[profileModeSelection].color);
+                              SetLedPackedColor(profileData[selectedProfile].color);
                           #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
@@ -1191,7 +1199,7 @@ void loop()
                 if(pauseExitHoldStarted &&
                 (buttons.debounced & ExitPauseModeHoldBtnMask)) {
                     unsigned long t = millis();
-                    if(t - pauseHoldStartstamp > (pauseHoldLength / 2)) {
+                    if(t - pauseHoldStartstamp > (SamcoPreferences::settings.pauseHoldLength / 2)) {
                         if(!serialMode) {
                             Serial.println("Exiting pause mode via hold...");
                         }
@@ -1212,9 +1220,9 @@ void loop()
                         }
                         #ifdef USES_RUMBLE
                             for(byte i = 0; i < 3; i++) {
-                                analogWrite(pinsDb.rumblePin, rumbleIntensity);
+                                analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
                                 delay(80);
-                                digitalWrite(pinsDb.rumblePin, LOW);
+                                digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                                 delay(50);
                             }
                         #endif // USES_RUMBLE
@@ -1234,7 +1242,7 @@ void loop()
             } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                 SetMode(GunMode_Run);
             } else if(buttons.pressedReleased == BtnMask_Trigger) {
-                SetMode(GunMode_CalCenter);
+                SetMode(GunMode_Calibration);
             } else if(buttons.pressedReleased == RunModeNormalBtnMask) {
                 SetRunMode(RunMode_Normal);
             } else if(buttons.pressedReleased == RunModeAverageBtnMask) {
@@ -1250,11 +1258,11 @@ void loop()
             } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle(0);
             #ifdef USES_RUMBLE
-                } else if(buttons.pressedReleased == RumbleToggleBtnMask && pinsDb.rumbleSwitch >= 0) {
+                } else if(buttons.pressedReleased == RumbleToggleBtnMask && SamcoPreferences::pins.sRumble >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && pinsDb.solenoidSwitch >= 0) {
+                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && SamcoPreferences::pins.sSolenoid >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
             } else {
@@ -1269,57 +1277,9 @@ void loop()
         case GunMode_Docked:
             ExecGunModeDocked();
             break;
-        case GunMode_CalCenter:
+        case GunMode_Calibration:
             AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
-                Serial.println("Calibrate Center skipped");
-                SetMode(GunMode_CalVert);
-            } else if(buttons.pressed & BtnMask_Trigger) {
-                // trigger pressed, begin center cal 
-                CalCenter();
-                // extra delay to wait for trigger to release (though not required)
-                SetModeWaitNoButtons(GunMode_CalVert, 500);
-            }
-            break;
-        case GunMode_CalVert:
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                    SetMode(GunMode_CalHoriz);
-                } else {
-                    CalVert();
-                }
-            }
-            break;
-        case GunMode_CalHoriz:
-            if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-            } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                    ApplyCalToProfile();
-                    if(justBooted) {
-                        // If this is an initial calibration, save it immediately!
-                        SetMode(GunMode_Pause);
-                        SavePreferences();
-                        SetMode(GunMode_Run);
-                    } else if(dockedCalibrating) {
-                        Serial.print("UpdatedProf: ");
-                        Serial.println(selectedProfile);
-                        Serial.println(profileData[selectedProfile].xScale);
-                        Serial.println(profileData[selectedProfile].yScale);
-                        Serial.println(profileData[selectedProfile].xCenter);
-                        Serial.println(profileData[selectedProfile].yCenter);
-                        SetMode(GunMode_Docked);
-                    } else {
-                        SetMode(GunMode_Run);
-                    }
-                } else {
-                    CalHoriz();
-                }
-            }
+            ExecCalMode();
             break;
         default:
             /* ---------------------- LET'S GO --------------------------- */
@@ -1367,17 +1327,17 @@ void ExecRunMode()
         // Only sets these values if the switches are mapped to valid pins.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
-                if(pinsDb.rumbleSwitch >= 0) {
-                    rumbleActive = !digitalRead(pinsDb.rumbleSwitch);
+                if(SamcoPreferences::pins.sRumble >= 0) {
+                    SamcoPreferences::toggles.rumbleActive = !digitalRead(SamcoPreferences::pins.sRumble);
                 }
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                if(pinsDb.solenoidSwitch >= 0) {
-                    solenoidActive = !digitalRead(pinsDb.solenoidSwitch);
+                if(SamcoPreferences::pins.sSolenoid >= 0) {
+                    SamcoPreferences::toggles.solenoidActive = !digitalRead(SamcoPreferences::pins.sSolenoid);
                 }
             #endif // USES_SOLENOID
-            if(pinsDb.autofireSwitch >= 0) {
-                autofireActive = !digitalRead(pinsDb.autofireSwitch);
+            if(SamcoPreferences::pins.sAutofire >= 0) {
+                SamcoPreferences::toggles.autofireActive = !digitalRead(SamcoPreferences::pins.sAutofire);
             }
         #endif // USES_SWITCHES
 
@@ -1508,7 +1468,7 @@ void ExecRunMode()
             SendEscapeKey();
         }
 
-        if(holdToPause) {
+        if(SamcoPreferences::toggles.holdToPause) {
             if((buttons.debounced == EnterPauseModeHoldBtnMask)
             && !lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
@@ -1523,7 +1483,7 @@ void ExecRunMode()
                 }
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
-                if(t - pauseHoldStartstamp > pauseHoldLength) {
+                if(t - pauseHoldStartstamp > SamcoPreferences::settings.pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     #ifdef USES_SOLENOID
                         digitalWrite(solenoidPin, LOW);
@@ -1634,9 +1594,9 @@ void ExecRunModeProcessing()
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
         
-            int error = dfrIRPos.basicAtomic(DFRobotIRPositionEx::Retry_2);
+            int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
             if(error == DFRobotIRPositionEx::Error_Success) {
-                mySamco.begin(dfrIRPos.xPositions(), dfrIRPos.yPositions(), dfrIRPos.seen(), MouseMaxX / 2, MouseMaxY / 2);
+                mySamco.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen(), MouseMaxX / 2, MouseMaxY / 2);
                 UpdateLastSeen();
                 if(millis() - testLastStamp > testPrintInterval) {
                     testLastStamp = millis();
@@ -1661,7 +1621,7 @@ void ExecRunModeProcessing()
     }
 }
 
-// For use with GUN4ALL-GUI when app connects to this board.
+// For use with the OpenFIRE app when it connects to this board.
 void ExecGunModeDocked()
 {
     buttons.ReportDisable();
@@ -1811,8 +1771,8 @@ void ExecGunModeDocked()
             }
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
-                if(pinsDb.tempPin >= 0) {
-                    int tempSensor = analogRead(pinsDb.tempPin);
+                if(SamcoPreferences::pins.aTMP36 >= 0) {
+                    int tempSensor = analogRead(SamcoPreferences::pins.aTMP36);
                     tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100;
                     Serial.print("Temperature: ");
                     Serial.println(tempSensor);
@@ -1826,6 +1786,73 @@ void ExecGunModeDocked()
         }
         if(runMode == RunMode_Processing) {
             ExecRunModeProcessing();
+        }
+    }
+}
+
+// Dedicated calibration method
+void ExecCalMode()
+{
+    uint8_t calStage = 0;
+    SetMode(GunMode_Calibration);
+    while(gunMode == GunMode_Calibration) {
+        buttons.Poll();
+
+        switch(calStage) {
+            case Cali_Center:
+              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+                CancelCalibration();
+              } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
+                Serial.println("Calibrate Center skipped");
+                calStage++;
+              } else if(buttons.pressed & BtnMask_Trigger) {
+                // trigger pressed, begin center cal 
+                CalCenter();
+                // extra delay to wait for trigger to release (though not required)
+                SetModeWaitNoButtons(GunMode_Calibration, 500);
+                calStage++;
+              }
+              break;
+            case Cali_Vertical:
+              if((buttons.pressedReleased & CancelCalBtnMask) && !justBooted) {
+                CancelCalibration();
+              } else {
+                if(buttons.pressed & BtnMask_Trigger) {
+                  calStage++;
+                } else {
+                  CalVert();
+                }
+              }
+              break;
+            case Cali_Horizontal:
+              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+                CancelCalibration();
+              } else {
+                if(buttons.pressed & BtnMask_Trigger) {
+                  ApplyCalToProfile();
+                  if(justBooted) {
+                    // If this is an initial calibration, save it immediately!
+                    SetMode(GunMode_Pause);
+                    SavePreferences();
+                    SetMode(GunMode_Run);
+                  } else if(dockedCalibrating) {
+                    Serial.print("UpdatedProf: ");
+                    Serial.println(selectedProfile);
+                    Serial.println(profileData[selectedProfile].xScale);
+                    Serial.println(profileData[selectedProfile].yScale);
+                    Serial.println(profileData[selectedProfile].xCenter);
+                    Serial.println(profileData[selectedProfile].yCenter);
+                    SetMode(GunMode_Docked);
+                  } else {
+                    SetMode(GunMode_Run);
+                  }
+                } else {
+                  CalHoriz();
+                }
+              }
+              break;
+            default:
+              break;
         }
     }
 }
@@ -1956,9 +1983,9 @@ bool GetPositionIfReady()
 // Updates finalX and finalY values
 void GetPosition()
 {
-    int error = dfrIRPos.basicAtomic(DFRobotIRPositionEx::Retry_2);
+    int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
     if(error == DFRobotIRPositionEx::Error_Success) {
-        mySamco.begin(dfrIRPos.xPositions(), dfrIRPos.yPositions(), dfrIRPos.seen(), xCenter, yCenter);
+        mySamco.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen(), xCenter, yCenter);
         finalX = mySamco.x();
         finalY = mySamco.y();
 
@@ -2024,7 +2051,7 @@ void TriggerFire()
         if(!bitRead(buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
         !bitRead(buttons.debounced, 4)) {
             #ifdef USES_SOLENOID
-                if(solenoidActive) {                             // (Only activate when the solenoid switch is on!)
+                if(SamcoPreferences::toggles.solenoidActive) {                             // (Only activate when the solenoid switch is on!)
                     if(!triggerHeld) {  // If this is the first time we're firing,
                         if(burstFireActive && !burstFiring) {  // Are we in burst firing mode?
                             solenoidFirstShot = true;               // Set this so we use the instant solenoid fire path,
@@ -2036,50 +2063,50 @@ void TriggerFire()
                         } else if(!burstFireActive) {  // Or, if we're in normal or rapid fire mode,
                             solenoidFirstShot = true;               // Set the First Shot flag on.
                             SolenoidActivation(0);                  // Just activate the Solenoid already!
-                            if(autofireActive) {          // If we are in auto mode,
+                            if(SamcoPreferences::toggles.autofireActive) {          // If we are in auto mode,
                                 solenoidFirstShot = false;          // Immediately set this bit off!
                             }
                         }
                     // Else, these below are all if we've been holding the trigger.
                     } else if(burstFiring) {  // If we're in a burst firing sequence,
                         BurstFire();                                // Process it.
-                    } else if(autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
+                    } else if(SamcoPreferences::toggles.autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
                     !burstFireActive) {          // (WITHOUT burst firing enabled)
-                        if(digitalRead(pinsDb.solenoidPin)) {              // Is the solenoid engaged?
-                            SolenoidActivation(solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
+                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // Is the solenoid engaged?
+                            SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
                         } else {                                    // Or if it's not,
-                            SolenoidActivation(solenoidFastInterval * autofireWaitFactor); // We're holding it for longer.
+                            SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval * SamcoPreferences::settings.autofireWaitFactor); // We're holding it for longer.
                         }
                     } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
-                        if(digitalRead(pinsDb.solenoidPin)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
+                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
                             unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
-                            if(currentMillis - previousMillisSol >= solenoidNormalInterval) { // If we finally surpassed the wait threshold...
-                                digitalWrite(pinsDb.solenoidPin, LOW);     // Let it go.
+                            if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidNormalInterval) { // If we finally surpassed the wait threshold...
+                                digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);     // Let it go.
                             }
                         } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
                             unsigned long currentMillis = millis(); // Initialize timer.
-                            if(currentMillis - previousMillisSol >= solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
+                            if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
                                 solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
-                                SolenoidActivation(solenoidNormalInterval); // Process it now.
+                                SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval); // Process it now.
                             }
                         }
                     } else if(!burstFireActive) {                   // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
-                        if(digitalRead(pinsDb.solenoidPin)) {              // Are we engaged right now?
-                            SolenoidActivation(solenoidNormalInterval); // Turn it off with this timer.
+                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // Are we engaged right now?
+                            SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval); // Turn it off with this timer.
                         } else {                                    // Or we're not engaged.
-                            SolenoidActivation(solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
+                            SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
                         }
                     }
                 } // We ain't using the solenoid, so just ignore all that.
                 #elif RUMBLE_FF
-                    if(rumbleActive) {
+                    if(SamcoPreferences::toggles.rumbleActive) {
                         // TODO: actually make stuff here.
                     } // We ain't using the motor, so just ignore all that.
                 #endif // USES_SOLENOID/RUMBLE_FF
             }
             #ifdef USES_RUMBLE
                 #ifndef RUMBLE_FF
-                    if(rumbleActive &&                     // Is rumble activated,
+                    if(SamcoPreferences::toggles.rumbleActive &&                     // Is rumble activated,
                         rumbleHappening && triggerHeld) {  // AND we're in a rumbling command WHILE the trigger's held?
                         RumbleActivation();                    // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
                     }
@@ -2109,7 +2136,7 @@ void TriggerFire()
             }
             #ifdef USES_RUMBLE
                 #ifndef RUMBLE_FF
-                    if(rumbleActive) {  // Only activate if the rumble switch is enabled!
+                    if(SamcoPreferences::toggles.rumbleActive) {  // Only activate if the rumble switch is enabled!
                         if(!rumbleHappened && !triggerHeld) {  // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
                             RumbleActivation();                        // Start a rumble command.
                         } else if(rumbleHappening) {  // We are currently processing a rumble command.
@@ -2121,12 +2148,12 @@ void TriggerFire()
             if(burstFiring) {                                  // If we're in a burst firing sequence,
                 BurstFire();
             #ifdef USES_SOLENOID
-                } else if(digitalRead(pinsDb.solenoidPin) &&
+                } else if(digitalRead(SamcoPreferences::pins.oSolenoid) &&
                 !burstFireActive) {                               // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
                     unsigned long currentMillis = millis();         // Calibrate current time
-                    if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                    if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
                         previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                        digitalWrite(pinsDb.solenoidPin, LOW);             // Turn it off already, dangit.
+                        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);             // Turn it off already, dangit.
                     }
             #elif RUMBLE_FF
                 } else if(rumbleHappening && !burstFireActive) {
@@ -2160,21 +2187,21 @@ void TriggerNotFire()
         }
     }
     #ifdef USES_SOLENOID
-        if(solenoidActive) {  // Has the solenoid remain engaged this cycle?
+        if(SamcoPreferences::toggles.solenoidActive) {  // Has the solenoid remain engaged this cycle?
             if(burstFiring) {    // Are we in a burst fire command?
                 BurstFire();                                    // Continue processing it.
             } else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
                 solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
                 unsigned long currentMillis = millis();         // Start the timer
-                if(currentMillis - previousMillisSol >= solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
+                if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
                     previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                    digitalWrite(pinsDb.solenoidPin, LOW);             // Make sure to turn it off.
+                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);             // Make sure to turn it off.
                 }
             }
         }
     #endif // USES_SOLENOID
     #ifdef USES_RUMBLE
-        if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs rumbleActive)
+        if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs SamcoPreferences::toggles.rumbleActive)
             RumbleActivation();                                 // Continue processing our rumble command.
             // (This is to prevent making the lack of trigger pull actually activate a rumble command instead of skipping it like we should.)
         } else if(rumbleHappened) {                             // If rumble has happened,
@@ -2186,8 +2213,8 @@ void TriggerNotFire()
 #ifdef USES_ANALOG
 void AnalogStickPoll()
 {
-    unsigned int analogValueX = analogRead(pinsDb.analogPinX);
-    unsigned int analogValueY = analogRead(pinsDb.analogPinY);
+    unsigned int analogValueX = analogRead(SamcoPreferences::pins.aStickX);
+    unsigned int analogValueY = analogRead(SamcoPreferences::pins.aStickY);
     Gamepad16.moveStick(analogValueX, analogValueY);
 }
 #endif // USES_ANALOG
@@ -2275,7 +2302,7 @@ void SerialProcessingDocked()
                         dockedCalibrating = true;
                         //Serial.print("Now calibrating selected profile: ");
                         //Serial.println(profileDesc[selectedProfile].profileLabel);
-                        SetMode(GunMode_CalCenter);
+                        SetMode(GunMode_Calibration);
                     }
                 }
                 break;
@@ -2288,14 +2315,18 @@ void SerialProcessingDocked()
                 SavePreferences();
                 // load everything back to commit custom pins setting to memory
                 if(nvPrefsError == SamcoPreferences::Error_Success) {
-                    ExtPreferences(true);
                     #ifdef LED_ENABLE
                     // Save op above resets color, so re-set it back to docked idle color
-                    LedUpdate(127, 127, 255);
+                    if(gunMode == GunMode_Docked) {
+                        LedUpdate(127, 127, 255);
+                    } else if(gunMode == GunMode_Pause) {
+                        SetLedPackedColor(profileData[selectedProfile].color);
+                    }
                     #endif // LED_ENABLE
                 }
+                CameraSet();
+                UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
                 buttons.Begin();
-                UpdateBindings(lowButtonMode);
                 dockedSaving = false;
                 break;
               // Clear EEPROM.
@@ -2321,60 +2352,74 @@ void SerialProcessingDocked()
                         serialInput = Serial.read(); // nomf
                         serialInput = Serial.read();
                         switch(serialInput) {
-                          #ifdef USES_RUMBLE
                           case '0':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            rumbleActive = serialInput - '0';
-                            rumbleActive = constrain(rumbleActive, 0, 1);
+                            SamcoPreferences::toggles.customPinsInUse = serialInput - '0';
+                            SamcoPreferences::toggles.customPinsInUse = constrain(SamcoPreferences::toggles.customPinsInUse, 0, 1);
+                            Serial.println("OK: Toggled Custom Pin setting.");
+                            break;
+                          #ifdef USES_RUMBLE
+                          case '1':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            SamcoPreferences::toggles.rumbleActive = serialInput - '0';
+                            SamcoPreferences::toggles.rumbleActive = constrain(SamcoPreferences::toggles.rumbleActive, 0, 1);
                             Serial.println("OK: Toggled Rumble setting.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case '1':
-                            serialInput = Serial.read(); // nomf
-                            serialInput = Serial.read();
-                            solenoidActive = serialInput - '0';
-                            solenoidActive = constrain(solenoidActive, 0, 1);
-                            Serial.println("OK: Toggled Solenoid setting.");
-                            break;
-                          #endif
                           case '2':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            autofireActive = serialInput - '0';
-                            autofireActive = constrain(autofireActive, 0, 1);
-                            Serial.println("OK: Toggled Autofire setting.");
+                            SamcoPreferences::toggles.solenoidActive = serialInput - '0';
+                            SamcoPreferences::toggles.solenoidActive = constrain(SamcoPreferences::toggles.solenoidActive, 0, 1);
+                            Serial.println("OK: Toggled Solenoid setting.");
                             break;
+                          #endif
                           case '3':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            simpleMenu = serialInput - '0';
-                            simpleMenu = constrain(simpleMenu, 0, 1);
-                            Serial.println("OK: Toggled Simple Pause Menu setting.");
+                            SamcoPreferences::toggles.autofireActive = serialInput - '0';
+                            SamcoPreferences::toggles.autofireActive = constrain(SamcoPreferences::toggles.autofireActive, 0, 1);
+                            Serial.println("OK: Toggled Autofire setting.");
                             break;
                           case '4':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            holdToPause = serialInput - '0';
-                            holdToPause = constrain(holdToPause, 0, 1);
-                            Serial.println("OK: Toggled Hold to Pause setting.");
+                            SamcoPreferences::toggles.simpleMenu = serialInput - '0';
+                            SamcoPreferences::toggles.simpleMenu = constrain(SamcoPreferences::toggles.simpleMenu, 0, 1);
+                            Serial.println("OK: Toggled Simple Pause Menu setting.");
                             break;
-                          #ifdef FOURPIN_LED
                           case '5':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            commonAnode = serialInput - '0';
-                            commonAnode = constrain(commonAnode, 0, 1);
-                            Serial.println("OK: Toggled Common Anode setting.");
+                            SamcoPreferences::toggles.holdToPause = serialInput - '0';
+                            SamcoPreferences::toggles.holdToPause = constrain(SamcoPreferences::toggles.holdToPause, 0, 1);
+                            Serial.println("OK: Toggled Hold to Pause setting.");
                             break;
-                          #endif
+                          #ifdef FOURPIN_LED
                           case '6':
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
-                            lowButtonMode = serialInput - '0';
-                            lowButtonMode = constrain(lowButtonMode, 0, 1);
+                            SamcoPreferences::toggles.commonAnode = serialInput - '0';
+                            SamcoPreferences::toggles.commonAnode = constrain(SamcoPreferences::toggles.commonAnode, 0, 1);
+                            Serial.println("OK: Toggled Common Anode setting.");
+                            break;
+                          #endif
+                          case '7':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            SamcoPreferences::toggles.lowButtonMode = serialInput - '0';
+                            SamcoPreferences::toggles.lowButtonMode = constrain(SamcoPreferences::toggles.lowButtonMode, 0, 1);
                             Serial.println("OK: Toggled Low Button Mode setting.");
+                            break;
+                          case '8':
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            SamcoPreferences::toggles.rumbleFF = serialInput - '0';
+                            SamcoPreferences::toggles.rumbleFF = constrain(SamcoPreferences::toggles.rumbleFF, 0, 1);
+                            Serial.println("OK: Toggled Rumble FF setting.");
                             break;
                           default:
                             while(!Serial.available()) {
@@ -2390,177 +2435,194 @@ void SerialProcessingDocked()
                         switch(sCase) {
                           case 0:
                             serialInput = Serial.read(); // nomf
-                            serialInput = Serial.read();
-                            customPinsInUse = serialInput - '0';
-                            customPinsInUse = constrain(customPinsInUse, 0, 1);
-                            Serial.println("OK: Toggled Custom Pin setting.");
+                            SamcoPreferences::pins.bTrigger = Serial.parseInt();
+                            SamcoPreferences::pins.bTrigger = constrain(SamcoPreferences::pins.bTrigger, -1, 40);
+                            Serial.println("OK: Set trigger button pin.");
                             break;
                           case 1:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnTrigger = Serial.parseInt();
-                            pinsDb.btnTrigger = constrain(pinsDb.btnTrigger, -1, 40);
-                            Serial.println("OK: Set trigger button pin.");
+                            SamcoPreferences::pins.bGunA = Serial.parseInt();
+                            SamcoPreferences::pins.bGunA = constrain(SamcoPreferences::pins.bGunA, -1, 40);
+                            Serial.println("OK: Set A button pin.");
                             break;
                           case 2:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunA = Serial.parseInt();
-                            pinsDb.btnGunA = constrain(pinsDb.btnGunA, -1, 40);
-                            Serial.println("OK: Set A button pin.");
+                            SamcoPreferences::pins.bGunB = Serial.parseInt();
+                            SamcoPreferences::pins.bGunB = constrain(SamcoPreferences::pins.bGunB, -1, 40);
+                            Serial.println("OK: Set B button pin.");
                             break;
                           case 3:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunB = Serial.parseInt();
-                            pinsDb.btnGunB = constrain(pinsDb.btnGunB, -1, 40);
-                            Serial.println("OK: Set B button pin.");
+                            SamcoPreferences::pins.bGunC = Serial.parseInt();
+                            SamcoPreferences::pins.bGunC = constrain(SamcoPreferences::pins.bGunC, -1, 40);
+                            Serial.println("OK: Set C button pin.");
                             break;
                           case 4:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunC = Serial.parseInt();
-                            pinsDb.btnGunC = constrain(pinsDb.btnGunC, -1, 40);
-                            Serial.println("OK: Set C button pin.");
+                            SamcoPreferences::pins.bStart = Serial.parseInt();
+                            SamcoPreferences::pins.bStart = constrain(SamcoPreferences::pins.bStart, -1, 40);
+                            Serial.println("OK: Set Start button pin.");
                             break;
                           case 5:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnStart = Serial.parseInt();
-                            pinsDb.btnStart = constrain(pinsDb.btnStart, -1, 40);
-                            Serial.println("OK: Set Start button pin.");
+                            SamcoPreferences::pins.bSelect = Serial.parseInt();
+                            SamcoPreferences::pins.bSelect = constrain(SamcoPreferences::pins.bSelect, -1, 40);
+                            Serial.println("OK: Set Select button pin.");
                             break;
                           case 6:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnSelect = Serial.parseInt();
-                            pinsDb.btnSelect = constrain(pinsDb.btnSelect, -1, 40);
-                            Serial.println("OK: Set Select button pin.");
+                            SamcoPreferences::pins.bGunUp = Serial.parseInt();
+                            SamcoPreferences::pins.bGunUp = constrain(SamcoPreferences::pins.bGunUp, -1, 40);
+                            Serial.println("OK: Set D-Pad Up button pin.");
                             break;
                           case 7:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunUp = Serial.parseInt();
-                            pinsDb.btnGunUp = constrain(pinsDb.btnGunUp, -1, 40);
-                            Serial.println("OK: Set D-Pad Up button pin.");
+                            SamcoPreferences::pins.bGunDown = Serial.parseInt();
+                            SamcoPreferences::pins.bGunDown = constrain(SamcoPreferences::pins.bGunDown, -1, 40);
+                            Serial.println("OK: Set D-Pad Down button pin.");
                             break;
                           case 8:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunDown = Serial.parseInt();
-                            pinsDb.btnGunDown = constrain(pinsDb.btnGunDown, -1, 40);
-                            Serial.println("OK: Set D-Pad Down button pin.");
+                            SamcoPreferences::pins.bGunLeft = Serial.parseInt();
+                            SamcoPreferences::pins.bGunLeft = constrain(SamcoPreferences::pins.bGunLeft, -1, 40);
+                            Serial.println("OK: Set D-Pad Left button pin.");
                             break;
                           case 9:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunLeft = Serial.parseInt();
-                            pinsDb.btnGunLeft = constrain(pinsDb.btnGunLeft, -1, 40);
-                            Serial.println("OK: Set D-Pad Left button pin.");
+                            SamcoPreferences::pins.bGunRight = Serial.parseInt();
+                            SamcoPreferences::pins.bGunRight = constrain(SamcoPreferences::pins.bGunRight, -1, 40);
+                            Serial.println("OK: Set D-Pad Right button pin.");
                             break;
                           case 10:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnGunRight = Serial.parseInt();
-                            pinsDb.btnGunRight = constrain(pinsDb.btnGunRight, -1, 40);
-                            Serial.println("OK: Set D-Pad Right button pin.");
+                            SamcoPreferences::pins.bPedal = Serial.parseInt();
+                            SamcoPreferences::pins.bPedal = constrain(SamcoPreferences::pins.bPedal, -1, 40);
+                            Serial.println("OK: Set External Pedal button pin.");
                             break;
                           case 11:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnPedal = Serial.parseInt();
-                            pinsDb.btnPedal = constrain(pinsDb.btnPedal, -1, 40);
-                            Serial.println("OK: Set External Pedal button pin.");
+                            SamcoPreferences::pins.bHome = Serial.parseInt();
+                            SamcoPreferences::pins.bHome = constrain(SamcoPreferences::pins.bHome, -1, 40);
+                            Serial.println("OK: Set Home button pin.");
                             break;
                           case 12:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.btnHome = Serial.parseInt();
-                            pinsDb.btnHome = constrain(pinsDb.btnHome, -1, 40);
-                            Serial.println("OK: Set Home button pin.");
-                            break;
-                          case 13:
-                            serialInput = Serial.read(); // nomf
-                            pinsDb.btnPump = Serial.parseInt();
-                            pinsDb.btnPump = constrain(pinsDb.btnPump, -1, 40);
+                            SamcoPreferences::pins.bPump = Serial.parseInt();
+                            SamcoPreferences::pins.bPump = constrain(SamcoPreferences::pins.bPump, -1, 40);
                             Serial.println("OK: Set Pump Action button pin.");
                             break;
                           #ifdef USES_RUMBLE
-                          case 14:
+                          case 13:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.rumblePin = Serial.parseInt();
-                            pinsDb.rumblePin = constrain(pinsDb.rumblePin, -1, 40);
+                            SamcoPreferences::pins.oRumble = Serial.parseInt();
+                            SamcoPreferences::pins.oRumble = constrain(SamcoPreferences::pins.oRumble, -1, 40);
                             Serial.println("OK: Set Rumble signal pin.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case 15:
+                          case 14:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.solenoidPin = Serial.parseInt();
-                            pinsDb.solenoidPin = constrain(pinsDb.solenoidPin, -1, 40);
+                            SamcoPreferences::pins.oSolenoid = Serial.parseInt();
+                            SamcoPreferences::pins.oSolenoid = constrain(SamcoPreferences::pins.oSolenoid, -1, 40);
                             Serial.println("OK: Set Solenoid signal pin.");
                             break;
-                          #ifdef USES_TEMP
-                          case 16:
-                            serialInput = Serial.read(); // nomf
-                            pinsDb.tempPin = Serial.parseInt();
-                            pinsDb.tempPin = constrain(pinsDb.tempPin, -1, 40);
-                            Serial.println("OK: Set Temperature Sensor pin.");
-                            break;
-                          #endif
                           #endif
                           #ifdef USES_SWITCHES
                           #ifdef USES_RUMBLE
-                          case 17:
+                          case 15:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.rumbleSwitch = Serial.parseInt();
-                            pinsDb.rumbleSwitch = constrain(pinsDb.rumbleSwitch, -1, 40);
+                            SamcoPreferences::pins.sRumble = Serial.parseInt();
+                            SamcoPreferences::pins.sRumble = constrain(SamcoPreferences::pins.sRumble, -1, 40);
                             Serial.println("OK: Set Rumble Switch pin.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case 18:
+                          case 16:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.solenoidSwitch = Serial.parseInt();
-                            pinsDb.solenoidSwitch = constrain(pinsDb.solenoidSwitch, -1, 40);
+                            SamcoPreferences::pins.sSolenoid = Serial.parseInt();
+                            SamcoPreferences::pins.sSolenoid = constrain(SamcoPreferences::pins.sSolenoid, -1, 40);
                             Serial.println("OK: Set Solenoid Switch pin.");
                             break;
                           #endif
-                          case 19:
+                          case 17:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.autofireSwitch = Serial.parseInt();
-                            pinsDb.autofireSwitch = constrain(pinsDb.autofireSwitch, -1, 40);
+                            SamcoPreferences::pins.sAutofire = Serial.parseInt();
+                            SamcoPreferences::pins.sAutofire = constrain(SamcoPreferences::pins.sAutofire, -1, 40);
                             Serial.println("OK: Set Autofire Switch pin.");
                             break;
                           #endif
                           #ifdef FOURPIN_LED
-                          case 20:
+                          case 18:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.PinR = Serial.parseInt();
-                            pinsDb.PinR = constrain(pinsDb.PinR, -1, 40);
+                            SamcoPreferences::pins.oLedR = Serial.parseInt();
+                            SamcoPreferences::pins.oLedR = constrain(SamcoPreferences::pins.oLedR, -1, 40);
                             Serial.println("OK: Set RGB LED R pin.");
                             break;
-                          case 21:
+                          case 19:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.PinG = Serial.parseInt();
-                            pinsDb.PinG = constrain(pinsDb.PinG, -1, 40);
+                            SamcoPreferences::pins.oLedG = Serial.parseInt();
+                            SamcoPreferences::pins.oLedG = constrain(SamcoPreferences::pins.oLedG, -1, 40);
                             Serial.println("OK: Set RGB LED G pin.");
                             break;
-                          case 22:
+                          case 20:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.PinB = Serial.parseInt();
-                            pinsDb.PinB = constrain(pinsDb.PinB, -1, 40);
+                            SamcoPreferences::pins.oLedB = Serial.parseInt();
+                            SamcoPreferences::pins.oLedB = constrain(SamcoPreferences::pins.oLedB, -1, 40);
                             Serial.println("OK: Set RGB LED B pin.");
                             break;
                           #endif
                           #ifdef CUSTOM_NEOPIXEL
-                          case 23:
+                          case 21:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.customLEDpin = Serial.parseInt();
-                            pinsDb.customLEDpin = constrain(pinsDb.customLEDpin, -1, 40);
+                            SamcoPreferences::pins.oPixel = Serial.parseInt();
+                            SamcoPreferences::pins.oPixel = constrain(SamcoPreferences::pins.oPixel, -1, 40);
                             Serial.println("OK: Set Custom NeoPixel pin.");
                             break;
                           #endif
-                          #ifdef USES_ANALOG
+                          case 22:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.pCamSDA = Serial.parseInt();
+                            SamcoPreferences::pins.pCamSDA = constrain(SamcoPreferences::pins.pCamSDA, -1, 40);
+                            Serial.println("OK: Set Camera SDA pin.");
+                            break;
+                          case 23:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.pCamSCL = Serial.parseInt();
+                            SamcoPreferences::pins.pCamSCL = constrain(SamcoPreferences::pins.pCamSCL, -1, 40);
+                            Serial.println("OK: Set Camera SCL pin.");
+                            break;
                           case 24:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.analogPinX = Serial.parseInt();
-                            pinsDb.analogPinX = constrain(pinsDb.analogPinX, -1, 40);
-                            Serial.println("OK: Set Analog X pin.");
+                            SamcoPreferences::pins.pPeriphSDA = Serial.parseInt();
+                            SamcoPreferences::pins.pPeriphSDA = constrain(SamcoPreferences::pins.pPeriphSDA, -1, 40);
+                            Serial.println("OK: Set Peripherals SDA pin.");
                             break;
                           case 25:
                             serialInput = Serial.read(); // nomf
-                            pinsDb.analogPinY = Serial.parseInt();
-                            pinsDb.analogPinY = constrain(pinsDb.analogPinY, -1, 40);
+                            SamcoPreferences::pins.pPeriphSCL = Serial.parseInt();
+                            SamcoPreferences::pins.pPeriphSCL = constrain(SamcoPreferences::pins.pPeriphSCL, -1, 40);
+                            Serial.println("OK: Set Peripherals SCL pin.");
+                            break;
+                          #ifdef USES_ANALOG
+                          case 26:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.aStickX = Serial.parseInt();
+                            SamcoPreferences::pins.aStickX = constrain(SamcoPreferences::pins.aStickX, -1, 40);
+                            Serial.println("OK: Set Analog X pin.");
+                            break;
+                          case 27:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.aStickY = Serial.parseInt();
+                            SamcoPreferences::pins.aStickY = constrain(SamcoPreferences::pins.aStickY, -1, 40);
                             Serial.println("OK: Set Analog Y pin.");
+                            break;
+                          #endif
+                          #ifdef USES_TEMP
+                          case 28:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.aTMP36 = Serial.parseInt();
+                            SamcoPreferences::pins.aTMP36 = constrain(SamcoPreferences::pins.aTMP36, -1, 40);
+                            Serial.println("OK: Set Temperature Sensor pin.");
                             break;
                           #endif
                           default:
@@ -2591,17 +2653,17 @@ void SerialProcessingDocked()
                           #ifdef USES_SOLENOID
                           case '2':
                             serialInput = Serial.read(); // nomf
-                            solenoidNormalInterval = Serial.parseInt();
+                            SamcoPreferences::settings.solenoidNormalInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Normal Interval setting.");
                             break;
                           case '3':
                             serialInput = Serial.read(); // nomf
-                            solenoidFastInterval = Serial.parseInt();
+                            SamcoPreferences::settings.solenoidFastInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Fast Interval setting.");
                             break;
                           case '4':
                             serialInput = Serial.read(); // nomf
-                            solenoidLongInterval = Serial.parseInt();
+                            SamcoPreferences::settings.solenoidLongInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Hold Length setting.");
                             break;
                           #endif
@@ -2615,13 +2677,13 @@ void SerialProcessingDocked()
                           #endif
                           case '6':
                             serialInput = Serial.read(); // nomf
-                            autofireWaitFactor = Serial.parseInt();
-                            autofireWaitFactor = constrain(autofireWaitFactor, 2, 4);
+                            SamcoPreferences::settings.autofireWaitFactor = Serial.parseInt();
+                            SamcoPreferences::settings.autofireWaitFactor = constrain(SamcoPreferences::settings.autofireWaitFactor, 2, 4);
                             Serial.println("OK: Set Autofire Wait Factor setting.");
                             break;
                           case '7':
                             serialInput = Serial.read(); // nomf
-                            pauseHoldLength = Serial.parseInt();
+                            SamcoPreferences::settings.pauseHoldLength = Serial.parseInt();
                             Serial.println("OK: Set Hold to Pause length setting.");
                             break;
                           default:
@@ -2641,33 +2703,24 @@ void SerialProcessingDocked()
                           case '0':
                             {
                               serialInput = Serial.read(); // nomf
-                              devicePID = Serial.parseInt();
+                              SamcoPreferences::usb.devicePID = Serial.parseInt();
                               Serial.println("OK: Updated TinyUSB Device ID.");
-                              EEPROM.put(EEPROM.length() - 22, devicePID);
-                              #ifdef ARDUINO_ARCH_RP2040
-                                  EEPROM.commit();
-                              #endif // ARDUINO_ARCH_RP2040
                               break;
                             }
                           // Device name
                           case '1':
                             serialInput = Serial.read(); // nomf
-                            for(byte i = 0; i < sizeof(deviceName); i++) {
-                                deviceName[i] = '\0';
+                            // clears name
+                            for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
+                                SamcoPreferences::usb.deviceName[i] = '\0';
                             }
-                            for(byte i = 0; i < 15; i++) {
-                                deviceName[i] = Serial.read();
+                            for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
+                                SamcoPreferences::usb.deviceName[i] = Serial.read();
                                 if(!Serial.available()) {
                                     break;
                                 }
                             }
                             Serial.println("OK: Updated TinyUSB Device String.");
-                            for(byte i = 0; i < 16; i++) {
-                                EEPROM.update(EEPROM.length() - 18 + i, deviceName[i]);
-                            }
-                            #ifdef ARDUINO_ARCH_RP2040
-                                EEPROM.commit();
-                            #endif // ARDUINO_ARCH_RP2040
                             break;
                         }
                     #endif // USE_TINYUSB
@@ -2720,6 +2773,50 @@ void SerialProcessingDocked()
                             Serial.println("OK: Set Run Mode");
                             break;
                           }
+                          case 'l':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t i = serialInput - '0';
+                            i = constrain(i, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t v = serialInput - '0';
+                            v = constrain(v, 0, 1);
+                            profileData[i].irLayout = v;
+                            Serial.println("OK: Set IR layout type");
+                            break;
+                          }
+                          case 'n':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t s = serialInput - '0';
+                            s = constrain(s, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            for(byte i = 0; i < sizeof(profileData[s].name); i++) {
+                                profileData[s].name[i] = '\0';
+                            }
+                            for(byte i = 0; i < sizeof(profileData[s].name); i++) {
+                                profileData[s].name[i] = Serial.read();
+                                if(!Serial.available()) {
+                                    break;
+                                }
+                            }
+                            Serial.println("OK: Set Profile Name");
+                            break;
+                          }
+                          case 'c':
+                          {
+                            serialInput = Serial.read(); // nomf
+                            serialInput = Serial.read();
+                            uint8_t s = serialInput - '0';
+                            s = constrain(s, 0, ProfileCount - 1);
+                            serialInput = Serial.read(); // nomf
+                            profileData[s].color = Serial.parseInt();
+                            Serial.println("OK: Set Profile Color");
+                            break;
+                          }
                         }
                     }
                 }
@@ -2729,199 +2826,94 @@ void SerialProcessingDocked()
               case 'l':
               {
                 //Serial.println("Printing values saved in EEPROM...");
-                uint8_t tempBools = 0b00000000;
-                uint8_t *dataBools = &tempBools;
-
-                if(nvPrefsError != SamcoPreferences::Error_Success) {
-                    #ifdef USES_RUMBLE
-                        bitWrite(tempBools, 0, rumbleActive);
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                        bitWrite(tempBools, 1, solenoidActive);
-                    #endif // USES_SOLENOID
-                    bitWrite(tempBools, 2, autofireActive);
-                    bitWrite(tempBools, 3, simpleMenu);
-                    bitWrite(tempBools, 4, holdToPause);
-                    #ifdef FOURPIN_LED
-                        bitWrite(tempBools, 5, commonAnode);
-                    #endif // FOURPIN_LED
-                    bitWrite(tempBools, 6, lowButtonMode);
-                }
-
-                // Temp pin mappings
-                int8_t tempMappings[] = {
-                    customPinsInUse,            // custom pin enabled - disabled by default
-                    pinsDb.btnTrigger,
-                    pinsDb.btnGunA,
-                    pinsDb.btnGunB,
-                    pinsDb.btnGunC,
-                    pinsDb.btnStart,
-                    pinsDb.btnSelect,
-                    pinsDb.btnGunUp,
-                    pinsDb.btnGunDown,
-                    pinsDb.btnGunLeft,
-                    pinsDb.btnGunRight,
-                    pinsDb.btnPedal,
-                    pinsDb.btnHome,
-                    pinsDb.btnPump,
-                    #ifdef USES_RUMBLE
-                    pinsDb.rumblePin,
-                    #else
-                    -1,
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    pinsDb.solenoidPin,
-                    #ifdef USES_TEMP
-                    pinsDb.tempPin,
-                    #else
-                    -1,
-                    #endif // USES_TEMP
-                    #else
-                    -1,
-                    #endif // USES_SOLENOID
-                    #ifdef USES_SWITCHES
-                    #ifdef USES_RUMBLE
-                    pinsDb.rumbleSwitch,
-                    #else
-                    -1,
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    pinsDb.solenoidSwitch,
-                    #else
-                    -1,
-                    #endif // USES_SOLENOID
-                    pinsDb.autofireSwitch,
-                    #else
-                    -1,
-                    #endif // USES_SWITCHES
-                    #ifdef FOURPIN_LED
-                    pinsDb.PinR,
-                    pinsDb.PinG,
-                    pinsDb.PinB,
-                    #else
-                    -1,
-                    -1,
-                    -1,
-                    #endif // FOURPIN_LED
-                    #ifdef CUSTOM_NEOPIXEL
-                    pinsDb.customLEDpin,
-                    #else
-                    -1,
-                    #endif // CUSTOM_NEOPIXEL
-                    #ifdef USES_ANALOG
-                    pinsDb.analogPinX,
-                    pinsDb.analogPinY,
-                    #else
-                    -1,
-                    -1,
-                    #endif // USES_ANALOG
-                    -127
-                };
-                int8_t *dataMappings = tempMappings;
-
-                uint16_t tempSettings[] = {
-                    #ifdef USES_RUMBLE
-                    rumbleIntensity,
-                    rumbleInterval,
-                    #endif // USES_RUMBLE
-                    #ifdef USES_SOLENOID
-                    solenoidNormalInterval,
-                    solenoidFastInterval,
-                    solenoidLongInterval,
-                    #endif // USES_SOLENOID
-                    #ifdef CUSTOM_NEOPIXEL
-                    customLEDcount,
-                    #endif // CUSTOM_NEOPIXEL
-                    autofireWaitFactor,
-                    pauseHoldLength
-                };
-                uint16_t *dataSettings = tempSettings;
-
-                // Only load if there's been no errors reported
-                if(nvPrefsError == SamcoPreferences::Error_Success) {
-                    SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
-                }
-
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'b':
                     //Serial.println("----------BOOL SETTINGS----------");
+                    //Serial.print("Custom pins layout enabled: ");
+                    Serial.println(SamcoPreferences::toggles.customPinsInUse);
                     //Serial.print("Rumble Active: ");
-                    Serial.println(bitRead(tempBools, 0));
+                    Serial.println(SamcoPreferences::toggles.rumbleActive);
                     //Serial.print("Solenoid Active: ");
-                    Serial.println(bitRead(tempBools, 1));
+                    Serial.println(SamcoPreferences::toggles.solenoidActive);
                     //Serial.print("Autofire Active: ");
-                    Serial.println(bitRead(tempBools, 2));
+                    Serial.println(SamcoPreferences::toggles.autofireActive);
                     //Serial.print("Simple Pause Menu Enabled: ");
-                    Serial.println(bitRead(tempBools, 3));
+                    Serial.println(SamcoPreferences::toggles.simpleMenu);
                     //Serial.print("Hold to Pause Enabled: ");
-                    Serial.println(bitRead(tempBools, 4));
+                    Serial.println(SamcoPreferences::toggles.holdToPause);
                     //Serial.print("Common Anode Active: ");
-                    Serial.println(bitRead(tempBools, 5));
+                    Serial.println(SamcoPreferences::toggles.commonAnode);
                     //Serial.print("Low Buttons Mode Active: ");
-                    Serial.println(bitRead(tempBools, 6));
+                    Serial.println(SamcoPreferences::toggles.lowButtonMode);
+                    //Serial.print("Rumble Force Feedback Active: ");
+                    Serial.println(SamcoPreferences::toggles.rumbleFF);
                     break;
                   case 'p':
                     //Serial.println("----------PIN MAPPINGS-----------");
-                    //Serial.print("Custom pins layout enabled: ");
-                    Serial.println(tempMappings[0]);
                     //Serial.print("Trigger: ");
-                    Serial.println(tempMappings[1]);
+                    Serial.println(SamcoPreferences::pins.bTrigger);
                     //Serial.print("Button A: ");
-                    Serial.println(tempMappings[2]);
+                    Serial.println(SamcoPreferences::pins.bGunA);
                     //Serial.print("Button B: ");
-                    Serial.println(tempMappings[3]);
+                    Serial.println(SamcoPreferences::pins.bGunB);
                     //Serial.print("Button C: ");
-                    Serial.println(tempMappings[4]);
+                    Serial.println(SamcoPreferences::pins.bGunC);
                     //Serial.print("Start: ");
-                    Serial.println(tempMappings[5]);
+                    Serial.println(SamcoPreferences::pins.bStart);
                     //Serial.print("Select: ");
-                    Serial.println(tempMappings[6]);
+                    Serial.println(SamcoPreferences::pins.bSelect);
                     //Serial.print("D-Pad Up: ");
-                    Serial.println(tempMappings[7]);
+                    Serial.println(SamcoPreferences::pins.bGunUp);
                     //Serial.print("D-Pad Down: ");
-                    Serial.println(tempMappings[8]);
+                    Serial.println(SamcoPreferences::pins.bGunDown);
                     //Serial.print("D-Pad Left: ");
-                    Serial.println(tempMappings[9]);
+                    Serial.println(SamcoPreferences::pins.bGunLeft);
                     //Serial.print("D-Pad Right: ");
-                    Serial.println(tempMappings[10]);
+                    Serial.println(SamcoPreferences::pins.bGunRight);
                     //Serial.print("External Pedal: ");
-                    Serial.println(tempMappings[11]);
+                    Serial.println(SamcoPreferences::pins.bPedal);
                     //Serial.print("Home Button: ");
-                    Serial.println(tempMappings[12]);
+                    Serial.println(SamcoPreferences::pins.bHome);
                     //Serial.print("Pump Action: ");
-                    Serial.println(tempMappings[13]);
+                    Serial.println(SamcoPreferences::pins.bPump);
                     //Serial.print("Rumble Signal Wire: ");
-                    Serial.println(tempMappings[14]);
+                    Serial.println(SamcoPreferences::pins.oRumble);
                     //Serial.print("Solenoid Signal Wire: ");
-                    Serial.println(tempMappings[15]);
+                    Serial.println(SamcoPreferences::pins.oSolenoid);
                     // for some reason, at this point, QT stops reading output.
                     // so we'll just wait for a ping to print out the rest.
                     while(!Serial.available()) {
                       // derp
                     }
-                    //Serial.print("Temperature Sensor: ");
-                    Serial.println(tempMappings[16]);
                     //Serial.print("Rumble Switch: ");
-                    Serial.println(tempMappings[17]);
+                    Serial.println(SamcoPreferences::pins.sRumble);
                     //Serial.print("Solenoid Switch: ");
-                    Serial.println(tempMappings[18]);
+                    Serial.println(SamcoPreferences::pins.sSolenoid);
                     //Serial.print("Autofire Switch: ");
-                    Serial.println(tempMappings[19]);
+                    Serial.println(SamcoPreferences::pins.sAutofire);
                     //Serial.print("LED R: ");
-                    Serial.println(tempMappings[20]);
+                    Serial.println(SamcoPreferences::pins.oLedR);
                     //Serial.print("LED G: ");
-                    Serial.println(tempMappings[21]);
+                    Serial.println(SamcoPreferences::pins.oLedG);
                     //Serial.print("LED B: ");
-                    Serial.println(tempMappings[22]);
+                    Serial.println(SamcoPreferences::pins.oLedB);
                     //Serial.print("Custom NeoPixel Pin: ");
-                    Serial.println(tempMappings[23]);
+                    Serial.println(SamcoPreferences::pins.oPixel);
+                    //Serial.print("Camera SDA: ");
+                    Serial.println(SamcoPreferences::pins.pCamSDA);
+                    //Serial.print("Camera SCL: ");
+                    Serial.println(SamcoPreferences::pins.pCamSCL);
+                    //Serial.print("Peripheral SDA: ");
+                    Serial.println(SamcoPreferences::pins.pPeriphSDA);
+                    //Serial.print("Peripheral SCL: ");
+                    Serial.println(SamcoPreferences::pins.pPeriphSCL);
                     //Serial.print("Analog Joystick X: ");
-                    Serial.println(tempMappings[24]);
+                    Serial.println(SamcoPreferences::pins.aStickX);
                     //Serial.print("Analog Joystick Y: ");
-                    Serial.println(tempMappings[25]);
-                    //Serial.print("Padding Bit (Should be -127): ");
-                    Serial.println(tempMappings[26]);
+                    Serial.println(SamcoPreferences::pins.aStickY);
+                    //Serial.print("Temperature Sensor: ");
+                    Serial.println(SamcoPreferences::pins.aTMP36);
                     // clean house now from my dirty hack.
                     while(Serial.available()) {
                       serialInput = Serial.read();
@@ -2930,21 +2922,21 @@ void SerialProcessingDocked()
                   case 's':
                     //Serial.println("----------OTHER SETTINGS-----------");
                     //Serial.print("Rumble Intensity Value: ");
-                    Serial.println(tempSettings[0]);
+                    Serial.println(SamcoPreferences::settings.rumbleIntensity);
                     //Serial.print("Rumble Length: ");
-                    Serial.println(tempSettings[1]);
+                    Serial.println(SamcoPreferences::settings.rumbleInterval);
                     //Serial.print("Solenoid Normal Interval: ");
-                    Serial.println(tempSettings[2]);
+                    Serial.println(SamcoPreferences::settings.solenoidNormalInterval);
                     //Serial.print("Solenoid Fast Interval: ");
-                    Serial.println(tempSettings[3]);
+                    Serial.println(SamcoPreferences::settings.solenoidFastInterval);
                     //Serial.print("Solenoid Hold Length: ");
-                    Serial.println(tempSettings[4]);
+                    Serial.println(SamcoPreferences::settings.solenoidLongInterval);
                     //Serial.print("Custom NeoPixel Strip Length: ");
-                    Serial.println(tempSettings[5]);
+                    Serial.println(SamcoPreferences::settings.customLEDcount);
                     //Serial.print("Autofire Wait Factor: ");
-                    Serial.println(tempSettings[6]);
+                    Serial.println(SamcoPreferences::settings.autofireWaitFactor);
                     //Serial.print("Hold to Pause Length: ");
-                    Serial.println(tempSettings[7]);
+                    Serial.println(SamcoPreferences::settings.pauseHoldLength);
                     break;
                   case 'P':
                     serialInput = Serial.read();
@@ -2957,26 +2949,21 @@ void SerialProcessingDocked()
                         Serial.println(profileData[i].yCenter);
                         Serial.println(profileData[i].irSensitivity);
                         Serial.println(profileData[i].runMode);
+                        Serial.println(profileData[i].irLayout);
+                        Serial.println(profileData[i].color);
+                        Serial.println(profileData[i].name);
                     }
                     break;
                   #ifdef USE_TINYUSB
                   case 'n':
-                    for(byte i = 0; i < sizeof(deviceName); i++) {
-                        deviceName[i] = '\0';
-                    }
-                    for(byte i = 0; i < 16; i++) {
-                        deviceName[i] = EEPROM.read(EEPROM.length() - 18 + i);
-                    }
-                    if(deviceName[0] == '\0') {
+                    if(SamcoPreferences::usb.deviceName[0] == '\0') {
                         Serial.println("SERIALREADERR01");
                     } else {
-                        Serial.println(deviceName);
+                        Serial.println(SamcoPreferences::usb.deviceName);
                     }
                     break;
                   case 'i':
-                    devicePID = 0;
-                    EEPROM.get(EEPROM.length() - 22, devicePID);
-                    Serial.println(devicePID);
+                    Serial.println(SamcoPreferences::usb.devicePID);
                     break;
                   #endif // USE_TINYUSB
                 }
@@ -2986,13 +2973,13 @@ void SerialProcessingDocked()
               case 't':
                 serialInput = Serial.read();
                 if(serialInput == 's') {
-                  digitalWrite(pinsDb.solenoidPin, HIGH);
-                  delay(solenoidNormalInterval);
-                  digitalWrite(pinsDb.solenoidPin, LOW);
+                  digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);
+                  delay(SamcoPreferences::settings.solenoidNormalInterval);
+                  digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                 } else if(serialInput == 'r') {
-                  analogWrite(pinsDb.rumblePin, rumbleIntensity);
+                  analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
                   delay(rumbleInterval);
-                  digitalWrite(pinsDb.rumblePin, LOW);
+                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                 }
                 break;
           }
@@ -3031,12 +3018,12 @@ void SerialProcessing()
           } else {
               serialMode = true;                                         // Set it on, then!
               #ifdef USES_RUMBLE
-                  digitalWrite(pinsDb.rumblePin, LOW);                          // Turn off stale rumbling from normal gun mode.
+                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);                          // Turn off stale rumbling from normal gun mode.
                   rumbleHappened = false;
                   rumbleHappening = false;
               #endif // USES_RUMBLE
               #ifdef USES_SOLENOID
-                  digitalWrite(pinsDb.solenoidPin, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
+                  digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
                   solenoidFirstShot = false;
               #endif // USES_SOLENOID
               triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
@@ -3072,12 +3059,12 @@ void SerialProcessing()
                 serialInput = Serial.read();                           // Read the next.
                 if(serialInput == '1') {
                     burstFireActive = true;
-                    autofireActive = false;
+                    SamcoPreferences::toggles.autofireActive = false;
                 } else if(serialInput == '2') {
-                    autofireActive = true;
+                    SamcoPreferences::toggles.autofireActive = true;
                     burstFireActive = false;
                 } else if(serialInput == '0') {
-                    autofireActive = false;
+                    SamcoPreferences::toggles.autofireActive = false;
                     burstFireActive = false;
                 }
                 break;
@@ -3109,13 +3096,13 @@ void SerialProcessing()
                   LedOff();                                          // Turn it off, and let lastSeen handle it from here.
               #endif // LED_ENABLE
               #ifdef USES_RUMBLE
-                  digitalWrite(pinsDb.rumblePin, LOW);
+                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                   serialRumbPulseStage = 0;
                   serialRumbPulses = 0;
                   serialRumbPulsesLast = 0;
               #endif // USES_RUMBLE
               #ifdef USES_SOLENOID
-                  digitalWrite(pinsDb.solenoidPin, LOW);
+                  digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                   serialSolPulseOn = false;
                   serialSolPulses = 0;
                   serialSolPulsesLast = 0;
@@ -3222,7 +3209,7 @@ void SerialProcessing()
                       Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                       break;
                 }
-                UpdateBindings(lowButtonMode);
+                UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
                 break;
               // Enter Docked Mode
               case 'P':
@@ -3408,12 +3395,12 @@ void SerialHandling()
     // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
 
     #ifdef USES_SOLENOID
-      if(solenoidActive) {
+      if(SamcoPreferences::toggles.solenoidActive) {
           if(bitRead(serialQueue, 0)) {                             // If the solenoid digital bit is on,
-              digitalWrite(pinsDb.solenoidPin, HIGH);                           // Make it go!
+              digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);                           // Make it go!
           } else if(bitRead(serialQueue, 1)) {                      // if the solenoid pulse bit is on,
               if(!serialSolPulsesLast) {                            // Have we started pulsing?
-                  analogWrite(pinsDb.solenoidPin, 178);                         // Start pulsing it on!
+                  analogWrite(SamcoPreferences::pins.oSolenoid, 178);                         // Start pulsing it on!
                   serialSolPulseOn = true;                               // Set that the pulse cycle is in on.
                   serialSolPulsesLast = 1;                               // Start the sequence.
                   serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
@@ -3421,12 +3408,12 @@ void SerialHandling()
                   unsigned long currentMillis = millis();                // Calibrate timer.
                   if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we passed the set interval length between stages?
                       if(serialSolPulseOn) {                        // If we're currently pulsing on,
-                          analogWrite(pinsDb.solenoidPin, 122);                 // Start pulsing it off.
+                          analogWrite(SamcoPreferences::pins.oSolenoid, 122);                 // Start pulsing it off.
                           serialSolPulseOn = false;                      // Set that we're in off.
                           serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       } else {                                      // Or if we're pulsing off,
-                          analogWrite(pinsDb.solenoidPin, 178);                 // Start pulsing it on.
+                          analogWrite(SamcoPreferences::pins.oSolenoid, 178);                 // Start pulsing it on.
                           serialSolPulseOn = true;                       // Set that we're in on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
@@ -3434,25 +3421,25 @@ void SerialHandling()
               } else {  // let the armature smoothly sink loose for one more pulse length before snapping it shut off.
                   unsigned long currentMillis = millis();                // Calibrate timer.
                   if(currentMillis - serialSolPulsesLastUpdate > serialSolPulsesLength) { // Have we paassed the set interval length between stages?
-                      digitalWrite(pinsDb.solenoidPin, LOW);                    // Finally shut it off for good.
+                      digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                    // Finally shut it off for good.
                       bitClear(serialQueue, 1);                          // Set the pulse bit as off.
                   }
               }
           } else {  // or if it's not,
-              digitalWrite(pinsDb.solenoidPin, LOW);                            // turn it off!
+              digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                            // turn it off!
           }
       } else {
-          digitalWrite(pinsDb.solenoidPin, LOW);
+          digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
       }
   #endif // USES_SOLENOID
   #ifdef USES_RUMBLE
-      if(rumbleActive) {
+      if(SamcoPreferences::toggles.rumbleActive) {
           if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
-              analogWrite(pinsDb.rumblePin, rumbleIntensity);              // turn/keep it on.
+              analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);              // turn/keep it on.
               //bitClear(serialQueue, 3);
           } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
               if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
-                  analogWrite(pinsDb.rumblePin, 75);                            // we're starting fresh, so use the stage 0 value.
+                  analogWrite(SamcoPreferences::pins.oRumble, 75);                            // we're starting fresh, so use the stage 0 value.
                   serialRumbPulseStage = 0;                              // Set that we're at stage 0.
                   serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
               } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
@@ -3460,17 +3447,17 @@ void SerialHandling()
                   if(currentMillis - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
                       switch(serialRumbPulseStage) {                     // If so, let's start processing.
                           case 0:                                        // Basically, each case
-                              analogWrite(pinsDb.rumblePin, 255);               // bumps up the intensity, (lowest to rising)
+                              analogWrite(SamcoPreferences::pins.oRumble, 255);               // bumps up the intensity, (lowest to rising)
                               serialRumbPulseStage++;                    // and increments the stage of the pulse.
                               serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
                               break;                                     // Then quits the switch.
                           case 1:
-                              analogWrite(pinsDb.rumblePin, 120);               // (rising to peak)
+                              analogWrite(SamcoPreferences::pins.oRumble, 120);               // (rising to peak)
                               serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
                               break;
                           case 2:
-                              analogWrite(pinsDb.rumblePin, 75);                // (peak to falling,)
+                              analogWrite(SamcoPreferences::pins.oRumble, 75);                // (peak to falling,)
                               serialRumbPulseStage = 0;
                               serialRumbPulsesLast++;
                               serialRumbPulsesLastUpdate = millis();
@@ -3478,14 +3465,14 @@ void SerialHandling()
                       }
                   }
               } else {                                              // ...or the pulses count is complete.
-                  digitalWrite(pinsDb.rumblePin, LOW);                          // turn off the motor,
+                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);                          // turn off the motor,
                   bitClear(serialQueue, 3);                              // and set the rumble pulses bit off, now that we've completed it.
               }
           } else {                                                  // ...or we're being told to turn it off outright.
-              digitalWrite(pinsDb.rumblePin, LOW);                              // Do that then.
+              digitalWrite(SamcoPreferences::pins.oRumble, LOW);                              // Do that then.
           }
       } else {
-          digitalWrite(pinsDb.rumblePin, LOW);
+          digitalWrite(SamcoPreferences::pins.oRumble, LOW);
       }
   #endif // USES_RUMBLE
   #ifdef LED_ENABLE
@@ -3623,12 +3610,6 @@ void SetMode(GunMode_e newMode)
     case GunMode_Run:
         stateFlags |= StateFlag_PrintPreferences;
         break;
-    case GunMode_CalHoriz:
-        break;
-    case GunMode_CalVert:
-        break;
-    case GunMode_CalCenter:
-        break;
     case GunMode_Pause:
         break;
     case GunMode_Docked:
@@ -3644,12 +3625,6 @@ void SetMode(GunMode_e newMode)
     case GunMode_Run:
         // begin run mode with all 4 points seen
         lastSeen = 0x0F;        
-        break;
-    case GunMode_CalHoriz:
-        break;
-    case GunMode_CalVert:
-        break;
-    case GunMode_CalCenter:
         break;
     case GunMode_Pause:
         stateFlags |= StateFlag_SavePreferencesEn | StateFlag_PrintSelectedProfile;
@@ -3707,26 +3682,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    pinsDb.rumbleSwitch >= 0 && pinsDb.rumblePin >= 0) {
+                    SamcoPreferences::pins.sRumble >= 0 && SamcoPreferences::pins.oRumble >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    pinsDb.solenoidSwitch >= 0 && pinsDb.solenoidPin >= 0) {
+                    SamcoPreferences::pins.sSolenoid >= 0 && SamcoPreferences::pins.oSolenoid >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
             #else
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    pinsDb.rumblePin >= 0) {
+                    SamcoPreferences::pins.oRumble >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    pinsDb.solenoidPin >= 0) {
+                    SamcoPreferences::pins.oSolenoid >= 0) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
@@ -3740,26 +3715,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    pinsDb.solenoidSwitch >= 0 && pinsDb.solenoidPin >= 0) {
+                    SamcoPreferences::pins.sSolenoid >= 0 && SamcoPreferences::pins.oSolenoid >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    pinsDb.rumbleSwitch >= 0 && pinsDb.rumblePin >= 0) {
+                    SamcoPreferences::pins.sRumble >= 0 && SamcoPreferences::pins.oRumble >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
             #else
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    pinsDb.solenoidPin >= 0) {
+                    SamcoPreferences::pins.oSolenoid >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    pinsDb.rumblePin >= 0) {
+                    SamcoPreferences::pins.oRumble >= 0) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
@@ -3845,10 +3820,10 @@ void SetProfileSelection(bool isIncrement)
         }
     }
     #ifdef LED_ENABLE
-        SetLedPackedColor(profileDesc[profileModeSelection].color);
+        SetLedPackedColor(profileData[profileModeSelection].color);
     #endif // LED_ENABLE
     Serial.print("Selecting profile: ");
-    Serial.println(profileDesc[profileModeSelection].profileLabel);
+    Serial.println(profileData[profileModeSelection].name);
     return;
 }
 
@@ -3931,20 +3906,15 @@ void PrintPreferences()
     }
     
     Serial.print("Default Profile: ");
-    Serial.println(profileDesc[SamcoPreferences::preferences.profile].profileLabel);
+    Serial.println(profileData[SamcoPreferences::profiles.selectedProfile].name);
     
     Serial.println("Profiles:");
-    for(unsigned int i = 0; i < SamcoPreferences::preferences.profileCount; ++i) {
+    for(unsigned int i = 0; i < SamcoPreferences::profiles.profileCount; ++i) {
         // report if a profile has been cal'd
         if(profileData[i].xCenter && profileData[i].yCenter) {
-            size_t len = strlen(profileDesc[i].buttonLabel) + 2;
-            Serial.print(profileDesc[i].buttonLabel);
-            Serial.print(": ");
-            if(profileDesc[i].profileLabel && profileDesc[i].profileLabel[0]) {
-                Serial.print(profileDesc[i].profileLabel);
-                len += strlen(profileDesc[i].profileLabel);
-            }
-            while(len < 26) {
+            size_t len = strlen(profileData[i].name);
+            Serial.print(profileData[i].name);
+            while(len < 10) {
                 Serial.print(' ');
                 ++len;
             }
@@ -4035,7 +4005,7 @@ void PrintExtras()
     }
     #ifdef USES_RUMBLE
         Serial.print("Rumble enabled: ");
-        if(rumbleActive) {
+        if(SamcoPreferences::toggles.rumbleActive) {
             Serial.println("True");
         } else {
             Serial.println("False");
@@ -4043,10 +4013,10 @@ void PrintExtras()
     #endif // USES_RUMBLE
     #ifdef USES_SOLENOID
         Serial.print("Solenoid enabled: ");
-        if(solenoidActive) {
+        if(SamcoPreferences::toggles.solenoidActive) {
             Serial.println("True");
             Serial.print("Rapid fire enabled: ");
-            if(autofireActive) {
+            if(SamcoPreferences::toggles.autofireActive) {
                 Serial.println("True");
             } else {
                 Serial.println("False");
@@ -4084,7 +4054,7 @@ void LoadPreferences()
 #ifdef SAMCO_FLASH_ENABLE
     nvPrefsError = SamcoPreferences::Load(flash);
 #else
-    nvPrefsError = samcoPreferences.Load();
+    nvPrefsError = SamcoPreferences::LoadProfiles();
 #endif // SAMCO_FLASH_ENABLE
     VerifyPreferences();
 }
@@ -4117,29 +4087,8 @@ void VerifyPreferences()
     }
 
     // if default profile is not valid, use current selected profile instead
-    if(SamcoPreferences::preferences.profile >= ProfileCount) {
-        SamcoPreferences::preferences.profile = (uint8_t)selectedProfile;
-    }
-}
-
-// Apply initial preferences, intended to be called only in setup() after LoadPreferences()
-// this will apply the preferences data as the initial values
-void ApplyInitialPrefs()
-{   
-    // if default profile is valid then use it
-    if(SamcoPreferences::preferences.profile < ProfileCount) {
-        // note, just set the value here not call the function to do the set
-        selectedProfile = SamcoPreferences::preferences.profile;
-
-        // set the current IR camera sensitivity
-        if(profileData[selectedProfile].irSensitivity <= DFRobotIRPositionEx::Sensitivity_Max) {
-            irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)profileData[selectedProfile].irSensitivity;
-        }
-
-        // set the run mode
-        if(profileData[selectedProfile].runMode < RunMode_Count) {
-            runMode = (RunMode_e)profileData[selectedProfile].runMode;
-        }
+    if(SamcoPreferences::profiles.selectedProfile >= ProfileCount) {
+        SamcoPreferences::profiles.selectedProfile = (uint8_t)selectedProfile;
     }
 }
 
@@ -4159,17 +4108,22 @@ void SavePreferences()
     }
     
     // use selected profile as the default
-    SamcoPreferences::preferences.profile = (uint8_t)selectedProfile;
+    SamcoPreferences::profiles.selectedProfile = (uint8_t)selectedProfile;
 
 #ifdef SAMCO_FLASH_ENABLE
     nvPrefsError = SamcoPreferences::Save(flash);
 #else
-    nvPrefsError = SamcoPreferences::Save();
+    nvPrefsError = SamcoPreferences::SaveProfiles();
 #endif // SAMCO_FLASH_ENABLE
     if(nvPrefsError == SamcoPreferences::Error_Success) {
         Serial.print("Settings saved to ");
         Serial.println(NVRAMlabel);
-        ExtPreferences(false);
+        SamcoPreferences::SaveToggles();
+        if(SamcoPreferences::toggles.customPinsInUse) {
+            SamcoPreferences::SavePins();
+        }
+        SamcoPreferences::SaveSettings();
+        SamcoPreferences::SaveUSBID();
         #ifdef LED_ENABLE
             for(byte i = 0; i < 3; i++) {
                 LedUpdate(25,25,255);
@@ -4192,214 +4146,6 @@ void SavePreferences()
     }
 }
 
-// Saves &/or loads extended preferences (booleans, pin mappings, general settings, TinyUSB ID) from EEPROM
-// boolean determines if it's a save or load operation (defaults to save)
-void ExtPreferences(bool isLoad)
-{
-    uint8_t tempBools = 0b00000000;
-    uint8_t *dataBools = &tempBools;
-
-    if(!isLoad) {
-        #ifdef USES_RUMBLE
-            bitWrite(tempBools, 0, rumbleActive);
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-            bitWrite(tempBools, 1, solenoidActive);
-        #endif // USES_SOLENOID
-        bitWrite(tempBools, 2, autofireActive);
-        bitWrite(tempBools, 3, simpleMenu);
-        bitWrite(tempBools, 4, holdToPause);
-        #ifdef FOURPIN_LED
-            bitWrite(tempBools, 5, commonAnode);
-        #endif // FOURPIN_LED
-        bitWrite(tempBools, 6, lowButtonMode);
-    }
-
-    // Temp pin mappings
-    int8_t tempMappings[] = {
-      customPinsInUse,            // custom pin enabled - disabled by default
-      pinsDb.btnTrigger,
-      pinsDb.btnGunA,
-      pinsDb.btnGunB,
-      pinsDb.btnGunC,
-      pinsDb.btnStart,
-      pinsDb.btnSelect,
-      pinsDb.btnGunUp,
-      pinsDb.btnGunDown,
-      pinsDb.btnGunLeft,
-      pinsDb.btnGunRight,
-      pinsDb.btnPedal,
-      pinsDb.btnHome,
-      pinsDb.btnPump,
-      #ifdef USES_RUMBLE
-      pinsDb.rumblePin,
-      #else
-      -1,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      pinsDb.solenoidPin,
-      #ifdef USES_TEMP
-      pinsDb.tempPin,
-      #else
-      -1,
-      #endif // USES_TEMP
-      #else
-      -1,
-      #endif // USES_SOLENOID
-      #ifdef USES_SWITCHES
-      #ifdef USES_RUMBLE
-      pinsDb.rumbleSwitch,
-      #else
-      -1,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      pinsDb.solenoidSwitch,
-      #else
-      -1,
-      #endif // USES_SOLENOID
-      pinsDb.autofireSwitch,
-      #else
-      -1,
-      #endif // USES_SWITCHES
-      #ifdef FOURPIN_LED
-      pinsDb.PinR,
-      pinsDb.PinG,
-      pinsDb.PinB,
-      #else
-      -1,
-      -1,
-      -1,
-      #endif // FOURPIN_LED
-      #ifdef CUSTOM_NEOPIXEL
-      pinsDb.customLEDpin,
-      #else
-      -1,
-      #endif // CUSTOM_NEOPIXEL
-      #ifdef USES_ANALOG
-      pinsDb.analogPinX,
-      pinsDb.analogPinY,
-      #else
-      -1,
-      -1,
-      #endif // USES_ANALOG
-      -127
-    };
-    int8_t *dataMappings = tempMappings;
-
-    uint16_t tempSettings[] = {
-      #ifdef USES_RUMBLE
-      rumbleIntensity,
-      rumbleInterval,
-      #endif // USES_RUMBLE
-      #ifdef USES_SOLENOID
-      solenoidNormalInterval,
-      solenoidFastInterval,
-      solenoidLongInterval,
-      #endif // USES_SOLENOID
-      #ifdef CUSTOM_NEOPIXEL
-      customLEDcount,
-      #endif // CUSTOM_NEOPIXEL
-      autofireWaitFactor,
-      pauseHoldLength
-    };
-    uint16_t *dataSettings = tempSettings;
-
-    if(!isLoad) {
-        nvPrefsError = SamcoPreferences::SaveExtended(dataBools, dataMappings, dataSettings);
-        if(nvPrefsError == SamcoPreferences::Error_Success) {
-            Serial.println("Saved!");
-        } else {
-            Serial.println("Error!");
-        }
-    } else {
-        SamcoPreferences::LoadExtended(dataBools, dataMappings, dataSettings);
-
-        // Set Bools
-        #ifdef USES_RUMBLE
-            rumbleActive = bitRead(tempBools, 0);
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-            solenoidActive = bitRead(tempBools, 1);
-        #endif // USES_SOLENOID
-        autofireActive = bitRead(tempBools, 2);
-        simpleMenu = bitRead(tempBools, 3);
-        holdToPause = bitRead(tempBools, 4);
-        #ifdef FOURPIN_LED
-            commonAnode = bitRead(tempBools, 5);
-        #endif // FOURPIN_LED
-        lowButtonMode = bitRead(tempBools, 6);
-
-        // Set pins, if allowed.
-        customPinsInUse = tempMappings[0];
-        if(customPinsInUse) {
-            pinsDb.btnTrigger = tempMappings[1];
-            pinsDb.btnGunA = tempMappings[2];
-            pinsDb.btnGunB = tempMappings[3];
-            pinsDb.btnGunC = tempMappings[4];
-            pinsDb.btnStart = tempMappings[5];
-            pinsDb.btnSelect = tempMappings[6];
-            pinsDb.btnGunUp = tempMappings[7];
-            pinsDb.btnGunDown = tempMappings[8];
-            pinsDb.btnGunLeft = tempMappings[9];
-            pinsDb.btnGunRight = tempMappings[10];
-            pinsDb.btnPedal = tempMappings[11];
-            pinsDb.btnHome = tempMappings[12];
-            pinsDb.btnPump = tempMappings[13];
-            #ifdef USES_RUMBLE
-            pinsDb.rumblePin = tempMappings[14];
-            #endif // USES_RUMBLE
-            #ifdef USES_SOLENOID
-            pinsDb.solenoidPin = tempMappings[15];
-            #ifdef USES_TEMP
-            pinsDb.tempPin = tempMappings[16];
-            #endif // USES_TEMP
-            #endif // USES_SOLENOID
-            #ifdef USES_SWITCHES
-            #ifdef USES_RUMBLE
-            pinsDb.rumbleSwitch = tempMappings[17];
-            #endif // USES_RUMBLE
-            #ifdef USES_SOLENOID
-            pinsDb.solenoidSwitch = tempMappings[18];
-            #endif // USES_SOLENOID
-            pinsDb.autofireSwitch = tempMappings[19];
-            #endif // USES_SWITCHES
-            #ifdef FOURPIN_LED
-            pinsDb.PinR = tempMappings[20];
-            pinsDb.PinG = tempMappings[21];
-            pinsDb.PinB = tempMappings[22];
-            #endif // FOURPIN_LED
-            #ifdef CUSTOM_NEOPIXEL
-            pinsDb.customLEDpin = tempMappings[23];
-            #endif // CUSTOM_NEOPIXEL
-            #ifdef USES_ANALOG
-            pinsDb.analogPinX = tempMappings[24];
-            pinsDb.analogPinY = tempMappings[25];
-            #endif // USES_ANALOG
-        }
-
-        // Set other settings
-        #ifdef USES_RUMBLE
-        rumbleIntensity = tempSettings[0];
-        rumbleInterval = tempSettings[1];
-        #endif // USES_RUMBLE
-        #ifdef USES_SOLENOID
-        solenoidNormalInterval = tempSettings[2];
-        solenoidFastInterval = tempSettings[3];
-        solenoidLongInterval = tempSettings[4];
-        #endif // USES_SOLENOID
-        #ifdef CUSTOM_NEOPIXEL
-        customLEDcount = tempSettings[5];
-        #endif // CUSTOM_NEOPIXEL
-        autofireWaitFactor = tempSettings[6];
-        pauseHoldLength = tempSettings[7];
-    }
-    if(justBooted && lowButtonMode) {
-        UpdateBindings(true);
-    } else if(justBooted && !lowButtonMode) {
-        UpdateBindings(false);
-    }
-}
-
 void SelectCalProfileFromBtnMask(uint32_t mask)
 {
     // only check if buttons are set in the mask
@@ -4407,7 +4153,7 @@ void SelectCalProfileFromBtnMask(uint32_t mask)
         return;
     }
     for(unsigned int i = 0; i < ProfileCount; ++i) {
-        if(profileDesc[i].buttonMask == mask) {
+        if(profileData[i].buttonMask == mask) {
             SelectCalProfile(i);
             return;
         }
@@ -4457,7 +4203,7 @@ void SetIrSensitivity(uint8_t sensitivity)
 
     if(irSensitivity != (DFRobotIRPositionEx::Sensitivity_e)sensitivity) {
         irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)sensitivity;
-        dfrIRPos.sensitivityLevel(irSensitivity);
+        dfrIRPos->sensitivityLevel(irSensitivity);
         if(!(stateFlags & StateFlag_PrintSelectedProfile)) {
             PrintIrSensitivity();
         }
@@ -4489,7 +4235,7 @@ void CancelCalibration()
 void PrintSelectedProfile()
 {
     Serial.print("Profile: ");
-    Serial.println(profileDesc[selectedProfile].profileLabel);
+    Serial.println(profileData[selectedProfile].name);
 }
 
 // applies loaded gun profile settings
@@ -4597,7 +4343,7 @@ void LedInit()
         neopixel.begin();
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
-        if(pinsDb.customLEDpin >= 0) {
+        if(SamcoPreferences::pins.oPixel >= 0) {
             externPixel->begin();
         }
     #endif // CUSTOM_NEOPIXEL
@@ -4622,7 +4368,7 @@ void SetLedPackedColor(uint32_t color)
     neopixel.show();
 #endif // NEOPIXEL_PIN
 #ifdef CUSTOM_NEOPIXEL
-    if(pinsDb.customLEDpin >= 0) {
+    if(SamcoPreferences::pins.oPixel >= 0) {
         externPixel->fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
         externPixel->show();
     }
@@ -4632,14 +4378,14 @@ void SetLedPackedColor(uint32_t color)
         byte r = highByte(color >> 8);
         byte g = highByte(color);
         byte b = lowByte(color);
-        if(commonAnode) {
+        if(SamcoPreferences::toggles.commonAnode) {
             r = ~r;
             g = ~g;
             b = ~b;
         }
-        analogWrite(pinsDb.PinR, r);
-        analogWrite(pinsDb.PinG, g);
-        analogWrite(pinsDb.PinB, b);
+        analogWrite(SamcoPreferences::pins.oLedR, r);
+        analogWrite(SamcoPreferences::pins.oLedG, g);
+        analogWrite(SamcoPreferences::pins.oLedB, b);
     }
 #endif // FOURPIN_LED
 #ifdef ARDUINO_NANO_RP2040_CONNECT
@@ -4672,7 +4418,7 @@ void LedUpdate(byte r, byte g, byte b)
         neopixel.show();
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
-        if(pinsDb.customLEDpin >= 0) {
+        if(SamcoPreferences::pins.oPixel >= 0) {
             for(byte i = 0; i < customLEDcount; i++) {
                 externPixel->setPixelColor(i, r, g, b);
             }
@@ -4681,21 +4427,21 @@ void LedUpdate(byte r, byte g, byte b)
     #endif // CUSTOM_NEOPIXEL
     #ifdef FOURPIN_LED
         if(ledIsValid) {
-            if(commonAnode) {
+            if(SamcoPreferences::toggles.commonAnode) {
                 r = ~r;
                 g = ~g;
                 b = ~b;
             }
-            analogWrite(pinsDb.PinR, r);
-            analogWrite(pinsDb.PinG, g);
-            analogWrite(pinsDb.PinB, b);
+            analogWrite(SamcoPreferences::pins.oLedR, r);
+            analogWrite(SamcoPreferences::pins.oLedG, g);
+            analogWrite(SamcoPreferences::pins.oLedB, b);
         }
     #endif // FOURPIN_LED
     #ifdef ARDUINO_NANO_RP2040_CONNECT
         #ifdef FOURPIN_LED
         // Nano's builtin is a common anode, so we use that logic by default if it's enabled on the external 4-pin;
         // otherwise, invert the values.
-        if((ledIsValid && !commonAnode) || !ledIsValid) {
+        if((ledIsValid && !SamcoPreferences::toggles.commonAnode) || !ledIsValid) {
             r = ~r;
             g = ~g;
             b = ~b;
@@ -4715,13 +4461,11 @@ void LedUpdate(byte r, byte g, byte b)
 void SetLedColorFromMode()
 {
     switch(gunMode) {
-    case GunMode_CalHoriz:
-    case GunMode_CalVert:
-    case GunMode_CalCenter:
+    case GunMode_Calibration:
         SetLedPackedColor(CalModeColor);
         break;
     case GunMode_Pause:
-        SetLedPackedColor(profileDesc[selectedProfile].color);
+        SetLedPackedColor(profileData[selectedProfile].color);
         break;
     case GunMode_Run:
         if(lastSeen) {
@@ -4747,18 +4491,18 @@ void OffscreenToggle()
             SetLedPackedColor(WikiColor::Ghost_white);            // Set a color,
         #endif // LED_ENABLE
         #ifdef USES_RUMBLE
-            digitalWrite(pinsDb.rumblePin, HIGH);                        // Set rumble on
+            digitalWrite(SamcoPreferences::pins.oRumble, HIGH);                        // Set rumble on
             delay(125);                                           // For this long,
-            digitalWrite(pinsDb.rumblePin, LOW);                         // Then flick it off,
+            digitalWrite(SamcoPreferences::pins.oRumble, LOW);                         // Then flick it off,
             delay(150);                                           // wait a little,
-            digitalWrite(pinsDb.rumblePin, HIGH);                        // Flick it back on
+            digitalWrite(SamcoPreferences::pins.oRumble, HIGH);                        // Flick it back on
             delay(200);                                           // For a bit,
-            digitalWrite(pinsDb.rumblePin, LOW);                         // and then turn it off,
+            digitalWrite(SamcoPreferences::pins.oRumble, LOW);                         // and then turn it off,
         #else
             delay(450);
         #endif // USES_RUMBLE
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or we're turning this OFF,
@@ -4772,7 +4516,7 @@ void OffscreenToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4784,23 +4528,23 @@ void AutofireSpeedToggle(byte setting)
 {
     // If a number is passed, assume this is from Serial and directly set it.
     if(setting >= 2 && setting <= 4) {
-        autofireWaitFactor = setting;
+        SamcoPreferences::settings.autofireWaitFactor = setting;
         Serial.print("Autofire speed level ");
         Serial.println(setting);
         return;
     // Else, this is a button toggle, so cycle.
     } else {
-        switch (autofireWaitFactor) {
+        switch (SamcoPreferences::settings.autofireWaitFactor) {
             case 2:
-                autofireWaitFactor = 3;
+                SamcoPreferences::settings.autofireWaitFactor = 3;
                 Serial.println("Autofire speed level 2.");
                 break;
             case 3:
-                autofireWaitFactor = 4;
+                SamcoPreferences::settings.autofireWaitFactor = 4;
                 Serial.println("Autofire speed level 3.");
                 break;
             case 4:
-                autofireWaitFactor = 2;
+                SamcoPreferences::settings.autofireWaitFactor = 2;
                 Serial.println("Autofire speed level 1.");
                 break;
         }
@@ -4809,14 +4553,14 @@ void AutofireSpeedToggle(byte setting)
         #endif // LED_ENABLE
         #ifdef USES_SOLENOID
             for(byte i = 0; i < 5; i++) {                             // And demonstrate the new autofire factor five times!
-                digitalWrite(pinsDb.solenoidPin, HIGH);
-                delay(solenoidFastInterval);
-                digitalWrite(pinsDb.solenoidPin, LOW);
-                delay(solenoidFastInterval * autofireWaitFactor);
+                digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);
+                delay(SamcoPreferences::settings.solenoidFastInterval);
+                digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
+                delay(SamcoPreferences::settings.solenoidFastInterval * SamcoPreferences::settings.autofireWaitFactor);
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4835,13 +4579,13 @@ void BurstFireToggle()
         #ifdef USES_SOLENOID
             for(byte i = 0; i < 4; i++) {
                 digitalWrite(solenoidPin, HIGH);                  // Demonstrate it by flicking the solenoid on/off three times!
-                delay(solenoidFastInterval);                      // (at a fixed rate to distinguish it from autofire speed toggles)
+                delay(SamcoPreferences::settings.solenoidFastInterval);                      // (at a fixed rate to distinguish it from autofire speed toggles)
                 digitalWrite(solenoidPin, LOW);
-                delay(solenoidFastInterval * 2);
+                delay(SamcoPreferences::settings.solenoidFastInterval * 2);
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {  // Or we flicked it off.
@@ -4855,7 +4599,7 @@ void BurstFireToggle()
             digitalWrite(solenoidPin, LOW);                       // Then off.
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4867,17 +4611,17 @@ void BurstFireToggle()
 // Does a cute rumble pattern when on, or blinks LEDs (if any)
 void RumbleToggle()
 {
-    rumbleActive = !rumbleActive;                                 // Toggle
-    if(rumbleActive) {                                            // If we turned ON this mode,
+    SamcoPreferences::toggles.rumbleActive = !SamcoPreferences::toggles.rumbleActive;                                 // Toggle
+    if(SamcoPreferences::toggles.rumbleActive) {                                            // If we turned ON this mode,
         Serial.println("Rumble enabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
         #endif // LED_ENABLE
-        digitalWrite(pinsDb.rumblePin, HIGH);                            // Pulse the motor on to notify the user,
+        digitalWrite(SamcoPreferences::pins.oRumble, HIGH);                            // Pulse the motor on to notify the user,
         delay(300);                                               // Hold that,
-        digitalWrite(pinsDb.rumblePin, LOW);                             // Then turn off,
+        digitalWrite(SamcoPreferences::pins.oRumble, LOW);                             // Then turn off,
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
@@ -4891,7 +4635,7 @@ void RumbleToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4903,17 +4647,17 @@ void RumbleToggle()
 // Does a cute solenoid engagement, or blinks LEDs (if any)
 void SolenoidToggle()
 {
-    solenoidActive = !solenoidActive;                             // Toggle
-    if(solenoidActive) {                                          // If we turned ON this mode,
+    SamcoPreferences::toggles.solenoidActive = !SamcoPreferences::toggles.solenoidActive;                             // Toggle
+    if(SamcoPreferences::toggles.solenoidActive) {                                          // If we turned ON this mode,
         Serial.println("Solenoid enabled!");
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
         #endif // LED_ENABLE
-        digitalWrite(pinsDb.solenoidPin, HIGH);                          // Engage the solenoid on to notify the user,
+        digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);                          // Engage the solenoid on to notify the user,
         delay(300);                                               // Hold it that way for a bit,
-        digitalWrite(pinsDb.solenoidPin, LOW);                           // Release it,
+        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                           // Release it,
         #ifdef LED_ENABLE
-            SetLedPackedColor(profileDesc[selectedProfile].color);    // And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {                                                      // Or if we're turning it OFF,
@@ -4927,7 +4671,7 @@ void SolenoidToggle()
             delay(150);                                           // for a bit,
             LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            SetLedPackedColor(profileDesc[selectedProfile].color);// And reset the LED back to pause mode color
+            SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -4941,12 +4685,12 @@ void SolenoidActivation(int solenoidFinalInterval)
     if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
         unsigned long currentMillis = millis();                   // Initialize timer.
         previousMillisSol = currentMillis;                        // Calibrate the timer for future calcs.
-        digitalWrite(pinsDb.solenoidPin, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
+        digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
         return;                                                   // We're done here now.
     }
     #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        if(pinsDb.tempPin >= 0) { // If a temp sensor is installed and enabled,
-            int tempSensor = analogRead(pinsDb.tempPin);
+        if(SamcoPreferences::pins.aTMP36 >= 0) { // If a temp sensor is installed and enabled,
+            int tempSensor = analogRead(SamcoPreferences::pins.aTMP36);
             tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
             #ifdef PRINT_VERBOSE
                 Serial.print("Current Temp near solenoid: ");
@@ -4957,17 +4701,17 @@ void SolenoidActivation(int solenoidFinalInterval)
                 unsigned long currentMillis = millis();
                 if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
                     previousMillisSol = currentMillis;
-                    digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                    digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
                     return;
                 } else { // If we pass the temp check but fail the timer check, we're here too quick.
                     return;
                 }
             } else if(tempSensor < tempWarning) { // If we failed the room temp check, are we beneath the shutoff threshold?
-                if(digitalRead(pinsDb.solenoidPin)) {    // Is the valve being pulled now?
+                if(digitalRead(SamcoPreferences::pins.oSolenoid)) {    // Is the valve being pulled now?
                     unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
                     if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
                         previousMillisSol = currentMillis;
-                        digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // Flip, flop.
+                        digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // Flip, flop.
                         return;
                     } else { // OR, Passed the temp check, STILL here too quick.
                         return;
@@ -4976,7 +4720,7 @@ void SolenoidActivation(int solenoidFinalInterval)
                     unsigned long currentMillis = millis();
                     if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
                         previousMillisSol = currentMillis;
-                        digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin));
+                        digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid));
                         return;
                     } else { // OR, We passed the temp check but STILL got here too quick.
                         return;
@@ -4986,14 +4730,14 @@ void SolenoidActivation(int solenoidFinalInterval)
                 #ifdef PRINT_VERBOSE
                     Serial.println("Solenoid over safety threshold; not activating!");
                 #endif
-                digitalWrite(pinsDb.solenoidPin, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
+                digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
                 return;
             }
         } else { // No temp sensor, so just go ahead.
             unsigned long currentMillis = millis();                   // Start the timer.
             if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
                 previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-                digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
+                digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
                 return;                                               // Aaaand we're done here.
             } else {                                                  // If we failed the timer check, we're here too quick.
                 return;                                               // Get out of here, speedy mc loserpants.
@@ -5003,7 +4747,7 @@ void SolenoidActivation(int solenoidFinalInterval)
         unsigned long currentMillis = millis();                   // Start the timer.
         if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
             previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-            digitalWrite(pinsDb.solenoidPin, !digitalRead(pinsDb.solenoidPin)); // run the solenoid into the state we've just inverted it to.
+            digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
             return;                                               // Aaaand we're done here.
         } else {                                                  // If we failed the timer check, we're here too quick.
             return;                                               // Get out of here, speedy mc loserpants.
@@ -5019,14 +4763,14 @@ void RumbleActivation()
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
         unsigned long currentMillis = millis();                   // Calibrate a timer to set how long we've been rumbling.
         if(currentMillis - previousMillisRumble >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
-            digitalWrite(pinsDb.rumblePin, LOW);                         // Make sure the rumble is OFF.
+            digitalWrite(SamcoPreferences::pins.oRumble, LOW);                         // Make sure the rumble is OFF.
             rumbleHappening = false;                              // This rumble command is done now.
             rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
         }
         return;                                                   // Alright we done here (if we did this before already)
     } else {                                                      // OR, we're rumbling for the first time.
         previousMillisRumble = millis();                          // Mark this as the start of this rumble command.
-        analogWrite(pinsDb.rumblePin, rumbleIntensity);                  // Set the motor on.
+        analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);                  // Set the motor on.
         rumbleHappening = true;                                   // Mark that we're in a rumble command rn.
         return;                                                   // Now geddoutta here.
     }
@@ -5038,15 +4782,15 @@ void BurstFire()
 {
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
         #ifdef USES_SOLENOID
-            if(!digitalRead(pinsDb.solenoidPin) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
+            if(!digitalRead(SamcoPreferences::pins.oSolenoid) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
             (burstFireCount == burstFireCountLast)) {
                 burstFireCount++;                                 // Increment the counter.
             }
-            if(!digitalRead(pinsDb.solenoidPin)) {  // Now, is the solenoid NOT on right now?
-                SolenoidActivation(solenoidFastInterval * 2);     // Hold it off a bit longer,
+            if(!digitalRead(SamcoPreferences::pins.oSolenoid)) {  // Now, is the solenoid NOT on right now?
+                SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval * 2);     // Hold it off a bit longer,
             } else {                         // or if it IS on,
                 burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
-                SolenoidActivation(solenoidFastInterval);         // And start trying to activate the dingus.
+                SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval);         // And start trying to activate the dingus.
             }
         #endif // USES_SOLENOID
         return;
@@ -5061,21 +4805,19 @@ void BurstFire()
 void UpdateBindings(bool offscreenEnable)
 {
     // Updates pins
-    // TODO: might still need to use pointers to the pins in the first place instead of lowkey memcopying,
-    // but at least this is less aneurysm-inducing than what it used to be.
-    LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = pinsDb.btnTrigger;
-    LightgunButtons::ButtonDesc[BtnIdx_A].pin = pinsDb.btnGunA;
-    LightgunButtons::ButtonDesc[BtnIdx_B].pin = pinsDb.btnGunB;
-    LightgunButtons::ButtonDesc[BtnIdx_Reload].pin = pinsDb.btnGunC;
-    LightgunButtons::ButtonDesc[BtnIdx_Start].pin = pinsDb.btnStart;
-    LightgunButtons::ButtonDesc[BtnIdx_Select].pin = pinsDb.btnSelect;
-    LightgunButtons::ButtonDesc[BtnIdx_Up].pin = pinsDb.btnGunUp;
-    LightgunButtons::ButtonDesc[BtnIdx_Down].pin = pinsDb.btnGunDown;
-    LightgunButtons::ButtonDesc[BtnIdx_Left].pin = pinsDb.btnGunLeft;
-    LightgunButtons::ButtonDesc[BtnIdx_Right].pin = pinsDb.btnGunRight;
-    LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = pinsDb.btnPedal;
-    LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = pinsDb.btnPump;
-    LightgunButtons::ButtonDesc[BtnIdx_Home].pin = pinsDb.btnHome;
+    LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = SamcoPreferences::pins.bTrigger;
+    LightgunButtons::ButtonDesc[BtnIdx_A].pin = SamcoPreferences::pins.bGunA;
+    LightgunButtons::ButtonDesc[BtnIdx_B].pin = SamcoPreferences::pins.bGunB;
+    LightgunButtons::ButtonDesc[BtnIdx_Reload].pin = SamcoPreferences::pins.bGunC;
+    LightgunButtons::ButtonDesc[BtnIdx_Start].pin = SamcoPreferences::pins.bStart;
+    LightgunButtons::ButtonDesc[BtnIdx_Select].pin = SamcoPreferences::pins.bSelect;
+    LightgunButtons::ButtonDesc[BtnIdx_Up].pin = SamcoPreferences::pins.bGunUp;
+    LightgunButtons::ButtonDesc[BtnIdx_Down].pin = SamcoPreferences::pins.bGunDown;
+    LightgunButtons::ButtonDesc[BtnIdx_Left].pin = SamcoPreferences::pins.bGunLeft;
+    LightgunButtons::ButtonDesc[BtnIdx_Right].pin = SamcoPreferences::pins.bGunRight;
+    LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = SamcoPreferences::pins.bPedal;
+    LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = SamcoPreferences::pins.bPump;
+    LightgunButtons::ButtonDesc[BtnIdx_Home].pin = SamcoPreferences::pins.bHome;
 
     // Updates button functions for low-button mode
     if(offscreenEnable) {
