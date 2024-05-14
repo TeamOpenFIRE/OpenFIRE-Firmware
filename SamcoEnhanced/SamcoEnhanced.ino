@@ -242,9 +242,6 @@ uint32_t ExitPauseModeBtnMask = BtnMask_Reload | BtnMask_Home;
 // press and hold any button to exit simple pause menu (this is not a button combo)
 uint32_t ExitPauseModeHoldBtnMask = BtnMask_A | BtnMask_B;
 
-// press any button to cancel the calibration (this is not a button combo)
-uint32_t CancelCalBtnMask = BtnMask_Reload | BtnMask_Start | BtnMask_Select;
-
 // button combo to skip the center calibration step
 uint32_t SkipCalCenterBtnMask = BtnMask_A;
 
@@ -418,9 +415,10 @@ OpenFIRE_Perspective OpenFIREper;
 enum GunMode_e {
     GunMode_Init = -1,
     GunMode_Run = 0,
-    GunMode_Calibration = 1,
-    GunMode_Pause = 2,
-    GunMode_Docked = 3
+    GunMode_Calibration,
+    GunMode_Verification,
+    GunMode_Pause,
+    GunMode_Docked
 };
 GunMode_e gunMode = GunMode_Init;   // initial mode
 
@@ -431,7 +429,7 @@ enum CaliStage_e {
     Cali_Left,
     Cali_Right,
     Cali_Center,
-    Cali_Finish
+    Cali_Verify
 };
 
 enum PauseModeSelection_e {
@@ -993,26 +991,7 @@ void loop1()
                 }
             }
         } else {
-            if(buttons.pressedReleased == EnterPauseModeBtnMask) {
-                // MAKE SURE EVERYTHING IS DISENGAGED:
-                #ifdef USES_SOLENOID
-                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
-                    solenoidFirstShot = false;
-                #endif // USES_SOLENOID
-                #ifdef USES_RUMBLE
-                    digitalWrite(SamcoPreferences::pins.oRumble, LOW);
-                    rumbleHappening = false;
-                    rumbleHappened = false;
-                #endif // USES_RUMBLE
-                offscreenBShot = false;
-                buttonPressed = false;
-                triggerHeld = false;
-                burstFiring = false;
-                burstFireCount = 0;
-                buttons.ReportDisable();
-                SetMode(GunMode_Pause);
-                // at this point, the other core should be stopping us now.
-            } else if(buttons.pressedReleased == BtnMask_Home) {
+            if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
                     digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
@@ -1450,30 +1429,7 @@ void ExecRunMode()
                 }
             }
         } else {
-            if(buttons.pressedReleased == EnterPauseModeBtnMask) {
-                // MAKE SURE EVERYTHING IS DISENGAGED:
-                #ifdef USES_SOLENOID
-                    digitalWrite(solenoidPin, LOW);
-                    solenoidFirstShot = false;
-                #endif // USES_SOLENOID
-                #ifdef USES_RUMBLE
-                    digitalWrite(rumblePin, LOW);
-                    rumbleHappening = false;
-                    rumbleHappened = false;
-                #endif // USES_RUMBLE
-                Keyboard.releaseAll();
-                delay(1);
-                AbsMouse5.release(MOUSE_LEFT);
-                AbsMouse5.release(MOUSE_RIGHT);
-                offscreenBShot = false;
-                buttonPressed = false;
-                triggerHeld = false;
-                burstFiring = false;
-                burstFireCount = 0;
-                SetMode(GunMode_Pause);
-                buttons.ReportDisable();
-                return;
-            } else if(buttons.pressedReleased == BtnMask_Home) {
+            if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
                     digitalWrite(solenoidPin, LOW);
@@ -1685,22 +1641,18 @@ void ExecCalMode()
     float _TRled = profileData[selectedProfile].TRled;
     float _adjX = profileData[selectedProfile].adjX;
     float _adjY = profileData[selectedProfile].adjY;
-    if(profileData[selectedProfile].irLayout) {
-        profileData[selectedProfile].TLled = 0;
-        profileData[selectedProfile].TRled = 1920 << 2;
-    } else {
-        profileData[selectedProfile].TLled = 500 << 2;
-        profileData[selectedProfile].TRled = 1420 << 2;
-    }
-    
-    SetMode(GunMode_Calibration);
     AbsMouse5.move(32768/2, 32768/2);
+    SetMode(GunMode_Calibration);
     while(gunMode == GunMode_Calibration) {
+        Serial.println(calStage);
         buttons.Poll(1);
 
-        GetPosition();
+        if(irPosUpdateTick) {
+            irPosUpdateTick = 0;
+            GetPosition();
+        }
         
-        if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+        if(buttons.pressedReleased & ExitPauseModeBtnMask && !justBooted) {
             Serial.println("Calibration cancelled");
             // Reapplying backed up data
             profileData[selectedProfile].topOffset = _topOffset;
@@ -1719,12 +1671,14 @@ void ExecCalMode()
                 dockedCalibrating = false;
             } else {
                 // return to pause mode
-                SetMode(GunMode_Pause);
+                SetMode(GunMode_Run);
             }
         } else if(buttons.pressed == BtnMask_Trigger) {
             calStage++;
             CaliMousePosMove(calStage);
             switch(calStage) {
+                case Cali_Init:
+                  break;
                 case Cali_Top:
                   // Set Cam center offsets
                   if(profileData[selectedProfile].irLayout) {
@@ -1748,72 +1702,125 @@ void ExecCalMode()
                   AbsMouse5.move(32768/2, 0);
                   break;
 
-              case Cali_Bottom:
-                // Set Offset buffer
-                profileData[selectedProfile].topOffset = mouseY;
-                // Move to bottom calibration point
-                AbsMouse5.move(32768/2, 32768);
-                break;
+                case Cali_Bottom:
+                  // Set Offset buffer
+                  profileData[selectedProfile].topOffset = mouseY;
+                  // Move to bottom calibration point
+                  AbsMouse5.move(32768/2, 32768);
+                  break;
 
-              case Cali_Left:
-                // Set Offset buffer
-                profileData[selectedProfile].bottomOffset = (res_y - mouseY);
-                // Move to left calibration point
-                AbsMouse5.move(0, 32768/2);
-                break;
+                case Cali_Left:
+                  // Set Offset buffer
+                  profileData[selectedProfile].bottomOffset = (res_y - mouseY);
+                  // Move to left calibration point
+                  AbsMouse5.move(0, 32768/2);
+                  break;
 
-              case Cali_Right:
-                // Set Offset buffer
-                profileData[selectedProfile].leftOffset = mouseX;
-                // Move to right calibration point
-                AbsMouse5.move(32768, 32768/2);
-                break;
+                case Cali_Right:
+                  // Set Offset buffer
+                  profileData[selectedProfile].leftOffset = mouseX;
+                  // Move to right calibration point
+                  AbsMouse5.move(32768, 32768/2);
+                  break;
 
-              case Cali_Center:
-                // Set Offset buffer
-                profileData[selectedProfile].rightOffset = (res_x - mouseX);
-                // Move back to center calibration point
-                AbsMouse5.move(32768/2, 32768/2);
-                break;
+                case Cali_Center:
+                  // Set Offset buffer
+                  profileData[selectedProfile].rightOffset = (res_x - mouseX);
+                  // Move back to center calibration point
+                  AbsMouse5.move(32768/2, 32768/2);
+                  break;
 
-              case Cali_Finish:
-                // Apply new Cam center offsets with Offsets applied
-                if(profileData[selectedProfile].irLayout) {
-                    profileData[selectedProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) - (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);       
-                    profileData[selectedProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) + (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
-                } else {
-                    profileData[selectedProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) - (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);       
-                    profileData[selectedProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) + (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
-                }
-                // Update Cam centre in perspective library
-                OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);
-                OpenFIREper.deinit(0);
-                // Break Cali
-                //ApplyCalToProfile();
-                if(justBooted) {
-                    // If this is an initial calibration, save it immediately!
-                    SetMode(GunMode_Pause);
-                    SavePreferences();
-                    SetMode(GunMode_Run);
-                } else if(dockedCalibrating) {
-                    Serial.print("UpdatedProf: ");
-                    Serial.println(selectedProfile);
-                    Serial.println(profileData[selectedProfile].topOffset);
-                    Serial.println(profileData[selectedProfile].bottomOffset);
-                    Serial.println(profileData[selectedProfile].leftOffset);
-                    Serial.println(profileData[selectedProfile].rightOffset);
-                    Serial.println(profileData[selectedProfile].TLled);
-                    Serial.println(profileData[selectedProfile].TRled);
-                    //Serial.println(profileData[selectedProfile].adjX);
-                    //Serial.println(profileData[selectedProfile].adjY);
-                    SetMode(GunMode_Docked);
-                } else {
-                    SetMode(GunMode_Run);
-                }
-                break;
+                case Cali_Verify:
+                  // Apply new Cam center offsets with Offsets applied
+                  if(profileData[selectedProfile].irLayout) {
+                      profileData[selectedProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) - (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);       
+                      profileData[selectedProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) + (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
+                  } else {
+                      profileData[selectedProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) - (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);       
+                      profileData[selectedProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) + (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
+                  }
+                  // Update Cam centre in perspective library
+                  OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);
+                  OpenFIREper.deinit(0);
+
+                  // let the user test.
+                  SetMode(GunMode_Verification);
+                  while(gunMode == GunMode_Verification) {
+                      buttons.Poll();
+                      if(irPosUpdateTick) {
+                          irPosUpdateTick = 0;
+                          GetPosition();
+                      }
+                      // If it's good, move onto cali finish.
+                      if(buttons.pressed == BtnMask_Trigger) {
+                          SetMode(GunMode_Run);
+                      // Press A/B to restart cali for current profile
+                      } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask) {
+                          calStage = 0;
+                          SetMode(GunMode_Calibration);
+                          delay(1);
+                          AbsMouse5.move(32768/2, 32768/2);
+                      // Press C/Home to exit wholesale without committing new cali values
+                      } else if(buttons.pressedReleased & ExitPauseModeBtnMask && !justBooted) {
+                          Serial.println("Calibration cancelled");
+                          // Reapplying backed up data
+                          profileData[selectedProfile].topOffset = _topOffset;
+                          profileData[selectedProfile].bottomOffset = _bottomOffset;
+                          profileData[selectedProfile].leftOffset = _leftOffset;
+                          profileData[selectedProfile].rightOffset = _rightOffset;
+                          profileData[selectedProfile].TLled = _TLled;
+                          profileData[selectedProfile].TRled = _TRled;
+                          profileData[selectedProfile].adjX = _adjX;
+                          profileData[selectedProfile].adjY = _adjY;
+                          // re-print the profile
+                          stateFlags |= StateFlag_PrintSelectedProfile;
+                          // re-apply the cal stored in the profile
+                          if(dockedCalibrating) {
+                              SetMode(GunMode_Docked);
+                              dockedCalibrating = false;
+                          } else {
+                              SetMode(GunMode_Run);
+                          }
+                          return;
+                      }
+                  }
+                  break;
             }
         }
     }
+    // Break Cali
+    Serial.println("Finished");
+    if(justBooted) {
+        // If this is an initial calibration, save it immediately!
+        stateFlags |= StateFlag_SavePreferencesEn;
+        SavePreferences();
+    } else if(dockedCalibrating) {
+        Serial.print("UpdatedProf: ");
+        Serial.println(selectedProfile);
+        Serial.println(profileData[selectedProfile].topOffset);
+        Serial.println(profileData[selectedProfile].bottomOffset);
+        Serial.println(profileData[selectedProfile].leftOffset);
+        Serial.println(profileData[selectedProfile].rightOffset);
+        Serial.println(profileData[selectedProfile].TLled);
+        Serial.println(profileData[selectedProfile].TRled);
+        //Serial.println(profileData[selectedProfile].adjX);
+        //Serial.println(profileData[selectedProfile].adjY);
+        SetMode(GunMode_Docked);
+    } else {
+        SetMode(GunMode_Run);
+    }
+    #ifdef USES_RUMBLE
+        if(SamcoPreferences::toggles.rumbleActive) {
+            Serial.println("Rumbling");
+            digitalWrite(SamcoPreferences::pins.oRumble, true);
+            delay(80);
+            digitalWrite(SamcoPreferences::pins.oRumble, false);
+            delay(50);
+            digitalWrite(SamcoPreferences::pins.oRumble, true);
+            delay(125);
+            digitalWrite(SamcoPreferences::pins.oRumble, false);
+        }
+    #endif // USES_RUMBLE
 }
 
 // Locking function moving from cali point to point
@@ -1861,6 +1868,8 @@ void CaliMousePosMove(uint8_t caseNumber)
               delayMicroseconds(20);
           }
           delay(5);
+          break;
+        default:
           break;
     }
 }
@@ -1958,6 +1967,16 @@ void GetPosition()
             } else {
                 AbsMouse5.move(conMoveX, conMoveY);
             }
+        } else if(gunMode == GunMode_Verification) {
+            // Constrain that bisch so negatives don't cause underflow
+            uint16_t conMoveX = constrain(mouseX, 0, res_x);
+            uint16_t conMoveY = constrain(mouseY, 0, res_y);
+
+            // Output mapped to Mouse resolution
+            conMoveX = map(conMoveX, 0, res_x, 0, 32768);
+            conMoveY = map(conMoveY, 0, res_y, 0, 32768);
+            AbsMouse5.move(conMoveX, conMoveY);
+
         } else if(runMode == RunMode_Processing) {
             // RAW Camera Output mapped to screen res (1920x1080)
             int rawX[4];
