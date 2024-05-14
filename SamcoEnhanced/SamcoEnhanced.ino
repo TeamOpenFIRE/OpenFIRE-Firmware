@@ -1651,7 +1651,7 @@ void ExecCalMode()
             GetPosition();
         }
         
-        if(buttons.pressedReleased & ExitPauseModeBtnMask && !justBooted) {
+        if((buttons.pressedReleased & (ExitPauseModeBtnMask | ExitPauseModeHoldBtnMask)) && !justBooted) {
             Serial.println("Calibration cancelled");
             // Reapplying backed up data
             profileData[selectedProfile].topOffset = _topOffset;
@@ -1672,6 +1672,7 @@ void ExecCalMode()
                 // return to pause mode
                 SetMode(GunMode_Run);
             }
+            return;
         } else if(buttons.pressed == BtnMask_Trigger) {
             calStage++;
             CaliMousePosMove(calStage);
@@ -1752,6 +1753,7 @@ void ExecCalMode()
                       }
                       // If it's good, move onto cali finish.
                       if(buttons.pressed == BtnMask_Trigger) {
+                          calStage++;
                           SetMode(GunMode_Run);
                       // Press A/B to restart cali for current profile
                       } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask) {
@@ -1788,7 +1790,6 @@ void ExecCalMode()
         }
     }
     // Break Cali
-    Serial.println("Finished");
     if(justBooted) {
         // If this is an initial calibration, save it immediately!
         stateFlags |= StateFlag_SavePreferencesEn;
@@ -1810,7 +1811,6 @@ void ExecCalMode()
     }
     #ifdef USES_RUMBLE
         if(SamcoPreferences::toggles.rumbleActive) {
-            Serial.println("Rumbling");
             digitalWrite(SamcoPreferences::pins.oRumble, true);
             delay(80);
             digitalWrite(SamcoPreferences::pins.oRumble, false);
