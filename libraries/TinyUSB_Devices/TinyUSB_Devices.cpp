@@ -103,6 +103,7 @@ void AbsMouse5_::report(void)
 	buffer[2] = (_x >> 8) & 0xFF;
 	buffer[3] = _y & 0xFF;
 	buffer[4] = (_y >> 8) & 0xFF;
+
     if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Mouse) {
       delay(1);
       TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Mouse;
@@ -117,8 +118,8 @@ void AbsMouse5_::report(void)
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
 {
-	x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
-	y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
+	//x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
+	//y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
 
 	if(x != _x || y != _y) {
 		_x = x;
