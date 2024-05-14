@@ -21,7 +21,7 @@
  // ISSUERS: REMEMBER TO SPECIFY YOUR USING A CUSTOM BUILD & WHAT CHANGES ARE MADE TO THE SKETCH; OTHERWISE YOUR ISSUE MAY BE CLOSED!
 
 #include <Arduino.h>
-#include <SamcoBoard.h>
+#include <OpenFIREBoard.h>
 
 // include TinyUSB or HID depending on USB stack option
 #if defined(USE_TINYUSB)
@@ -58,8 +58,10 @@
 
 #include <DFRobotIRPositionEx.h>
 #include <LightgunButtons.h>
-#include <SamcoPositionEnhanced.h>
-#include <SamcoConst.h>
+#include <OpenFIRE_Square.h>
+#include <OpenFIRE_Diamond.h>
+#include <OpenFIRE_Perspective.h>
+#include <OpenFIREConst.h>
 #include "SamcoColours.h"
 #include "SamcoPreferences.h"
 
@@ -293,37 +295,22 @@ enum RunMode_e {
 
 // profiles ----------------------------------------------------------------------------------------------
 // defaults can be populated here, but any values in EEPROM/Flash will override these.
-// if you have original Samco calibration values, multiply by 4 for the center position and
-// scale is multiplied by 1000 and stored as an unsigned integer, see SamcoPreferences::Calibration_t
+// top/bottom/left/right offsets, TLled/TRled, adjX/adjY, sensitivity, runmode, button mask mapped to profile, layout toggle, color, name
 SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Bringus"},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Brongus"},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broongas"},
-    {1500, 1000, 0, 0, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace L'sia"}
+    {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Bringus"},
+    {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Brongus"},
+    {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Broongas"},
+    {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Parace L'sia"}
 };
 //  ------------------------------------------------------------------------------------------------------
 
-// overall calibration defaults, no need to change if data saved to NV memory or populate the profile table
-// see profileData[] array below for specific profile defaults
-int xCenter = MouseMaxX / 2;
-int yCenter = MouseMaxY / 2;
-float xScale = 1.64;
-float yScale = 0.95;
-
-// step size for adjusting the scale
-constexpr float ScaleStep = 0.001;
-
-int finalX = 0;         // Values after tilt correction
-int finalY = 0;
-
-int moveXAxis = 0;      // Unconstrained mouse postion
-int moveYAxis = 0;               
-int moveXAxisArr[3] = {0, 0, 0};
-int moveYAxisArr[3] = {0, 0, 0};
-int moveIndex = 0;
-
-int conMoveXAxis = 0;   // Constrained mouse postion
-int conMoveYAxis = 0;
+int mouseX;
+int mouseY;
+//int moveXAxis = 0;      // Unconstrained mouse postion
+//int moveYAxis = 0;               
+//int moveXAxisArr[3] = {0, 0, 0};
+//int moveYAxisArr[3] = {0, 0, 0};
+//int moveIndex = 0;
 
   // The boring inits related to the things I added.
 // Offscreen bits:
@@ -422,8 +409,10 @@ const byte testPrintInterval = 50;                   // Minimum time allowed bet
 // profile in use
 unsigned int selectedProfile = 0;
 
-// Samco positioning
-SamcoPositionEnhanced mySamco;
+// OpenFIRE Positioning - one for Square, one for Diamond, and a share perspective object
+OpenFIRE_Square OpenFIREsquare;
+OpenFIRE_Diamond OpenFIREdiamond;
+OpenFIRE_Perspective OpenFIREper;
 
 // operating modes
 enum GunMode_e {
@@ -436,9 +425,13 @@ enum GunMode_e {
 GunMode_e gunMode = GunMode_Init;   // initial mode
 
 enum CaliStage_e {
-    Cali_Center = 0,
-    Cali_Vertical,
-    Cali_Horizontal
+    Cali_Init = 0,
+    Cali_Top,
+    Cali_Bottom,
+    Cali_Left,
+    Cali_Right,
+    Cali_Center,
+    Cali_Finish
 };
 
 enum PauseModeSelection_e {
@@ -631,7 +624,7 @@ void setup() {
     AbsMouse5.init(MouseMaxX, MouseMaxY, true);
     
     // fetch the calibration data, other values already handled in ApplyInitialPrefs() 
-    SelectCalPrefs(selectedProfile);
+    //SelectCalPrefs(selectedProfile);
 
 #ifdef USE_TINYUSB
     // wait until device mounted
@@ -644,10 +637,16 @@ void setup() {
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(IRCamUpdateRate);
 
+    OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);
+    OpenFIREper.deinit(0);
+
     // First boot sanity checks.
     // Check if loading has failde
-    if(nvPrefsError != SamcoPreferences::Error_Success ||
-    profileData[selectedProfile].xCenter == 0 || profileData[selectedProfile].yCenter == 0) {
+    if((nvPrefsError != SamcoPreferences::Error_Success) ||
+    (profileData[selectedProfile].topOffset == 0 &&
+     profileData[selectedProfile].bottomOffset == 0 && 
+     profileData[selectedProfile].leftOffset == 0 &&
+     profileData[selectedProfile].rightOffset == 0)) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
         SetMode(GunMode_Calibration);
@@ -1278,7 +1277,6 @@ void loop()
             ExecGunModeDocked();
             break;
         case GunMode_Calibration:
-            AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
             ExecCalMode();
             break;
         default:
@@ -1314,7 +1312,6 @@ void ExecRunMode()
     Serial.print("exec run mode ");
     Serial.println(RunModeLabels[runMode]);
 #endif
-    moveIndex = 0;
     buttons.ReportEnable();
     if(justBooted) {
         // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
@@ -1384,62 +1381,6 @@ void ExecRunMode()
             irPosUpdateTick = 0;
             GetPosition();
             
-            int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-            moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-            halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-            moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
-
-            switch(runMode) {
-            case RunMode_Average:
-                // 2 position moving average
-                moveIndex ^= 1;
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                break;
-            case RunMode_Average2:
-                // weighted average of current position and previous 2
-                if(moveIndex < 2) {
-                    ++moveIndex;
-                } else {
-                    moveIndex = 0;
-                }
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                break;
-            case RunMode_Normal:
-            default:
-                break;
-            }
-
-            conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-            if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-                offXAxis = true;
-            } else {
-                offXAxis = false;
-            }
-            conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-            if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-                offYAxis = true;
-            } else {
-                offYAxis = false;
-            }
-
-            if(buttons.analogOutput) {
-                Gamepad16.moveCam(conMoveXAxis, conMoveYAxis);
-            } else {
-                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-            }
-
-            if(offXAxis || offYAxis) {
-                buttons.offScreen = true;
-            } else {
-                buttons.offScreen = false;
-            }
-
             #ifdef USES_ANALOG
                 analogStickPolled = false;
                 previousStickPoll = millis();
@@ -1593,30 +1534,7 @@ void ExecRunModeProcessing()
 
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
-        
-            int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
-            if(error == DFRobotIRPositionEx::Error_Success) {
-                mySamco.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen(), MouseMaxX / 2, MouseMaxY / 2);
-                UpdateLastSeen();
-                if(millis() - testLastStamp > testPrintInterval) {
-                    testLastStamp = millis();
-                    for(int i = 0; i < 4; i++) {
-                        Serial.print(map(mySamco.testX(i), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
-                        Serial.print(",");
-                        Serial.print(map(mySamco.testY(i), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
-                        Serial.print(",");
-                    }
-                    Serial.print(map(mySamco.x(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
-                    Serial.print(",");
-                    Serial.print(map(mySamco.y(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
-                    Serial.print(",");
-                    Serial.print(map(mySamco.testMedianX(), 0, MouseMaxX, CamMaxX, 0) + processingOffset);
-                    Serial.print(",");
-                    Serial.println(map(mySamco.testMedianY(), 0, MouseMaxY, CamMaxY, 0) + processingOffset);
-                }
-            } else if(error == DFRobotIRPositionEx::Error_IICerror) {
-                Serial.println("Device not available!");
-            }
+            GetPosition();
         }
     }
 }
@@ -1645,42 +1563,6 @@ void ExecGunModeDocked()
             if(irPosUpdateTick) {
                 irPosUpdateTick = 0;
                 GetPosition();
-                
-                int halfHscale = (int)(mySamco.h() * xScale + 0.5f) / 2;
-                moveXAxis = map(finalX, xCenter + halfHscale, xCenter - halfHscale, 0, MouseMaxX);
-                halfHscale = (int)(mySamco.h() * yScale + 0.5f) / 2;
-                moveYAxis = map(finalY, yCenter + halfHscale, yCenter - halfHscale, 0, MouseMaxY);
-
-                switch(runMode) {
-                case RunMode_Average:
-                    // 2 position moving average
-                    moveIndex ^= 1;
-                    moveXAxisArr[moveIndex] = moveXAxis;
-                    moveYAxisArr[moveIndex] = moveYAxis;
-                    moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                    moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                    break;
-                case RunMode_Average2:
-                    // weighted average of current position and previous 2
-                    if(moveIndex < 2) {
-                        ++moveIndex;
-                    } else {
-                        moveIndex = 0;
-                    }
-                    moveXAxisArr[moveIndex] = moveXAxis;
-                    moveYAxisArr[moveIndex] = moveYAxis;
-                    moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                    moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
-                    break;
-                case RunMode_Normal:
-                default:
-                    break;
-                }
-
-                conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-                conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);  
-
-                AbsMouse5.move(conMoveXAxis, conMoveYAxis);
             }
             if(buttons.pressed == BtnMask_Trigger) {
                 dockedCalibrating = false;
@@ -1794,189 +1676,193 @@ void ExecGunModeDocked()
 void ExecCalMode()
 {
     uint8_t calStage = 0;
+    // backup current values in case the user cancels
+    int _topOffset = profileData[selectedProfile].topOffset;
+    int _bottomOffset = profileData[selectedProfile].bottomOffset;
+    int _leftOffset = profileData[selectedProfile].leftOffset;
+    int _rightOffset = profileData[selectedProfile].rightOffset;
+    float _TLled = profileData[selectedProfile].TLled;
+    float _TRled = profileData[selectedProfile].TRled;
+    float _adjX = profileData[selectedProfile].adjX;
+    float _adjY = profileData[selectedProfile].adjY;
+    if(profileData[selectedProfile].irLayout) {
+        profileData[selectedProfile].TLled = 0;
+        profileData[selectedProfile].TRled = 1920 << 2;
+    } else {
+        profileData[selectedProfile].TLled = 500 << 2;
+        profileData[selectedProfile].TRled = 1420 << 2;
+    }
+    
     SetMode(GunMode_Calibration);
+    AbsMouse5.move(32768/2, 32768/2);
     while(gunMode == GunMode_Calibration) {
-        buttons.Poll();
+        buttons.Poll(1);
 
-        switch(calStage) {
-            case Cali_Center:
-              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-              } else if(buttons.pressedReleased == SkipCalCenterBtnMask) {
-                Serial.println("Calibrate Center skipped");
-                calStage++;
-              } else if(buttons.pressed & BtnMask_Trigger) {
-                // trigger pressed, begin center cal 
-                CalCenter();
-                // extra delay to wait for trigger to release (though not required)
-                SetModeWaitNoButtons(GunMode_Calibration, 500);
-                calStage++;
-              }
-              break;
-            case Cali_Vertical:
-              if((buttons.pressedReleased & CancelCalBtnMask) && !justBooted) {
-                CancelCalibration();
-              } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                  calStage++;
+        GetPosition();
+        
+        if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
+            Serial.println("Calibration cancelled");
+            // Reapplying backed up data
+            profileData[selectedProfile].topOffset = _topOffset;
+            profileData[selectedProfile].bottomOffset = _bottomOffset;
+            profileData[selectedProfile].leftOffset = _leftOffset;
+            profileData[selectedProfile].rightOffset = _rightOffset;
+            profileData[selectedProfile].TLled = _TLled;
+            profileData[selectedProfile].TRled = _TRled;
+            profileData[selectedProfile].adjX = _adjX;
+            profileData[selectedProfile].adjY = _adjY;
+            // re-print the profile
+            stateFlags |= StateFlag_PrintSelectedProfile;
+            // re-apply the cal stored in the profile
+            if(dockedCalibrating) {
+                SetMode(GunMode_Docked);
+                dockedCalibrating = false;
+            } else {
+                // return to pause mode
+                SetMode(GunMode_Pause);
+            }
+        } else if(buttons.pressed == BtnMask_Trigger) {
+            calStage++;
+            CaliMousePosMove(calStage);
+            switch(calStage) {
+                case Cali_Top:
+                  // Set Cam center offsets
+                  if(profileData[selectedProfile].irLayout) {
+                      profileData[selectedProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) - (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);       
+                      profileData[selectedProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) + (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
+                      // Work out Led locations by assuming height is 100%
+                      profileData[selectedProfile].TLled = (res_x / 2) - ( (OpenFIREdiamond.W() * (res_y  / OpenFIREdiamond.H()) ) / 2);            
+                      profileData[selectedProfile].TRled = (res_x / 2) + ( (OpenFIREdiamond.W() * (res_y  / OpenFIREdiamond.H()) ) / 2);
+                  } else {
+                      profileData[selectedProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) - (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);       
+                      profileData[selectedProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) + (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
+                      // Work out Led locations by assuming height is 100%
+                      profileData[selectedProfile].TLled = (res_x / 2) - ( (OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H()) ) / 2);            
+                      profileData[selectedProfile].TRled = (res_x / 2) + ( (OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H()) ) / 2);
+                  }
+                  
+                  // Update Cam centre in perspective library
+                  OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);                                                          
+                  OpenFIREper.deinit(0);
+                  // Move to top calibration point
+                  AbsMouse5.move(32768/2, 0);
+                  break;
+
+              case Cali_Bottom:
+                // Set Offset buffer
+                profileData[selectedProfile].topOffset = mouseY;
+                // Move to bottom calibration point
+                AbsMouse5.move(32768/2, 32768);
+                break;
+
+              case Cali_Left:
+                // Set Offset buffer
+                profileData[selectedProfile].bottomOffset = (res_y - mouseY);
+                // Move to left calibration point
+                AbsMouse5.move(0, 32768/2);
+                break;
+
+              case Cali_Right:
+                // Set Offset buffer
+                profileData[selectedProfile].leftOffset = mouseX;
+                // Move to right calibration point
+                AbsMouse5.move(32768, 32768/2);
+                break;
+
+              case Cali_Center:
+                // Set Offset buffer
+                profileData[selectedProfile].rightOffset = (res_x - mouseX);
+                // Move back to center calibration point
+                AbsMouse5.move(32768/2, 32768/2);
+                break;
+
+              case Cali_Finish:
+                // Apply new Cam center offsets with Offsets applied
+                if(profileData[selectedProfile].irLayout) {
+                    profileData[selectedProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) - (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);       
+                    profileData[selectedProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) + (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
                 } else {
-                  CalVert();
+                    profileData[selectedProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) - (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);       
+                    profileData[selectedProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) + (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                 }
-              }
-              break;
-            case Cali_Horizontal:
-              if(buttons.pressedReleased & CancelCalBtnMask && !justBooted) {
-                CancelCalibration();
-              } else {
-                if(buttons.pressed & BtnMask_Trigger) {
-                  ApplyCalToProfile();
-                  if(justBooted) {
+                // Update Cam centre in perspective library
+                OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);
+                OpenFIREper.deinit(0);
+                // Break Cali
+                //ApplyCalToProfile();
+                if(justBooted) {
                     // If this is an initial calibration, save it immediately!
                     SetMode(GunMode_Pause);
                     SavePreferences();
                     SetMode(GunMode_Run);
-                  } else if(dockedCalibrating) {
+                } else if(dockedCalibrating) {
                     Serial.print("UpdatedProf: ");
                     Serial.println(selectedProfile);
-                    Serial.println(profileData[selectedProfile].xScale);
-                    Serial.println(profileData[selectedProfile].yScale);
-                    Serial.println(profileData[selectedProfile].xCenter);
-                    Serial.println(profileData[selectedProfile].yCenter);
+                    Serial.println(profileData[selectedProfile].topOffset);
+                    Serial.println(profileData[selectedProfile].bottomOffset);
+                    Serial.println(profileData[selectedProfile].leftOffset);
+                    Serial.println(profileData[selectedProfile].rightOffset);
+                    Serial.println(profileData[selectedProfile].TLled);
+                    Serial.println(profileData[selectedProfile].TRled);
+                    //Serial.println(profileData[selectedProfile].adjX);
+                    //Serial.println(profileData[selectedProfile].adjY);
                     SetMode(GunMode_Docked);
-                  } else {
-                    SetMode(GunMode_Run);
-                  }
                 } else {
-                  CalHoriz();
+                    SetMode(GunMode_Run);
                 }
+                break;
+            }
+        }
+    }
+}
+
+// Locking function moving from cali point to point
+void CaliMousePosMove(uint8_t caseNumber)
+{
+    uint16_t xPos;
+    uint16_t yPos;
+
+    switch(caseNumber) {
+        case Cali_Top:
+          for(yPos = 32768/2; yPos > 0; yPos--) {
+              AbsMouse5.move(32768/2, yPos);
+              delayMicroseconds(20);
+          }
+          delay(5);
+          break;
+        case Cali_Bottom:
+          for(yPos = 0; yPos < 32768; yPos++) {
+              AbsMouse5.move(32768/2, yPos);
+              delayMicroseconds(20);
+          }
+          delay(5);
+          break;
+        case Cali_Left:
+          yPos = 32768;
+          for(xPos = 32768/2; xPos > 0; xPos--) {
+              AbsMouse5.move(xPos, yPos);
+              if(yPos > 32768/2) {
+                yPos--;
               }
-              break;
-            default:
-              break;
-        }
+              delayMicroseconds(20);
+          }
+          delay(5);
+          break;
+        case Cali_Right:
+          for(xPos = 0; xPos < 32768; xPos++) {
+              AbsMouse5.move(xPos, 32768/2);
+              delayMicroseconds(20);
+          }
+          delay(5);
+          break;
+        case Cali_Center:
+          for(xPos = 32768; xPos > 32768/2; xPos--) {
+              AbsMouse5.move(xPos, 32768/2);
+              delayMicroseconds(20);
+          }
+          delay(5);
+          break;
     }
-}
-
-// center calibration with a bit of averaging
-void CalCenter()
-{
-    unsigned int xAcc = 0;
-    unsigned int yAcc = 0;
-    unsigned int count = 0;
-    unsigned long ms = millis();
-    
-    // accumulate center position over a bit of time for some averaging
-    while(millis() - ms < 333) {
-        // center pointer
-        AbsMouse5.move(MouseMaxX / 2, MouseMaxY / 2);
-        
-        // get position
-        if(GetPositionIfReady()) {
-            xAcc += finalX;
-            yAcc += finalY;
-            count++;
-            
-            xCenter = finalX;
-            yCenter = finalY;
-            PrintCalInterval();
-        }
-
-        // poll buttons
-        buttons.Poll(1);
-        
-        // if trigger not pressed then break out of loop early
-        if(!(buttons.debounced & BtnMask_Trigger)) {
-            break;
-        }
-    }
-
-    // unexpected, but make sure x and y positions are accumulated
-    if(count) {
-        xCenter = xAcc / count;
-        yCenter = yAcc / count;
-    } else {
-        Serial.print("Unexpected Center calibration failure, no center position was acquired!");
-        // just continue anyway
-    }
-
-    PrintCalInterval();
-}
-
-// vertical calibration 
-void CalVert()
-{
-    if(GetPositionIfReady()) {
-        int halfH = (int)(mySamco.h() * yScale + 0.5f) / 2;
-        moveYAxis = map(finalY, yCenter + halfH, yCenter - halfH, 0, MouseMaxY);
-        conMoveXAxis = MouseMaxX / 2;
-        conMoveYAxis = constrain(moveYAxis, 0, MouseMaxY);
-        AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-        if(conMoveYAxis == 0 || conMoveYAxis == MouseMaxY) {
-            buttons.offScreen = true;
-        } else {
-            buttons.offScreen = false;
-        }
-    }
-    
-    if((buttons.repeat & BtnMask_B) || (buttons.offScreen && (buttons.repeat & BtnMask_A))) {
-        yScale = yScale + ScaleStep;
-    } else if(buttons.repeat & BtnMask_A) {
-        if(yScale > 0.005f) {
-            yScale = yScale - ScaleStep;
-        }
-    }
-
-    if(buttons.pressedReleased == BtnMask_Up) {
-        yCenter--;
-    } else if(buttons.pressedReleased == BtnMask_Down) {
-        yCenter++;
-    }
-    
-    PrintCalInterval();
-}
-
-// horizontal calibration 
-void CalHoriz()
-{
-    if(GetPositionIfReady()) {    
-        int halfH = (int)(mySamco.h() * xScale + 0.5f) / 2;
-        moveXAxis = map(finalX, xCenter + halfH, xCenter - halfH, 0, MouseMaxX);
-        conMoveXAxis = constrain(moveXAxis, 0, MouseMaxX);
-        conMoveYAxis = MouseMaxY / 2;
-        AbsMouse5.move(conMoveXAxis, conMoveYAxis);
-        if(conMoveXAxis == 0 || conMoveXAxis == MouseMaxX) {
-            buttons.offScreen = true;
-        } else {
-            buttons.offScreen = false;
-        }
-    }
-
-    if((buttons.repeat & BtnMask_B) || (buttons.offScreen && (buttons.repeat & BtnMask_A))) {
-        xScale = xScale + ScaleStep;
-    } else if(buttons.repeat & BtnMask_A) {
-        if(xScale > 0.005f) {
-            xScale = xScale - ScaleStep;
-        }
-    }
-    
-    if(buttons.pressedReleased == BtnMask_Left) {
-        xCenter--;
-    } else if(buttons.pressedReleased == BtnMask_Right) {
-        xCenter++;
-    }
-
-    PrintCalInterval();
-}
-
-// Helper to get position if the update tick is set
-bool GetPositionIfReady()
-{
-    if(irPosUpdateTick) {
-        irPosUpdateTick = 0;
-        GetPosition();
-        return true;
-    }
-    return false;
 }
 
 // Get tilt adjusted position from IR postioning camera
@@ -1985,19 +1871,134 @@ void GetPosition()
 {
     int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
     if(error == DFRobotIRPositionEx::Error_Success) {
-        mySamco.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen(), xCenter, yCenter);
-        finalX = mySamco.x();
-        finalY = mySamco.y();
+        // if diamond layout, or square
+        if(profileData[selectedProfile].irLayout) {
+            OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
+            OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
+            OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
+            OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
+            OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
+            profileData[selectedProfile].TLled,
+            profileData[selectedProfile].TRled,
+            res_y);
+        } else {
+            OpenFIREsquare.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
+            OpenFIREper.warp(OpenFIREsquare.X(0), OpenFIREsquare.Y(0),
+            OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
+            OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
+            OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
+            profileData[selectedProfile].TLled,
+            profileData[selectedProfile].TRled,
+            res_y);
+        }
 
-        UpdateLastSeen();
-     
-#if DEBUG_SERIAL == 2
-        Serial.print(finalX);
-        Serial.print(' ');
-        Serial.print(finalY);
-        Serial.print("   ");
-        Serial.println(mySamco.h());
-#endif
+        // Output mapped to screen resolution because offsets are measured in pixels
+        mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - profileData[selectedProfile].leftOffset), (res_x + profileData[selectedProfile].rightOffset));                 
+        mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - profileData[selectedProfile].topOffset), (res_y + profileData[selectedProfile].bottomOffset));
+
+        /*
+        switch(runMode) {
+            case RunMode_Average:
+                // 2 position moving average
+                moveIndex ^= 1;
+                moveXAxisArr[moveIndex] = moveXAxis;
+                moveYAxisArr[moveIndex] = moveYAxis;
+                moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                break;
+            case RunMode_Average2:
+                // weighted average of current position and previous 2
+                if(moveIndex < 2) {
+                    ++moveIndex;
+                } else {
+                    moveIndex = 0;
+                }
+                moveXAxisArr[moveIndex] = moveXAxis;
+                moveYAxisArr[moveIndex] = moveYAxis;
+                moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                break;
+            case RunMode_Normal:
+            default:
+                break;
+            }
+        */
+
+        if(gunMode == GunMode_Run) {
+            UpdateLastSeen();
+
+            // Constrain that bisch so negatives don't cause underflow
+            uint16_t conMoveX = constrain(mouseX, 0, res_x);
+            uint16_t conMoveY = constrain(mouseY, 0, res_y);
+
+            // Output mapped to Mouse resolution
+            conMoveX = map(conMoveX, 0, res_x, 0, 32768);
+            conMoveY = map(conMoveY, 0, res_y, 0, 32768);
+
+            if(conMoveX == 0 || conMoveX == 32768) {
+                offXAxis = true;
+            } else {
+                offXAxis = false;
+            }
+            
+            if(conMoveY == 0 || conMoveY == 32768) {
+                offYAxis = true;
+            } else {
+                offYAxis = false;
+            }
+
+            if(offXAxis || offYAxis) {
+                buttons.offScreen = true;
+            } else {
+                buttons.offScreen = false;
+            }
+
+            if(buttons.analogOutput) {
+                Gamepad16.moveCam(conMoveX, conMoveY);
+            } else {
+                AbsMouse5.move(conMoveX, conMoveY);
+            }
+        } else if(runMode == RunMode_Processing) {
+            // RAW Camera Output mapped to screen res (1920x1080)
+            int rawX[4];
+            int rawY[4];
+            // Cam Median mapped to screen res (1920x1080)
+            int centerX;
+            int centerY;
+
+            if(millis() - testLastStamp > testPrintInterval) {
+                testLastStamp = millis();
+                // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
+                for (int i = 0; i < 4; i++) {
+                    if(profileData[selectedProfile].irLayout) {
+                        Serial.print(map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0));
+                        Serial.print( "," );
+                        Serial.print(map(OpenFIREdiamond.Y(i), 0, 768 << 2, 1080, 0));
+                        Serial.print( "," );
+                    } else {
+                        Serial.print(map(OpenFIREsquare.X(i), 0, 1023 << 2, 1920, 0));
+                        Serial.print( "," );
+                        Serial.print(map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0));
+                        Serial.print( "," );
+                    }
+                }
+                Serial.print( mouseX / 4 );
+                Serial.print( "," );
+                Serial.print( mouseY / 4 );
+                Serial.print( "," );
+                // Median for viewing in processing
+                if(profileData[selectedProfile].irLayout) {
+                    Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0));
+                    Serial.print( "," );
+                    Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 1080, 0));
+                } else {
+                    Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
+                    Serial.print( "," );
+                    Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 1080, 0));
+                }
+            }
+        }
+
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
         Serial.println("Device not available!");
     }
@@ -2017,21 +2018,40 @@ void SetModeWaitNoButtons(GunMode_e newMode, unsigned long maxWait)
 // only to be called during run mode since this will modify the LED colour
 void UpdateLastSeen()
 {
-    if(lastSeen != mySamco.seen()) {
-        #ifdef MAMEHOOKER
-        if(!serialMode) {
-        #endif // MAMEHOOKER
-            #ifdef LED_ENABLE
-            if(!lastSeen && mySamco.seen()) {
-                LedOff();
-            } else if(lastSeen && !mySamco.seen()) {
-                SetLedPackedColor(IRSeen0Color);
+    if(profileData[selectedProfile].irLayout) {
+        if(lastSeen != OpenFIREdiamond.seen()) {
+            #ifdef MAMEHOOKER
+            if(!serialMode) {
+            #endif // MAMEHOOKER
+                #ifdef LED_ENABLE
+                if(!lastSeen && OpenFIREdiamond.seen()) {
+                    LedOff();
+                } else if(lastSeen && !OpenFIREdiamond.seen()) {
+                    SetLedPackedColor(IRSeen0Color);
+                }
+                #endif // LED_ENABLE
+            #ifdef MAMEHOOKER
             }
-            #endif // LED_ENABLE
-        #ifdef MAMEHOOKER
+            #endif // MAMEHOOKER
+            lastSeen = OpenFIREdiamond.seen();
         }
-        #endif // MAMEHOOKER
-        lastSeen = mySamco.seen();
+    } else {
+        if(lastSeen != OpenFIREsquare.seen()) {
+            #ifdef MAMEHOOKER
+            if(!serialMode) {
+            #endif // MAMEHOOKER
+                #ifdef LED_ENABLE
+                if(!lastSeen && OpenFIREsquare.seen()) {
+                    LedOff();
+                } else if(lastSeen && !OpenFIREsquare.seen()) {
+                    SetLedPackedColor(IRSeen0Color);
+                }
+                #endif // LED_ENABLE
+            #ifdef MAMEHOOKER
+            }
+            #endif // MAMEHOOKER
+            lastSeen = OpenFIREsquare.seen();
+        }
     }
 }
 
@@ -2943,10 +2963,14 @@ void SerialProcessingDocked()
                     if(serialInput == '0' || serialInput == '1' ||
                        serialInput == '2' || serialInput == '3') {
                         uint8_t i = serialInput - '0';
-                        Serial.println(profileData[i].xScale);
-                        Serial.println(profileData[i].yScale);
-                        Serial.println(profileData[i].xCenter);
-                        Serial.println(profileData[i].yCenter);
+                        Serial.println(profileData[i].topOffset);
+                        Serial.println(profileData[i].bottomOffset);
+                        Serial.println(profileData[i].leftOffset);
+                        Serial.println(profileData[i].rightOffset);
+                        Serial.println(profileData[i].TLled);
+                        Serial.println(profileData[i].TRled);
+                        //Serial.println(profileData[i].adjX);
+                        //Serial.println(profileData[i].adjY);
                         Serial.println(profileData[i].irSensitivity);
                         Serial.println(profileData[i].runMode);
                         Serial.println(profileData[i].irLayout);
@@ -3860,33 +3884,10 @@ void PrintResults()
         PrintSelectedProfile();
         PrintIrSensitivity();
         PrintRunMode();
-        PrintCal();
         PrintExtras();
     }
         
     lastPrintMillis = millis();
-}
-
-// what does this do again? lol
-void PrintCalInterval()
-{
-    if(millis() - lastPrintMillis < 100 || dockedCalibrating) {
-        return;
-    }
-    PrintCal();
-    lastPrintMillis = millis();
-}
-
-// helper in case this changes
-float CalScalePrefToFloat(uint16_t scale)
-{
-    return (float)scale / 1000.0f;
-}
-
-// helper in case this changes
-uint16_t CalScaleFloatToPref(float scale)
-{
-    return (uint16_t)(scale * 1000.0f);
 }
 
 // Subroutine that prints all stored preferences information in a table
@@ -3911,21 +3912,30 @@ void PrintPreferences()
     Serial.println("Profiles:");
     for(unsigned int i = 0; i < SamcoPreferences::profiles.profileCount; ++i) {
         // report if a profile has been cal'd
-        if(profileData[i].xCenter && profileData[i].yCenter) {
+        if(profileData[i].topOffset && profileData[i].bottomOffset &&
+           profileData[i].leftOffset && profileData[i].rightOffset) {
             size_t len = strlen(profileData[i].name);
             Serial.print(profileData[i].name);
             while(len < 18) {
                 Serial.print(' ');
                 ++len;
             }
-            Serial.print("Center: ");
-            Serial.print(profileData[i].xCenter);
-            Serial.print(",");
-            Serial.print(profileData[i].yCenter);
-            Serial.print(" Scale: ");
-            Serial.print(CalScalePrefToFloat(profileData[i].xScale), 3);
-            Serial.print(",");
-            Serial.print(CalScalePrefToFloat(profileData[i].yScale), 3);
+            Serial.print("Top: ");
+            Serial.print(profileData[i].topOffset);
+            Serial.print(", Bottom: ");
+            Serial.print(profileData[i].bottomOffset);
+            Serial.print(", Left: ");
+            Serial.print(profileData[i].leftOffset);
+            Serial.print(", Right: ");
+            Serial.print(profileData[i].rightOffset);
+            Serial.print(", TLled: ");
+            Serial.print(profileData[i].TLled);
+            Serial.print(", TRled: ");
+            Serial.print(profileData[i].TRled);
+            //Serial.print(", AdjX: ");
+            //Serial.print(profileData[i].adjX);
+            //Serial.print(", AdjY: ");
+            //Serial.print(profileData[i].adjY);
             Serial.print(" IR: ");
             Serial.print((unsigned int)profileData[i].irSensitivity);
             Serial.print(" Mode: ");
@@ -3938,19 +3948,6 @@ void PrintPreferences()
             }
         }
     }
-}
-
-// Subroutine that prints current calibration profile
-void PrintCal()
-{
-    Serial.print("Calibration: Center x,y: ");
-    Serial.print(xCenter);
-    Serial.print(",");
-    Serial.print(yCenter);
-    Serial.print(" Scale x,y: ");
-    Serial.print(xScale, 3);
-    Serial.print(",");
-    Serial.println(yScale, 3);
 }
 
 // Subroutine that prints current runmode
@@ -4070,17 +4067,12 @@ void VerifyPreferences()
 {
     // center 0 is used as "no cal data"
     for(unsigned int i = 0; i < ProfileCount; ++i) {
-        if(profileData[i].xCenter >= MouseMaxX || profileData[i].yCenter >= MouseMaxY || profileData[i].xScale == 0 || profileData[i].yScale == 0) {
-            profileData[i].xCenter = 0;
-            profileData[i].yCenter = 0;
-        }
-
-        // if the scale values are large, assign 0 so the values will be ignored
-        if(profileData[i].xScale >= 30000) {
-            profileData[i].xScale = 0;
-        }
-        if(profileData[i].yScale >= 30000) {
-            profileData[i].yScale = 0;
+        if(profileData[i].rightOffset >= 32768 || profileData[i].bottomOffset >= 32768 ||
+           profileData[i].topOffset >= 32768 || profileData[i].leftOffset >= 32768) {
+            profileData[i].topOffset = 0;
+            profileData[i].bottomOffset = 0;
+            profileData[i].leftOffset = 0;
+            profileData[i].rightOffset = 0;
         }
     
         if(profileData[i].irSensitivity > DFRobotIRPositionEx::Sensitivity_Max) {
@@ -4222,22 +4214,6 @@ void PrintIrSensitivity()
     Serial.println((int)irSensitivity);
 }
 
-void CancelCalibration()
-{
-    Serial.println("Calibration cancelled");
-    // re-print the profile
-    stateFlags |= StateFlag_PrintSelectedProfile;
-    // re-apply the cal stored in the profile
-    RevertToCalProfile(selectedProfile);
-    if(dockedCalibrating) {
-        SetMode(GunMode_Docked);
-        dockedCalibrating = false;
-    } else {
-        // return to pause mode
-        SetMode(GunMode_Pause);
-    } 
-}
-
 void PrintSelectedProfile()
 {
     Serial.print("Profile: ");
@@ -4256,7 +4232,7 @@ bool SelectCalProfile(unsigned int profile)
         selectedProfile = profile;
     }
 
-    bool valid = SelectCalPrefs(profile);
+    //bool valid = SelectCalPrefs(profile);
 
     // set IR sensitivity
     if(profileData[profile].irSensitivity <= DFRobotIRPositionEx::Sensitivity_Max) {
@@ -4274,9 +4250,10 @@ bool SelectCalProfile(unsigned int profile)
 
     // enable save to allow setting new default profile
     stateFlags |= StateFlag_SavePreferencesEn;
-    return valid;
+    return true;
 }
 
+/*
 // applies loaded screen calibration profile
 bool SelectCalPrefs(unsigned int profile)
 {
@@ -4300,34 +4277,7 @@ bool SelectCalPrefs(unsigned int profile)
     }
     return false;
 }
-
-// revert back to useable settings, even if not cal'd
-void RevertToCalProfile(unsigned int profile)
-{
-    // if the current profile isn't valid
-    if(!SelectCalProfile(profile)) {
-        // revert to settings from any valid profile
-        for(unsigned int i = 0; i < ProfileCount; ++i) {
-            if(SelectCalProfile(i)) {
-                break;
-            }
-        }
-
-        // stay selected on the specified profile
-        SelectCalProfile(profile);
-    }
-}
-
-// apply current cal to the selected profile
-void ApplyCalToProfile()
-{
-    profileData[selectedProfile].xCenter = xCenter;
-    profileData[selectedProfile].yCenter = yCenter;
-    profileData[selectedProfile].xScale = CalScaleFloatToPref(xScale);
-    profileData[selectedProfile].yScale = CalScaleFloatToPref(yScale);
-
-    stateFlags |= StateFlag_PrintSelectedProfile;
-}
+*/
 
 #ifdef LED_ENABLE
 // initializes system and 4pin RGB LEDs.

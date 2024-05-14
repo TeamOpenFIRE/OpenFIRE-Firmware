@@ -14,7 +14,7 @@
 #ifndef _SAMCOPREFERENCES_H_
 #define _SAMCOPREFERENCES_H_
 
-#include <SamcoBoard.h>
+#include <OpenFIREBoard.h>
 #include <stdint.h>
 
 /// @brief Static instance of preferences to save in non-volatile memory
@@ -39,11 +39,15 @@ public:
 
     /// @brief Profile data
     typedef struct ProfileData_s {
-        uint16_t xScale;	          ///< X Scale * 1000
-        uint16_t yScale;            ///< Y Scale * 1000
-        uint32_t xCenter : 12;
-        uint32_t yCenter : 12;      
-        uint32_t irSensitivity : 3;
+        int topOffset;              // Perspective: Offsets
+        int bottomOffset;
+        int leftOffset;
+        int rightOffset;
+        float TLled;                // Perspective: LED relative anchors
+        float TRled;
+        float adjX;                 // Perspective: adjusted axis
+        float adjY;
+        uint32_t irSensitivity : 3; // IR Sensitivity from 0-2
         uint32_t runMode : 5;       // Averaging mode
         uint32_t buttonMask : 16;   // Button mask assigned to this profile
         bool irLayout;              // square or diamond IR for this display?
