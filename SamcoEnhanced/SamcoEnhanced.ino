@@ -1644,7 +1644,6 @@ void ExecCalMode()
     AbsMouse5.move(32768/2, 32768/2);
     SetMode(GunMode_Calibration);
     while(gunMode == GunMode_Calibration) {
-        Serial.println(calStage);
         buttons.Poll(1);
 
         if(irPosUpdateTick) {
