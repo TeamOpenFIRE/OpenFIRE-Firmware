@@ -422,43 +422,54 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::moveCam(uint16_t origX, uint16_t origY) {
-    // add shit ass
-    // yes I hardcoded the mousemaxx/y values, eat me
     if(stickRight) {
-        gamepad16Report.X = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Y = map(origY, 0, 3071, 0, 65535);
+        gamepad16Report.X = map(origX, 0, 32768, 0, 65535);
+        gamepad16Report.Y = map(origY, 0, 32768, 0, 65535);
     } else {
-        gamepad16Report.Rx = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Ry = map(origY, 0, 3071, 0, 65535);
+        gamepad16Report.Rx = map(origX, 0, 32768, 0, 65535);
+        gamepad16Report.Ry = map(origY, 0, 32768, 0, 65535);
     }
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::moveStick(uint16_t origX, uint16_t origY) {
     // TODO: inverted output for Cabela's Top Shot Elite sticks, but it might be backwards for others.
-    if(stickRight) {
-        gamepad16Report.Rx = map(origX, 0, 4095, 65535, 0);
-        gamepad16Report.Ry = map(origY, 0, 4095, 65535, 0);
-    } else {
-        gamepad16Report.X = map(origX, 0, 4095, 65535, 0);
-        gamepad16Report.Y = map(origY, 0, 4095, 65535, 0);
+    if(origX != _x || origY != _y) {
+        _x = origX, _y = origY;
+        if(stickRight) {
+            gamepad16Report.Rx = map(_x, 0, 4095, 65535, 0);
+            gamepad16Report.Ry = map(_y, 0, 4095, 65535, 0);
+        } else {
+            gamepad16Report.X = map(_x, 0, 4095, 65535, 0);
+            gamepad16Report.Y = map(_y, 0, 4095, 65535, 0);
+        }
+        if(_autoReport) {
+            report();
+        }
     }
-    report();
   }
 
   void Gamepad16_::press(uint8_t buttonNum) {
     bitSet(gamepad16Report.buttons, buttonNum);
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::release(uint8_t buttonNum) {
     bitClear(gamepad16Report.buttons, buttonNum);
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::padUpdate(uint8_t padMask) {
     gamepad16Report.hat = padMask;
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::report() {
