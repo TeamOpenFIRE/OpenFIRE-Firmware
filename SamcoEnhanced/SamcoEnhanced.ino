@@ -83,7 +83,7 @@
   // For multiplayer, different guns need different IDs!
   // If unsure, or are only using one gun, just leave these at their defaults!
 #define MANUFACTURER_NAME "OpenFIRE"
-#define DEVICE_NAME "FIRE-Con"
+#define DEVICE_NAME "FIRECon"
 #define DEVICE_VID 0x0920
 #define DEVICE_PID 0x1998
 
