@@ -136,7 +136,7 @@ public:
     static SettingsMap_t settings;
 
     typedef struct USBMap_s {
-        char deviceName[16] = "FIRECon";
+        char deviceName[16];
         uint16_t devicePID;
     } USBMap_t;
 
