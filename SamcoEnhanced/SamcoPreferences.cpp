@@ -12,6 +12,7 @@
  */
 
 #include "SamcoPreferences.h"
+#include <Arduino.h>
 
 #ifdef SAMCO_EEPROM_ENABLE
 #include <EEPROM.h>
