@@ -2253,7 +2253,14 @@ void AnalogStickPoll()
 {
     unsigned int analogValueX = analogRead(SamcoPreferences::pins.aStickX);
     unsigned int analogValueY = analogRead(SamcoPreferences::pins.aStickY);
-    Gamepad16.moveStick(analogValueX, analogValueY);
+    // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.
+    if((analogValueX < 1900 || analogValueX > 2200) ||
+       (analogValueY < 1900 || analogValueY > 2200)) {
+          Gamepad16.moveStick(analogValueX, analogValueY);
+    } else {
+        // Duplicate coords won't be reported, so no worries.
+        Gamepad16.moveStick(2048, 2048);
+    }
 }
 #endif // USES_ANALOG
 
