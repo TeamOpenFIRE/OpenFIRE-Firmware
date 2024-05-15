@@ -58,7 +58,11 @@ class OpenFIRE_Diamond {
     float angle;
     float angle2;
     float height;
+    float height2;
     float width;
+    float width2;
+
+    bool tilt = true;
 
     unsigned int start = 0;
 
