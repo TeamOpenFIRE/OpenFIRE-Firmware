@@ -4257,7 +4257,8 @@ bool SelectCalProfile(unsigned int profile)
         selectedProfile = profile;
     }
 
-    //bool valid = SelectCalPrefs(profile);
+    OpenFIREper.source(profileData[selectedProfile].adjX, profileData[selectedProfile].adjY);                                                          
+    OpenFIREper.deinit(0);
 
     // set IR sensitivity
     if(profileData[profile].irSensitivity <= DFRobotIRPositionEx::Sensitivity_Max) {
