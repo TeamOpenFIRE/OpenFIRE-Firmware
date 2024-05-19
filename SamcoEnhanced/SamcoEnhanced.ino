@@ -164,6 +164,7 @@ enum ButtonIndex_e {
     BtnIdx_Right,
     BtnIdx_Reload,
     BtnIdx_Pedal,
+    BtnIdx_Pedal2,
     BtnIdx_Pump,
     BtnIdx_Home
 };
@@ -201,7 +202,8 @@ LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {SamcoPreferences::pins.bGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
     {SamcoPreferences::pins.bGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
     {SamcoPreferences::pins.bGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
-    {SamcoPreferences::pins.bPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bPedal2, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_B, 15, BTN_AG_MASK2},
     {SamcoPreferences::pins.bPump, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Mouse, MOUSE_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_LT, 15, BTN_AG_MASK2},
     {SamcoPreferences::pins.bHome, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, LightgunButtons::ReportType_Internal, 0, 15, BTN_AG_MASK2}
 };
@@ -4861,6 +4863,7 @@ void UpdateBindings(bool offscreenEnable)
     LightgunButtons::ButtonDesc[BtnIdx_Left].pin = SamcoPreferences::pins.bGunLeft;
     LightgunButtons::ButtonDesc[BtnIdx_Right].pin = SamcoPreferences::pins.bGunRight;
     LightgunButtons::ButtonDesc[BtnIdx_Pedal].pin = SamcoPreferences::pins.bPedal;
+    LightgunButtons::ButtonDesc[BtnIdx_Pedal2].pin = SamcoPreferences::pins.bPedal2;
     LightgunButtons::ButtonDesc[BtnIdx_Pump].pin = SamcoPreferences::pins.bPump;
     LightgunButtons::ButtonDesc[BtnIdx_Home].pin = SamcoPreferences::pins.bHome;
 
