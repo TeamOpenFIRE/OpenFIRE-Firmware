@@ -769,7 +769,6 @@ void FeedbackSet()
     #endif // USES_ANALOG
     #if defined(LED_ENABLE) && defined(FOURPIN_LED)
     if(SamcoPreferences::pins.oLedR < 0 || SamcoPreferences::pins.oLedG < 0 || SamcoPreferences::pins.oLedB < 0) {
-        Serial.println("RGB values not valid! Disabling four pin access.");
         ledIsValid = false;
     } else {
         pinMode(SamcoPreferences::pins.oLedR, OUTPUT);
