@@ -513,8 +513,6 @@ Adafruit_NeoPixel neopixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 #endif // CUSTOM_NEOPIXEL
 #ifdef CUSTOM_NEOPIXEL
 Adafruit_NeoPixel* externPixel;
-// Amount of pixels in a strand.
-uint16_t customLEDcount = 1;
 #endif // CUSTOM_NEOPIXEL
 
 #ifdef SAMCO_EEPROM_ENABLE
@@ -779,7 +777,7 @@ void FeedbackSet()
     #endif // FOURPIN_LED
     #ifdef CUSTOM_NEOPIXEL
     if(SamcoPreferences::pins.oPixel >= 0) {
-        externPixel = new Adafruit_NeoPixel(customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
+        externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
     }
     #endif // CUSTOM_NEOPIXEL
 }
@@ -827,7 +825,7 @@ void PinsReset()
                 delete externPixel;
             }
             if(SamcoPreferences::pins.oPixel >= 0) {
-                externPixel = new Adafruit_NeoPixel(customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
+                externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
                 externPixel->begin();
             }
         #endif // CUSTOM_NEOPIXEL
@@ -1630,6 +1628,7 @@ void ExecGunModeDocked()
 // Dedicated calibration method
 void ExecCalMode()
 {
+    buttons.ReportDisable();
     uint8_t calStage = 0;
     // backup current values in case the user cancels
     int _topOffset = profileData[selectedProfile].topOffset;
@@ -2414,9 +2413,9 @@ void SerialProcessingDocked()
                     // bool change
                     if(serialInput == '0') {
                         serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        switch(serialInput) {
-                          case '0':
+                        byte sCase = Serial.parseInt();
+                        switch(sCase) {
+                          case SamcoPreferences::Bool_CustomPins:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.customPinsInUse = serialInput - '0';
@@ -2424,7 +2423,7 @@ void SerialProcessingDocked()
                             Serial.println("OK: Toggled Custom Pin setting.");
                             break;
                           #ifdef USES_RUMBLE
-                          case '1':
+                          case SamcoPreferences::Bool_Rumble:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.rumbleActive = serialInput - '0';
@@ -2433,7 +2432,7 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case '2':
+                          case SamcoPreferences::Bool_Solenoid:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.solenoidActive = serialInput - '0';
@@ -2441,21 +2440,21 @@ void SerialProcessingDocked()
                             Serial.println("OK: Toggled Solenoid setting.");
                             break;
                           #endif
-                          case '3':
+                          case SamcoPreferences::Bool_Autofire:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.autofireActive = serialInput - '0';
                             SamcoPreferences::toggles.autofireActive = constrain(SamcoPreferences::toggles.autofireActive, 0, 1);
                             Serial.println("OK: Toggled Autofire setting.");
                             break;
-                          case '4':
+                          case SamcoPreferences::Bool_SimpleMenu:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.simpleMenu = serialInput - '0';
                             SamcoPreferences::toggles.simpleMenu = constrain(SamcoPreferences::toggles.simpleMenu, 0, 1);
                             Serial.println("OK: Toggled Simple Pause Menu setting.");
                             break;
-                          case '5':
+                          case SamcoPreferences::Bool_HoldToPause:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.holdToPause = serialInput - '0';
@@ -2463,7 +2462,7 @@ void SerialProcessingDocked()
                             Serial.println("OK: Toggled Hold to Pause setting.");
                             break;
                           #ifdef FOURPIN_LED
-                          case '6':
+                          case SamcoPreferences::Bool_CommonAnode:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.commonAnode = serialInput - '0';
@@ -2471,14 +2470,14 @@ void SerialProcessingDocked()
                             Serial.println("OK: Toggled Common Anode setting.");
                             break;
                           #endif
-                          case '7':
+                          case SamcoPreferences::Bool_LowButtons:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.lowButtonMode = serialInput - '0';
                             SamcoPreferences::toggles.lowButtonMode = constrain(SamcoPreferences::toggles.lowButtonMode, 0, 1);
                             Serial.println("OK: Toggled Low Button Mode setting.");
                             break;
-                          case '8':
+                          case SamcoPreferences::Bool_RumbleFF:
                             serialInput = Serial.read(); // nomf
                             serialInput = Serial.read();
                             SamcoPreferences::toggles.rumbleFF = serialInput - '0';
@@ -2497,86 +2496,92 @@ void SerialProcessingDocked()
                         serialInput = Serial.read(); // nomf
                         byte sCase = Serial.parseInt();
                         switch(sCase) {
-                          case 0:
+                          case SamcoPreferences::Pin_Trigger:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bTrigger = Serial.parseInt();
                             SamcoPreferences::pins.bTrigger = constrain(SamcoPreferences::pins.bTrigger, -1, 40);
                             Serial.println("OK: Set trigger button pin.");
                             break;
-                          case 1:
+                          case SamcoPreferences::Pin_GunA:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunA = Serial.parseInt();
                             SamcoPreferences::pins.bGunA = constrain(SamcoPreferences::pins.bGunA, -1, 40);
                             Serial.println("OK: Set A button pin.");
                             break;
-                          case 2:
+                          case SamcoPreferences::Pin_GunB:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunB = Serial.parseInt();
                             SamcoPreferences::pins.bGunB = constrain(SamcoPreferences::pins.bGunB, -1, 40);
                             Serial.println("OK: Set B button pin.");
                             break;
-                          case 3:
+                          case SamcoPreferences::Pin_Start:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunC = Serial.parseInt();
                             SamcoPreferences::pins.bGunC = constrain(SamcoPreferences::pins.bGunC, -1, 40);
                             Serial.println("OK: Set C button pin.");
                             break;
-                          case 4:
+                          case SamcoPreferences::Pin_Select:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bStart = Serial.parseInt();
                             SamcoPreferences::pins.bStart = constrain(SamcoPreferences::pins.bStart, -1, 40);
                             Serial.println("OK: Set Start button pin.");
                             break;
-                          case 5:
+                          case SamcoPreferences::Pin_GunUp:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bSelect = Serial.parseInt();
                             SamcoPreferences::pins.bSelect = constrain(SamcoPreferences::pins.bSelect, -1, 40);
                             Serial.println("OK: Set Select button pin.");
                             break;
-                          case 6:
+                          case SamcoPreferences::Pin_GunDown:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunUp = Serial.parseInt();
                             SamcoPreferences::pins.bGunUp = constrain(SamcoPreferences::pins.bGunUp, -1, 40);
                             Serial.println("OK: Set D-Pad Up button pin.");
                             break;
-                          case 7:
+                          case SamcoPreferences::Pin_GunLeft:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunDown = Serial.parseInt();
                             SamcoPreferences::pins.bGunDown = constrain(SamcoPreferences::pins.bGunDown, -1, 40);
                             Serial.println("OK: Set D-Pad Down button pin.");
                             break;
-                          case 8:
+                          case SamcoPreferences::Pin_GunRight:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunLeft = Serial.parseInt();
                             SamcoPreferences::pins.bGunLeft = constrain(SamcoPreferences::pins.bGunLeft, -1, 40);
                             Serial.println("OK: Set D-Pad Left button pin.");
                             break;
-                          case 9:
+                          case SamcoPreferences::Pin_GunC:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunRight = Serial.parseInt();
                             SamcoPreferences::pins.bGunRight = constrain(SamcoPreferences::pins.bGunRight, -1, 40);
                             Serial.println("OK: Set D-Pad Right button pin.");
                             break;
-                          case 10:
+                          case SamcoPreferences::Pin_Pedal:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bPedal = Serial.parseInt();
                             SamcoPreferences::pins.bPedal = constrain(SamcoPreferences::pins.bPedal, -1, 40);
                             Serial.println("OK: Set External Pedal button pin.");
                             break;
-                          case 11:
+                          case SamcoPreferences::Pin_Pedal2:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.bPedal2 = Serial.parseInt();
+                            SamcoPreferences::pins.bPedal2 = constrain(SamcoPreferences::pins.bPedal2, -1, 40);
+                            Serial.println("OK: Set External Pedal 2 button pin.");
+                            break;
+                          case SamcoPreferences::Pin_Home:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bHome = Serial.parseInt();
                             SamcoPreferences::pins.bHome = constrain(SamcoPreferences::pins.bHome, -1, 40);
                             Serial.println("OK: Set Home button pin.");
                             break;
-                          case 12:
+                          case SamcoPreferences::Pin_Pump:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bPump = Serial.parseInt();
                             SamcoPreferences::pins.bPump = constrain(SamcoPreferences::pins.bPump, -1, 40);
                             Serial.println("OK: Set Pump Action button pin.");
                             break;
                           #ifdef USES_RUMBLE
-                          case 13:
+                          case SamcoPreferences::Pin_RumbleSignal:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oRumble = Serial.parseInt();
                             SamcoPreferences::pins.oRumble = constrain(SamcoPreferences::pins.oRumble, -1, 40);
@@ -2584,7 +2589,7 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case 14:
+                          case SamcoPreferences::Pin_SolenoidSignal:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oSolenoid = Serial.parseInt();
                             SamcoPreferences::pins.oSolenoid = constrain(SamcoPreferences::pins.oSolenoid, -1, 40);
@@ -2593,7 +2598,7 @@ void SerialProcessingDocked()
                           #endif
                           #ifdef USES_SWITCHES
                           #ifdef USES_RUMBLE
-                          case 15:
+                          case SamcoPreferences::Pin_RumbleSwitch:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.sRumble = Serial.parseInt();
                             SamcoPreferences::pins.sRumble = constrain(SamcoPreferences::pins.sRumble, -1, 40);
@@ -2601,14 +2606,14 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case 16:
+                          case SamcoPreferences::Pin_SolenoidSwitch:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.sSolenoid = Serial.parseInt();
                             SamcoPreferences::pins.sSolenoid = constrain(SamcoPreferences::pins.sSolenoid, -1, 40);
                             Serial.println("OK: Set Solenoid Switch pin.");
                             break;
                           #endif
-                          case 17:
+                          case SamcoPreferences::Pin_AutofireSwitch:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.sAutofire = Serial.parseInt();
                             SamcoPreferences::pins.sAutofire = constrain(SamcoPreferences::pins.sAutofire, -1, 40);
@@ -2616,19 +2621,19 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef FOURPIN_LED
-                          case 18:
+                          case SamcoPreferences::Pin_LEDR:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oLedR = Serial.parseInt();
                             SamcoPreferences::pins.oLedR = constrain(SamcoPreferences::pins.oLedR, -1, 40);
                             Serial.println("OK: Set RGB LED R pin.");
                             break;
-                          case 19:
+                          case SamcoPreferences::Pin_LEDG:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oLedG = Serial.parseInt();
                             SamcoPreferences::pins.oLedG = constrain(SamcoPreferences::pins.oLedG, -1, 40);
                             Serial.println("OK: Set RGB LED G pin.");
                             break;
-                          case 20:
+                          case SamcoPreferences::Pin_LEDB:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oLedB = Serial.parseInt();
                             SamcoPreferences::pins.oLedB = constrain(SamcoPreferences::pins.oLedB, -1, 40);
@@ -2636,45 +2641,51 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef CUSTOM_NEOPIXEL
-                          case 21:
+                          case SamcoPreferences::Pin_NeoPixel:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.oPixel = Serial.parseInt();
                             SamcoPreferences::pins.oPixel = constrain(SamcoPreferences::pins.oPixel, -1, 40);
                             Serial.println("OK: Set Custom NeoPixel pin.");
                             break;
                           #endif
-                          case 22:
+                          case SamcoPreferences::Pin_CameraSDA:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.pCamSDA = Serial.parseInt();
                             SamcoPreferences::pins.pCamSDA = constrain(SamcoPreferences::pins.pCamSDA, -1, 40);
                             Serial.println("OK: Set Camera SDA pin.");
                             break;
-                          case 23:
+                          case SamcoPreferences::Pin_CameraSCL:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.pCamSCL = Serial.parseInt();
                             SamcoPreferences::pins.pCamSCL = constrain(SamcoPreferences::pins.pCamSCL, -1, 40);
                             Serial.println("OK: Set Camera SCL pin.");
                             break;
-                          case 24:
+                          case SamcoPreferences::Pin_PeripheralSDA:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.pPeriphSDA = Serial.parseInt();
                             SamcoPreferences::pins.pPeriphSDA = constrain(SamcoPreferences::pins.pPeriphSDA, -1, 40);
                             Serial.println("OK: Set Peripherals SDA pin.");
                             break;
-                          case 25:
+                          case SamcoPreferences::Pin_PeripheralSCL:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.pPeriphSCL = Serial.parseInt();
                             SamcoPreferences::pins.pPeriphSCL = constrain(SamcoPreferences::pins.pPeriphSCL, -1, 40);
                             Serial.println("OK: Set Peripherals SCL pin.");
                             break;
+                          case SamcoPreferences::Pin_Battery:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.aBattRead = Serial.parseInt();
+                            SamcoPreferences::pins.aBattRead = constrain(SamcoPreferences::pins.aBattRead, -1, 40);
+                            Serial.println("OK: Set Battery Sensor pin.");
+                            break;
                           #ifdef USES_ANALOG
-                          case 26:
+                          case SamcoPreferences::Pin_AnalogX:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.aStickX = Serial.parseInt();
                             SamcoPreferences::pins.aStickX = constrain(SamcoPreferences::pins.aStickX, -1, 40);
                             Serial.println("OK: Set Analog X pin.");
                             break;
-                          case 27:
+                          case SamcoPreferences::Pin_AnalogY:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.aStickY = Serial.parseInt();
                             SamcoPreferences::pins.aStickY = constrain(SamcoPreferences::pins.aStickY, -1, 40);
@@ -2682,7 +2693,7 @@ void SerialProcessingDocked()
                             break;
                           #endif
                           #ifdef USES_TEMP
-                          case 28:
+                          case SamcoPreferences::Pin_AnalogTMP:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.aTMP36 = Serial.parseInt();
                             SamcoPreferences::pins.aTMP36 = constrain(SamcoPreferences::pins.aTMP36, -1, 40);
@@ -2699,57 +2710,78 @@ void SerialProcessingDocked()
                     // Extended Settings
                     } else if(serialInput == '2') {
                         serialInput = Serial.read(); // nomf
-                        serialInput = Serial.read();
-                        switch(serialInput) {
+                        byte sCase = Serial.parseInt();
+                        switch(sCase) {
                           #ifdef USES_RUMBLE
-                          case '0':
+                          case SamcoPreferences::Setting_RumbleIntensity:
                             serialInput = Serial.read(); // nomf
                             rumbleIntensity = Serial.parseInt();
                             rumbleIntensity = constrain(rumbleIntensity, 0, 255);
                             Serial.println("OK: Set Rumble Intensity setting.");
                             break;
-                          case '1':
+                          case SamcoPreferences::Setting_RumbleInterval:
                             serialInput = Serial.read(); // nomf
                             rumbleInterval = Serial.parseInt();
                             Serial.println("OK: Set Rumble Length setting.");
                             break;
                           #endif
                           #ifdef USES_SOLENOID
-                          case '2':
+                          case SamcoPreferences::Setting_SolenoidNormInt:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::settings.solenoidNormalInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Normal Interval setting.");
                             break;
-                          case '3':
+                          case SamcoPreferences::Setting_SolenoidFastInt:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::settings.solenoidFastInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Fast Interval setting.");
                             break;
-                          case '4':
+                          case SamcoPreferences::Setting_SolenoidLongInt:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::settings.solenoidLongInterval = Serial.parseInt();
                             Serial.println("OK: Set Solenoid Hold Length setting.");
                             break;
                           #endif
-                          #ifdef CUSTOM_NEOPIXEL
-                          case '5':
-                            serialInput = Serial.read(); // nomf
-                            customLEDcount = Serial.parseInt();
-                            customLEDcount = constrain(customLEDcount, 1, 255);
-                            Serial.println("OK: Set NeoPixel strand length setting.");
-                            break;
-                          #endif
-                          case '6':
+                          case SamcoPreferences::Setting_AutofireFactor:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::settings.autofireWaitFactor = Serial.parseInt();
                             SamcoPreferences::settings.autofireWaitFactor = constrain(SamcoPreferences::settings.autofireWaitFactor, 2, 4);
                             Serial.println("OK: Set Autofire Wait Factor setting.");
                             break;
-                          case '7':
+                          case SamcoPreferences::Setting_PauseHoldLength:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::settings.pauseHoldLength = Serial.parseInt();
                             Serial.println("OK: Set Hold to Pause length setting.");
                             break;
+                          #ifdef CUSTOM_NEOPIXEL
+                          case SamcoPreferences::Setting_CustomLEDCount:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::settings.customLEDcount = Serial.parseInt();
+                            SamcoPreferences::settings.customLEDcount = constrain(SamcoPreferences::settings.customLEDcount, 1, 255);
+                            Serial.println("OK: Set NeoPixel strand length setting.");
+                            break;
+                          case SamcoPreferences::Setting_CustomLEDStatic:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::settings.customLEDstatic = Serial.parseInt();
+                            SamcoPreferences::settings.customLEDstatic = constrain(SamcoPreferences::settings.customLEDstatic, 0, 3);
+                            Serial.println("OK: Set Static Pixels Count setting.");
+                            break;
+                          case SamcoPreferences::Setting_Color1:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::settings.customLEDcolor1 = Serial.parseInt();
+                            Serial.println("OK: Set Static Color 1 setting.");
+                            break;
+                          case SamcoPreferences::Setting_Color2:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::settings.customLEDcolor2 = Serial.parseInt();
+                            Serial.println("OK: Set Static Color 2 setting.");
+                            break;
+                          case SamcoPreferences::Setting_Color3:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::settings.customLEDcolor3 = Serial.parseInt();
+                            Serial.println("OK: Set Static Color 3 setting.");
+                            break;
+                          #endif
                           default:
                             while(!Serial.available()) {
                               serialInput = Serial.read(); // nomf it all
@@ -2937,19 +2969,21 @@ void SerialProcessingDocked()
                     Serial.println(SamcoPreferences::pins.bGunRight);
                     //Serial.print("External Pedal: ");
                     Serial.println(SamcoPreferences::pins.bPedal);
+                    //Serial.print("External Pedal 2: ");
+                    Serial.println(SamcoPreferences::pins.bPedal2);
                     //Serial.print("Home Button: ");
                     Serial.println(SamcoPreferences::pins.bHome);
                     //Serial.print("Pump Action: ");
                     Serial.println(SamcoPreferences::pins.bPump);
                     //Serial.print("Rumble Signal Wire: ");
                     Serial.println(SamcoPreferences::pins.oRumble);
-                    //Serial.print("Solenoid Signal Wire: ");
-                    Serial.println(SamcoPreferences::pins.oSolenoid);
                     // for some reason, at this point, QT stops reading output.
                     // so we'll just wait for a ping to print out the rest.
                     while(!Serial.available()) {
                       // derp
                     }
+                    //Serial.print("Solenoid Signal Wire: ");
+                    Serial.println(SamcoPreferences::pins.oSolenoid);
                     //Serial.print("Rumble Switch: ");
                     Serial.println(SamcoPreferences::pins.sRumble);
                     //Serial.print("Solenoid Switch: ");
@@ -2972,6 +3006,8 @@ void SerialProcessingDocked()
                     Serial.println(SamcoPreferences::pins.pPeriphSDA);
                     //Serial.print("Peripheral SCL: ");
                     Serial.println(SamcoPreferences::pins.pPeriphSCL);
+                    //Serial.print("Battery Sensor: ");
+                    Serial.println(SamcoPreferences::pins.aBattRead);
                     //Serial.print("Analog Joystick X: ");
                     Serial.println(SamcoPreferences::pins.aStickX);
                     //Serial.print("Analog Joystick Y: ");
@@ -2995,12 +3031,20 @@ void SerialProcessingDocked()
                     Serial.println(SamcoPreferences::settings.solenoidFastInterval);
                     //Serial.print("Solenoid Hold Length: ");
                     Serial.println(SamcoPreferences::settings.solenoidLongInterval);
-                    //Serial.print("Custom NeoPixel Strip Length: ");
-                    Serial.println(SamcoPreferences::settings.customLEDcount);
                     //Serial.print("Autofire Wait Factor: ");
                     Serial.println(SamcoPreferences::settings.autofireWaitFactor);
                     //Serial.print("Hold to Pause Length: ");
                     Serial.println(SamcoPreferences::settings.pauseHoldLength);
+                    //Serial.print("Custom NeoPixel Strip Length: ");
+                    Serial.println(SamcoPreferences::settings.customLEDcount);
+                    //Serial.print("Custom Static Pixels Count: ");
+                    Serial.println(SamcoPreferences::settings.customLEDstatic);
+                    //Serial.print("Custom Pixel Color 1: ");
+                    Serial.println(SamcoPreferences::settings.customLEDcolor1);
+                    //Serial.print("Custom Pixel Color 2: ");
+                    Serial.println(SamcoPreferences::settings.customLEDcolor2);
+                    //Serial.print("Custom Pixel Color 3: ");
+                    Serial.println(SamcoPreferences::settings.customLEDcolor3);
                     break;
                   case 'P':
                     serialInput = Serial.read();
@@ -4420,7 +4464,7 @@ void LedUpdate(byte r, byte g, byte b)
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
         if(SamcoPreferences::pins.oPixel >= 0) {
-            for(byte i = 0; i < customLEDcount; i++) {
+            for(byte i = 0; i < SamcoPreferences::settings.customLEDcount; i++) {
                 externPixel->setPixelColor(i, r, g, b);
             }
             externPixel->show();
