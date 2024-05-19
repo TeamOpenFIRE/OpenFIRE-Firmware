@@ -1641,7 +1641,18 @@ void ExecCalMode()
     float _TRled = profileData[selectedProfile].TRled;
     float _adjX = profileData[selectedProfile].adjX;
     float _adjY = profileData[selectedProfile].adjY;
+    // set current values to factory defaults
+    profileData[selectedProfile].topOffset = 0, profileData[selectedProfile].bottomOffset = 0,
+    profileData[selectedProfile].leftOffset = 0, profileData[selectedProfile].rightOffset = 0;
+    if(profileData[selectedProfile].irLayout) {
+        profileData[selectedProfile].TLled = 0, profileData[selectedProfile].TRled = 1920 << 2;
+    } else {
+        profileData[selectedProfile].TLled = 500 << 2, profileData[selectedProfile].TRled = 1420 << 2;
+    }
+    profileData[selectedProfile].adjX = 512 << 2, profileData[selectedProfile].adjY = 384 << 2;
+    // force center mouse to center
     AbsMouse5.move(32768/2, 32768/2);
+    // jack in, CaliMan, execute!!!
     SetMode(GunMode_Calibration);
     while(gunMode == GunMode_Calibration) {
         buttons.Poll(1);
@@ -1758,6 +1769,15 @@ void ExecCalMode()
                       // Press A/B to restart cali for current profile
                       } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask) {
                           calStage = 0;
+                          // (re)set current values to factory defaults
+                          profileData[selectedProfile].topOffset = 0, profileData[selectedProfile].bottomOffset = 0,
+                          profileData[selectedProfile].leftOffset = 0, profileData[selectedProfile].rightOffset = 0;
+                          if(profileData[selectedProfile].irLayout) {
+                              profileData[selectedProfile].TLled = 0, profileData[selectedProfile].TRled = 1920 << 2;
+                          } else {
+                              profileData[selectedProfile].TLled = 500 << 2, profileData[selectedProfile].TRled = 1420 << 2;
+                          }
+                          profileData[selectedProfile].adjX = 512 << 2, profileData[selectedProfile].adjY = 384 << 2;
                           SetMode(GunMode_Calibration);
                           delay(1);
                           AbsMouse5.move(32768/2, 32768/2);
