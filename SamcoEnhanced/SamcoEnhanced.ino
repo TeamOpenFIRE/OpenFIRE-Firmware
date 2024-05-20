@@ -2516,43 +2516,43 @@ void SerialProcessingDocked()
                             SamcoPreferences::pins.bGunB = constrain(SamcoPreferences::pins.bGunB, -1, 40);
                             Serial.println("OK: Set B button pin.");
                             break;
-                          case SamcoPreferences::Pin_Start:
+                          case SamcoPreferences::Pin_GunC:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunC = Serial.parseInt();
                             SamcoPreferences::pins.bGunC = constrain(SamcoPreferences::pins.bGunC, -1, 40);
                             Serial.println("OK: Set C button pin.");
                             break;
-                          case SamcoPreferences::Pin_Select:
+                          case SamcoPreferences::Pin_Start:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bStart = Serial.parseInt();
                             SamcoPreferences::pins.bStart = constrain(SamcoPreferences::pins.bStart, -1, 40);
                             Serial.println("OK: Set Start button pin.");
                             break;
-                          case SamcoPreferences::Pin_GunUp:
+                          case SamcoPreferences::Pin_Select:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bSelect = Serial.parseInt();
                             SamcoPreferences::pins.bSelect = constrain(SamcoPreferences::pins.bSelect, -1, 40);
                             Serial.println("OK: Set Select button pin.");
                             break;
-                          case SamcoPreferences::Pin_GunDown:
+                          case SamcoPreferences::Pin_GunUp:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunUp = Serial.parseInt();
                             SamcoPreferences::pins.bGunUp = constrain(SamcoPreferences::pins.bGunUp, -1, 40);
                             Serial.println("OK: Set D-Pad Up button pin.");
                             break;
-                          case SamcoPreferences::Pin_GunLeft:
+                          case SamcoPreferences::Pin_GunDown:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunDown = Serial.parseInt();
                             SamcoPreferences::pins.bGunDown = constrain(SamcoPreferences::pins.bGunDown, -1, 40);
                             Serial.println("OK: Set D-Pad Down button pin.");
                             break;
-                          case SamcoPreferences::Pin_GunRight:
+                          case SamcoPreferences::Pin_GunLeft:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunLeft = Serial.parseInt();
                             SamcoPreferences::pins.bGunLeft = constrain(SamcoPreferences::pins.bGunLeft, -1, 40);
                             Serial.println("OK: Set D-Pad Left button pin.");
                             break;
-                          case SamcoPreferences::Pin_GunC:
+                          case SamcoPreferences::Pin_GunRight:
                             serialInput = Serial.read(); // nomf
                             SamcoPreferences::pins.bGunRight = Serial.parseInt();
                             SamcoPreferences::pins.bGunRight = constrain(SamcoPreferences::pins.bGunRight, -1, 40);

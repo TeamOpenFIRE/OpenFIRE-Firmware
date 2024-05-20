@@ -190,6 +190,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = 4;
     pins.bGunRight = 5;
     pins.bPedal = 4;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
@@ -229,6 +230,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = 19;
     pins.bGunRight = 10;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = A1;
 
@@ -269,6 +271,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = -1;
     pins.bGunRight = -1;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
@@ -308,6 +311,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = -1;
     pins.bGunRight = -1;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
@@ -347,6 +351,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = 8;
     pins.bGunRight = 9;
     pins.bPedal = 14;
+    pins.bPedal2 = -1;
     pins.bPump = 13;
     pins.bHome = 5;
 
