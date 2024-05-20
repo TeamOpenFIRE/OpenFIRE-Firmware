@@ -593,8 +593,9 @@ void setup() {
             SamcoPreferences::LoadToggles();
             if(SamcoPreferences::toggles.customPinsInUse) {
                 SamcoPreferences::LoadPins();
-                UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
             }
+            // this is needed for both customs and builtins, as defaults are all uninitialized
+            UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
             SamcoPreferences::LoadSettings();
             SamcoPreferences::LoadUSBID();
         }
@@ -1515,15 +1516,7 @@ void ExecGunModeDocked()
             SerialProcessingDocked();
         }
 
-        if(dockedCalibrating) {
-            if(irPosUpdateTick) {
-                irPosUpdateTick = 0;
-                GetPosition();
-            }
-            if(buttons.pressed == BtnMask_Trigger) {
-                dockedCalibrating = false;
-            }
-        } else if(!dockedSaving) {
+        if(!dockedSaving) {
             switch(buttons.pressed) {
                 case BtnMask_Trigger:
                   Serial.println("Pressed: 1");

@@ -185,10 +185,10 @@ void SamcoPreferences::LoadPresets()
     pins.bGunC = 11;
     pins.bStart = 28;
     pins.bSelect = 29;
-    pins.bGunUp = 1;
-    pins.bGunDown = 0;
-    pins.bGunLeft = 4;
-    pins.bGunRight = 5;
+    pins.bGunUp = 9;
+    pins.bGunDown = 7;
+    pins.bGunLeft = 8;
+    pins.bGunRight = 10;
     pins.bPedal = 4;
     pins.bPedal2 = -1;
     pins.bPump = -1;
