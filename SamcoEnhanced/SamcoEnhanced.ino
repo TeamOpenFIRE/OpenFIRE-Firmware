@@ -1509,6 +1509,8 @@ void ExecGunModeDocked()
         LedUpdate(127, 127, 255);
     #endif // LED_ENABLE
     unsigned long tempChecked = millis();
+    unsigned long aStickChecked = millis();
+    uint8_t aStickDirPrev;
     for(;;) {
         buttons.Poll(1);
 
@@ -1615,6 +1617,63 @@ void ExecGunModeDocked()
                     Serial.println(tempSensor);
                 }
                 tempChecked = currentMillis;
+            }
+            if(analogIsValid) {
+                if(currentMillis - aStickChecked >= 16) {
+                    unsigned int analogValueX = analogRead(SamcoPreferences::pins.aStickX);
+                    unsigned int analogValueY = analogRead(SamcoPreferences::pins.aStickY);
+                    // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.
+                    uint8_t aStickDir = 0;
+                    if((analogValueX < 1900 || analogValueX > 2200) ||
+                      (analogValueY < 1900 || analogValueY > 2200)) {
+                        if(analogValueX > 2200) {
+                            bitSet(aStickDir, 0), bitClear(aStickDir, 1);
+                        } else if(analogValueX < 1900) {
+                            bitSet(aStickDir, 1), bitClear(aStickDir, 0);
+                        } else {
+                            bitClear(aStickDir, 0), bitClear(aStickDir, 1);
+                        }
+                        if(analogValueY > 2200) { 
+                            bitSet(aStickDir, 2), bitClear(aStickDir, 3);
+                        } else if(analogValueY < 1900) {
+                            bitSet(aStickDir, 3), bitClear(aStickDir, 2);
+                        } else {
+                            bitClear(aStickDir, 2), bitClear(aStickDir, 3);
+                        }
+                    }
+                    if(aStickDir != aStickDirPrev) {
+                        switch(aStickDir) {
+                        case 0b00000100: // up
+                          Serial.println("Analog: 1");
+                          break;
+                        case 0b00000101: // up-left
+                          Serial.println("Analog: 2");
+                          break;
+                        case 0b00000001: // left
+                          Serial.println("Analog: 3");
+                          break;
+                        case 0b00001001: // down-left
+                          Serial.println("Analog: 4");
+                          break;
+                        case 0b00001000: // down
+                          Serial.println("Analog: 5");
+                          break;
+                        case 0b00001010: // down-right
+                          Serial.println("Analog: 6");
+                          break;
+                        case 0b00000010: // right
+                          Serial.println("Analog: 7");
+                          break;
+                        case 0b00000110: // up-right
+                          Serial.println("Analog: 8");
+                          break;
+                        default:         // center
+                          Serial.println("Analog: 0");
+                          break;
+                        }
+                        aStickDirPrev = aStickDir;
+                    }
+                }
             }
         }
 
@@ -2622,6 +2681,14 @@ void SerialProcessingDocked()
                             Serial.println("OK: Set Autofire Switch pin.");
                             break;
                           #endif
+                          #ifdef CUSTOM_NEOPIXEL
+                          case SamcoPreferences::Pin_NeoPixel:
+                            serialInput = Serial.read(); // nomf
+                            SamcoPreferences::pins.oPixel = Serial.parseInt();
+                            SamcoPreferences::pins.oPixel = constrain(SamcoPreferences::pins.oPixel, -1, 40);
+                            Serial.println("OK: Set Custom NeoPixel pin.");
+                            break;
+                          #endif
                           #ifdef FOURPIN_LED
                           case SamcoPreferences::Pin_LEDR:
                             serialInput = Serial.read(); // nomf
@@ -2640,14 +2707,6 @@ void SerialProcessingDocked()
                             SamcoPreferences::pins.oLedB = Serial.parseInt();
                             SamcoPreferences::pins.oLedB = constrain(SamcoPreferences::pins.oLedB, -1, 40);
                             Serial.println("OK: Set RGB LED B pin.");
-                            break;
-                          #endif
-                          #ifdef CUSTOM_NEOPIXEL
-                          case SamcoPreferences::Pin_NeoPixel:
-                            serialInput = Serial.read(); // nomf
-                            SamcoPreferences::pins.oPixel = Serial.parseInt();
-                            SamcoPreferences::pins.oPixel = constrain(SamcoPreferences::pins.oPixel, -1, 40);
-                            Serial.println("OK: Set Custom NeoPixel pin.");
                             break;
                           #endif
                           case SamcoPreferences::Pin_CameraSDA:
@@ -2992,14 +3051,14 @@ void SerialProcessingDocked()
                     Serial.println(SamcoPreferences::pins.sSolenoid);
                     //Serial.print("Autofire Switch: ");
                     Serial.println(SamcoPreferences::pins.sAutofire);
+                    //Serial.print("Custom NeoPixel Pin: ");
+                    Serial.println(SamcoPreferences::pins.oPixel);
                     //Serial.print("LED R: ");
                     Serial.println(SamcoPreferences::pins.oLedR);
                     //Serial.print("LED G: ");
                     Serial.println(SamcoPreferences::pins.oLedG);
                     //Serial.print("LED B: ");
                     Serial.println(SamcoPreferences::pins.oLedB);
-                    //Serial.print("Custom NeoPixel Pin: ");
-                    Serial.println(SamcoPreferences::pins.oPixel);
                     //Serial.print("Camera SDA: ");
                     Serial.println(SamcoPreferences::pins.pCamSDA);
                     //Serial.print("Camera SCL: ");

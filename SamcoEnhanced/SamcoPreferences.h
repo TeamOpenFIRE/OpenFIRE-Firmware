@@ -118,8 +118,8 @@ public:
         Pin_AutofireSwitch,
         Pin_NeoPixel,
         Pin_LEDR,
-        Pin_LEDB,
         Pin_LEDG,
+        Pin_LEDB,
         Pin_CameraSDA,
         Pin_CameraSCL,
         Pin_PeripheralSDA,
@@ -145,11 +145,11 @@ public:
         int8_t bPedal2 = -1;               // External Pedal 2 (DIY)
         int8_t bHome = -1;                 // Home Button (Top Shot Elite)
         int8_t bPump = -1;                 // Pump Action Reload Button (Top Shot Elite)
+        int8_t oRumble = -1;               // Rumble Signal Pin
+        int8_t oSolenoid = -1;             // Solenoid Signal Pin
         int8_t sRumble = -1;               // Rumble Switch
         int8_t sSolenoid = -1;             // Solenoid Switch
         int8_t sAutofire = -1;             // Autofire Switch
-        int8_t oRumble = -1;               // Rumble Signal Pin
-        int8_t oSolenoid = -1;             // Solenoid Signal Pin
         int8_t oPixel = -1;                // Custom NeoPixel Pin
         int8_t oLedR = -1;                 // 4-Pin RGB Red Pin
         int8_t oLedB = -1;                 // 4-Pin RGB Blue Pin

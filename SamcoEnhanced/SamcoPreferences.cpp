@@ -19,7 +19,7 @@
 #endif // SAMCO_EEPROM_ENABLE
 
 // 4 byte header ID
-const SamcoPreferences::HeaderId_t SamcoPreferences::HeaderId = {'O', 'F', '0', '3'};
+const SamcoPreferences::HeaderId_t SamcoPreferences::HeaderId = {'O', 'F', '0', '1'};
 
 #ifdef SAMCO_EEPROM_ENABLE
 void SamcoPreferences::WriteHeader()
