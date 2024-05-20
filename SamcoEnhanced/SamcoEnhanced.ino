@@ -182,6 +182,7 @@ enum ButtonMask_e {
     BtnMask_Right = 1 << BtnIdx_Right,
     BtnMask_Reload = 1 << BtnIdx_Reload,
     BtnMask_Pedal = 1 << BtnIdx_Pedal,
+    BtnMask_Pedal2 = 1 << BtnIdx_Pedal2,
     BtnMask_Pump = 1 << BtnIdx_Pump,
     BtnMask_Home = 1 << BtnIdx_Home
 };
@@ -1557,11 +1558,14 @@ void ExecGunModeDocked()
                 case BtnMask_Pedal:
                   Serial.println("Pressed: 11");
                   break;
-                case BtnMask_Home:
+                case BtnMask_Pedal2:
                   Serial.println("Pressed: 12");
                   break;
-                case BtnMask_Pump:
+                case BtnMask_Home:
                   Serial.println("Pressed: 13");
+                  break;
+                case BtnMask_Pump:
+                  Serial.println("Pressed: 14");
                   break;
             }
 
@@ -1599,11 +1603,14 @@ void ExecGunModeDocked()
                 case BtnMask_Pedal:
                   Serial.println("Released: 11");
                   break;
-                case BtnMask_Home:
+                case BtnMask_Pedal2:
                   Serial.println("Released: 12");
                   break;
-                case BtnMask_Pump:
+                case BtnMask_Home:
                   Serial.println("Released: 13");
+                  break;
+                case BtnMask_Pump:
+                  Serial.println("Released: 14");
                   break;
             }
             unsigned long currentMillis = millis();
