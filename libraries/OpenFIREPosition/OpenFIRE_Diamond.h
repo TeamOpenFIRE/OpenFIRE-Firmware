@@ -22,8 +22,8 @@ class OpenFIRE_Diamond {
     int positionXX[4];   ///< position x.
     int positionYY[4];   ///< position y.
 
-    int positionX[4];
-    int positionY[4];
+    int positionX[4] = {512 * CamToMouseMult, 1023 * CamToMouseMult, 512 * CamToMouseMult, 0 * CamToMouseMult};
+    int positionY[4] = {0 * CamToMouseMult, 384 * CamToMouseMult, 728 * CamToMouseMult, 384 * CamToMouseMult};
 
     unsigned int see[4];
 
