@@ -47,10 +47,10 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
         // if LED not seen...
         if (!(seenFlags & (1 << i))) {
             // if unseen make sure all quadrants have a value if missing apply value with buffer and set to unseen (this step is important for 1 LED usage)
-        if (! (((positionY[0] < medianY - (height2 / 2) + buff) && (tilt ? positionX[0] >= medianX : positionX[0] < medianX)) || 
-		       ((positionY[1] < medianY - (height2 / 2) + buff) && (tilt ? positionX[1] >= medianX : positionX[1] < medianX)) || 
-		       ((positionY[2] < medianY - (height2 / 2) + buff) && (tilt ? positionX[2] >= medianX : positionX[2] < medianX)) || 
-		       ((positionY[3] < medianY - (height2 / 2) + buff) && (tilt ? positionX[3] >= medianX : positionX[3] < medianX)))) {
+        if (! (((positionY[0] < medianY - (height2 / 2) + buff) && (tilt ? positionX[0] >= medianX - buff : positionX[0] < medianX + buff)) || 
+		       ((positionY[1] < medianY - (height2 / 2) + buff) && (tilt ? positionX[1] >= medianX - buff : positionX[1] < medianX + buff)) || 
+		       ((positionY[2] < medianY - (height2 / 2) + buff) && (tilt ? positionX[2] >= medianX - buff : positionX[2] < medianX + buff)) || 
+		       ((positionY[3] < medianY - (height2 / 2) + buff) && (tilt ? positionX[3] >= medianX - buff: positionX[3] < medianX + buff)))) {
           positionX[i] = medianX + (medianX - FinalX[2]);
           positionY[i] = FinalY[2] - height2 - buff;
           see[0] = 0;
@@ -67,10 +67,10 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
           xMax = i;
         }
 
-        if (!(((positionY[0] > medianY + (height2 / 2) - buff) && (tilt ? positionX[0] <= medianX : positionX[0] > medianX)) || 
-		      ((positionY[1] > medianY + (height2 / 2) - buff) && (tilt ? positionX[1] <= medianX : positionX[1] > medianX)) || 
-		      ((positionY[2] > medianY + (height2 / 2) - buff) && (tilt ? positionX[2] <= medianX : positionX[2] > medianX)) || 
-		      ((positionY[3] > medianY + (height2 / 2) - buff) && (tilt ? positionX[3] <= medianX : positionX[3] > medianX)))) {
+        if (!(((positionY[0] > medianY + (height2 / 2) - buff) && (tilt ? positionX[0] <= medianX + buff: positionX[0] > medianX - buff)) || 
+		      ((positionY[1] > medianY + (height2 / 2) - buff) && (tilt ? positionX[1] <= medianX + buff : positionX[1] > medianX - buff)) || 
+		      ((positionY[2] > medianY + (height2 / 2) - buff) && (tilt ? positionX[2] <= medianX + buff : positionX[2] > medianX - buff)) || 
+		      ((positionY[3] > medianY + (height2 / 2) - buff) && (tilt ? positionX[3] <= medianX + buff: positionX[3] > medianX - buff)))) {
           positionX[i] = medianX + (medianX - FinalX[0]);
           positionY[i] = FinalY[0] + height2 + buff;
           see[2] = 0;
@@ -89,7 +89,7 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
 
         // if all quadrants have a value apply value with buffer and set to see/unseen
 
-        if (positionY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionX[i] >= medianX : positionX[i] < medianX)) {
+        if (positionY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionX[i] >= medianX - buff: positionX[i] < medianX + buff)) {
           positionX[i] = medianX + (medianX - FinalX[2]);
           positionY[i] = FinalY[2] - height2 - buff;
           see[0] = 0;
@@ -103,7 +103,7 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
           xMax = i;
         }
 
-        if (positionY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionX[i] <= medianX : positionX[i] > medianX)) {
+        if (positionY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionX[i] <= medianX + buff : positionX[i] > medianX - buff)) {
           positionX[i] = medianX + (medianX - FinalX[0]);
           positionY[i] = FinalY[0] + height2 + buff;
           see[2] = 0;
@@ -119,34 +119,47 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
 
 
         } else {
+
+	if (angle2 > -0.65 && angle2 < 0.65){
             // If LEDS have been seen place in correct quadrant, apply buffer an set to seen.
-        if (positionYY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionXX[i] >= medianX : positionXX[i] < medianX)) {
-          positionX[i] = positionXX[i];
-          positionY[i] = positionYY[i] - buff;
-          see[0] <<= 1;
-          see[0] |= 1;
-          yMin = i;
-        }
-        if (positionXX[i] > (medianX + (width2 / 2) - buff)) {
-          positionX[i] = positionXX[i] + buff;
-          positionY[i] = positionYY[i];
-          see[1] <<= 1;
-          see[1] |= 1;
-          xMax = i;
-        }
-        if (positionYY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionXX[i] <= medianX : positionXX[i] > medianX)) {
-          positionX[i] = positionXX[i];
-          positionY[i] = positionYY[i] + buff;
-          see[2] <<= 1;
-          see[2] |= 1;
-          yMax = i;
-        }
-        if (positionXX[i] < (medianX - (width2 / 2) + buff)) {
-          positionX[i] = positionXX[i] - buff;
-          positionY[i] = positionYY[i];
-          see[3] <<= 1;
-          see[3] |= 1;
-          xMin = i;
+          if (positionYY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionXX[i] >= medianX - buff: positionXX[i] < medianX + buff)) {
+            positionX[i] = positionXX[i];
+              positionY[i] = positionYY[i] - buff;
+            see[0] <<= 1;
+            see[0] |= 1;
+            yMin = i;
+          }
+          if (positionXX[i] > (medianX + (width2 / 2) - buff)) {
+            positionX[i] = positionXX[i] + buff;
+            positionY[i] = positionYY[i];
+            see[1] <<= 1;
+            see[1] |= 1;
+            xMax = i;
+          }
+          if (positionYY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionXX[i] <= medianX + buff: positionXX[i] > medianX - buff)) {
+            positionX[i] = positionXX[i];
+            positionY[i] = positionYY[i] + buff;
+            see[2] <<= 1;
+            see[2] |= 1;
+            yMax = i;
+          }
+          if (positionXX[i] < (medianX - (width2 / 2) + buff)) {
+            positionX[i] = positionXX[i] - buff;
+            positionY[i] = positionYY[i];
+            see[3] <<= 1;
+            see[3] |= 1;
+            xMin = i;
+          }
+        } else {
+          FinalX[0] = 400 * CamToMouseMult;
+          FinalX[1] = 623 * CamToMouseMult;
+          FinalX[2] = 400 * CamToMouseMult;
+          FinalX[3] = 623 * CamToMouseMult;
+          FinalY[0] = 200 * CamToMouseMult;
+          FinalY[1] = 200 * CamToMouseMult;
+          FinalY[2] = 568 * CamToMouseMult;
+          FinalY[3] = 568 * CamToMouseMult;
+            
         }
       }
 
@@ -154,10 +167,10 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
         // If LEDS have been seen use there value
         // If LEDS haven't been seen work out values form live positions
 
-    if (positionY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionX[i] >= medianX : positionX[i] < medianX)) {
+    if (positionY[i] < (medianY - (height2 / 2) + buff) && (tilt ? positionX[i] >= medianX - buff: positionX[i] < medianX + buff)) {
       if (see[0] & 0x02) {
-        FinalX[0] = positionX[i];
-        FinalY[0] = positionY[i] + buff;
+        FinalX[0] = positionX[yMin];
+        FinalY[0] = positionY[yMin] + buff;
       } else if (see[3] & 0x02) {
         FinalX[0] = FinalX[3] + (DistTL * -1) * cos(offsetTL + angle);
         FinalY[0] = FinalY[3] + (DistTL * -1) * sin(offsetTL + angle);
@@ -169,8 +182,8 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
 
     if (positionX[i] > (medianX + (width2 / 2) - buff)) {
       if (see[1] & 0x02) {
-        FinalX[1] = positionX[i] - buff;
-        FinalY[1] = positionY[i];
+        FinalX[1] = positionX[xMax] - buff;
+        FinalY[1] = positionY[xMax];
       } else if (see[0] & 0x02) {
         FinalX[1] = FinalX[0] + (DistTR * -1) * cos(offsetTR + angle);
         FinalY[1] = FinalY[0] + (DistTR * -1) * sin(offsetTR + angle);
@@ -180,10 +193,10 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
       }
     }
 
-    if (positionY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionX[i] <= medianX : positionX[i] > medianX)) {
+    if (positionY[i] > (medianY + (height2 / 2) - buff) && (tilt ? positionX[i] <= medianX + buff: positionX[i] > medianX - buff)) {
       if (see[2] & 0x02) {
-        FinalX[2] = positionX[i];
-        FinalY[2] = positionY[i] - buff;
+        FinalX[2] = positionX[yMax];
+        FinalY[2] = positionY[yMax] - buff;
       } else if (see[1] & 0x02) {
         FinalX[2] = FinalX[1] + (DistBR * -1) * cos(offsetBR + angle);
         FinalY[2] = FinalY[1] + (DistBR * -1) * sin(offsetBR + angle);
@@ -195,8 +208,8 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
 
     if (positionX[i] < (medianX - (width2 / 2) + buff)) {
       if (see[3] & 0x02) {
-        FinalX[3] = positionX[i] + buff;
-        FinalY[3] = positionY[i];
+        FinalX[3] = positionX[xMin] + buff;
+        FinalY[3] = positionY[xMin];
       } else if (see[1] & 0x02) {
         FinalX[3] = FinalX[2] + (DistBL * -1) * cos(offsetBL + angle);
         FinalY[3] = FinalY[2] + (DistBL * -1) * sin(offsetBL + angle);
