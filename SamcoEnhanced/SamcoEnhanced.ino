@@ -594,11 +594,11 @@ void setup() {
             if(SamcoPreferences::toggles.customPinsInUse) {
                 SamcoPreferences::LoadPins();
             }
-            // this is needed for both customs and builtins, as defaults are all uninitialized
-            UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
             SamcoPreferences::LoadSettings();
             SamcoPreferences::LoadUSBID();
         }
+        // this is needed for both customs and builtins, as defaults are all uninitialized
+        UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
