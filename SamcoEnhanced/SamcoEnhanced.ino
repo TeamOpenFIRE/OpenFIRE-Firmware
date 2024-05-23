@@ -354,9 +354,6 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 
 #ifdef USES_ANALOG
     bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
-    bool analogStickPolled = false;              // Flag set on if the stick was polled recently, to prevent overloading with aStick updates.
-    unsigned long previousStickPoll = 0;         // timestamp of last stick poll
-    byte analogPollInterval = 2;                 // amount of time to wait after irPosUpdateTick to update analog position, in ms
 #endif // USES_ANALOG
 
 #ifdef FOURPIN_LED
