@@ -904,6 +904,9 @@ void setup1()
 // currently handles all button & serial processing when Core 0 is in ExecRunMode()
 void loop1()
 {
+    #ifdef USES_ANALOG
+        unsigned long lastAnalogPoll = millis();
+    #endif // USES_ANALOG
     while(gunMode == GunMode_Run) {
         // For processing the trigger specifically.
         // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
@@ -938,17 +941,9 @@ void loop1()
         #endif // MAMEHOOKER
 
         #ifdef USES_ANALOG
-            if(analogIsValid) {
-                // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
-                // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
-                if(!analogStickPolled) {
-                    if(buttons.pressed || buttons.released) {
-                        previousStickPoll = millis();
-                    } else if(millis() - previousStickPoll > analogPollInterval) {
-                        AnalogStickPoll();
-                        analogStickPolled = true;
-                    }
-                }
+            if(analogIsValid && (millis() - lastAnalogPoll > 1)) {
+                AnalogStickPoll();
+                lastAnalogPoll = millis();
             }
         #endif // USES_ANALOG
         
@@ -1299,6 +1294,9 @@ void ExecRunMode()
         Gamepad16.releaseAll();
         justBooted = false;
     }
+    #ifdef USES_ANALOG
+        unsigned long lastAnalogPoll = millis();
+    #endif // USES_ANALOG
     for(;;) {
         // Setting the state of our toggles, if used.
         // Only sets these values if the switches are mapped to valid pins.
@@ -1360,28 +1358,15 @@ void ExecRunMode()
         if(irPosUpdateTick) {
             irPosUpdateTick = 0;
             GetPosition();
-            
-            #ifdef USES_ANALOG
-                analogStickPolled = false;
-                previousStickPoll = millis();
-            #endif // USES_ANALOG
         }
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
 
         #ifdef USES_ANALOG
-            if(analogIsValid) {
-                // Poll the analog values 2ms after the IR sensor has updated so as not to overload the USB buffer.
-                // stickPolled and previousStickPoll are reset/updated after irPosUpdateTick.
-                if(!analogStickPolled) {
-                    if(buttons.pressed || buttons.released) {
-                        previousStickPoll = millis();
-                    } else if(millis() - previousStickPoll > analogPollInterval) {
-                        AnalogStickPoll();
-                        analogStickPolled = true;
-                    }
-                }
+            if(analogIsValid && (millis() - lastAnalogPoll > 1)) {
+                AnalogStickPoll();
+                lastAnalogPoll = millis();
             }
         #endif // USES_ANALOG
 
@@ -2085,9 +2070,9 @@ void GetPosition()
                 Serial.print( "," );
                 // Median for viewing in processing
                 if(profileData[selectedProfile].irLayout) {
-                    Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0));
+                    Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 0, 1920));
                     Serial.print( "," );
-                    Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 1080, 0));
+                    Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
                 } else {
                     Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
                     Serial.print( "," );
