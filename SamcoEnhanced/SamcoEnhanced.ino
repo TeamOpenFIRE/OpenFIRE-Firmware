@@ -853,6 +853,7 @@ void TinyUSBInit()
 }
 #endif // USE_TINYUSB
 
+#ifdef ARDUINO_ARCH_RP2040
 void startIrCamTimer(int frequencyHz)
 {
     rp2040EnablePWMTimer(0, frequencyHz);
@@ -888,6 +889,7 @@ void rp2040pwmIrq(void)
     pwm_hw->intr = 0xff;
     irPosUpdateTick = 1;
 }
+#endif // ARDUINO_ARCH_RP2040
 
 #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
 // Second core setup
@@ -1389,11 +1391,11 @@ void ExecRunMode()
                 if(t - pauseHoldStartstamp > SamcoPreferences::settings.pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     #ifdef USES_SOLENOID
-                        digitalWrite(solenoidPin, LOW);
+                        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                         solenoidFirstShot = false;
                     #endif // USES_SOLENOID
                     #ifdef USES_RUMBLE
-                        digitalWrite(rumblePin, LOW);
+                        digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                         rumbleHappening = false;
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
@@ -1415,11 +1417,11 @@ void ExecRunMode()
             if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 #ifdef USES_SOLENOID
-                    digitalWrite(solenoidPin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                     solenoidFirstShot = false;
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    digitalWrite(rumblePin, LOW);
+                    digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                     rumbleHappening = false;
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
