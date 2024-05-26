@@ -66,24 +66,33 @@ bool ExtDisplay::Begin()
     } else { return false; }
 }
 
-void ExtDisplay::TopPanelUpdate(char textInput[16])
+void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
 {
     display->fillRect(0, 0, 128, 16, BLACK);
     display->drawFastHLine(0, 15, 128, WHITE);
     display->setCursor(2, 2);
     display->setTextSize(1);
     display->setTextColor(WHITE, BLACK);
-    display->print("Prof: ");
+    display->print(textPrefix);
     display->println(textInput);
     display->display();
 }
 
-void ExtDisplay::ScreenModeChange(uint8_t screenMode)
+void ExtDisplay::ScreenModeChange(int8_t screenMode)
 {
     //screenState = screenMode;
     display->fillRect(0, 16, 128, 48, BLACK);
+    screenState = screenMode;
     switch(screenMode) {
+      case Screen_Mamehook_Single:
+        lastAmmoLeft = 255;
+        lastAmmoRight = 255;
+        lastLife = 255;
+        break;
       case Screen_Mamehook_Dual:
+        lastAmmoLeft = 255;
+        lastAmmoRight = 255;
+        lastLife = 255;
         display->drawBitmap(63, 16, dividerLine, DIVIDER_WIDTH, DIVIDER_HEIGHT, WHITE);
         break;
     }
@@ -97,7 +106,7 @@ void ExtDisplay::IdleOps()
 
 void ExtDisplay::PauseScreenShow()
 {
-    TopPanelUpdate("Profile Name");
+    TopPanelUpdate("Prof: ", "Profile Name"); // names are placeholder
     display->fillRect(0, 16, 128, 48, BLACK);
     display->setTextSize(1);
     display->setCursor(0, 17);
@@ -326,163 +335,343 @@ void ExtDisplay::SaveScreen(uint8_t status)
 
 void ExtDisplay::PrintAmmo(uint8_t ammo)
 {
-    display->fillRect(66, 16, 62, 48, BLACK);
-    // use the rounding error to get the left character
+    // use the rounding error to get the left & right digits
     uint8_t ammoLeft = ammo / 10;
     uint8_t ammoRight = ammo - ammoLeft * 10;
-    switch(ammoLeft) {
-      case 0:
-        display->drawBitmap(72, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 1:
-        display->drawBitmap(72, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 2:
-        display->drawBitmap(72, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 3:
-        display->drawBitmap(72, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 4:
-        display->drawBitmap(72, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 5:
-        display->drawBitmap(72, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 6:
-        display->drawBitmap(72, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 7:
-        display->drawBitmap(72, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 8:
-        display->drawBitmap(72, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 9:
-        display->drawBitmap(72, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
+    if(!ammo) { ammoEmpty = true; } else { ammoEmpty = false; }
+    if(screenState == Screen_Mamehook_Single) {
+        if(ammoLeft != lastAmmoLeft) {
+          lastAmmoLeft = ammoLeft;
+          display->fillRect(40, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
+          switch(ammoLeft) {
+            case 0:
+              display->drawBitmap(40, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(40, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(40, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(40, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(40, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(40, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(40, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(40, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(40, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 9:
+              display->drawBitmap(40, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+        }
+        if(ammoRight != lastAmmoRight) {
+          lastAmmoRight = ammoRight;
+          display->fillRect(40+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
+          switch(ammoRight) {
+            case 0:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 9:
+              display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+        }
+        display->display();
+    } else if(screenState == Screen_Mamehook_Dual) {
+        if(ammoLeft != lastAmmoLeft) {
+          lastAmmoLeft = ammoLeft;
+          display->fillRect(72, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
+          switch(ammoLeft) {
+            case 0:
+              display->drawBitmap(72, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(72, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(72, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(72, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(72, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(72, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(72, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(72, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(72, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 9:
+              display->drawBitmap(72, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+        }
+        if(ammoRight != lastAmmoRight) {
+          lastAmmoRight = ammoRight;
+          display->fillRect(72+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
+          switch(ammoRight) {
+            case 0:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+            case 9:
+              display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+        }
+        display->display();
     }
-    switch(ammoRight) {
-      case 0:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 1:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 2:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 3:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 4:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 5:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 6:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 7:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 8:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-      case 9:
-        display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-        break;
-    }
-    display->display();
 }
 
 void ExtDisplay::PrintLife(uint8_t life)
 {
-    display->fillRect(0, 16, 63, 48, BLACK);
-    switch(life) {
-      case 9:
-        display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+    if(!life) { lifeEmpty = true; } else { lifeEmpty = false; }
+    if(screenState == Screen_Mamehook_Single) {
+        if(life != lastLife) {
+          lastLife = life;
+          display->fillRect(34, 22, HEART_GLYPH_WIDTH*5, HEART_GLYPH_HEIGHT+20+HEART_GLYPH_HEIGHT, BLACK);
+          switch(life) {
+            case 9:
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
 
-        display->drawBitmap(7, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 8:
-        display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
 
-        display->drawBitmap(13, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(13+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(13+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 7:
-        display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(46, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(46+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(46+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
 
-        display->drawBitmap(19, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(19+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 6:
-        display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(52, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(52+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
 
-        display->drawBitmap(25, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 5:
-        display->drawBitmap(1, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 4:
-        display->drawBitmap(7, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(7+HEART_GLYPH_WIDTH*3, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 3:
-        display->drawBitmap(13, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(13+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(13+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 2:
-        display->drawBitmap(19, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(19+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 1:
-        display->drawBitmap(25, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
-      case 0:
-        break;
-      default: // 10+
-        display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(58, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(40, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(40+HEART_GLYPH_WIDTH*3, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(46, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(46+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(46+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(52, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(52+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(58, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 0:
+              break;
+            default: // 10+
+              display->drawBitmap(34, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
 
-        display->drawBitmap(1, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
-        break;
+              display->drawBitmap(34, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(34+HEART_GLYPH_WIDTH*4, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+          display->display();
+        } 
+    } else if(screenState == Screen_Mamehook_Dual) {
+        if(life != lastLife) {
+          lastLife = life;
+          display->fillRect(1, 22, HEART_GLYPH_WIDTH*5, HEART_GLYPH_HEIGHT+20+HEART_GLYPH_HEIGHT, BLACK);
+          switch(life) {
+            case 9:
+              display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+
+              display->drawBitmap(7, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 8:
+              display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+
+              display->drawBitmap(13, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(13+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(13+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 7:
+              display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+
+              display->drawBitmap(19, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(19+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 6:
+              display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+
+              display->drawBitmap(25, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 5:
+              display->drawBitmap(1, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 4:
+              display->drawBitmap(7, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(7+HEART_GLYPH_WIDTH*3, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 3:
+              display->drawBitmap(13, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(13+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(13+HEART_GLYPH_WIDTH*2, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 2:
+              display->drawBitmap(19, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(19+HEART_GLYPH_WIDTH, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 1:
+              display->drawBitmap(25, 32, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+            case 0:
+              break;
+            default: // 10+
+              display->drawBitmap(1, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 22, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+
+              display->drawBitmap(1, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*2, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*3, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              display->drawBitmap(1+HEART_GLYPH_WIDTH*4, 42, lifeIco, HEART_GLYPH_WIDTH, HEART_GLYPH_HEIGHT, WHITE);
+              break;
+          }
+          display->display();
+        }
     }
-    display->display();
 }

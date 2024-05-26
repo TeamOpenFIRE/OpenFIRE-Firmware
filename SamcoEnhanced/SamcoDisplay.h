@@ -37,11 +37,11 @@ public:
 
     /// @brief Update top panel with new info
     /// @return nothing
-    void TopPanelUpdate(char textInput[16]);
+    void TopPanelUpdate(char textPrefix[7], char textInput[16]);
 
     /// @brief Clear screen for different gun modes
     /// @return nothing
-    void ScreenModeChange(uint8_t screenMode);
+    void ScreenModeChange(int8_t screenMode);
 
     /// @brief Perform maintenance operations (WIP)
     /// @details For when values aren't being updated, but still want to change something on the screen
@@ -92,6 +92,11 @@ private:
 
     bool ammoEmpty = false;
     bool lifeEmpty = false;
+
+    // optimizations
+    uint8_t lastAmmoLeft = 255;
+    uint8_t lastAmmoRight = 255;
+    uint8_t lastLife = 255;
 
     // timestamps, in case we need them for periodic tasks in IdleOps()
     unsigned long ammoTimestamp = 0;
