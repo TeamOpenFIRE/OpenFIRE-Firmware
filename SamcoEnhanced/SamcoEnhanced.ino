@@ -128,6 +128,11 @@
     #include <Adafruit_NeoPixel.h>
 #endif // CUSTOM_NEOPIXEL
 
+#define USES_DISPLAY
+#ifdef USES_DISPLAY
+  #include "SamcoDisplay.h"
+#endif // USES_DISPLAY
+
 //--------------------------------------------------------------------------------------------------------------------------------------
 // Sanity checks and assignments for player number -> common keyboard assignments
 #if PLAYER_NUMBER == 1
@@ -392,7 +397,17 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     int serialSolPulses = 0;                         // How many solenoid pulses are we being told to do?
     int serialSolPulsesLast = 0;                     // What solenoid pulse we've processed last.
     #endif // USES_SOLENOID
+    #ifdef USES_DISPLAY
+    bool serialDisplayChange = false;                // Signal of pending display update, sent by Core 2 to be used by Core 1 in dual core configs
+    uint8_t serialDisplayType = 0;                   // Which type of stats display is in use? 0 = None/Blank, 1 = Life, 2 = Ammo, 3 = Both Life & Ammo
+    uint8_t serialLifeCount = 0;
+    uint8_t serialAmmoCount = 0;
+    #endif // USES_DISPLAY
 #endif // MAMEHOOKER
+
+#ifdef USES_DISPLAY
+ExtDisplay OLED;
+#endif // USES_DISPLAY
 
 unsigned int lastSeen = 0;
 
@@ -646,13 +661,15 @@ void setup() {
      profileData[selectedProfile].rightOffset == 0)) {
         // SHIT, it's a first boot! Prompt to start calibration.
         Serial.println("Preferences data is empty!");
-        SetMode(GunMode_Calibration);
         Serial.println("Pull the trigger to start your first calibration!");
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
         LedOff();
         unsigned long lastT = millis();
         bool LEDisOn = false;
+        #ifdef USES_DISPLAY
+            OLED.ScreenModeChange(ExtDisplay::Screen_Init);
+        #endif // USES_DISPLAY
         while(!(buttons.pressedReleased == BtnMask_Trigger)) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available()) {
@@ -660,7 +677,9 @@ void setup() {
             }
             if(gunMode == GunMode_Docked) {
                 ExecGunModeDocked();
-                SetMode(GunMode_Calibration);
+                #ifdef USES_DISPLAY
+                  OLED.ScreenModeChange(ExtDisplay::Screen_Init);
+                #endif // USES_DISPLAY
             }
             buttons.Poll(1);
             buttons.Repeat();
@@ -681,6 +700,7 @@ void setup() {
                 } 
             }
         }
+        SetMode(GunMode_Calibration);
     } else {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
@@ -781,6 +801,15 @@ void FeedbackSet()
         externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
     }
     #endif // CUSTOM_NEOPIXEL
+    #ifdef USES_DISPLAY
+    // wrapper will manage display validity
+    if(SamcoPreferences::pins.pPeriphSCL >= 0 && SamcoPreferences::pins.pPeriphSDA >= 0 &&
+      // check it's not using the camera's I2C line
+       bitRead(SamcoPreferences::pins.pCamSCL, 1) != bitRead(SamcoPreferences::pins.pPeriphSCL, 1) &&
+       bitRead(SamcoPreferences::pins.pCamSDA, 1) != bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
+        OLED.Begin();
+    }
+    #endif // USES_DISPLAY
 }
 
 // clears currently loaded feedback pins
@@ -912,7 +941,6 @@ void loop1()
         buttons.Poll(0);
 
         #ifdef MAMEHOOKER
-            // Stalling mitigation: make both cores pause when reading serial
             if(Serial.available()) {
                 SerialProcessing();
             }
@@ -1057,6 +1085,9 @@ void loop()
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
+                        #ifdef USES_DISPLAY
+                            OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
+                        #endif // USES_DISPLAY
                     } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
                         if(!serialMode) {
                             Serial.println("Exiting profile selection.");
@@ -1072,6 +1103,9 @@ void loop()
                             LedUpdate(255,0,0);
                         #endif // LED_ENABLE
                         pauseModeSelection = PauseMode_Calibrate;
+                        #ifdef USES_DISPLAY
+                            OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
+                        #endif // USES_DISPLAY
                     }
                 } else if(buttons.pressedReleased == BtnMask_A) {
                     SetPauseModeSelection(false);
@@ -1094,6 +1128,9 @@ void loop()
                           }
                           pauseModeSelectingProfile = true;
                           profileModeSelection = selectedProfile;
+                          #ifdef USES_DISPLAY
+                              OLED.PauseProfileUpdate(profileModeSelection, profileData[0].name, profileData[1].name, profileData[2].name, profileData[3].name);
+                          #endif // USES_DISPLAY
                           #ifdef LED_ENABLE
                               SetLedPackedColor(profileData[selectedProfile].color);
                           #endif // LED_ENABLE
@@ -1130,6 +1167,9 @@ void loop()
                         */
                         case PauseMode_EscapeSignal:
                           SendEscapeKey();
+                          #ifdef USES_DISPLAY
+                              OLED.TopPanelUpdate("", "Sent Escape Key!");
+                          #endif // USES_DISPLAY
                           #ifdef LED_ENABLE
                               for(byte i = 0; i < 3; i++) {
                                   LedUpdate(150,0,150);
@@ -1138,6 +1178,9 @@ void loop()
                                   delay(40);
                               }
                           #endif // LED_ENABLE
+                          #ifdef USES_DISPLAY
+                              OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name);
+                          #endif // USES_DISPLAY
                           break;
                         /*case PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
@@ -1359,6 +1402,22 @@ void ExecRunMode()
             GetPosition();
         }
 
+        #ifdef MAMEHOOKER
+            #ifdef USES_DISPLAY
+                // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
+                // so just do it here using the signal sent by it.
+                if(serialDisplayChange) {
+                    if(serialDisplayType == ExtDisplay::ScreenSerial_Ammo) { OLED.PrintAmmo(serialAmmoCount); }
+                    else if(serialDisplayType == ExtDisplay::ScreenSerial_Life) { OLED.PrintLife(serialLifeCount); }
+                    else if(serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                      OLED.PrintAmmo(serialAmmoCount);
+                      OLED.PrintLife(serialLifeCount);
+                    }
+                    serialDisplayChange = false;
+                }
+            #endif // USES_DISPLAY
+        #endif // MAMEHOOKER
+
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
 
@@ -1460,13 +1519,16 @@ void ExecRunMode()
 // for use with the Samco_4IR_Processing_Sketch_BETA Processing sketch
 void ExecRunModeProcessing()
 {
-    // constant offset added to output values
-    const int processingOffset = 100;
-
     buttons.ReportDisable();
+    #ifdef USES_DISPLAY
+        OLED.ScreenModeChange(ExtDisplay::Screen_IRTest);
+    #endif // USES_DISPLAY
     for(;;) {
         buttons.Poll(1);
         if(Serial.available()) {
+            #ifdef USES_DISPLAY
+                OLED.ScreenModeChange(ExtDisplay::Screen_Docked);
+            #endif // USES_DISPLAY
             SerialProcessingDocked();
         }
         if(runMode != RunMode_Processing) {
@@ -1888,46 +1950,60 @@ void ExecCalMode()
 // Locking function moving from cali point to point
 void CaliMousePosMove(uint8_t caseNumber)
 {
-    uint16_t xPos;
-    uint16_t yPos;
+    int16_t xPos;
+    int16_t yPos;
 
     switch(caseNumber) {
         case Cali_Top:
-          for(yPos = 32768/2; yPos > 0; yPos--) {
+          for(yPos = 32768/2; yPos > 0; yPos = yPos - 10) {
+              if(yPos < 11) { yPos = 0; }
               AbsMouse5.move(32768/2, yPos);
+              #ifndef USES_DISPLAY
               delayMicroseconds(20);
+              #endif // USES_DISPLAY
           }
           delay(5);
           break;
         case Cali_Bottom:
-          for(yPos = 0; yPos < 32768; yPos++) {
+          for(yPos = 0; yPos < 32768; yPos = yPos + 10) {
+              if(yPos > 32757) { yPos = 32768; }
               AbsMouse5.move(32768/2, yPos);
+              #ifndef USES_DISPLAY
               delayMicroseconds(20);
+              #endif // USES_DISPLAY
           }
           delay(5);
           break;
         case Cali_Left:
           yPos = 32768;
-          for(xPos = 32768/2; xPos > 0; xPos--) {
+          for(xPos = 32768/2; xPos > 0; xPos = xPos - 10) {
+              if(xPos < 11) { xPos = 0; }
               AbsMouse5.move(xPos, yPos);
               if(yPos > 32768/2) {
                 yPos--;
               }
+              #ifndef USES_DISPLAY
               delayMicroseconds(20);
+              #endif // USES_DISPLAY
           }
           delay(5);
           break;
         case Cali_Right:
-          for(xPos = 0; xPos < 32768; xPos++) {
+          for(xPos = 0; xPos < 32768; xPos = xPos + 10) {
+              if(xPos > 32757) { xPos = 32768; }
               AbsMouse5.move(xPos, 32768/2);
+              #ifndef USES_DISPLAY
               delayMicroseconds(20);
+              #endif // USES_DISPLAY
           }
           delay(5);
           break;
         case Cali_Center:
-          for(xPos = 32768; xPos > 32768/2; xPos--) {
+          for(xPos = 32768; xPos > 32768/2; xPos = xPos - 10) {
               AbsMouse5.move(xPos, 32768/2);
+              #ifndef USES_DISPLAY
               delayMicroseconds(20);
+              #endif // USES_DISPLAY
           }
           delay(5);
           break;
@@ -1995,16 +2071,16 @@ void GetPosition()
             }
         */
 
+        // Constrain that bisch so negatives don't cause underflow
+        uint16_t conMoveX = constrain(mouseX, 0, res_x);
+        uint16_t conMoveY = constrain(mouseY, 0, res_y);
+
+        // Output mapped to Mouse resolution
+        conMoveX = map(conMoveX, 0, res_x, 0, 32768);
+        conMoveY = map(conMoveY, 0, res_y, 0, 32768);
+
         if(gunMode == GunMode_Run) {
             UpdateLastSeen();
-
-            // Constrain that bisch so negatives don't cause underflow
-            uint16_t conMoveX = constrain(mouseX, 0, res_x);
-            uint16_t conMoveY = constrain(mouseY, 0, res_y);
-
-            // Output mapped to Mouse resolution
-            conMoveX = map(conMoveX, 0, res_x, 0, 32768);
-            conMoveY = map(conMoveY, 0, res_y, 0, 32768);
 
             if(conMoveX == 0 || conMoveX == 32768) {
                 offXAxis = true;
@@ -2030,56 +2106,50 @@ void GetPosition()
                 AbsMouse5.move(conMoveX, conMoveY);
             }
         } else if(gunMode == GunMode_Verification) {
-            // Constrain that bisch so negatives don't cause underflow
-            uint16_t conMoveX = constrain(mouseX, 0, res_x);
-            uint16_t conMoveY = constrain(mouseY, 0, res_y);
-
-            // Output mapped to Mouse resolution
-            conMoveX = map(conMoveX, 0, res_x, 0, 32768);
-            conMoveY = map(conMoveY, 0, res_y, 0, 32768);
             AbsMouse5.move(conMoveX, conMoveY);
-
-        } else if(runMode == RunMode_Processing) {
-            // RAW Camera Output mapped to screen res (1920x1080)
-            int rawX[4];
-            int rawY[4];
-            // Cam Median mapped to screen res (1920x1080)
-            int centerX;
-            int centerY;
-
+        } else {
             if(millis() - testLastStamp > testPrintInterval) {
                 testLastStamp = millis();
+                // RAW Camera Output mapped to screen res (1920x1080)
+                int rawX[4];
+                int rawY[4];
                 // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
                 for (int i = 0; i < 4; i++) {
                     if(profileData[selectedProfile].irLayout) {
-                        Serial.print(map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0));
-                        Serial.print( "," );
-                        Serial.print(map(OpenFIREdiamond.Y(i), 0, 768 << 2, 1080, 0));
-                        Serial.print( "," );
+                        rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 0, 1920);
+                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
                     } else {
-                        Serial.print(map(OpenFIREsquare.X(i), 0, 1023 << 2, 1920, 0));
-                        Serial.print( "," );
-                        Serial.print(map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0));
-                        Serial.print( "," );
+                        rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 1920, 0);
+                        rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0);
                     }
                 }
-                Serial.print( mouseX / 4 );
-                Serial.print( "," );
-                Serial.print( mouseY / 4 );
-                Serial.print( "," );
-                // Median for viewing in processing
-                if(profileData[selectedProfile].irLayout) {
-                    Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 0, 1920));
+                #ifdef USES_DISPLAY
+                    OLED.DrawVisibleIR(rawX, rawY);
+                #endif // USES_DISPLAY
+                if(runMode == RunMode_Processing) {
+                    for(int i = 0; i < 4; i++) {
+                        Serial.print(rawX[i]);
+                        Serial.print( "," );
+                        Serial.print(rawY[i]);
+                        Serial.print( "," );
+                    }
+                    Serial.print( mouseX / 4 );
                     Serial.print( "," );
-                    Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
-                } else {
-                    Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
+                    Serial.print( mouseY / 4 );
                     Serial.print( "," );
-                    Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 1080, 0));
+                    // Median for viewing in processing
+                    if(profileData[selectedProfile].irLayout) {
+                        Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 0, 1920));
+                        Serial.print( "," );
+                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
+                    } else {
+                        Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
+                        Serial.print( "," );
+                        Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 1080, 0));
+                    }
                 }
             }
         }
-
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
         Serial.println("Device not available!");
     }
@@ -3149,23 +3219,10 @@ void SerialProcessingDocked()
 // for normal runmode runtime use w/ e.g. Mamehook et al
 void SerialProcessing()
 {
-    // So, APPARENTLY there is a map of what the serial commands are, at least wrt gun controllers.
-    // "Sx" is a start command, the x being a number from 0-6 (0=sol, 1=motor, 2-4=led colors, 6=everything) but this is more a formal suggestion than anything.
-    // "E" is an end command, which is the cue to hand control over back to the sketch's force feedback.
-    // "M" sets parameters for how the gun should be handled when the game starts:
-    //  - M3 is fullscreen or 4:3, which we don't do so ignore this
-    //  - M5 is auto reload(?). How do we use this?
-    //  - M1 is the reload type (0=none, 1=shoot lower left(?), 2=offscreen button, 3=real offscreen reload)
-    //  - M8 is the type of auto fire (0=single shot, 1="auto"(is this a burst fire, or what?), 2=always/full auto)
-    // "Fx" is the type of force feedback command being received (periods are for readability and not in the actual commands):
-    //  - F0.x = solenoid - 0=off, 1=on, 2=pulse (which is the same as 1 for the solenoid)
-    //  - F1.x.y = rumble motor - 0=off, 1=normal on, 2=pulse (where Y is the number of "pulses" it does)
-    //  - F2/3/4.x.y = Red/Green/Blue (respectively) LED - 0=off, 1=on, 2=pulse (where Y is the strength of the LED)
-    // These commands are all sent as one clump of data, with the letter being the distinguisher.
-    // Apart from "E" (end), each setting bit (S/M) is two chars long, and each feedback bit (F) is four (the command, a padding bit of some kind, and the value).
+    // For more info about Serial commands, see (OpenFIRE wiki link here)
 
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
-    char serialInputS[3] = {0, 0, 0};
+    char serialInputS[3] = {'\0', '\0', '\0'};
 
     switch(serialInput) {
         // Start Signal
@@ -3226,6 +3283,31 @@ void SerialProcessing()
                 }
                 break;
               #endif // USES_SOLENOID
+              #ifdef USES_DISPLAY
+              case 'D':
+                serialInput = Serial.read();                           // Nomf padding byte
+                serialInput = Serial.read();
+                switch(serialInput) {
+                    case '0':
+                      serialDisplayType = ExtDisplay::ScreenSerial_None;
+                      break;
+                    case '1':
+                      serialDisplayType = ExtDisplay::ScreenSerial_Life;
+                      break;
+                    case '2':
+                      serialDisplayType = ExtDisplay::ScreenSerial_Ammo;
+                      break;
+                    case '3':
+                      serialDisplayType = ExtDisplay::ScreenSerial_Both;
+                      break;
+                }
+                if(serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                    OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
+                } else if(serialDisplayType > ExtDisplay::ScreenSerial_None) {
+                    OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+                }
+                break;
+              #endif // USES_DISPLAY
               default:
                 if(!serialMode) {
                     Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
@@ -3241,6 +3323,10 @@ void SerialProcessing()
               serialMode = false;                                    // Turn off serial mode then.
               offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
               serialQueue = 0b00000000;
+              #ifdef USES_DISPLAY
+              serialDisplayType = 0;
+              OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
+              #endif // USES_DISPLAY
               #ifdef LED_ENABLE
                   serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
                   serialLEDPulses = 0;
@@ -3397,7 +3483,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding bit.
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3421,7 +3507,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the x
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3445,7 +3531,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3457,7 +3543,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3478,7 +3564,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3490,7 +3576,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3511,7 +3597,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3523,7 +3609,7 @@ void SerialProcessing()
                     serialInput = Serial.read();                       // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(serialInputS[n] == 'x' || serialInputS[n] == '.') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
                             break;
                         }
                     }
@@ -3535,9 +3621,39 @@ void SerialProcessing()
                 }
                 break;
               #endif // LED_ENABLE
+              #ifdef USES_DISPLAY
+              case 'D':
+                serialInput = Serial.read();
+                switch(serialInput) {
+                  case 'A':
+                    serialInput = Serial.read();
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            break;
+                        }
+                    }
+                    serialAmmoCount = atoi(serialInputS);
+                    serialAmmoCount = constrain(serialAmmoCount, 0, 99);
+                    break;
+                  case 'L':
+                    serialInput = Serial.read();
+                    for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                        if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            break;
+                        }
+                    }
+                    serialLifeCount = atoi(serialInputS);
+                    break;
+                }
+                // screen is handled by core 0, so just signal that it's ready to go now.
+                serialDisplayChange = true;
+                break;
+              #endif // USES_DISPLAY
               #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
               default:
-                Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
+                //Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
               #endif
           }
           // End of 'F'
@@ -3716,6 +3832,7 @@ void SerialHandling()
         }
     }
     #endif // LED_ENABLE
+    // Display is handled in core 0
 }
 
 // Trigger execution path while in Serial handoff mode - pulled
@@ -3781,10 +3898,32 @@ void SetMode(GunMode_e newMode)
     switch(newMode) {
     case GunMode_Run:
         // begin run mode with all 4 points seen
-        lastSeen = 0x0F;        
+        lastSeen = 0x0F;
+        #ifdef USES_DISPLAY
+          if(serialDisplayType == 1) {
+            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+          } else if(serialDisplayType == 2) {
+            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
+          } else {
+            OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
+          }
+          OLED.TopPanelUpdate("Prof: ", profileData[selectedProfile].name);
+        #endif // USES_DISPLAY
+        break;
+    case GunMode_Calibration:
+        #ifdef USES_DISPLAY
+          OLED.ScreenModeChange(ExtDisplay::Screen_Calibrating);
+          OLED.TopPanelUpdate("Cali: ", profileData[selectedProfile].name);
+        #endif // USES_DISPLAY
         break;
     case GunMode_Pause:
         stateFlags |= StateFlag_SavePreferencesEn | StateFlag_PrintSelectedProfile;
+        #ifdef USES_DISPLAY
+          OLED.ScreenModeChange(ExtDisplay::Screen_Pause);
+          OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name);
+          if(SamcoPreferences::toggles.simpleMenu) { OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate); }
+          else { OLED.PauseScreenShow(selectedProfile, profileData[0].name, profileData[1].name, profileData[2].name, profileData[3].name); }
+        #endif // USES_DISPLAY
         break;
     case GunMode_Docked:
         stateFlags |= StateFlag_SavePreferencesEn;
@@ -3795,6 +3934,9 @@ void SetMode(GunMode_e newMode)
             Serial.println(OPENFIRE_BOARD);
             Serial.println(selectedProfile);
         }
+        #ifdef USES_DISPLAY
+          OLED.ScreenModeChange(ExtDisplay::Screen_Docked);
+        #endif // USES_DISPLAY
         break;
     }
 
@@ -3839,26 +3981,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    SamcoPreferences::pins.sRumble >= 0 && SamcoPreferences::pins.oRumble >= 0) {
+                    (SamcoPreferences::pins.sRumble >= 0 || SamcoPreferences::pins.oRumble == -1)) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    SamcoPreferences::pins.sSolenoid >= 0 && SamcoPreferences::pins.oSolenoid >= 0) {
+                    (SamcoPreferences::pins.sSolenoid >= 0 || SamcoPreferences::pins.oSolenoid == -1)) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
             #else
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    SamcoPreferences::pins.oRumble >= 0) {
+                    !(SamcoPreferences::pins.oRumble >= 0)) {
                         pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    SamcoPreferences::pins.oSolenoid >= 0) {
+                    !(SamcoPreferences::pins.oSolenoid >= 0)) {
                         pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
@@ -3872,26 +4014,26 @@ void SetPauseModeSelection(bool isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    SamcoPreferences::pins.sSolenoid >= 0 && SamcoPreferences::pins.oSolenoid >= 0) {
+                    (SamcoPreferences::pins.sSolenoid >= 0 || SamcoPreferences::pins.oSolenoid == -1)) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    SamcoPreferences::pins.sRumble >= 0 && SamcoPreferences::pins.oRumble >= 0) {
+                    (SamcoPreferences::pins.sRumble >= 0 || SamcoPreferences::pins.oRumble == -1)) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
             #else
                 #ifdef USES_SOLENOID
                     if(pauseModeSelection == PauseMode_SolenoidToggle &&
-                    SamcoPreferences::pins.oSolenoid >= 0) {
+                    !(SamcoPreferences::pins.oSolenoid >= 0)) {
                         pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(pauseModeSelection == PauseMode_RumbleToggle &&
-                    SamcoPreferences::pins.oRumble >= 0) {
+                    !(SamcoPreferences::pins.oRumble >= 0)) {
                         pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
@@ -3956,6 +4098,9 @@ void SetPauseModeSelection(bool isIncrement)
           Serial.println("YOU'RE NOT SUPPOSED TO BE SEEING THIS");
           break;
     }
+    #ifdef USES_DISPLAY
+        OLED.PauseListUpdate(pauseModeSelection);
+    #endif // USES_DISPLAY
 }
 
 // Simple Pause Mode - scrolls up/down profiles list
@@ -3979,6 +4124,9 @@ void SetProfileSelection(bool isIncrement)
     #ifdef LED_ENABLE
         SetLedPackedColor(profileData[profileModeSelection].color);
     #endif // LED_ENABLE
+    #ifdef USES_DISPLAY
+        OLED.PauseProfileUpdate(profileModeSelection, profileData[0].name, profileData[1].name, profileData[2].name, profileData[3].name);
+    #endif // USES_DISPLAY
     Serial.print("Selecting profile: ");
     Serial.println(profileData[profileModeSelection].name);
     return;
@@ -4236,6 +4384,9 @@ void SavePreferences()
         }
 
         stateFlags &= ~StateFlag_SavePreferencesEn;
+        #ifdef USES_DISPLAY
+            OLED.ScreenModeChange(ExtDisplay::Screen_Saving);
+        #endif // USES_DISPLAY
     }
     
     // use selected profile as the default
@@ -4247,6 +4398,9 @@ void SavePreferences()
     nvPrefsError = SamcoPreferences::SaveProfiles();
 #endif // SAMCO_FLASH_ENABLE
     if(nvPrefsError == SamcoPreferences::Error_Success) {
+        #ifdef USES_DISPLAY
+            OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
+        #endif // USES_DISPLAY
         Serial.print("Settings saved to ");
         Serial.println(NVRAMlabel);
         SamcoPreferences::SaveToggles();
@@ -4264,6 +4418,9 @@ void SavePreferences()
             }
         #endif // LED_ENABLE
     } else {
+        #ifdef USES_DISPLAY
+            OLED.ScreenModeChange(ExtDisplay::Screen_SaveError);
+        #endif // USES_DISPLAY
         Serial.println("Error saving Preferences.");
         PrintNVPrefsError();
         #ifdef LED_ENABLE
@@ -4275,6 +4432,14 @@ void SavePreferences()
             }
         #endif // LED_ENABLE
     }
+    #ifdef USES_DISPLAY
+        if(gunMode == GunMode_Docked) { OLED.ScreenModeChange(ExtDisplay::Screen_Docked); }
+        else if(gunMode == GunMode_Pause) {
+          OLED.ScreenModeChange(ExtDisplay::Screen_Pause);
+          if(SamcoPreferences::toggles.simpleMenu) { OLED.PauseListUpdate(ExtDisplay::ScreenPause_Save); }
+          else { OLED.PauseScreenShow(selectedProfile, profileData[0].name, profileData[1].name, profileData[2].name, profileData[3].name); }
+        }
+    #endif // USES_DISPLAY
 }
 
 void SelectCalProfileFromBtnMask(uint32_t mask)
@@ -4377,6 +4542,10 @@ bool SelectCalProfile(unsigned int profile)
     if(profileData[profile].runMode < RunMode_Count) {
         SetRunMode((RunMode_e)profileData[profile].runMode);
     }
+
+    #ifdef USES_DISPLAY
+        if(gunMode != GunMode_Docked) { OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name); }
+    #endif // USES_DISPLAY
  
     #ifdef LED_ENABLE
         SetLedColorFromMode();
@@ -4701,21 +4870,26 @@ void BurstFireToggle()
 // Does a cute rumble pattern when on, or blinks LEDs (if any)
 void RumbleToggle()
 {
-    SamcoPreferences::toggles.rumbleActive = !SamcoPreferences::toggles.rumbleActive;                                 // Toggle
-    if(SamcoPreferences::toggles.rumbleActive) {                                            // If we turned ON this mode,
-        Serial.println("Rumble enabled!");
+    SamcoPreferences::toggles.rumbleActive = !SamcoPreferences::toggles.rumbleActive;
+    if(SamcoPreferences::toggles.rumbleActive) {
+        if(!serialMode) { Serial.println("Rumble enabled!"); }
+        #ifdef USES_DISPLAY
+            OLED.TopPanelUpdate("Toggli", "ng Rumble ON");
+        #endif // USES_DISPLAY
         #ifdef LED_ENABLE
-            SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
+            SetLedPackedColor(WikiColor::Salmon);
         #endif // LED_ENABLE
-        digitalWrite(SamcoPreferences::pins.oRumble, HIGH);                            // Pulse the motor on to notify the user,
+        digitalWrite(SamcoPreferences::pins.oRumble, HIGH);       // Pulse the motor on to notify the user,
         delay(300);                                               // Hold that,
-        digitalWrite(SamcoPreferences::pins.oRumble, LOW);                             // Then turn off,
+        digitalWrite(SamcoPreferences::pins.oRumble, LOW);        // Then turn off,
         #ifdef LED_ENABLE
             SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
-        return;
     } else {                                                      // Or if we're turning it OFF,
-        Serial.println("Rumble disabled!");
+        if(!serialMode) { Serial.println("Rumble disabled!"); }
+        #ifdef USES_DISPLAY
+            OLED.TopPanelUpdate("Toggli", "ng Rumble OFF");
+        #endif // USES_DISPLAY
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Salmon);                 // Set a color,
             delay(150);                                           // Keep it on,
@@ -4727,8 +4901,10 @@ void RumbleToggle()
             delay(200);                                           // for a bit,
             SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
-        return;
     }
+    #ifdef USES_DISPLAY
+        OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name);
+    #endif // USES_DISPLAY
 }
 #endif // USES_RUMBLE
 
@@ -4739,7 +4915,10 @@ void SolenoidToggle()
 {
     SamcoPreferences::toggles.solenoidActive = !SamcoPreferences::toggles.solenoidActive;                             // Toggle
     if(SamcoPreferences::toggles.solenoidActive) {                                          // If we turned ON this mode,
-        Serial.println("Solenoid enabled!");
+        if(!serialMode) { Serial.println("Solenoid enabled!"); }
+        #ifdef USES_DISPLAY
+            OLED.TopPanelUpdate("Toggli", "ng Solenoid ON");
+        #endif // USES_DISPLAY
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
         #endif // LED_ENABLE
@@ -4749,9 +4928,11 @@ void SolenoidToggle()
         #ifdef LED_ENABLE
             SetLedPackedColor(profileData[selectedProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
-        return;
     } else {                                                      // Or if we're turning it OFF,
-        Serial.println("Solenoid disabled!");
+        if(!serialMode) { Serial.println("Solenoid disabled!"); }
+        #ifdef USES_DISPLAY
+            OLED.TopPanelUpdate("Toggli", "ng Solenoid OFF");
+        #endif // USES_DISPLAY
         #ifdef LED_ENABLE
             SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
             delay(150);                                           // Keep it on,
@@ -4763,8 +4944,10 @@ void SolenoidToggle()
             delay(200);                                           // for a bit,
             SetLedPackedColor(profileData[selectedProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
-        return;
     }
+    #ifdef USES_DISPLAY
+        OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name);
+    #endif // USES_DISPLAY
 }
 #endif // USES_SOLENOID
 

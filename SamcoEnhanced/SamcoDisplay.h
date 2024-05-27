@@ -49,9 +49,14 @@ public:
     /// @return nothing
     void IdleOps();
 
+    /// @brief Draw seen points here
+    /// @details Should ONLY be used in scenarios where the mouse isn't being updated, i.e. calibration.
+    /// @return nothing
+    void DrawVisibleIR(int pointX[4], int pointY[4]);
+
     /// @brief Draw hotkey pause mode layout
     /// @return nothing
-    void PauseScreenShow();
+    void PauseScreenShow(uint8_t currentProf, char name1[16], char name2[16], char name3[16], char name4[16]);
 
     /// @brief Update simple pause mode list on screen
     /// @return nothing
@@ -59,7 +64,7 @@ public:
 
     /// @brief Update simple pause mode profiles list on screen
     /// @return nothing
-    void PauseProfileUpdate(uint8_t selection);
+    void PauseProfileUpdate(uint8_t selection, char name1[16], char name2[16], char name3[16], char name4[16]);
 
     /// @brief Print save status message
     void SaveScreen(uint8_t status);
@@ -74,19 +79,38 @@ public:
 
     enum ScreenMode_e {
         Screen_None = -1,
-        Screen_Normal = 0,
+        Screen_Init = 0,
+        Screen_Normal,
         Screen_Pause,
         Screen_Profile,
         Screen_Saving,
+        Screen_SaveSuccess,
+        Screen_SaveError,
+        Screen_Calibrating,
+        Screen_IRTest,
+        Screen_Docked,
         Screen_Mamehook_Single,
         Screen_Mamehook_Dual
     };
 
+    enum ScreenPauseList_e {
+        ScreenPause_Calibrate = 0,
+        ScreenPause_ProfileSelect,
+        ScreenPause_Save,
+        ScreenPause_Rumble,
+        ScreenPause_Solenoid,
+        ScreenPause_EscapeKey
+    };
+
+    enum ScreenSerialInit_e {
+        ScreenSerial_None = 0,
+        ScreenSerial_Life,
+        ScreenSerial_Ammo,
+        ScreenSerial_Both
+    };
+
 private:
-    #define NUMBER_GLYPH_WIDTH 21
-    #define NUMBER_GLYPH_HEIGHT 36
-    #define HEART_GLYPH_WIDTH 12
-    #define HEART_GLYPH_HEIGHT 16
+    bool displayValid = false;
 
     int8_t screenState = Screen_None;
 
@@ -103,6 +127,9 @@ private:
     unsigned long lifeTimestamp = 0;
     unsigned long idleTimeStamp = 0;
 
+
+    #define NUMBER_GLYPH_WIDTH 21
+    #define NUMBER_GLYPH_HEIGHT 36
     /// @brief Glyphs for common HUD elements
     static constexpr uint8_t number_0[] = {
         0x1f, 0xff, 0xc0, 0x3f, 0xff, 0xe0, 0x5f, 0xff, 0xd0, 0xe0, 0x00, 0x78, 0xe0, 0x00, 0xf8, 0xe0,
@@ -204,6 +231,8 @@ private:
         0x00, 0x00, 0x38, 0x1f, 0xff, 0xd0, 0x3f, 0xff, 0xe0, 0x1f, 0xff, 0xc0
     };
 
+    #define HEART_GLYPH_WIDTH 12
+    #define HEART_GLYPH_HEIGHT 16
     static constexpr uint8_t lifeIco[] = {
         0xff, 0xf0, 0x80, 0x10, 0x80, 0x10, 0x80, 0x10, 0x90, 0x90, 0xb9, 0xd0, 0xbf, 0xd0, 0xbf, 0xd0,
         0xbf, 0xd0, 0x9f, 0x90, 0x8f, 0x10, 0x86, 0x10, 0x80, 0x10, 0x80, 0x10, 0x80, 0x10, 0xff, 0xf0
@@ -215,7 +244,6 @@ private:
 
     #define DIVIDER_WIDTH 1
     #define DIVIDER_HEIGHT 48
-
     // if only we could draw this vertically, sigh
     static constexpr uint8_t dividerLine[] = {
         0x40, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 
@@ -225,7 +253,6 @@ private:
 
     #define ARROW_WIDTH 9
     #define ARROW_HEIGHT 5
-
     static constexpr uint8_t upArrowGlyph[] = {
         0x08, 0x00, 0x14, 0x00, 0x22, 0x00, 0x41, 0x00, 0x80, 0x80
     };
@@ -236,7 +263,6 @@ private:
 
     #define CUSTSPLASHBANN_WIDTH 80
     #define CUSTSPLASHBANN_HEIGHT 16
-
     static constexpr uint8_t customSplashBanner[] = {
         0x07, 0x00, 0x00, 0x00, 0x00, 0x03, 0xfe, 0xef, 0xf1, 0xff, 0x1f, 0xc0, 0x00, 0x00, 0x00, 0x03, 
         0xfe, 0xef, 0xf9, 0xff, 0x3f, 0xe0, 0x00, 0x00, 0x00, 0x03, 0xfe, 0xef, 0xf9, 0xc0, 0x7a, 0xf0, 
@@ -252,7 +278,6 @@ private:
 
     #define CUSTSPLASH_WIDTH  48
     #define CUSTSPLASH_HEIGHT 48
-
     static constexpr uint8_t customSplash[] = {
         0x00, 0x00, 0x03, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x03, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x03, 0xc0, 
         0x00, 0x00, 0x00, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x03, 

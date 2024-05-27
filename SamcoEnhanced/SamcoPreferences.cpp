@@ -316,7 +316,7 @@ void SamcoPreferences::LoadPresets()
     pins.bHome = -1;
 
 // For the Raspberry Pi Pico - first party baybeeee
-#elifdef ARDUINO_RASPBERRY_PI_PICO
+#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
