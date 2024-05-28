@@ -400,7 +400,6 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     #endif // USES_SOLENOID
     #ifdef USES_DISPLAY
     bool serialDisplayChange = false;                // Signal of pending display update, sent by Core 2 to be used by Core 1 in dual core configs
-    uint8_t serialDisplayType = 0;                   // Which type of stats display is in use? 0 = None/Blank, 1 = Life, 2 = Ammo, 3 = Both Life & Ammo
     uint8_t serialLifeCount = 0;
     uint8_t serialAmmoCount = 0;
     #endif // USES_DISPLAY
@@ -1047,11 +1046,6 @@ void loop()
     // poll/update button states with 1ms interval so debounce mask is more effective
     buttons.Poll(1);
     buttons.Repeat();
-    #ifdef MAMEHOOKER
-    while(Serial.available()) {                             // So we can process serial requests while in Pause Mode.
-        SerialProcessing();
-    }
-    #endif // MAMEHOOKER
 
     if(SamcoPreferences::toggles.holdToPause && pauseHoldStarted) {
         #ifdef USES_RUMBLE
@@ -1408,9 +1402,9 @@ void ExecRunMode()
                 // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
                 // so just do it here using the signal sent by it.
                 if(serialDisplayChange) {
-                    if(serialDisplayType == ExtDisplay::ScreenSerial_Ammo) { OLED.PrintAmmo(serialAmmoCount); }
-                    else if(serialDisplayType == ExtDisplay::ScreenSerial_Life) { OLED.PrintLife(serialLifeCount); }
-                    else if(serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                    if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) { OLED.PrintAmmo(serialAmmoCount); }
+                    else if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) { OLED.PrintLife(serialLifeCount); }
+                    else if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
                       OLED.PrintAmmo(serialAmmoCount);
                       OLED.PrintLife(serialLifeCount);
                     }
@@ -2393,7 +2387,7 @@ void AnalogStickPoll()
 void SerialProcessingDocked()
 {
     char serialInput = Serial.read();
-    char serialInputS[3] = {0, 0, 0};
+    char serialInputS[4];
 
     switch(serialInput) {
         case 'X':
@@ -3213,7 +3207,7 @@ void SerialProcessing()
     // For more info about Serial commands, see (OpenFIRE wiki link here)
 
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
-    char serialInputS[3] = {'\0', '\0', '\0'};
+    char serialInputS[4];
 
     switch(serialInput) {
         // Start Signal
@@ -3280,21 +3274,25 @@ void SerialProcessing()
                 serialInput = Serial.read();
                 switch(serialInput) {
                     case '0':
-                      serialDisplayType = ExtDisplay::ScreenSerial_None;
+                      OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
                       break;
                     case '1':
-                      serialDisplayType = ExtDisplay::ScreenSerial_Life;
+                      OLED.serialDisplayType = ExtDisplay::ScreenSerial_Life;
                       break;
                     case '2':
-                      serialDisplayType = ExtDisplay::ScreenSerial_Ammo;
+                      OLED.serialDisplayType = ExtDisplay::ScreenSerial_Ammo;
                       break;
                     case '3':
-                      serialDisplayType = ExtDisplay::ScreenSerial_Both;
+                      OLED.serialDisplayType = ExtDisplay::ScreenSerial_Both;
                       break;
                 }
-                if(serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                if(Serial.peek() == 'B') {
+                    Serial.read();
+                    OLED.lifeBar = true;
+                } else { OLED.lifeBar = false; }
+                if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
                     OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
-                } else if(serialDisplayType > ExtDisplay::ScreenSerial_None) {
+                } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
                     OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
                 }
                 break;
@@ -3315,7 +3313,7 @@ void SerialProcessing()
               offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
               serialQueue = 0b00000000;
               #ifdef USES_DISPLAY
-              serialDisplayType = 0;
+              OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
               OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
               #endif // USES_DISPLAY
               #ifdef LED_ENABLE
@@ -3891,10 +3889,10 @@ void SetMode(GunMode_e newMode)
         // begin run mode with all 4 points seen
         lastSeen = 0x0F;
         #ifdef USES_DISPLAY
-          if(serialDisplayType == 1) {
-            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
-          } else if(serialDisplayType == 2) {
+          if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
             OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
+          } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
+            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
           } else {
             OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
           }
