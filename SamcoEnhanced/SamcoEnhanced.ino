@@ -1954,8 +1954,8 @@ void CaliMousePosMove(uint8_t caseNumber)
     int32_t xPos;
     int32_t yPos;
 
-    // Note: for some reason, adding the screen adds extra overhead here,
-    // so we have to move these in bigger chunks.
+    // Note: All TinyUSB device updates are blocking when a previous signal hasn't finished transmitting,
+    // so we skip chunks to speed things the hell up.
     // These originally were inc/decrementing by 1 with a 20us delay between.
 
     switch(caseNumber) {
@@ -1963,9 +1963,6 @@ void CaliMousePosMove(uint8_t caseNumber)
           for(yPos = 32768/2; yPos > 0; yPos = yPos - 30) {
               if(yPos < 31) { yPos = 0; }
               AbsMouse5.move(32768/2, yPos);
-              #ifndef USES_DISPLAY
-              delayMicroseconds(20);
-              #endif // USES_DISPLAY
           }
           delay(5);
           break;
@@ -1973,9 +1970,6 @@ void CaliMousePosMove(uint8_t caseNumber)
           for(yPos = 0; yPos < 32768; yPos = yPos + 30) {
               if(yPos > 32768-31) { yPos = 32768; }
               AbsMouse5.move(32768/2, yPos);
-              #ifndef USES_DISPLAY
-              delayMicroseconds(20);
-              #endif // USES_DISPLAY
           }
           delay(5);
           break;
@@ -1987,9 +1981,6 @@ void CaliMousePosMove(uint8_t caseNumber)
               if(yPos > 32768/2) {
                 yPos = yPos - 25;
               }
-              #ifndef USES_DISPLAY
-              delayMicroseconds(20);
-              #endif // USES_DISPLAY
           }
           delay(5);
           break;
@@ -1997,9 +1988,6 @@ void CaliMousePosMove(uint8_t caseNumber)
           for(xPos = 0; xPos < 32768; xPos = xPos + 30) {
               if(xPos > 32768-31) { xPos = 32768; }
               AbsMouse5.move(xPos, 32768/2);
-              #ifndef USES_DISPLAY
-              delayMicroseconds(20);
-              #endif // USES_DISPLAY
           }
           delay(5);
           break;
@@ -2007,9 +1995,6 @@ void CaliMousePosMove(uint8_t caseNumber)
           for(xPos = 32768; xPos > 32768/2; xPos = xPos - 30) {
               if(xPos < 32768/2) { xPos = 32768/2; }
               AbsMouse5.move(xPos, 32768/2);
-              #ifndef USES_DISPLAY
-              delayMicroseconds(20);
-              #endif // USES_DISPLAY
           }
           delay(5);
           break;
