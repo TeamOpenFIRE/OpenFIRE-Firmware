@@ -128,6 +128,7 @@
     #include <Adafruit_NeoPixel.h>
 #endif // CUSTOM_NEOPIXEL
 
+  // Leave this uncommented to enable optional support for SSD1306 monochrome OLED displays.
 #define USES_DISPLAY
 #ifdef USES_DISPLAY
   #include "SamcoDisplay.h"
@@ -1950,13 +1951,17 @@ void ExecCalMode()
 // Locking function moving from cali point to point
 void CaliMousePosMove(uint8_t caseNumber)
 {
-    int16_t xPos;
-    int16_t yPos;
+    int32_t xPos;
+    int32_t yPos;
+
+    // Note: for some reason, adding the screen adds extra overhead here,
+    // so we have to move these in bigger chunks.
+    // These originally were inc/decrementing by 1 with a 20us delay between.
 
     switch(caseNumber) {
         case Cali_Top:
-          for(yPos = 32768/2; yPos > 0; yPos = yPos - 10) {
-              if(yPos < 11) { yPos = 0; }
+          for(yPos = 32768/2; yPos > 0; yPos = yPos - 30) {
+              if(yPos < 31) { yPos = 0; }
               AbsMouse5.move(32768/2, yPos);
               #ifndef USES_DISPLAY
               delayMicroseconds(20);
@@ -1965,8 +1970,8 @@ void CaliMousePosMove(uint8_t caseNumber)
           delay(5);
           break;
         case Cali_Bottom:
-          for(yPos = 0; yPos < 32768; yPos = yPos + 10) {
-              if(yPos > 32757) { yPos = 32768; }
+          for(yPos = 0; yPos < 32768; yPos = yPos + 30) {
+              if(yPos > 32768-31) { yPos = 32768; }
               AbsMouse5.move(32768/2, yPos);
               #ifndef USES_DISPLAY
               delayMicroseconds(20);
@@ -1976,11 +1981,11 @@ void CaliMousePosMove(uint8_t caseNumber)
           break;
         case Cali_Left:
           yPos = 32768;
-          for(xPos = 32768/2; xPos > 0; xPos = xPos - 10) {
-              if(xPos < 11) { xPos = 0; }
+          for(xPos = 32768/2; xPos > 0; xPos = xPos - 30) {
+              if(xPos < 31) { xPos = 0; }
               AbsMouse5.move(xPos, yPos);
               if(yPos > 32768/2) {
-                yPos--;
+                yPos = yPos - 25;
               }
               #ifndef USES_DISPLAY
               delayMicroseconds(20);
@@ -1989,8 +1994,8 @@ void CaliMousePosMove(uint8_t caseNumber)
           delay(5);
           break;
         case Cali_Right:
-          for(xPos = 0; xPos < 32768; xPos = xPos + 10) {
-              if(xPos > 32757) { xPos = 32768; }
+          for(xPos = 0; xPos < 32768; xPos = xPos + 30) {
+              if(xPos > 32768-31) { xPos = 32768; }
               AbsMouse5.move(xPos, 32768/2);
               #ifndef USES_DISPLAY
               delayMicroseconds(20);
@@ -1999,7 +2004,8 @@ void CaliMousePosMove(uint8_t caseNumber)
           delay(5);
           break;
         case Cali_Center:
-          for(xPos = 32768; xPos > 32768/2; xPos = xPos - 10) {
+          for(xPos = 32768; xPos > 32768/2; xPos = xPos - 30) {
+              if(xPos < 32768/2) { xPos = 32768/2; }
               AbsMouse5.move(xPos, 32768/2);
               #ifndef USES_DISPLAY
               delayMicroseconds(20);
