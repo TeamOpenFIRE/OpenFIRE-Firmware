@@ -1009,8 +1009,9 @@ void loop1()
                     triggerHeld = false;
                     burstFiring = false;
                     burstFireCount = 0;
-                    SetMode(GunMode_Pause);
+                    pauseModeSelection = PauseMode_Calibrate;
                     buttons.ReportDisable();
+                    SetMode(GunMode_Pause);
                 }
             }
         } else {
