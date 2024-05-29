@@ -1058,7 +1058,6 @@ void loop()
             buttons.Poll(1);
         }
         pauseHoldStarted = false;
-        pauseModeSelection = PauseMode_Calibrate;
         pauseModeSelectingProfile = false;
     }
 
@@ -1462,6 +1461,7 @@ void ExecRunMode()
                     triggerHeld = false;
                     burstFiring = false;
                     burstFireCount = 0;
+                    pauseModeSelection = PauseMode_Calibrate;
                     SetMode(GunMode_Pause);
                     buttons.ReportDisable();
                     return;
@@ -3910,7 +3910,7 @@ void SetMode(GunMode_e newMode)
         #ifdef USES_DISPLAY
           OLED.ScreenModeChange(ExtDisplay::Screen_Pause);
           OLED.TopPanelUpdate("Using ", profileData[selectedProfile].name);
-          if(SamcoPreferences::toggles.simpleMenu) { OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate); }
+          if(SamcoPreferences::toggles.simpleMenu) { OLED.PauseListUpdate(pauseModeSelection); }
           else { OLED.PauseScreenShow(selectedProfile, profileData[0].name, profileData[1].name, profileData[2].name, profileData[3].name); }
         #endif // USES_DISPLAY
         break;
