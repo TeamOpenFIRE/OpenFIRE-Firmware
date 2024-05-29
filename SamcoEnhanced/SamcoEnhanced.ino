@@ -1972,10 +1972,9 @@ void CaliMousePosMove(uint8_t caseNumber)
           yPos = 32768;
           for(xPos = 32768/2; xPos > 0; xPos = xPos - 30) {
               if(xPos < 31) { xPos = 0; }
+              if(yPos > 32768/2) { yPos = yPos - 30; }
+              else { yPos = 32768/2; }
               AbsMouse5.move(xPos, yPos);
-              if(yPos > 32768/2) {
-                yPos = yPos - 25;
-              }
           }
           delay(5);
           break;
