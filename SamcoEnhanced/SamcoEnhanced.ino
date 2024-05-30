@@ -3305,48 +3305,53 @@ void SerialProcessing()
           }
           break;
         // End Signal
+        // Check to make sure that 'E' is not actually a glitched command bit
+        // by ensuring that there's no adjacent bit.
         case 'E':
-          if(!serialMode) {
-              Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
-          } else {
-              serialMode = false;                                    // Turn off serial mode then.
-              offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-              serialQueue = 0b00000000;
-              #ifdef USES_DISPLAY
-              OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-              OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
-              #endif // USES_DISPLAY
-              #ifdef LED_ENABLE
-                  serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
-                  serialLEDPulses = 0;
-                  serialLEDPulsesLast = 0;
-                  serialLEDPulseRising = true;
-                  serialLEDR = 0;                                    // Clear stale serial LED values.
-                  serialLEDG = 0;
-                  serialLEDB = 0;
-                  serialLEDChange = false;
-                  LedOff();                                          // Turn it off, and let lastSeen handle it from here.
-              #endif // LED_ENABLE
-              #ifdef USES_RUMBLE
-                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);
-                  serialRumbPulseStage = 0;
-                  serialRumbPulses = 0;
-                  serialRumbPulsesLast = 0;
-              #endif // USES_RUMBLE
-              #ifdef USES_SOLENOID
-                  digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
-                  serialSolPulseOn = false;
-                  serialSolPulses = 0;
-                  serialSolPulsesLast = 0;
-              #endif // USES_SOLENOID
-              AbsMouse5.release(MOUSE_LEFT);
-              AbsMouse5.release(MOUSE_RIGHT);
-              AbsMouse5.release(MOUSE_MIDDLE);
-              AbsMouse5.release(MOUSE_BUTTON4);
-              AbsMouse5.release(MOUSE_BUTTON5);
-              Keyboard.releaseAll();
-              delay(5);
-              Serial.println("Received end serial pulse, releasing FF override.");
+          if(Serial.peek() == -1) {
+              if(!serialMode) {
+                  Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
+              } else {
+                  serialMode = false;                                    // Turn off serial mode then.
+                  offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
+                  serialQueue = 0b00000000;
+                  #ifdef USES_DISPLAY
+                  OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
+                  OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
+                  #endif // USES_DISPLAY
+                  #ifdef LED_ENABLE
+                      serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
+                      serialLEDPulses = 0;
+                      serialLEDPulsesLast = 0;
+                      serialLEDPulseRising = true;
+                      serialLEDR = 0;                                    // Clear stale serial LED values.
+                      serialLEDG = 0;
+                      serialLEDB = 0;
+                      serialLEDChange = false;
+                      LedOff();                                          // Turn it off, and let lastSeen handle it from here.
+                  #endif // LED_ENABLE
+                  #ifdef USES_RUMBLE
+                      digitalWrite(SamcoPreferences::pins.oRumble, LOW);
+                      serialRumbPulseStage = 0;
+                      serialRumbPulses = 0;
+                      serialRumbPulsesLast = 0;
+                  #endif // USES_RUMBLE
+                  #ifdef USES_SOLENOID
+                      digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
+                      serialSolPulseOn = false;
+                      serialSolPulses = 0;
+                      serialSolPulsesLast = 0;
+                  #endif // USES_SOLENOID
+                  AbsMouse5.release(MOUSE_LEFT);
+                  AbsMouse5.release(MOUSE_RIGHT);
+                  AbsMouse5.release(MOUSE_MIDDLE);
+                  AbsMouse5.release(MOUSE_BUTTON4);
+                  AbsMouse5.release(MOUSE_BUTTON5);
+                  Keyboard.releaseAll();
+                  delay(5);
+                  Serial.println("Received end serial pulse, releasing FF override.");
+              }
+              break;
           }
           break;
         // owo SPECIAL SETUP EH?
