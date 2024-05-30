@@ -85,6 +85,10 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode)
 {
     if(displayValid) {
         display->fillRect(0, 16, 128, 48, BLACK);
+        if(screenState >= Screen_Mamehook_Single &&
+           screenMode == Screen_Normal) {
+            currentAmmo = 0, currentLife = 0;
+        }
         screenState = screenMode;
         display->setTextColor(WHITE, BLACK);
         switch(screenMode) {
