@@ -700,7 +700,13 @@ void setup() {
                 } 
             }
         }
-        SetMode(GunMode_Calibration);
+        // Because the app offers cali options, just check to make sure that
+        // current prof wasn't cal'd from THERE for sanity.
+        if((profileData[selectedProfile].topOffset == 0 &&
+            profileData[selectedProfile].bottomOffset == 0 && 
+            profileData[selectedProfile].leftOffset == 0 &&
+            profileData[selectedProfile].rightOffset == 0)) { SetMode(GunMode_Calibration); }
+            else { SetMode(GunMode_Run); }
     } else {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
