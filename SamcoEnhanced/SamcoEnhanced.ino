@@ -805,6 +805,7 @@ void FeedbackSet()
     #ifdef CUSTOM_NEOPIXEL
     if(SamcoPreferences::pins.oPixel >= 0) {
         externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
+        externPixel->begin();
     }
     #endif // CUSTOM_NEOPIXEL
     #ifdef USES_DISPLAY
@@ -859,10 +860,6 @@ void PinsReset()
         #ifdef CUSTOM_NEOPIXEL
             if(externPixel != nullptr) {
                 delete externPixel;
-            }
-            if(SamcoPreferences::pins.oPixel >= 0) {
-                externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
-                externPixel->begin();
             }
         #endif // CUSTOM_NEOPIXEL
     #endif // LED_ENABLE
@@ -4601,11 +4598,6 @@ void LedInit()
     #ifdef NEOPIXEL_PIN
         neopixel.begin();
     #endif // NEOPIXEL_PIN
-    #ifdef CUSTOM_NEOPIXEL
-        if(SamcoPreferences::pins.oPixel >= 0) {
-            externPixel->begin();
-        }
-    #endif // CUSTOM_NEOPIXEL
  
     #ifdef ARDUINO_NANO_RP2040_CONNECT
     pinMode(LEDR, OUTPUT);
