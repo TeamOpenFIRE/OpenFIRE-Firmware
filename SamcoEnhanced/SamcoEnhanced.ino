@@ -2111,9 +2111,6 @@ void GetPosition()
                         rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0);
                     }
                 }
-                #ifdef USES_DISPLAY
-                    OLED.DrawVisibleIR(rawX, rawY);
-                #endif // USES_DISPLAY
                 if(runMode == RunMode_Processing) {
                     for(int i = 0; i < 4; i++) {
                         Serial.print(rawX[i]);
@@ -2136,6 +2133,9 @@ void GetPosition()
                         Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 1080, 0));
                     }
                 }
+                #ifdef USES_DISPLAY
+                    OLED.DrawVisibleIR(rawX, rawY);
+                #endif // USES_DISPLAY
             }
         }
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
