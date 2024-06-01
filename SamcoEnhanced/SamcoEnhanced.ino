@@ -1075,6 +1075,10 @@ void loop()
         pauseModeSelectingProfile = false;
     }
 
+    #ifdef MAMEHOOKER
+        if(Serial.available()) { SerialProcessing(); }
+    #endif // MAMEHOOKER
+
     switch(gunMode) {
         case GunMode_Pause:
             if(SamcoPreferences::toggles.simpleMenu) {
@@ -3321,10 +3325,13 @@ void SerialProcessing()
                 if(Serial.read() == 'B') {
                     OLED.lifeBar = true;
                 } else { OLED.lifeBar = false; }
-                if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
-                    OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
-                } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
-                    OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+                // prevent glitching if currently in pause mode
+                if(gunMode == GunMode_Run) {
+                    if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                        OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
+                    } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
+                        OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+                    }
                 }
                 break;
               #endif // USES_DISPLAY
@@ -3349,7 +3356,7 @@ void SerialProcessing()
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
                   OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-                  OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
+                  if(gunMode == GunMode_Run) { OLED.ScreenModeChange(ExtDisplay::Screen_Normal); }
                   #endif // USES_DISPLAY
                   #ifdef LED_ENABLE
                       serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -3360,7 +3367,7 @@ void SerialProcessing()
                       serialLEDG = 0;
                       serialLEDB = 0;
                       serialLEDChange = false;
-                      LedOff();                                          // Turn it off, and let lastSeen handle it from here.
+                      if(gunMode == GunMode_Run) { LedOff(); }           // Turn it off, and let lastSeen handle it from here.
                   #endif // LED_ENABLE
                   #ifdef USES_RUMBLE
                       digitalWrite(SamcoPreferences::pins.oRumble, LOW);
