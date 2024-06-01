@@ -371,6 +371,7 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
     bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
     bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     byte serialQueue = 0b00000000;                   // Bitmask of events we've queued from the serial receipt.
+    bool serialARcorrection = false;                 // 4:3 AR correction mode flag
     // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.
     #ifdef LED_ENABLE
     unsigned long serialLEDPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked LED pulse update we iterated.
@@ -708,6 +709,15 @@ void setup() {
             profileData[selectedProfile].rightOffset == 0)) { SetMode(GunMode_Calibration); }
             else { SetMode(GunMode_Run); }
     } else {
+        /* yeah for some reason this isn't working yet. :(
+        // unofficial official "MiSTer mode" - default to camera -> left stick if trigger's held.
+        buttons.Poll(1);
+        buttons.Repeat();
+        if(buttons.debounced == BtnMask_Trigger) {
+            buttons.analogOutput = true;
+            Gamepad16.stickRight = true;
+        }
+        */
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
     }
@@ -2060,8 +2070,8 @@ void GetPosition()
         */
 
         // Constrain that bisch so negatives don't cause underflow
-        uint16_t conMoveX = constrain(mouseX, 0, res_x);
-        uint16_t conMoveY = constrain(mouseY, 0, res_y);
+        int32_t conMoveX = constrain(mouseX, 0, res_x);
+        int32_t conMoveY = constrain(mouseY, 0, res_y);
 
         // Output mapped to Mouse resolution
         conMoveX = map(conMoveX, 0, res_x, 0, 32768);
@@ -2069,6 +2079,11 @@ void GetPosition()
 
         if(gunMode == GunMode_Run) {
             UpdateLastSeen();
+
+            if(serialARcorrection) {
+                conMoveX = map(conMoveX, 4147, 28697, 0, 32768);
+                conMoveX = constrain(conMoveX, 0, 32768);
+            }
 
             if(conMoveX == 0 || conMoveX == 32768) {
                 offXAxis = true;
@@ -3243,21 +3258,35 @@ void SerialProcessing()
           serialInput = Serial.read();                               // Read the second bit.
           switch(serialInput) {
               case '1':
-                if(serialMode) {
-                    offscreenButtonSerial = true;
-                } else {
-                    // eh, might be useful for Linux Supermodel users.
-                    offscreenButton = !offscreenButton;
-                    if(offscreenButton) {
-                        Serial.println("Setting offscreen button mode on!");
+                Serial.read();
+                serialInput = Serial.read();
+                if(serialInput > '0') {
+                    if(serialMode) {
+                        offscreenButtonSerial = true;
                     } else {
+                        // eh, might be useful for Linux Supermodel users.
+                        offscreenButton = true;
+                        Serial.println("Setting offscreen button mode on!");
+                    }
+                } else {
+                    if(serialMode) { offscreenButtonSerial = false; }
+                    else {
+                        offscreenButton = false;
                         Serial.println("Setting offscreen button mode off!");
                     }
                 }
                 break;
+              case '3':
+                Serial.read();                                         // nomf
+                serialARcorrection = Serial.read() - '0';
+                if(!serialMode) {
+                    if(serialARcorrection) { Serial.println("Setting 4:3 correction on!"); }
+                    else { Serial.println("Setting 4:3 correction off!"); }
+                }
+                break;
               #ifdef USES_SOLENOID
               case '8':
-                serialInput = Serial.read();                           // Nomf the padding bit.
+                Serial.read();                                         // Nomf the padding bit.
                 serialInput = Serial.read();                           // Read the next.
                 if(serialInput == '1') {
                     burstFireActive = true;
@@ -3273,7 +3302,7 @@ void SerialProcessing()
               #endif // USES_SOLENOID
               #ifdef USES_DISPLAY
               case 'D':
-                serialInput = Serial.read();                           // Nomf padding byte
+                Serial.read();                                         // Nomf padding byte
                 serialInput = Serial.read();
                 switch(serialInput) {
                     case '0':
@@ -3289,8 +3318,7 @@ void SerialProcessing()
                       OLED.serialDisplayType = ExtDisplay::ScreenSerial_Both;
                       break;
                 }
-                if(Serial.peek() == 'B') {
-                    Serial.read();
+                if(Serial.read() == 'B') {
                     OLED.lifeBar = true;
                 } else { OLED.lifeBar = false; }
                 if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
@@ -3318,6 +3346,7 @@ void SerialProcessing()
                   serialMode = false;                                    // Turn off serial mode then.
                   offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
                   serialQueue = 0b00000000;
+                  serialARcorrection = false;
                   #ifdef USES_DISPLAY
                   OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
                   OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
@@ -3470,7 +3499,7 @@ void SerialProcessing()
               #ifdef USES_SOLENOID
               // Solenoid bits
               case '0':
-                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                Serial.read();                                         // nomf the padding
                 serialInput = Serial.read();                           // Read the next number.
                 if(serialInput == '1') {         // Is it a solenoid "on" command?)
                     bitSet(serialQueue, 0);                            // Queue the solenoid on bit.
@@ -3494,14 +3523,14 @@ void SerialProcessing()
               #ifdef USES_RUMBLE
               // Rumble bits
               case '1':
-                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                Serial.read();                                         // nomf the padding
                 serialInput = Serial.read();                           // read the next number.
                 if(serialInput == '1') {         // Is it an on signal?
                     bitSet(serialQueue, 2);                            // Queue the rumble on bit.
                 } else if(serialInput == '2' &&  // Is it a pulsed on signal?
                 !bitRead(serialQueue, 3)) {      // (and we aren't already pulsing?)
                     bitSet(serialQueue, 3);                            // Set the rumble pulsed bit.
-                    serialInput = Serial.read();                       // nomf the x
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3521,11 +3550,11 @@ void SerialProcessing()
               // LED Red bits
               case '2':
                 serialLEDChange = true;                                // Set that we've changed an LED here!
-                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                Serial.read();                                         // nomf the padding
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
                     bitSet(serialQueue, 4);                            // set that here!
-                    serialInput = Serial.read();                       // nomf the padding
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3537,7 +3566,7 @@ void SerialProcessing()
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                     bitSet(serialQueue, 7);                            // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
-                    serialInput = Serial.read();                       // nomf the padding
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3554,11 +3583,11 @@ void SerialProcessing()
               // LED Green bits
               case '3':
                 serialLEDChange = true;                                // Set that we've changed an LED here!
-                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                Serial.read();                                         // nomf the padding
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
                     bitSet(serialQueue, 5);                            // set that here!
-                    serialInput = Serial.read();                       // nomf the padding
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3570,7 +3599,7 @@ void SerialProcessing()
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                     bitSet(serialQueue, 7);                            // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
-                    serialInput = Serial.read();                       // nomf the padding
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3587,7 +3616,7 @@ void SerialProcessing()
               // LED Blue bits
               case '4':
                 serialLEDChange = true;                                // Set that we've changed an LED here!
-                serialInput = Serial.read();                           // nomf the padding since it's meaningless.
+                Serial.read();                                         // nomf the padding
                 serialInput = Serial.read();                           // Read the next number
                 if(serialInput == '1') {         // is it an "on" command?
                     bitSet(serialQueue, 6);                       // set that here!
@@ -3603,7 +3632,7 @@ void SerialProcessing()
                 !bitRead(serialQueue, 7)) {      // (and we haven't already sent a pulse command?)
                     bitSet(serialQueue, 7);                       // Set the pulse bit!
                     serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
-                    serialInput = Serial.read();                       // nomf the padding
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3623,7 +3652,7 @@ void SerialProcessing()
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'A':
-                    serialInput = Serial.read();
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
@@ -3634,7 +3663,7 @@ void SerialProcessing()
                     serialAmmoCount = constrain(serialAmmoCount, 0, 99);
                     break;
                   case 'L':
-                    serialInput = Serial.read();
+                    Serial.read();                                     // nomf the padding
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                         if(Serial.peek() < '0' || Serial.peek() > '9') {
