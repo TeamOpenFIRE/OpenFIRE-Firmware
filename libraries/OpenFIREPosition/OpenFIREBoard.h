@@ -23,8 +23,12 @@
 #define OPENFIRE_BOARD "arduinoNanoRP2040"
 #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
 #define OPENFIRE_BOARD "waveshareZero"
+#elifdef ARDUINO_YD_2040
+#define OPENFIRE_BOARD "vcc-gndYD"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
 #define OPENFIRE_BOARD "rpipico"
+#elifdef ARDUINO_RASPBERRY_PI_PICO_W
+#define OPENFIRE_BOARD "rpipicow"
 #else
 #define OPENFIRE_BOARD "generic"
 #endif // board
