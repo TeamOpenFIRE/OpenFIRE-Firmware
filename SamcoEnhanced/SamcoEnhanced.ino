@@ -64,6 +64,7 @@
 #include <OpenFIREConst.h>
 #include "SamcoColours.h"
 #include "SamcoPreferences.h"
+#include "OpenFIREFeedback.h"
 
 #ifdef ARDUINO_ARCH_RP2040
   #include <hardware/pwm.h>
@@ -224,18 +225,6 @@ LightgunButtonsStatic<ButtonCount> lgbData;
 // button object instance
 LightgunButtons buttons(lgbData, ButtonCount);
 
-/*
-// WIP, some sort of generic button handler table for pause mode
-// pause button function
-typedef void (*PauseModeBtnFn_t)();
-
-// pause mode function
-typedef struct PauseModeFnEntry_s {
-    uint32_t buttonMask;
-    PauseModeBtnFn_t pfn;
-} PauseModeFnEntry_t;
-*/
-
 // button combo to send an escape keypress
 uint32_t EscapeKeyBtnMask = BtnMask_Reload | BtnMask_Start;
 
@@ -318,45 +307,10 @@ int mouseY;
 //int moveYAxisArr[3] = {0, 0, 0};
 //int moveIndex = 0;
 
-  // The boring inits related to the things I added.
-// Offscreen bits:
-bool offXAxis = false;                           // Supercedes the inliner every trigger pull, we just check each axis individually.
-bool offYAxis = false;
-
-// Boring values for the solenoid timing stuff:
-#ifdef USES_SOLENOID
-    bool burstFireActive = false;
-    unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
-    bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
-    #ifdef USES_TEMP
-        uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-        uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-        const unsigned int solenoidWarningInterval = SamcoPreferences::settings.solenoidFastInterval * 5; // for if solenoid is getting toasty.
-    #endif // USES_TEMP
-#endif // USES_SOLENOID
-
-// For burst firing stuff:
-byte burstFireCount = 0;                         // What shot are we on?
-byte burstFireCountLast = 0;                     // What shot have we last processed?
-bool burstFiring = false;                        // Are we in a burst fire command?
-
 // For offscreen button stuff:
 bool offscreenButton = false;                    // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
 bool offscreenBShot = false;                     // For offscreenButton functionality, to track if we shot off the screen.
 bool buttonPressed = false;                      // Sanity check.
-
-// For autofire:
-bool triggerHeld = false;                        // Trigger SHOULDN'T be being pulled by default, right?
-
-// For rumble:
-#ifdef USES_RUMBLE
-    uint16_t rumbleIntensity = 255;              // The strength of the rumble motor, 0=off to 255=maxPower.
-    uint16_t rumbleInterval = 125;               // How long to wait for the whole rumble command, in ms.
-    unsigned long previousMillisRumble = 0;      // our time since the rumble motor event started
-    bool rumbleHappening = false;                // To keep track on if this is a rumble command or not.
-    bool rumbleHappened = false;                 // If we're holding, this marks we sent a rumble command already.
-    // We need the rumbleHappening because of the variable nature of the PWM controlling the motor.
-#endif // USES_RUMBLE
 
 #ifdef USES_ANALOG
     bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
@@ -407,8 +361,12 @@ bool triggerHeld = false;                        // Trigger SHOULDN'T be being p
 #endif // MAMEHOOKER
 
 #ifdef USES_DISPLAY
+// Display wrapper interface
 ExtDisplay OLED;
 #endif // USES_DISPLAY
+
+// Force feedback interface
+FFB OF_FFB;
 
 unsigned int lastSeen = 0;
 
@@ -1008,20 +966,9 @@ void loop1()
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > SamcoPreferences::settings.pauseHoldLength) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
-                    #ifdef USES_SOLENOID
-                        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
-                        solenoidFirstShot = false;
-                    #endif // USES_SOLENOID
-                    #ifdef USES_RUMBLE
-                        digitalWrite(SamcoPreferences::pins.oRumble, LOW);
-                        rumbleHappening = false;
-                        rumbleHappened = false;
-                    #endif // USES_RUMBLE
+                    OF_FFB.FFBShutdown();
                     offscreenBShot = false;
                     buttonPressed = false;
-                    triggerHeld = false;
-                    burstFiring = false;
-                    burstFireCount = 0;
                     pauseModeSelection = PauseMode_Calibrate;
                     buttons.ReportDisable();
                     SetMode(GunMode_Pause);
@@ -1030,20 +977,9 @@ void loop1()
         } else {
             if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
-                #ifdef USES_SOLENOID
-                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
-                    solenoidFirstShot = false;
-                #endif // USES_SOLENOID
-                #ifdef USES_RUMBLE
-                    digitalWrite(SamcoPreferences::pins.oRumble, LOW);
-                    rumbleHappening = false;
-                    rumbleHappened = false;
-                #endif // USES_RUMBLE
+                OF_FFB.FFBShutdown();
                 offscreenBShot = false;
                 buttonPressed = false;
-                triggerHeld = false;
-                burstFiring = false;
-                burstFireCount = 0;
                 buttons.ReportDisable();
                 SetMode(GunMode_Pause);
                 // at this point, the other core should be stopping us now.
@@ -1063,7 +999,7 @@ void loop()
 
     if(SamcoPreferences::toggles.holdToPause && pauseHoldStarted) {
         #ifdef USES_RUMBLE
-            analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
+            analogWrite(SamcoPreferences::pins.oRumble, SamcoPreferences::settings.rumbleIntensity);
             delay(300);
             digitalWrite(SamcoPreferences::pins.oRumble, LOW);
         #endif // USES_RUMBLE
@@ -1248,7 +1184,7 @@ void loop()
                         }
                         #ifdef USES_RUMBLE
                             for(byte i = 0; i < 3; i++) {
-                                analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
+                                analogWrite(SamcoPreferences::pins.oRumble, SamcoPreferences::settings.rumbleIntensity);
                                 delay(80);
                                 digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                                 delay(50);
@@ -2083,16 +2019,15 @@ void GetPosition()
                 conMoveX = constrain(conMoveX, 0, 32768);
             }
 
+            bool offXAxis = false;
+            bool offYAxis = false;
+
             if(conMoveX == 0 || conMoveX == 32768) {
                 offXAxis = true;
-            } else {
-                offXAxis = false;
             }
             
             if(conMoveY == 0 || conMoveY == 32768) {
                 offYAxis = true;
-            } else {
-                offYAxis = false;
             }
 
             if(offXAxis || offYAxis) {
@@ -2220,126 +2155,39 @@ void TriggerFire()
             }
             buttonPressed = true;                                // Set this so we won't spam a repeat press event again.
         }
+
         if(!bitRead(buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
         !bitRead(buttons.debounced, 4)) {
-            #ifdef USES_SOLENOID
-                if(SamcoPreferences::toggles.solenoidActive) {                             // (Only activate when the solenoid switch is on!)
-                    if(!triggerHeld) {  // If this is the first time we're firing,
-                        if(burstFireActive && !burstFiring) {  // Are we in burst firing mode?
-                            solenoidFirstShot = true;               // Set this so we use the instant solenoid fire path,
-                            SolenoidActivation(0);                  // Engage it,
-                            solenoidFirstShot = false;              // And disable the flag to mitigate confusion.
-                            burstFiring = true;                     // Set that we're in a burst fire event.
-                            burstFireCount = 1;                     // Set this as the first shot in a burst fire sequence,
-                            burstFireCountLast = 1;                 // And reset the stored counter,
-                        } else if(!burstFireActive) {  // Or, if we're in normal or rapid fire mode,
-                            solenoidFirstShot = true;               // Set the First Shot flag on.
-                            SolenoidActivation(0);                  // Just activate the Solenoid already!
-                            if(SamcoPreferences::toggles.autofireActive) {          // If we are in auto mode,
-                                solenoidFirstShot = false;          // Immediately set this bit off!
-                            }
-                        }
-                    // Else, these below are all if we've been holding the trigger.
-                    } else if(burstFiring) {  // If we're in a burst firing sequence,
-                        BurstFire();                                // Process it.
-                    } else if(SamcoPreferences::toggles.autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
-                    !burstFireActive) {          // (WITHOUT burst firing enabled)
-                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // Is the solenoid engaged?
-                            SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
-                        } else {                                    // Or if it's not,
-                            SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval * SamcoPreferences::settings.autofireWaitFactor); // We're holding it for longer.
-                        }
-                    } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
-                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
-                            unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
-                            if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidNormalInterval) { // If we finally surpassed the wait threshold...
-                                digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);     // Let it go.
-                            }
-                        } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
-                            unsigned long currentMillis = millis(); // Initialize timer.
-                            if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
-                                solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
-                                SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval); // Process it now.
-                            }
-                        }
-                    } else if(!burstFireActive) {                   // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
-                        if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // Are we engaged right now?
-                            SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval); // Turn it off with this timer.
-                        } else {                                    // Or we're not engaged.
-                            SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval * 2); // So hold it that way for twice the normal timer.
-                        }
-                    }
-                } // We ain't using the solenoid, so just ignore all that.
-                #elif RUMBLE_FF
-                    if(SamcoPreferences::toggles.rumbleActive) {
-                        // TODO: actually make stuff here.
-                    } // We ain't using the motor, so just ignore all that.
-                #endif // USES_SOLENOID/RUMBLE_FF
-            }
-            #ifdef USES_RUMBLE
-                #ifndef RUMBLE_FF
-                    if(SamcoPreferences::toggles.rumbleActive &&                     // Is rumble activated,
-                        rumbleHappening && triggerHeld) {  // AND we're in a rumbling command WHILE the trigger's held?
-                        RumbleActivation();                    // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
-                    }
-                #endif // RUMBLE_FF
-            #endif // USES_RUMBLE
-        } else {  // We're shooting outside of the screen boundaries!
-            #ifdef PRINT_VERBOSE
-                Serial.println("Shooting outside of the screen! RELOAD!");
-            #endif
-            if(!buttonPressed) {  // If we haven't pressed a trigger key yet,
-                if(!triggerHeld && offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
-                    if(buttons.analogOutput) {
-                        Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
-                    } else {
-                        AbsMouse5.press(MOUSE_RIGHT);
-                    }
-                    offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
-                    buttonPressed = true;                      // Mark so we're not spamming these press events.
-                } else {  // Or if we're not in offscreen button mode,
-                    if(buttons.analogOutput) {
-                        Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
-                    } else {
-                        AbsMouse5.press(MOUSE_LEFT);
-                    }
-                    buttonPressed = true;                      // Mark so we're not spamming these press events.
-                }
-            }
-            #ifdef USES_RUMBLE
-                #ifndef RUMBLE_FF
-                    if(SamcoPreferences::toggles.rumbleActive) {  // Only activate if the rumble switch is enabled!
-                        if(!rumbleHappened && !triggerHeld) {  // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
-                            RumbleActivation();                        // Start a rumble command.
-                        } else if(rumbleHappening) {  // We are currently processing a rumble command.
-                            RumbleActivation();                        // Keep processing that command then.
-                        }  // Else, we rumbled already, so don't do anything to prevent infinite rumbling.
-                    }
-                #endif // RUMBLE_FF
-            #endif // USES_RUMBLE
-            if(burstFiring) {                                  // If we're in a burst firing sequence,
-                BurstFire();
-            #ifdef USES_SOLENOID
-                } else if(digitalRead(SamcoPreferences::pins.oSolenoid) &&
-                !burstFireActive) {                               // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
-                    unsigned long currentMillis = millis();         // Calibrate current time
-                    if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                        previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                        digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);             // Turn it off already, dangit.
-                    }
-            #elif RUMBLE_FF
-                } else if(rumbleHappening && !burstFireActive) {
-                    // TODO: actually implement
-            #endif // USES_SOLENOID
+            OF_FFB.FFBOnScreen();
         }
+    } else {  // We're shooting outside of the screen boundaries!
+        if(!buttonPressed) {  // If we haven't pressed a trigger key yet,
+            if(!OF_FFB.triggerHeld && offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
+                if(buttons.analogOutput) {
+                    Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
+                } else {
+                    AbsMouse5.press(MOUSE_RIGHT);
+                }
+                offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
+                buttonPressed = true;                      // Mark so we're not spamming these press events.
+            } else {  // Or if we're not in offscreen button mode,
+                if(buttons.analogOutput) {
+                    Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
+                } else {
+                    AbsMouse5.press(MOUSE_LEFT);
+                }
+                buttonPressed = true;                      // Mark so we're not spamming these press events.
+            }
+        }
+        OF_FFB.FFBOffScreen();
     }
-    triggerHeld = true;                                     // Signal that we've started pulling the trigger this poll cycle.
+    OF_FFB.triggerHeld = true;                                   // Signal that we've started pulling the trigger this poll cycle.
 }
 
 // Handles events when trigger is released
 void TriggerNotFire()
 {
-    triggerHeld = false;                                    // Disable the holding function
+    OF_FFB.triggerHeld = false;                                    // Disable the holding function
     if(buttonPressed) {
         if(offscreenBShot) {                                // If we fired off screen with the offscreenButton set,
             if(buttons.analogOutput) {
@@ -2358,28 +2206,8 @@ void TriggerNotFire()
             buttonPressed = false;
         }
     }
-    #ifdef USES_SOLENOID
-        if(SamcoPreferences::toggles.solenoidActive) {  // Has the solenoid remain engaged this cycle?
-            if(burstFiring) {    // Are we in a burst fire command?
-                BurstFire();                                    // Continue processing it.
-            } else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
-                solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
-                unsigned long currentMillis = millis();         // Start the timer
-                if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                    previousMillisSol = currentMillis;          // Timer calibration, yawn.
-                    digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);             // Make sure to turn it off.
-                }
-            }
-        }
-    #endif // USES_SOLENOID
-    #ifdef USES_RUMBLE
-        if(rumbleHappening) {                                   // Are we currently in a rumble command? (Implicitly needs SamcoPreferences::toggles.rumbleActive)
-            RumbleActivation();                                 // Continue processing our rumble command.
-            // (This is to prevent making the lack of trigger pull actually activate a rumble command instead of skipping it like we should.)
-        } else if(rumbleHappened) {                             // If rumble has happened,
-            rumbleHappened = false;                             // well we're clear now that we've stopped holding.
-        }
-    #endif // USES_RUMBLE
+    
+    OF_FFB.FFBRelease();
 }
 
 #ifdef USES_ANALOG
@@ -2831,13 +2659,13 @@ void SerialProcessingDocked()
                           #ifdef USES_RUMBLE
                           case SamcoPreferences::Setting_RumbleIntensity:
                             serialInput = Serial.read(); // nomf
-                            rumbleIntensity = Serial.parseInt();
-                            rumbleIntensity = constrain(rumbleIntensity, 0, 255);
+                            SamcoPreferences::settings.rumbleIntensity = Serial.parseInt();
+                            SamcoPreferences::settings.rumbleIntensity = constrain(SamcoPreferences::settings.rumbleIntensity, 0, 255);
                             Serial.println("OK: Set Rumble Intensity setting.");
                             break;
                           case SamcoPreferences::Setting_RumbleInterval:
                             serialInput = Serial.read(); // nomf
-                            rumbleInterval = Serial.parseInt();
+                            SamcoPreferences::settings.rumbleInterval = Serial.parseInt();
                             Serial.println("OK: Set Rumble Length setting.");
                             break;
                           #endif
@@ -3205,8 +3033,8 @@ void SerialProcessingDocked()
                   delay(SamcoPreferences::settings.solenoidNormalInterval);
                   digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
                 } else if(serialInput == 'r') {
-                  analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);
-                  delay(rumbleInterval);
+                  analogWrite(SamcoPreferences::pins.oRumble, SamcoPreferences::settings.rumbleIntensity);
+                  delay(SamcoPreferences::settings.rumbleInterval);
                   digitalWrite(SamcoPreferences::pins.oRumble, LOW);
                 }
                 break;
@@ -3232,18 +3060,7 @@ void SerialProcessing()
               Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
           } else {
               serialMode = true;                                         // Set it on, then!
-              #ifdef USES_RUMBLE
-                  digitalWrite(SamcoPreferences::pins.oRumble, LOW);                          // Turn off stale rumbling from normal gun mode.
-                  rumbleHappened = false;
-                  rumbleHappening = false;
-              #endif // USES_RUMBLE
-              #ifdef USES_SOLENOID
-                  digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                        // Turn off stale solenoid-ing from normal gun mode.
-                  solenoidFirstShot = false;
-              #endif // USES_SOLENOID
-              triggerHeld = false;                                       // Turn off other stale values that serial mode doesn't use.
-              burstFiring = false;
-              burstFireCount = 0;
+              OF_FFB.FFBShutdown();
               offscreenBShot = false;
               #ifdef LED_ENABLE
                   // Set the LEDs to a mid-intense white.
@@ -3287,14 +3104,14 @@ void SerialProcessing()
                 Serial.read();                                         // Nomf the padding bit.
                 serialInput = Serial.read();                           // Read the next.
                 if(serialInput == '1') {
-                    burstFireActive = true;
+                    OF_FFB.burstFireActive = true;
                     SamcoPreferences::toggles.autofireActive = false;
                 } else if(serialInput == '2') {
                     SamcoPreferences::toggles.autofireActive = true;
-                    burstFireActive = false;
+                    OF_FFB.burstFireActive = false;
                 } else if(serialInput == '0') {
                     SamcoPreferences::toggles.autofireActive = false;
-                    burstFireActive = false;
+                    OF_FFB.burstFireActive = false;
                 }
                 break;
               #endif // USES_SOLENOID
@@ -3718,7 +3535,7 @@ void SerialHandling()
   #ifdef USES_RUMBLE
       if(SamcoPreferences::toggles.rumbleActive) {
           if(bitRead(serialQueue, 2)) {                             // Is the rumble on bit set?
-              analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);              // turn/keep it on.
+              analogWrite(SamcoPreferences::pins.oRumble, SamcoPreferences::settings.rumbleIntensity);              // turn/keep it on.
               //bitClear(serialQueue, 3);
           } else if(bitRead(serialQueue, 3)) {                      // or if the rumble pulse bit is set,
               if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
@@ -4316,7 +4133,7 @@ void PrintExtras()
                 Serial.println("False");
             }
             Serial.print("Burst fire enabled: ");
-            if(burstFireActive) {
+            if(OF_FFB.burstFireActive) {
                 Serial.println("True");
             } else {
                 Serial.println("False");
@@ -4955,129 +4772,6 @@ void SolenoidToggle()
     #endif // USES_DISPLAY
 }
 #endif // USES_SOLENOID
-
-#ifdef USES_SOLENOID
-// Subroutine managing solenoid state and temperature monitoring (if any)
-void SolenoidActivation(int solenoidFinalInterval)
-{
-    if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
-        unsigned long currentMillis = millis();                   // Initialize timer.
-        previousMillisSol = currentMillis;                        // Calibrate the timer for future calcs.
-        digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);                          // Since we're shooting the first time, just turn it on aaaaand fire.
-        return;                                                   // We're done here now.
-    }
-    #ifdef USES_TEMP                                              // *If the build calls for a TMP36 temperature sensor,
-        if(SamcoPreferences::pins.aTMP36 >= 0) { // If a temp sensor is installed and enabled,
-            int tempSensor = analogRead(SamcoPreferences::pins.aTMP36);
-            tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
-            #ifdef PRINT_VERBOSE
-                Serial.print("Current Temp near solenoid: ");
-                Serial.print(tempSensor);
-                Serial.println("*C");
-            #endif
-            if(tempSensor < tempNormal) { // Are we at (relatively) normal operating temps?
-                unsigned long currentMillis = millis();
-                if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
-                    previousMillisSol = currentMillis;
-                    digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
-                    return;
-                } else { // If we pass the temp check but fail the timer check, we're here too quick.
-                    return;
-                }
-            } else if(tempSensor < tempWarning) { // If we failed the room temp check, are we beneath the shutoff threshold?
-                if(digitalRead(SamcoPreferences::pins.oSolenoid)) {    // Is the valve being pulled now?
-                    unsigned long currentMillis = millis();           // If so, we should release it on the shorter timer.
-                    if(currentMillis - previousMillisSol >= solenoidFinalInterval) {
-                        previousMillisSol = currentMillis;
-                        digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // Flip, flop.
-                        return;
-                    } else { // OR, Passed the temp check, STILL here too quick.
-                        return;
-                    }
-                } else { // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
-                    unsigned long currentMillis = millis();
-                    if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
-                        previousMillisSol = currentMillis;
-                        digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid));
-                        return;
-                    } else { // OR, We passed the temp check but STILL got here too quick.
-                        return;
-                    }
-                }
-            } else { // Failed both temp checks, so obviously it's not safe to fire.
-                #ifdef PRINT_VERBOSE
-                    Serial.println("Solenoid over safety threshold; not activating!");
-                #endif
-                digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
-                return;
-            }
-        } else { // No temp sensor, so just go ahead.
-            unsigned long currentMillis = millis();                   // Start the timer.
-            if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
-                previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-                digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
-                return;                                               // Aaaand we're done here.
-            } else {                                                  // If we failed the timer check, we're here too quick.
-                return;                                               // Get out of here, speedy mc loserpants.
-            }
-        }
-    #else                                                         // *The shorter version of this function if we're not using a temp sensor.
-        unsigned long currentMillis = millis();                   // Start the timer.
-        if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
-            previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
-            digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
-            return;                                               // Aaaand we're done here.
-        } else {                                                  // If we failed the timer check, we're here too quick.
-            return;                                               // Get out of here, speedy mc loserpants.
-        }
-    #endif
-}
-#endif // USES_SOLENOID
-
-#ifdef USES_RUMBLE
-// Subroutine managing rumble state
-void RumbleActivation()
-{
-    if(rumbleHappening) {                                         // Are we in a rumble command rn?
-        unsigned long currentMillis = millis();                   // Calibrate a timer to set how long we've been rumbling.
-        if(currentMillis - previousMillisRumble >= rumbleInterval) { // If we've been waiting long enough for this whole rumble command,
-            digitalWrite(SamcoPreferences::pins.oRumble, LOW);                         // Make sure the rumble is OFF.
-            rumbleHappening = false;                              // This rumble command is done now.
-            rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
-        }
-        return;                                                   // Alright we done here (if we did this before already)
-    } else {                                                      // OR, we're rumbling for the first time.
-        previousMillisRumble = millis();                          // Mark this as the start of this rumble command.
-        analogWrite(SamcoPreferences::pins.oRumble, rumbleIntensity);                  // Set the motor on.
-        rumbleHappening = true;                                   // Mark that we're in a rumble command rn.
-        return;                                                   // Now geddoutta here.
-    }
-}
-#endif // USES_RUMBLE
-
-// Solenoid 3-shot burst firing subroutine
-void BurstFire()
-{
-    if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
-        #ifdef USES_SOLENOID
-            if(!digitalRead(SamcoPreferences::pins.oSolenoid) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
-            (burstFireCount == burstFireCountLast)) {
-                burstFireCount++;                                 // Increment the counter.
-            }
-            if(!digitalRead(SamcoPreferences::pins.oSolenoid)) {  // Now, is the solenoid NOT on right now?
-                SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval * 2);     // Hold it off a bit longer,
-            } else {                         // or if it IS on,
-                burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
-                SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval);         // And start trying to activate the dingus.
-            }
-        #endif // USES_SOLENOID
-        return;
-    } else {  // If we're at three bullets fired,
-        burstFiring = false;                                      // Disable the currently firing tag,
-        burstFireCount = 0;                                       // And set the count off.
-        return;                                                   // Let's go back.
-    }
-}
 
 // Updates the button array with new pin mappings and control bindings, if any.
 void UpdateBindings(bool offscreenEnable)
