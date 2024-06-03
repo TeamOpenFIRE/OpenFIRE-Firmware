@@ -1471,9 +1471,7 @@ void ExecRunMode()
                         rumbleHappened = false;
                     #endif // USES_RUMBLE
                     Keyboard.releaseAll();
-                    delay(1);
-                    AbsMouse5.release(MOUSE_LEFT);
-                    AbsMouse5.release(MOUSE_RIGHT);
+                    AbsMouse5.releaseAll();
                     offscreenBShot = false;
                     buttonPressed = false;
                     triggerHeld = false;
@@ -1498,9 +1496,7 @@ void ExecRunMode()
                     rumbleHappened = false;
                 #endif // USES_RUMBLE
                 Keyboard.releaseAll();
-                delay(1);
-                AbsMouse5.release(MOUSE_LEFT);
-                AbsMouse5.release(MOUSE_RIGHT);
+                AbsMouse5.releaseAll();
                 offscreenBShot = false;
                 buttonPressed = false;
                 triggerHeld = false;
@@ -1514,9 +1510,7 @@ void ExecRunMode()
         #else                                                       // if we're using dual cores,
         if(gunMode != GunMode_Run) {                                // We just check if the gunmode has been changed by the other thread.
             Keyboard.releaseAll();
-            delay(1);
-            AbsMouse5.release(MOUSE_LEFT);
-            AbsMouse5.release(MOUSE_RIGHT);
+            AbsMouse5.releaseAll();
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -3381,13 +3375,8 @@ void SerialProcessing()
                       serialSolPulses = 0;
                       serialSolPulsesLast = 0;
                   #endif // USES_SOLENOID
-                  AbsMouse5.release(MOUSE_LEFT);
-                  AbsMouse5.release(MOUSE_RIGHT);
-                  AbsMouse5.release(MOUSE_MIDDLE);
-                  AbsMouse5.release(MOUSE_BUTTON4);
-                  AbsMouse5.release(MOUSE_BUTTON5);
+                  AbsMouse5.releaseAll();
                   Keyboard.releaseAll();
-                  delay(5);
                   Serial.println("Received end serial pulse, releasing FF override.");
               }
               break;
@@ -3404,11 +3393,7 @@ void SerialProcessing()
                     case 'L':
                       if(!buttons.analogOutput) {
                           buttons.analogOutput = true;
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
+                          AbsMouse5.releaseAll();
                           Keyboard.releaseAll();
                           Serial.println("Switched to Analog Output mode!");
                       }
@@ -3418,11 +3403,7 @@ void SerialProcessing()
                     case 'R':
                       if(!buttons.analogOutput) {
                           buttons.analogOutput = true;
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
+                          AbsMouse5.releaseAll();
                           Keyboard.releaseAll();
                           Serial.println("Switched to Analog Output mode!");
                       }
@@ -3432,11 +3413,7 @@ void SerialProcessing()
                     default:
                       buttons.analogOutput = !buttons.analogOutput;
                       if(buttons.analogOutput) {
-                          AbsMouse5.release(MOUSE_LEFT);
-                          AbsMouse5.release(MOUSE_RIGHT);
-                          AbsMouse5.release(MOUSE_MIDDLE);
-                          AbsMouse5.release(MOUSE_BUTTON4);
-                          AbsMouse5.release(MOUSE_BUTTON5);
+                          AbsMouse5.releaseAll();
                           Keyboard.releaseAll();
                           Serial.println("Switched to Analog Output mode!");
                       } else {

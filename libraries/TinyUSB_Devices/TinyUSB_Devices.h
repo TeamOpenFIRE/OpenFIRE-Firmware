@@ -161,6 +161,7 @@ public:
 	void move(uint16_t x, uint16_t y);
 	void press(uint8_t b = MOUSE_LEFT);
 	void release(uint8_t b = MOUSE_LEFT);
+	void releaseAll() { release(0x1f); }
 };
 
 // global singleton
