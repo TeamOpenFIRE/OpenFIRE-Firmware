@@ -1,6 +1,5 @@
 # OpenFIRE - The Open *Four Infa-Red Emitter* Light Gun System
-
-Forked from [GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
+###### Successor to [GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
 
 ## Features:
 - **Fully featured peripherals:** Solenoid & Rumble Force Feedback, TMP36 Temperature Monitoring, and others to come.
@@ -8,8 +7,9 @@ Forked from [GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is b
 - **Easy installation:** Simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
 - **Portable on-board settings** (using an emulated EEPROM) to store calibration profiles, toggles, settings, mappings (WIP), identifier and more to come.
 - **Integrates with the [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App)** for user-friendly, and cross-platform configuration.
-- **Optimized for the RP2040**, using a second core for input reading and serial handling.
+- **Optimized for the RP2040**, using a second core for input reading and serial handling, and the main core for camera and peripherals processing, whenever possible.
 - **Compatible with PC Force Feedback handlers** such as [Mame Hooker](https://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) and [QMamehook](https://github.com/SeongGino/QMamehook).
+- **Supports integrated OLED display output** for *SSD1306 I2C* displays for menu navigation and visual feedback of game elements such as life and current ammo counts.
 - **Forever free and open source to the lightgun community!**
 
 ## Requirements
@@ -31,21 +31,24 @@ Grab the latest *.UF2* binary for your board from the releases page (TODO), and 
 
 For reference, the default schematic and (general) layout for the build and its optional extras are attached.
 ![Guh](https://raw.githubusercontent.com/TeamOpenFire/OpenFIRE-Firmware/plus/SamcoPlus%20Schematic-pico.png)
- * *Layouts can be customized after installing the firmware - the only pins that **must** match are Camera Data & Clock.*
+ * *Layouts can be completely customized after installing the firmware, including camera lines.*
 
-## Known Issues (want to fix sooner rather than later):
-- Calibrating while serial activity is ongoing has a chance of causing the gun to lock up (exact cause still being investigated).
-- Camera failing initialization will cause the board to lock itself in a "Device not available" loop.
-  * Add extra feedback in the initial docking message for the GUI to alert the user of the camera not working?
+## Known Issues:
+- *None... so far*
 
 > [!NOTE]
-> Solenoid *may or may not* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
+> Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
 
 ## TODO:
 - (Re-)expose button function remapping.
 - Should implement support for rumble as an alternative force-feedback system (currently under `RUMBLE_FF` define, but should be a normal toggleable option).
+- Start librarifying more sections of the code for better readability/portability, i.e. pause mode, force feedback subroutines, and serial processing/handling in bespoke classes.
+- Display currently uses Adafruit_GFX/SSD1306 library, but should we maybe consider [OneBitDisplay](https://github.com/bitbank2/OneBitDisplay) instead? It seems compatible with Adafruit lib's syntax, so should be a drop-in replacement if need be.
+- Use more appropriate RP2040-specific subsystems? See [TimerInterrupt](https://github.com/git2212/RPI_PICO_TimerInterrupt) for hw timers library, not sure if NeoPixels has such an option for our use case.
 
 ## Thanks:
-* Samuel Ballantyne, for his SAMCO project which inspired this madness in the first place.
-* Prow7, for improving an already promising project and providing the basis for this madness.
-* The testers that have had to deal with Seong's MAMEHOOKER integration stability antics.
+* Samuel Ballantyne, for his original SAMCO project, the gorgeous OpenFIRE branding, and perspective-based tracking system.
+* Mike Lynch/Prow7, for his enhanced SAMCO fork which provided the basis of pause mode and saving subsystems.
+* Odwalla-J, mykylegp, SawdustMaker & lemmingDev for prerelease consultation, bug testing and feedback.
+* The IR-GUN4ALL testers for their early feedback and feature requests - this wouldn't have happened without you lot!
+* Orhan Yiğit Durmaz for TinyUSB HID gamepad descriptors examples, and Chris Young for his TinyUSB compatible library (now part of `TinyUSB_Devices`).
