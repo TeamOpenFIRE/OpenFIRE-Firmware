@@ -1972,21 +1972,22 @@ void GetPosition()
         if(profileData[selectedProfile].irLayout) {
             OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
             OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
-            OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
-            OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
-            OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
-            profileData[selectedProfile].TLled,
-            profileData[selectedProfile].TRled,
-            res_y);
+                             OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
+                             OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
+                             OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
+                             res_x / 2, 0, 0,
+                             res_y / 2, res_x / 2,
+                             res_y, res_x, res_y / 2);
         } else {
             OpenFIREsquare.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
             OpenFIREper.warp(OpenFIREsquare.X(0), OpenFIREsquare.Y(0),
-            OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
-            OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
-            OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
-            profileData[selectedProfile].TLled,
-            profileData[selectedProfile].TRled,
-            res_y);
+                             OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
+                             OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
+                             OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
+                             profileData[selectedProfile].TLled, 0,
+                             profileData[selectedProfile].TRled, 0,
+                             profileData[selectedProfile].TLled, res_y,
+                             profileData[selectedProfile].TRled, res_y);
         }
 
         // Output mapped to screen resolution because offsets are measured in pixels
@@ -2071,7 +2072,7 @@ void GetPosition()
                 for (int i = 0; i < 4; i++) {
                     if(profileData[selectedProfile].irLayout) {
                         rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 0, 1920);
-                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
+                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 1080, 0);
                     } else {
                         rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 1920, 0);
                         rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0);
@@ -2092,7 +2093,7 @@ void GetPosition()
                     if(profileData[selectedProfile].irLayout) {
                         Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 0, 1920));
                         Serial.print( "," );
-                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
+                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 1080, 0));
                     } else {
                         Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
                         Serial.print( "," );

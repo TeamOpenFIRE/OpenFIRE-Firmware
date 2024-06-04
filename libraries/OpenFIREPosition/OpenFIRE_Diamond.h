@@ -35,10 +35,8 @@ class OpenFIRE_Diamond {
     int medianY = MouseMaxY / 2;
     int medianX = MouseMaxX / 2;
 
-    int FinalX[4] = {400 * CamToMouseMult, 623 * CamToMouseMult, 400 * CamToMouseMult, 623 * CamToMouseMult};
-    int FinalY[4] = {200 * CamToMouseMult, 200 * CamToMouseMult, 568 * CamToMouseMult, 568 * CamToMouseMult};
-    int FinalXX[4] = {400 * CamToMouseMult, 623 * CamToMouseMult, 400 * CamToMouseMult, 623 * CamToMouseMult};
-    int FinalYY[4] = {200 * CamToMouseMult, 200 * CamToMouseMult, 568 * CamToMouseMult, 568 * CamToMouseMult};
+    int FinalX[4] = {512 * CamToMouseMult, 1023 * CamToMouseMult, 512 * CamToMouseMult, 0 * CamToMouseMult};
+    int FinalY[4] = {0 * CamToMouseMult, 384 * CamToMouseMult, 728 * CamToMouseMult, 384 * CamToMouseMult};
 
     int DistTL;
     int DistTR;
@@ -55,8 +53,8 @@ class OpenFIRE_Diamond {
     float offsetBL;
     float offsetTL;
 
-    float angle;
-    float angle2;
+    float angle = 0;
+    float angle2 = 0;
     float height;
     float height2;
     float width;
@@ -73,20 +71,20 @@ public:
     /// @brief Main function to calculate X, Y, and H
     void begin(const int* px, const int* py, unsigned int seen);
     
-    int X(int index) const { return FinalXX[index]; }
-    int Y(int index) const { return FinalYY[index]; }
+    int X(int index) const { return FinalX[index]; }
+    int Y(int index) const { return FinalY[index]; }
     unsigned int testSee(int index) const { return see[index]; }
     int testMedianX() const { return medianX; }
     int testMedianY() const { return medianY; }
     
     /// @brief Height
-    float H() const { return height; }
+    float H() const { return height2; }
 
     /// @brief Height
-    float W() const { return width; }
+    float W() const { return width2; }
 
     /// @brief Angle
-    float Ang() const { return angle2; }
+    float Ang() const { return angle; }
     
     /// @brief Bit mask of positions the camera saw
     unsigned int seen() const { return seenFlags; }

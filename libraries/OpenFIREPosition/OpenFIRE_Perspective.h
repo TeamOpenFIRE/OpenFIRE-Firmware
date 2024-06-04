@@ -32,8 +32,13 @@ private:
   float warpmatrix[16];
 
   float dx0;
+  float dy0;
   float dx1;
-  float dy2;
+  float dy1; 
+  float dx2; 
+  float dy2; 
+  float dx3; 
+  float dy3;
 
   float srcX = 512.0f;
   float srcY = 384.0f;
@@ -42,7 +47,7 @@ private:
   int dstY;
 
 public:
-  void warp(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, float dx0, float dx1, float dy2);
+  void warp(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, float dx0, float dy0, float dx1, float dy1, float dx2, float dy2, float dx3, float dy3);
   void source(float adjustedX, float adjustedY);
   void deinit (bool set);
   int getX();
