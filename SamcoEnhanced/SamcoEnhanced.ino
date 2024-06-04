@@ -85,7 +85,7 @@
   // If unsure, or are only using one gun, just leave these at their defaults!
 #define MANUFACTURER_NAME "OpenFIRE"
 #define DEVICE_NAME "FIRECon"
-#define DEVICE_VID 0x0920
+#define DEVICE_VID 0xF143
 #define DEVICE_PID 0x1998
 
   // Set what player this board is mapped to by default (1-4). This will change keyboard mappings appropriate for the respective player.
