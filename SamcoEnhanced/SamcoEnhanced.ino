@@ -2071,11 +2071,11 @@ void GetPosition()
                 // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
                 for (int i = 0; i < 4; i++) {
                     if(profileData[selectedProfile].irLayout) {
-                        rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 0, 1920);
-                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 1080, 0);
+                        rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0);
+                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
                     } else {
-                        rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 1920, 0);
-                        rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 1080, 0);
+                        rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 0, 1920);
+                        rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 0, 1080);
                     }
                 }
                 if(runMode == RunMode_Processing) {
@@ -2091,13 +2091,13 @@ void GetPosition()
                     Serial.print( "," );
                     // Median for viewing in processing
                     if(profileData[selectedProfile].irLayout) {
-                        Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 0, 1920));
+                        Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0));
                         Serial.print( "," );
-                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 1080, 0));
+                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
                     } else {
-                        Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 1920, 0));
+                        Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920));
                         Serial.print( "," );
-                        Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 1080, 0));
+                        Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080));
                     }
                 }
                 #ifdef USES_DISPLAY
