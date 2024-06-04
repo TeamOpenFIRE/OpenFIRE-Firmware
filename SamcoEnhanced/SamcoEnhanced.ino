@@ -774,6 +774,24 @@ void FeedbackSet()
     if(SamcoPreferences::pins.oPixel >= 0) {
         externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings.customLEDcount, SamcoPreferences::pins.oPixel, NEO_GRB + NEO_KHZ800);
         externPixel->begin();
+        if(SamcoPreferences::settings.customLEDstatic < SamcoPreferences::settings.customLEDcount) {
+            for(byte i = 0; i < SamcoPreferences::settings.customLEDstatic; i++) {
+                uint32_t color;
+                switch(i) {
+                  case 0:
+                    color = SamcoPreferences::settings.customLEDcolor1;
+                    break;
+                  case 1:
+                    color = SamcoPreferences::settings.customLEDcolor2;
+                    break;
+                  case 2:
+                    color = SamcoPreferences::settings.customLEDcolor3;
+                    break;
+                }
+                externPixel->setPixelColor(i, color);
+            }
+            externPixel->show();
+        }
     }
     #endif // CUSTOM_NEOPIXEL
     #ifdef USES_DISPLAY
@@ -4441,17 +4459,19 @@ void LedInit()
 void SetLedPackedColor(uint32_t color)
 {
 #ifdef DOTSTAR_ENABLE
-    dotstar.setPixelColor(0, Adafruit_DotStar::gamma32(color & 0x00FFFFFF));
+    dotstar.setPixelColor(0, color);
     dotstar.show();
 #endif // DOTSTAR_ENABLE
 #ifdef NEOPIXEL_PIN
-    neopixel.setPixelColor(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
+    neopixel.setPixelColor(0, color);
     neopixel.show();
 #endif // NEOPIXEL_PIN
 #ifdef CUSTOM_NEOPIXEL
     if(SamcoPreferences::pins.oPixel >= 0) {
-        externPixel->fill(0, Adafruit_NeoPixel::gamma32(color & 0x00FFFFFF));
-        externPixel->show();
+        if(SamcoPreferences::settings.customLEDstatic < SamcoPreferences::settings.customLEDcount) {
+            externPixel->fill(color, SamcoPreferences::settings.customLEDstatic);
+            externPixel->show();
+        }
     }
 #endif // CUSTOM_NEOPIXEL
 #ifdef FOURPIN_LED
@@ -4500,10 +4520,10 @@ void LedUpdate(byte r, byte g, byte b)
     #endif // NEOPIXEL_PIN
     #ifdef CUSTOM_NEOPIXEL
         if(SamcoPreferences::pins.oPixel >= 0) {
-            for(byte i = 0; i < SamcoPreferences::settings.customLEDcount; i++) {
-                externPixel->setPixelColor(i, r, g, b);
+            if(SamcoPreferences::settings.customLEDstatic < SamcoPreferences::settings.customLEDcount) {
+                externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), SamcoPreferences::settings.customLEDstatic);
+                externPixel->show();
             }
-            externPixel->show();
         }
     #endif // CUSTOM_NEOPIXEL
     #ifdef FOURPIN_LED
