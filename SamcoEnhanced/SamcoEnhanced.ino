@@ -3055,6 +3055,18 @@ void SerialProcessingDocked()
                   analogWrite(SamcoPreferences::pins.oRumble, SamcoPreferences::settings.rumbleIntensity);
                   delay(SamcoPreferences::settings.rumbleInterval);
                   digitalWrite(SamcoPreferences::pins.oRumble, LOW);
+                } else if(serialInput == 'R') {
+                  digitalWrite(SamcoPreferences::pins.oLedR, HIGH);
+                  digitalWrite(SamcoPreferences::pins.oLedG, LOW);
+                  digitalWrite(SamcoPreferences::pins.oLedB, LOW);
+                } else if(serialInput == 'G') {
+                  digitalWrite(SamcoPreferences::pins.oLedR, LOW);
+                  digitalWrite(SamcoPreferences::pins.oLedG, HIGH);
+                  digitalWrite(SamcoPreferences::pins.oLedB, LOW);
+                } else if(serialInput == 'B') {
+                  digitalWrite(SamcoPreferences::pins.oLedR, LOW);
+                  digitalWrite(SamcoPreferences::pins.oLedG, LOW);
+                  digitalWrite(SamcoPreferences::pins.oLedB, HIGH);
                 }
                 break;
           }
