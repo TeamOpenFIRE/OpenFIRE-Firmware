@@ -665,15 +665,13 @@ void setup() {
             profileData[selectedProfile].rightOffset == 0)) { SetMode(GunMode_Calibration); }
             else { SetMode(GunMode_Run); }
     } else {
-        /* yeah for some reason this isn't working yet. :(
         // unofficial official "MiSTer mode" - default to camera -> left stick if trigger's held.
-        buttons.Poll(1);
-        buttons.Repeat();
-        if(buttons.debounced == BtnMask_Trigger) {
+        // For some reason, doing this through buttons.Poll doesn't work, so just directly read the pin.
+        // (pullup resistors make this normally closed/1 when unpressed, open/0 when pressed.)
+        if(SamcoPreferences::pins.bTrigger >= 0 && !digitalRead(SamcoPreferences::pins.bTrigger)) {
             buttons.analogOutput = true;
             Gamepad16.stickRight = true;
         }
-        */
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         SetMode(GunMode_Run);
     }
