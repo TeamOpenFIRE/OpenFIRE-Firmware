@@ -301,11 +301,9 @@ SamcoPreferences::ProfileData_t profileData[ProfileCount] = {
 
 int mouseX;
 int mouseY;
-//int moveXAxis = 0;      // Unconstrained mouse postion
-//int moveYAxis = 0;               
-//int moveXAxisArr[3] = {0, 0, 0};
-//int moveYAxisArr[3] = {0, 0, 0};
-//int moveIndex = 0;
+int moveXAxisArr[3] = {0, 0, 0};
+int moveYAxisArr[3] = {0, 0, 0};
+int moveIndex = 0;
 
 // For offscreen button stuff:
 bool offscreenButton = false;                    // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
@@ -1994,15 +1992,14 @@ void GetPosition()
         mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - profileData[selectedProfile].leftOffset), (res_x + profileData[selectedProfile].rightOffset));                 
         mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - profileData[selectedProfile].topOffset), (res_y + profileData[selectedProfile].bottomOffset));
 
-        /*
         switch(runMode) {
             case RunMode_Average:
                 // 2 position moving average
                 moveIndex ^= 1;
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                moveYAxis = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                moveXAxisArr[moveIndex] = mouseX;
+                moveYAxisArr[moveIndex] = mouseY;
+                mouseX = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                mouseY = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
                 break;
             case RunMode_Average2:
                 // weighted average of current position and previous 2
@@ -2011,16 +2008,14 @@ void GetPosition()
                 } else {
                     moveIndex = 0;
                 }
-                moveXAxisArr[moveIndex] = moveXAxis;
-                moveYAxisArr[moveIndex] = moveYAxis;
-                moveXAxis = (moveXAxis + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                moveYAxis = (moveYAxis + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                moveXAxisArr[moveIndex] = mouseX;
+                moveYAxisArr[moveIndex] = mouseY;
+                mouseX = (mouseX + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
+                mouseY = (mouseY + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
                 break;
-            case RunMode_Normal:
             default:
                 break;
             }
-        */
 
         // Constrain that bisch so negatives don't cause underflow
         int32_t conMoveX = constrain(mouseX, 0, res_x);
