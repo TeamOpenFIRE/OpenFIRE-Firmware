@@ -21,6 +21,7 @@
  // ISSUERS: REMEMBER TO SPECIFY YOUR USING A CUSTOM BUILD & WHAT CHANGES ARE MADE TO THE SKETCH; OTHERWISE YOUR ISSUE MAY BE CLOSED!
 
 #include <Arduino.h>
+#include <RP2040.h>
 #include <OpenFIREBoard.h>
 
 // include TinyUSB or HID depending on USB stack option
@@ -586,14 +587,26 @@ void setup() {
     #endif // LED_ENABLE
     
 #ifdef USE_TINYUSB
+    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    // is VBUS (USB voltage) detected?
+    if(!digitalRead(34)) {
+        // If so, we're connected via USB, so initializing the USB devices chunk.
+        TinyUSBDevices.begin(1);
+    } else {
+        // Else, we're on batt, so init the Bluetooth chunks.
+        if(SamcoPreferences::usb.deviceName[0] == '\0') {
+            TinyUSBDevices.beginBT(DEVICE_NAME, DEVICE_NAME);
+        } else {
+            TinyUSBDevices.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
+        }
+    }
+    #else
     // Initializing the USB devices chunk.
     TinyUSBDevices.begin(1);
+    #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #endif
     
-    AbsMouse5.init(MouseMaxX, MouseMaxY, true);
-    
-    // fetch the calibration data, other values already handled in ApplyInitialPrefs() 
-    //SelectCalPrefs(selectedProfile);
+    AbsMouse5.init(true);
 
 #ifdef USE_TINYUSB
     // wait until device mounted
@@ -3043,6 +3056,10 @@ void SerialProcessingDocked()
                   digitalWrite(SamcoPreferences::pins.oLedG, LOW);
                   digitalWrite(SamcoPreferences::pins.oLedB, HIGH);
                 }
+                break;
+              case 'x':
+                if(Serial.peek() == 'x') { rp2040.rebootToBootloader(); }
+                // we probably left the firmware by now, but eh.
                 break;
           }
           break;
