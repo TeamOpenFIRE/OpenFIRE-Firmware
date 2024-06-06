@@ -1,9 +1,9 @@
 /*!
- * @file SamcoPositionEnhanced.cpp
+ * @file OpenFIRE_Square.cpp.cpp
  * @brief Light Gun library for 4 LED setup
  * @n CPP file for Samco Light Gun 4 LED setup
  *
- * @copyright Samco, https://github.com/samuelballantyne, May 2021
+ * @copyright Samco, https://github.com/samuelballantyne, 2024
  * @copyright GNU Lesser General Public License
  *
  * @author [Sam Ballantyne](samuelballantyne@hotmail.com)
@@ -12,14 +12,14 @@
  */
 
 #include <Arduino.h>
-#include "SamcoPositionEnhanced.h"
+#include "OpenFIRE_Square.h"
 
 constexpr int buff = 50 * CamToMouseMult;
 
 // floating point PI
 constexpr float fPI = (float)PI;
 
-void SamcoPositionEnhanced::begin(const int* px, const int* py, unsigned int seen, int cx, int cy)
+void OpenFIRE_Square::begin(const int* px, const int* py, unsigned int seen)
 {
     // Remapping LED postions to use with library.
   
@@ -205,6 +205,7 @@ void SamcoPositionEnhanced::begin(const int* px, const int* py, unsigned int see
         angleOffset[2] = -(angleBottom - angleLeft);
         angleOffset[3] = angleBottom - (angleRight - fPI);
         height = (yDistLeft + yDistRight) / 2.0f;
+        width = (xDistTop + xDistBottom) / 2.0f;
     }
 
     // If 2 LEDS can be seen and loop has run through 5 times update angle and distances
@@ -233,6 +234,4 @@ void SamcoPositionEnhanced::begin(const int* px, const int* py, unsigned int see
     angle = (atan2(FinalY[0] - FinalY[1], FinalX[1] - FinalX[0]) + atan2(FinalY[2] - FinalY[3], FinalX[3] - FinalX[2])) / 2.0f;
     float cosAngle = cos(angle);
     float sinAngle = sin(angle);
-    xx = cx + round(cosAngle * (float)(medianX - cx) - sinAngle * (float)(medianY - cy));
-    yy = cy + round(sinAngle * (float)(medianX - cx) + cosAngle * (float)(medianY - cy));
 }

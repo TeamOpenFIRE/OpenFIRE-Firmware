@@ -12,6 +12,7 @@
  */
 
 #include "SamcoPreferences.h"
+#include <Arduino.h>
 
 #ifdef SAMCO_EEPROM_ENABLE
 #include <EEPROM.h>
@@ -153,12 +154,12 @@ void SamcoPreferences::ResetPreferences()
 
 void SamcoPreferences::LoadPresets()
 {
-    // For the Adafruit ItsyBitsy RP2040
-    #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+// For the Adafruit ItsyBitsy RP2040 - optimized for SAMCO boards
+#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
-            pins.aTMP36 = A2;
+            pins.aTMP36 = -1;
         #endif // USES_TEMP
     #endif // USES_SOLENOID
 
@@ -179,21 +180,22 @@ void SamcoPreferences::LoadPresets()
     pins.oRumble = 24;
     pins.oSolenoid = 25;
     pins.bTrigger = 6;
-    pins.bGunA = 7;
-    pins.bGunB = 8;
-    pins.bGunC = 9;
-    pins.bStart = 10;
-    pins.bSelect = 11;
-    pins.bGunUp = 1;
-    pins.bGunDown = 0;
-    pins.bGunLeft = 4;
-    pins.bGunRight = 5;
-    pins.bPedal = 12;
+    pins.bGunA = 27;
+    pins.bGunB = 26;
+    pins.bGunC = 11;
+    pins.bStart = 28;
+    pins.bSelect = 29;
+    pins.bGunUp = 9;
+    pins.bGunDown = 7;
+    pins.bGunLeft = 8;
+    pins.bGunRight = 10;
+    pins.bPedal = 4;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
-    // For the Adafruit KB2040 - GUN4IR-compatible defaults
-    #elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
+// For the Adafruit KB2040 - optimized for GUN4IR boards
+#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
@@ -228,10 +230,12 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = 19;
     pins.bGunRight = 10;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = A1;
 
-    #elifdef ARDUINO_NANO_RP2040_CONNECT
+// For the Arduino Nano RP2040 Connect - because it was requested
+#elifdef ARDUINO_NANO_RP2040_CONNECT
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
@@ -267,10 +271,12 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = -1;
     pins.bGunRight = -1;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
-    #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
+// For the Waveshare RP2040 Zero - smallest/cheapest board
+#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
@@ -305,11 +311,12 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = -1;
     pins.bGunRight = -1;
     pins.bPedal = -1;
+    pins.bPedal2 = -1;
     pins.bPump = -1;
     pins.bHome = -1;
 
-    // For the Raspberry Pi Pico
-    #elifdef ARDUINO_RASPBERRY_PI_PICO
+// For the Raspberry Pi Pico - first party baybeeee
+#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
 
     #ifdef USES_SOLENOID
         #ifdef USES_TEMP    
@@ -344,6 +351,7 @@ void SamcoPreferences::LoadPresets()
     pins.bGunLeft = 8;
     pins.bGunRight = 9;
     pins.bPedal = 14;
+    pins.bPedal2 = -1;
     pins.bPump = 13;
     pins.bHome = 5;
 
@@ -354,19 +362,19 @@ void SamcoPreferences::LoadPresets()
 
 void SamcoPreferences::PresetCam()
 {
-    #if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
+#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
     pins.pCamSCL = 3;
     pins.pCamSDA = 2;
-    #elifdef ARDUINO_NANO_RP2040_CONNECT
+#elifdef ARDUINO_NANO_RP2040_CONNECT
     pins.pCamSCL = 13;
     pins.pCamSDA = 12;
-    #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
+#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
     pins.pCamSCL = 15;
     pins.pCamSDA = 14;
-    #else // RASPBERRY_PI_PICO et al
+#else // RASPBERRY_PI_PICO et al
     pins.pCamSCL = 21;
     pins.pCamSDA = 20;
-    #endif // ARDUINO_BOARD
+#endif // ARDUINO_BOARD
 }
 
 #else

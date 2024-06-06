@@ -1,6 +1,6 @@
 /*!
- * @file SamcoConst.h
- * @brief Global constants for the Samco light gun.
+ * @file OpenFIREConst.h
+ * @brief Global constants for the OpenFIRE light gun.
  *
  * @copyright Mike Lynch, 2021
  * @copyright GNU Lesser General Public License
@@ -10,8 +10,8 @@
  * @date 2021
  */
 
-#ifndef _SAMCOCONST_H_
-#define _SAMCOCONST_H_
+#ifndef _OPENFIRECONST_H_
+#define _OPENFIRECONST_H_
 
 // DFRobot IR positioning camera resolution
 constexpr int CamResX = 1024;
@@ -36,4 +36,8 @@ constexpr int MouseResY = CamResY * CamToMouseMult;
 constexpr int MouseMaxX = MouseResX - 1;
 constexpr int MouseMaxY = MouseResY - 1;
 
-#endif // _SAMCOCONST_H_
+// Perspective code stuff
+constexpr int res_x = 1920 << 2;
+constexpr int res_y = 1080 << 2;
+
+#endif // _OPENFIRECONST_H_

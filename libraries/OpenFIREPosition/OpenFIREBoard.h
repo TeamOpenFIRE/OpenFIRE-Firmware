@@ -1,6 +1,6 @@
 /*!
- * @file SamcoBoard.h
- * @brief Build configuration for Arduino boards.
+ * @file OpenFIREBoard.h
+ * @brief Build configuration for various RP2040 boards.
  *
  * @copyright Mike Lynch, 2021
  * @copyright GNU Lesser General Public License
@@ -10,8 +10,8 @@
  * @date 2021
  */
 
-#ifndef _SAMCOBOARD_H_
-#define _SAMCOBOARD_H_
+#ifndef _OPENFIREBOARD_H_
+#define _OPENFIREBOARD_H_
 
 //// GUI BOARD IDENTIFIERS
 
@@ -23,8 +23,12 @@
 #define OPENFIRE_BOARD "arduinoNanoRP2040"
 #elifdef ARDUINO_WAVESHARE_RP2040_ZERO
 #define OPENFIRE_BOARD "waveshareZero"
+#elifdef ARDUINO_YD_RP2040
+#define OPENFIRE_BOARD "vccgndYD"
 #elifdef ARDUINO_RASPBERRY_PI_PICO
 #define OPENFIRE_BOARD "rpipico"
+#elifdef ARDUINO_RASPBERRY_PI_PICO_W
+#define OPENFIRE_BOARD "rpipicow"
 #else
 #define OPENFIRE_BOARD "generic"
 #endif // board
@@ -66,4 +70,4 @@
     #define NEOPIXEL_PIN PIN_NEOPIXEL
 #endif // PIN_NEOPIXEL
 
-#endif // _SAMCOBOARD_H_
+#endif // _OPENFIREBOARD_H_

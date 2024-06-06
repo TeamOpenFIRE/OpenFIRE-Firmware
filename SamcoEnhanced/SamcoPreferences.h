@@ -14,7 +14,7 @@
 #ifndef _SAMCOPREFERENCES_H_
 #define _SAMCOPREFERENCES_H_
 
-#include <SamcoBoard.h>
+#include <OpenFIREBoard.h>
 #include <stdint.h>
 
 /// @brief Static instance of preferences to save in non-volatile memory
@@ -39,11 +39,15 @@ public:
 
     /// @brief Profile data
     typedef struct ProfileData_s {
-        uint16_t xScale;	          ///< X Scale * 1000
-        uint16_t yScale;            ///< Y Scale * 1000
-        uint32_t xCenter : 12;
-        uint32_t yCenter : 12;      
-        uint32_t irSensitivity : 3;
+        int topOffset;              // Perspective: Offsets
+        int bottomOffset;
+        int leftOffset;
+        int rightOffset;
+        float TLled;                // Perspective: LED relative anchors
+        float TRled;
+        float adjX;                 // Perspective: adjusted axis
+        float adjY;
+        uint32_t irSensitivity : 3; // IR Sensitivity from 0-2
         uint32_t runMode : 5;       // Averaging mode
         uint32_t buttonMask : 16;   // Button mask assigned to this profile
         bool irLayout;              // square or diamond IR for this display?
@@ -66,6 +70,18 @@ public:
     // single instance of the preference data
     static Preferences_t profiles;
 
+    enum BoolTypes_e {
+        Bool_CustomPins = 0,
+        Bool_Rumble,
+        Bool_Solenoid,
+        Bool_Autofire,
+        Bool_SimpleMenu,
+        Bool_HoldToPause,
+        Bool_CommonAnode,
+        Bool_LowButtons,
+        Bool_RumbleFF
+    };
+
     typedef struct TogglesMap_s {
         bool customPinsInUse = false;   // Are we using custom pins mapping?
         bool rumbleActive = true;       // Are we allowed to do rumble?
@@ -80,6 +96,40 @@ public:
 
     static TogglesMap_t toggles;
 
+    enum InputTypes_e {
+        Pin_Trigger = 0,
+        Pin_GunA,
+        Pin_GunB,
+        Pin_GunC,
+        Pin_Start,
+        Pin_Select,
+        Pin_GunUp,
+        Pin_GunDown,
+        Pin_GunLeft,
+        Pin_GunRight,
+        Pin_Pedal,
+        Pin_Pedal2,
+        Pin_Home,
+        Pin_Pump,
+        Pin_RumbleSignal,
+        Pin_SolenoidSignal,
+        Pin_RumbleSwitch,
+        Pin_SolenoidSwitch,
+        Pin_AutofireSwitch,
+        Pin_NeoPixel,
+        Pin_LEDR,
+        Pin_LEDG,
+        Pin_LEDB,
+        Pin_CameraSDA,
+        Pin_CameraSCL,
+        Pin_PeripheralSDA,
+        Pin_PeripheralSCL,
+        Pin_Battery,
+        Pin_AnalogX,
+        Pin_AnalogY,
+        Pin_AnalogTMP
+    };
+
     typedef struct PinsMap_s {
         int8_t bTrigger = -1;              // Trigger
         int8_t bGunA = -1;                 // Button A (GunCon 1/Stunner/Justifier)
@@ -92,13 +142,14 @@ public:
         int8_t bGunRight = -1;             // D-Pad Right (GCon-2)
         int8_t bGunC = -1;                 // Button C (GCon-2)
         int8_t bPedal = -1;                // External Pedal (DIY)
+        int8_t bPedal2 = -1;               // External Pedal 2 (DIY)
         int8_t bHome = -1;                 // Home Button (Top Shot Elite)
         int8_t bPump = -1;                 // Pump Action Reload Button (Top Shot Elite)
+        int8_t oRumble = -1;               // Rumble Signal Pin
+        int8_t oSolenoid = -1;             // Solenoid Signal Pin
         int8_t sRumble = -1;               // Rumble Switch
         int8_t sSolenoid = -1;             // Solenoid Switch
         int8_t sAutofire = -1;             // Autofire Switch
-        int8_t oRumble = -1;               // Rumble Signal Pin
-        int8_t oSolenoid = -1;             // Solenoid Signal Pin
         int8_t oPixel = -1;                // Custom NeoPixel Pin
         int8_t oLedR = -1;                 // 4-Pin RGB Red Pin
         int8_t oLedB = -1;                 // 4-Pin RGB Blue Pin
@@ -107,12 +158,28 @@ public:
         int8_t pCamSCL = -1;               // Camera I2C Clock Pin
         int8_t pPeriphSDA = -1;            // Other I2C Peripherals Data Pin
         int8_t pPeriphSCL = -1;            // Other I2C Peripherals Clock Pin
+        int8_t aBattRead = -1;             // Battery voltage circuit thingy?
         int8_t aStickX = -1;               // Analog Stick X-axis
         int8_t aStickY = -1;               // Analog Stick Y-axis
         int8_t aTMP36 = -1;                // Analog TMP36 Temperature Sensor Pin
     } PinsMap_t;
 
     static PinsMap_t pins;
+
+    enum SettingsTypes_e {
+        Setting_RumbleIntensity = 0,
+        Setting_RumbleInterval,
+        Setting_SolenoidNormInt,
+        Setting_SolenoidFastInt,
+        Setting_SolenoidLongInt,
+        Setting_AutofireFactor,
+        Setting_PauseHoldLength,
+        Setting_CustomLEDCount,
+        Setting_CustomLEDStatic,
+        Setting_Color1,
+        Setting_Color2,
+        Setting_Color3
+    };
 
     typedef struct SettingsMap_s {
         uint8_t rumbleIntensity = 255;
@@ -131,8 +198,13 @@ public:
 
     static SettingsMap_t settings;
 
+    enum USBTypes_e {
+        USB_DeviceName = 0,
+        USB_DevicePID
+    };
+
     typedef struct USBMap_s {
-        char deviceName[16] = "FIRECon";
+        char deviceName[16];
         uint16_t devicePID;
     } USBMap_t;
 

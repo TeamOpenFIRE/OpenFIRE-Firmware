@@ -51,12 +51,8 @@ class TinyUSBDevices_ {
 public:
   TinyUSBDevices_(void);
   void begin(byte polRate);
-  enum USBChannelType_e {
-    USBChannel_Mouse = 0,
-    USBChannel_Keyboard,
-    USBChannel_Gamepad
-  };
-  uint8_t USBChannelLast = USBChannel_Mouse;
+  bool onBattery = false;
+  bool misterMode = false;
 };
 extern TinyUSBDevices_ TinyUSBDevices;
 
@@ -106,10 +102,6 @@ extern TinyUSBDevices_ TinyUSBDevices;
 	0xC0, \
 	0xC0
 
-
-// From Seong:
-// Look, if SOMEONE ELSE wants to touch these descriptors, be my guest.
-// I don't wanna look at this header file ever again tbh
 #define TUD_HID_REPORT_DESC_GAMEPAD16(...) \
           0x05, 0x01, \
 			0x09, 0x05, \
@@ -148,6 +140,7 @@ extern TinyUSBDevices_ TinyUSBDevices;
               0xc0,       \
 			0xc0
 #endif // USE_TINYUSB
+// I really... REAAAAALLY HATE these descriptors
 
 // 5 button absolute mouse
 class AbsMouse5_
@@ -168,6 +161,7 @@ public:
 	void move(uint16_t x, uint16_t y);
 	void press(uint8_t b = MOUSE_LEFT);
 	void release(uint8_t b = MOUSE_LEFT);
+	void releaseAll() { release(0x1f); }
 };
 
 // global singleton
@@ -305,6 +299,9 @@ typedef struct {
 class Gamepad16_ {
 private:
   gamepad16Report_s gamepad16Report;
+  uint16_t _x = 2048;
+  uint16_t _y = 2048;
+  bool _autoReport = true;
 public:
   Gamepad16_(void);
   void moveCam(uint16_t origX, uint16_t origY);
@@ -314,6 +311,7 @@ public:
   void padUpdate(uint8_t padMask);
   void report(void);
   void releaseAll(void);
+  void setAutoreport(bool state) { _autoReport = state; }
   bool stickRight;
 };
 extern Gamepad16_ Gamepad16;

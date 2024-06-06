@@ -103,22 +103,20 @@ void AbsMouse5_::report(void)
 	buffer[2] = (_x >> 8) & 0xFF;
 	buffer[3] = _y & 0xFF;
 	buffer[4] = (_y >> 8) & 0xFF;
-    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Mouse) {
-      delay(1);
-      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Mouse;
-    }
+
 #if defined(_USING_HID)
 	HID().SendReport(_reportId, buffer, 5);
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
-	tud_hid_report(_reportId, buffer, 5);
+    while(!usbHid.ready()) delay(1);
+	usbHid.sendReport(_reportId, buffer, 5);
 #endif // USE_TINYUSB
 }
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
 {
-	x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
-	y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
+	//x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
+	//y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
 
 	if(x != _x || y != _y) {
 		_x = x;
@@ -160,10 +158,6 @@ void AbsMouse5_::release(uint8_t button)
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
-    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Keyboard) {
-      delay(1);
-      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Keyboard;
-    }
     usbHid.keyboardReport(KeyboardReportID,keys->modifiers,keys->keys);
   }
   
@@ -421,43 +415,54 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::moveCam(uint16_t origX, uint16_t origY) {
-    // add shit ass
-    // yes I hardcoded the mousemaxx/y values, eat me
     if(stickRight) {
-        gamepad16Report.X = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Y = map(origY, 0, 3071, 0, 65535);
+        gamepad16Report.X = map(origX, 0, 32768, 0, 65535);
+        gamepad16Report.Y = map(origY, 0, 32768, 0, 65535);
     } else {
-        gamepad16Report.Rx = map(origX, 0, 4095, 0, 65535);
-        gamepad16Report.Ry = map(origY, 0, 3071, 0, 65535);
+        gamepad16Report.Rx = map(origX, 0, 32768, 0, 65535);
+        gamepad16Report.Ry = map(origY, 0, 32768, 0, 65535);
     }
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::moveStick(uint16_t origX, uint16_t origY) {
     // TODO: inverted output for Cabela's Top Shot Elite sticks, but it might be backwards for others.
-    if(stickRight) {
-        gamepad16Report.Rx = map(origX, 0, 4095, 65535, 0);
-        gamepad16Report.Ry = map(origY, 0, 4095, 65535, 0);
-    } else {
-        gamepad16Report.X = map(origX, 0, 4095, 65535, 0);
-        gamepad16Report.Y = map(origY, 0, 4095, 65535, 0);
+    if(origX != _x || origY != _y) {
+        _x = origX, _y = origY;
+        if(stickRight) {
+            gamepad16Report.Rx = map(_x, 0, 4095, 65535, 0);
+            gamepad16Report.Ry = map(_y, 0, 4095, 65535, 0);
+        } else {
+            gamepad16Report.X = map(_x, 0, 4095, 65535, 0);
+            gamepad16Report.Y = map(_y, 0, 4095, 65535, 0);
+        }
+        if(_autoReport) {
+            report();
+        }
     }
-    report();
   }
 
   void Gamepad16_::press(uint8_t buttonNum) {
     bitSet(gamepad16Report.buttons, buttonNum);
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::release(uint8_t buttonNum) {
     bitClear(gamepad16Report.buttons, buttonNum);
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::padUpdate(uint8_t padMask) {
     gamepad16Report.hat = padMask;
-    report();
+    if(_autoReport) {
+        report();
+    }
   }
 
   void Gamepad16_::report() {
@@ -465,11 +470,7 @@ void AbsMouse5_::release(uint8_t button)
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
-    if(TinyUSBDevices.USBChannelLast != TinyUSBDevices.USBChannel_Gamepad) {
-      delay(1);
-      TinyUSBDevices.USBChannelLast = TinyUSBDevices.USBChannel_Gamepad;
-    }
-    tud_hid_report(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
+    usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
   }
 
   void Gamepad16_::releaseAll() {
