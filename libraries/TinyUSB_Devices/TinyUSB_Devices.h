@@ -51,8 +51,8 @@ class TinyUSBDevices_ {
 public:
   TinyUSBDevices_(void);
   void begin(byte polRate);
+  void beginBT(const char *localName, const char *hidName);
   bool onBattery = false;
-  bool misterMode = false;
 };
 extern TinyUSBDevices_ TinyUSBDevices;
 
@@ -150,13 +150,11 @@ private:
 	uint8_t _buttons;
 	uint16_t _x;
 	uint16_t _y;
-	uint32_t _width;
-	uint32_t _height;
 	bool _autoReport;
 
 public:
 	AbsMouse5_(uint8_t reportId = 1);
-	void init(uint16_t width = 32767, uint16_t height = 32767, bool autoReport = true);
+	void init(bool autoReport = true);
 	void report(void);
 	void move(uint16_t x, uint16_t y);
 	void press(uint8_t b = MOUSE_LEFT);

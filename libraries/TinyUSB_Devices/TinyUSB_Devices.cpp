@@ -3,15 +3,19 @@
  * Chris Young's TinyUSB Mouse and Keyboard library (the Keyboard half, anyways),
  * which in itself uses pieces of Arduino's basic Keyboard library.
  */
-#if defined(USE_TINYUSB)
+#ifdef USE_TINYUSB
   #include <Adafruit_TinyUSB.h>
-#elif defined(CFG_TUSB_MCU)
+#elifdef CFG_TUSB_MCU
   #error Incompatible USB stack. Use Adafruit TinyUSB.
 #else
   #include <HID.h>
 #endif
 
 #include "TinyUSB_Devices.h"
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#include <HID_Bluetooth.h>
+#include <PicoBluetoothHID.h>
+#endif // ARDUINO_RASPBERRY_PI_PICO_W
 
 /*****************************
  *   GLOBAL SECTION
@@ -23,13 +27,27 @@ enum HID_RID_e{
     HID_RID_MOUSE,
     HID_RID_GAMEPAD
 };
-byte KeyboardReportID = HID_RID_KEYBOARD;
 
 uint8_t desc_hid_report[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_RID_KEYBOARD)),
-    TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_RID_MOUSE)),
-    TUD_HID_REPORT_DESC_GAMEPAD16(HID_REPORT_ID(HID_RID_GAMEPAD))
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
+    TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(2)),
+    TUD_HID_REPORT_DESC_GAMEPAD16(HID_REPORT_ID(3))
 };
+
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+enum HID_BT_e {
+    HID_BT_KEYBOARD = 1,
+    HID_BT_CONSUMER,
+    HID_BT_MOUSE,
+    HID_BT_GAMEPAD
+};
+
+uint8_t desc_bt_report[] = {
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(HID_BT_KEYBOARD)),
+    TUD_HID_REPORT_DESC_ABSMOUSE5(HID_REPORT_ID(HID_BT_MOUSE))//,
+    //TUD_HID_REPORT_DESC_GAMEPAD16(HID_REPORT_ID(2))
+};
+#endif // ARDUINO_RASPBERRY_PI_PICO_W
 
 TinyUSBDevices_::TinyUSBDevices_(void) {
 }
@@ -38,7 +56,19 @@ void TinyUSBDevices_::begin(byte polRate) {
     usbHid.setPollInterval(polRate);
     usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     usbHid.begin();
+    onBattery = false;
 }
+
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+void TinyUSBDevices_::beginBT(const char *localName, const char *hidName) {
+    // third arg is the type of device that this is exposed as, i.e. the icon displayed on the PC.
+    // for BLE: 0x03C2 is mouse, 0x03C1 is keyboard, 0x03C4 is gamepad, 0x03C0 is "generic" bluetooth icon
+    // for BT: 0x2580 is mouse, 0x2540 is keyboard, 0x2508 is gamepad, 0x25C0 is "combo".
+    // also bluetooth classic for some reason has a "subclass"?
+    PicoBluetoothHID.startHID(localName, hidName, 0x2580, 33, desc_bt_report, sizeof(desc_bt_report));
+    onBattery = true;
+}
+#endif // ARDUINO_RASPBERRY_PI_PICO_W
 
 TinyUSBDevices_ TinyUSBDevices;
   
@@ -80,7 +110,7 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 };
 #endif // _USING_HID
 
-AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0), _width(32767l), _height(32767l), _autoReport(true)
+AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0), _autoReport(true)
 {
 #if defined(_USING_HID)
 	static HIDSubDescriptor descriptorNode(HID_REPORT_DESCRIPTOR5, sizeof(HID_REPORT_DESCRIPTOR5));
@@ -88,10 +118,8 @@ AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(
 #endif // _USING_HID
 }
 
-void AbsMouse5_::init(uint16_t width, uint16_t height, bool autoReport)
+void AbsMouse5_::init(bool autoReport)
 {
-	_width = width;
-	_height = height;
 	_autoReport = autoReport;
 }
 
@@ -108,16 +136,22 @@ void AbsMouse5_::report(void)
 	HID().SendReport(_reportId, buffer, 5);
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
+    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    if(TinyUSBDevices.onBattery) {
+      PicoBluetoothHID.send(HID_BT_MOUSE, buffer, 5);
+    } else {
+      while(!usbHid.ready()) delay(1);
+      usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
+    }
+    #else
     while(!usbHid.ready()) delay(1);
-	usbHid.sendReport(_reportId, buffer, 5);
+    usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
+    #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #endif // USE_TINYUSB
 }
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
 {
-	//x = (uint16_t)((32767l * ((uint32_t)x)) / _width);
-	//y = (uint16_t)((32767l * ((uint32_t)y)) / _height);
-
 	if(x != _x || y != _y) {
 		_x = x;
 		_y = y;
@@ -154,11 +188,23 @@ void AbsMouse5_::release(uint8_t button)
   
   void Keyboard_::sendReport(KeyReport* keys)
   {
+    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    if(TinyUSBDevices.onBattery) {
+      PicoBluetoothHID.send(HID_BT_KEYBOARD, keys, sizeof(keys));
+    } else {
+      if ( USBDevice.suspended() )  {
+        USBDevice.remoteWakeup();
+      }
+      while(!usbHid.ready()) delay(1);
+      usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
+    }
+    #else
     if ( USBDevice.suspended() )  {
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
-    usbHid.keyboardReport(KeyboardReportID,keys->modifiers,keys->keys);
+    usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
+    #endif // ARDUINO_RASPBERRY_PI_PICO_W
   }
   
   #define SHIFT 0x80
@@ -466,11 +512,24 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::report() {
+    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    if(TinyUSBDevices.onBattery) {
+      // this doesn't work for some reason :(
+      //PicoBluetoothHID.send(2, &gamepad16Report, sizeof(gamepad16Report));
+    } else {
+      if ( USBDevice.suspended() )  {
+        USBDevice.remoteWakeup();
+      }
+      while(!usbHid.ready()) delay(1);
+      usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
+    }
+    #else
     if ( USBDevice.suspended() )  {
       USBDevice.remoteWakeup();
     }
     while(!usbHid.ready()) delay(1);
     usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
+    #endif // ARDUINO_RASPBERRY_PI_PICO_W
   }
 
   void Gamepad16_::releaseAll() {
