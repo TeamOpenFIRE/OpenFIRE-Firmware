@@ -47,7 +47,7 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 
 ## Thanks:
 * Samuel Ballantyne, for his original SAMCO project, the gorgeous OpenFIRE branding, and perspective-based tracking system.
-* Mike Lynch/Prow7, for his enhanced SAMCO fork which provided the basis of pause mode and saving subsystems.
-* Odwalla-J, mykylegp, SawdustMaker & lemmingDev for prerelease consultation, bug testing and feedback.
+* Prow7, for his enhanced SAMCO fork which provided the basis of pause mode and saving subsystems.
+* Odwalla-J, mykylegp, RG2020 & lemmingDev for prerelease consultation, bug testing and feedback.
 * The IR-GUN4ALL testers for their early feedback and feature requests - this wouldn't have happened without you lot!
 * Orhan Yiğit Durmaz for TinyUSB HID gamepad descriptors examples, and Chris Young for his TinyUSB compatible library (now part of `TinyUSB_Devices`).
