@@ -140,11 +140,11 @@ void AbsMouse5_::report(void)
     if(TinyUSBDevices.onBattery) {
       PicoBluetoothHID.send(HID_BT_MOUSE, buffer, 5);
     } else {
-      while(!usbHid.ready()) delay(1);
+      while(!usbHid.ready()) yield();
       usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
     }
     #else
-    while(!usbHid.ready()) delay(1);
+    while(!usbHid.ready()) yield();
     usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #endif // USE_TINYUSB
@@ -195,14 +195,14 @@ void AbsMouse5_::release(uint8_t button)
       if ( USBDevice.suspended() )  {
         USBDevice.remoteWakeup();
       }
-      while(!usbHid.ready()) delay(1);
+      while(!usbHid.ready()) yield();
       usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
     }
     #else
     if ( USBDevice.suspended() )  {
       USBDevice.remoteWakeup();
     }
-    while(!usbHid.ready()) delay(1);
+    while(!usbHid.ready()) yield();
     usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
   }
@@ -520,14 +520,14 @@ void AbsMouse5_::release(uint8_t button)
       if ( USBDevice.suspended() )  {
         USBDevice.remoteWakeup();
       }
-      while(!usbHid.ready()) delay(1);
+      while(!usbHid.ready()) yield();
       usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
     }
     #else
     if ( USBDevice.suspended() )  {
       USBDevice.remoteWakeup();
     }
-    while(!usbHid.ready()) delay(1);
+    while(!usbHid.ready()) yield();
     usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
   }
