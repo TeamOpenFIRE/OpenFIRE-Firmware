@@ -7,7 +7,7 @@
 - **Multiple IR layouts support**, with *realtime perspective-adjusted tracking* for both double lightbar (recommended!) and Xwiigun-like diamond layouts (compatible with other systems).
 - **Flexible Input System**, with outputs to Keyboard, 5-button ABS Mouse, and dual-stick gamepad w/ d-pad support (in Wired mode).
 - **Easy installation** with simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
-- **Bluetooth Support** with the *Raspberry Pi Pico W,* for untethered gameplay in battery-powered lightguns.
+- **Bluetooth Support (BETA)** with the *Raspberry Pi Pico W,* for untethered gameplay in battery-powered lightguns.
 - **Portable on-board settings** to store calibration profiles, toggles, settings, mappings (WIP), identifier and more to come.
 - **Integrates with the [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App)** for user-friendly, and cross-platform configuration.
 - **Optimized for the RP2040**, using its second core for input reading and serial handling, and the main core for camera and peripherals processing, whenever possible.
@@ -34,7 +34,7 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 [Check out the enclosed instruction book!](SamcoEnhanced/README.md) For developers, consult the README files in `libraries` for more information on library functionality.
 
 ## Known Issues:
-- *None... so far*
+- With Pico W & Bluetooth enabled, TinyUSB/Serial fails to initialize properly when connected via USB, so the firmware is deadlocked either sending serial or USB report data.
 
 > [!NOTE]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
