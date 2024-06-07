@@ -3,13 +3,14 @@
 ###### Successor to [GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
 
 ## Features:
-- **Fully featured peripherals:** Solenoid & Rumble Force Feedback, TMP36 Temperature Monitoring, and others to come.
+- **Fully featured peripherals**, from Solenoid & Rumble Force Feedback, to TMP36 Temperature Monitoring, and others to come.
 - **Multiple IR layouts support**, with *realtime perspective-adjusted tracking* for both double lightbar (recommended!) and Xwiigun-like diamond layouts (compatible with other systems).
-- **Flexible Input System** with outputs to Keyboard, 5-button ABS Mouse, and dual-stick gamepad w/ d-pad support.
-- **Easy installation:** Simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
-- **Portable on-board settings** (using an emulated EEPROM) to store calibration profiles, toggles, settings, mappings (WIP), identifier and more to come.
+- **Flexible Input System**, with outputs to Keyboard, 5-button ABS Mouse, and dual-stick gamepad w/ d-pad support (in Wired mode).
+- **Easy installation** with simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
+- **Bluetooth Support** with the *Raspberry Pi Pico W,* for untethered gameplay in battery-powered lightguns.
+- **Portable on-board settings** to store calibration profiles, toggles, settings, mappings (WIP), identifier and more to come.
 - **Integrates with the [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App)** for user-friendly, and cross-platform configuration.
-- **Optimized for the RP2040**, using a second core for input reading and serial handling, and the main core for camera and peripherals processing, whenever possible.
+- **Optimized for the RP2040**, using its second core for input reading and serial handling, and the main core for camera and peripherals processing, whenever possible.
 - **Compatible with PC Force Feedback handlers** such as [Mame Hooker](https://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) and [QMamehook](https://github.com/SeongGino/QMamehook).
 - **Supports integrated OLED display output** for *SSD1306 I2C displays* for menu navigation and visual feedback of game elements such as life and current ammo counts.
 - **Forever free and open source to the lightgun community!**
@@ -41,7 +42,6 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 ## TODO:
 - (Re-)expose button function remapping.
 - Should implement support for rumble as an alternative force-feedback system (currently under `RUMBLE_FF` define, but should be a normal toggleable option).
-- Display currently uses Adafruit_GFX/SSD1306 library, but should we maybe consider [OneBitDisplay](https://github.com/bitbank2/OneBitDisplay) instead? It seems compatible with Adafruit lib's syntax, so should be a drop-in replacement if need be.
 - Use more appropriate RP2040-specific subsystems? See [TimerInterrupt](https://github.com/git2212/RPI_PICO_TimerInterrupt) for hw timers library, not sure if NeoPixels has such an option for our use case.
 - Start librarifying more sections of the code for better readability/portability, i.e. pause mode and serial processing/handling in bespoke classes.
 
