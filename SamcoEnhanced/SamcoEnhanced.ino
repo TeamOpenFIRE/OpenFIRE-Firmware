@@ -589,7 +589,7 @@ void setup() {
 #ifdef USE_TINYUSB
     #ifdef ARDUINO_RASPBERRY_PI_PICO_W
     // is VBUS (USB voltage) detected?
-    if(!digitalRead(34)) {
+    if(digitalRead(34)) {
         // If so, we're connected via USB, so initializing the USB devices chunk.
         TinyUSBDevices.begin(1);
     } else {
