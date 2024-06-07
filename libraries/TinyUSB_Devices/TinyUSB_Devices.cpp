@@ -12,7 +12,7 @@
 #endif
 
 #include "TinyUSB_Devices.h"
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
 #include <HID_Bluetooth.h>
 #include <PicoBluetoothHID.h>
 #endif // ARDUINO_RASPBERRY_PI_PICO_W
@@ -34,7 +34,7 @@ uint8_t desc_hid_report[] = {
     TUD_HID_REPORT_DESC_GAMEPAD16(HID_REPORT_ID(3))
 };
 
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
 enum HID_BT_e {
     HID_BT_KEYBOARD = 1,
     HID_BT_CONSUMER,
@@ -59,7 +59,7 @@ void TinyUSBDevices_::begin(byte polRate) {
     onBattery = false;
 }
 
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
 void TinyUSBDevices_::beginBT(const char *localName, const char *hidName) {
     // third arg is the type of device that this is exposed as, i.e. the icon displayed on the PC.
     // for BLE: 0x03C2 is mouse, 0x03C1 is keyboard, 0x03C4 is gamepad, 0x03C0 is "generic" bluetooth icon
@@ -136,7 +136,7 @@ void AbsMouse5_::report(void)
 	HID().SendReport(_reportId, buffer, 5);
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
-    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     if(TinyUSBDevices.onBattery) {
       PicoBluetoothHID.send(HID_BT_MOUSE, buffer, 5);
     } else {
@@ -188,7 +188,7 @@ void AbsMouse5_::release(uint8_t button)
   
   void Keyboard_::sendReport(KeyReport* keys)
   {
-    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     if(TinyUSBDevices.onBattery) {
       PicoBluetoothHID.send(HID_BT_KEYBOARD, keys, sizeof(keys));
     } else {
@@ -512,7 +512,7 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::report() {
-    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     if(TinyUSBDevices.onBattery) {
       // this doesn't work for some reason :(
       //PicoBluetoothHID.send(2, &gamepad16Report, sizeof(gamepad16Report));
