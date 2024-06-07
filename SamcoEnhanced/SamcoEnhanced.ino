@@ -529,9 +529,6 @@ DFRobotIRPositionEx *dfrIRPos;
 //-----------------------------------------------------------------------------------------------------
 // The main show!
 void setup() {
-    Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
-    Serial.setTimeout(0);
- 
     // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
     EEPROM.begin(1024);
 
@@ -540,10 +537,8 @@ void setup() {
     if(nvAvailable) {
         LoadPreferences();
         if(nvPrefsError == SamcoPreferences::Error_NoData) {
-            Serial.println("No data detected, setting defaults!");
             SamcoPreferences::ResetPreferences();
         } else if(nvPrefsError == SamcoPreferences::Error_Success) {
-            Serial.println("Data detected, pulling settings from EEPROM!");
             // use values from preferences
             // if default profile is valid then use it
             if(SamcoPreferences::profiles.selectedProfile < ProfileCount) {
@@ -587,11 +582,15 @@ void setup() {
     #endif // LED_ENABLE
     
 #ifdef USE_TINYUSB
-    #ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     // is VBUS (USB voltage) detected?
     if(digitalRead(34)) {
         // If so, we're connected via USB, so initializing the USB devices chunk.
         TinyUSBDevices.begin(1);
+        // wait until device mounted
+        while(!USBDevice.mounted()) { yield(); }
+        Serial.begin(9600);
+        Serial.setTimeout(0);
     } else {
         // Else, we're on batt, so init the Bluetooth chunks.
         if(SamcoPreferences::usb.deviceName[0] == '\0') {
@@ -603,18 +602,17 @@ void setup() {
     #else
     // Initializing the USB devices chunk.
     TinyUSBDevices.begin(1);
-    #endif // ARDUINO_RASPBERRY_PI_PICO_W
-#endif
-    
-    AbsMouse5.init(true);
-
-#ifdef USE_TINYUSB
     // wait until device mounted
     while(!USBDevice.mounted()) { yield(); }
+    Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
+    Serial.setTimeout(0);
+    #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #else
     // was getting weird hangups... maybe nothing, or maybe related to dragons, so wait a bit
     delay(100);
 #endif
+    
+    AbsMouse5.init(true);
 
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(IRCamUpdateRate);
