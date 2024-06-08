@@ -27,6 +27,7 @@
 #include <Wire.h>
 #include "SamcoDisplay.h"
 #include "SamcoPreferences.h"
+#include <TinyUSB_Devices.h>
 
 // include heuristics for determining Wire or Wire1 SDA/SCL pins, ref'd from SamcoPreferences::pins
 
@@ -108,7 +109,8 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode)
         display->setTextColor(WHITE, BLACK);
         switch(screenMode) {
           case Screen_Normal:
-            
+            if(TinyUSBDevices.onBattery) { display->drawBitmap(2, 46, btConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
+            else { display->drawBitmap(2, 46, usbConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
             break;
           case Screen_None:
           case Screen_Docked:
