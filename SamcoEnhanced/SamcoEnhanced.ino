@@ -1525,6 +1525,12 @@ void ExecGunModeDocked()
     unsigned long tempChecked = millis();
     unsigned long aStickChecked = millis();
     uint8_t aStickDirPrev;
+
+    Serial.printf("OpenFIRE,%.1f,%s,%s,%i\r\n",
+    OPENFIRE_VERSION,
+    OPENFIRE_CODENAME,
+    OPENFIRE_BOARD,
+    selectedProfile);
     for(;;) {
         buttons.Poll(1);
 
@@ -2874,157 +2880,97 @@ void SerialProcessingDocked()
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'b':
-                    //Serial.println("----------BOOL SETTINGS----------");
-                    //Serial.print("Custom pins layout enabled: ");
-                    Serial.println(SamcoPreferences::toggles.customPinsInUse);
-                    //Serial.print("Rumble Active: ");
-                    Serial.println(SamcoPreferences::toggles.rumbleActive);
-                    //Serial.print("Solenoid Active: ");
-                    Serial.println(SamcoPreferences::toggles.solenoidActive);
-                    //Serial.print("Autofire Active: ");
-                    Serial.println(SamcoPreferences::toggles.autofireActive);
-                    //Serial.print("Simple Pause Menu Enabled: ");
-                    Serial.println(SamcoPreferences::toggles.simpleMenu);
-                    //Serial.print("Hold to Pause Enabled: ");
-                    Serial.println(SamcoPreferences::toggles.holdToPause);
-                    //Serial.print("Common Anode Active: ");
-                    Serial.println(SamcoPreferences::toggles.commonAnode);
-                    //Serial.print("Low Buttons Mode Active: ");
-                    Serial.println(SamcoPreferences::toggles.lowButtonMode);
-                    //Serial.print("Rumble Force Feedback Active: ");
-                    Serial.println(SamcoPreferences::toggles.rumbleFF);
+                    Serial.printf("%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
+                    SamcoPreferences::toggles.customPinsInUse,
+                    SamcoPreferences::toggles.rumbleActive,
+                    SamcoPreferences::toggles.solenoidActive,
+                    SamcoPreferences::toggles.autofireActive,
+                    SamcoPreferences::toggles.simpleMenu,
+                    SamcoPreferences::toggles.holdToPause,
+                    SamcoPreferences::toggles.commonAnode,
+                    SamcoPreferences::toggles.lowButtonMode,
+                    SamcoPreferences::toggles.rumbleFF
+                    );
                     break;
                   case 'p':
-                    //Serial.println("----------PIN MAPPINGS-----------");
-                    //Serial.print("Trigger: ");
-                    Serial.println(SamcoPreferences::pins.bTrigger);
-                    //Serial.print("Button A: ");
-                    Serial.println(SamcoPreferences::pins.bGunA);
-                    //Serial.print("Button B: ");
-                    Serial.println(SamcoPreferences::pins.bGunB);
-                    //Serial.print("Button C: ");
-                    Serial.println(SamcoPreferences::pins.bGunC);
-                    //Serial.print("Start: ");
-                    Serial.println(SamcoPreferences::pins.bStart);
-                    //Serial.print("Select: ");
-                    Serial.println(SamcoPreferences::pins.bSelect);
-                    //Serial.print("D-Pad Up: ");
-                    Serial.println(SamcoPreferences::pins.bGunUp);
-                    //Serial.print("D-Pad Down: ");
-                    Serial.println(SamcoPreferences::pins.bGunDown);
-                    //Serial.print("D-Pad Left: ");
-                    Serial.println(SamcoPreferences::pins.bGunLeft);
-                    //Serial.print("D-Pad Right: ");
-                    Serial.println(SamcoPreferences::pins.bGunRight);
-                    //Serial.print("External Pedal: ");
-                    Serial.println(SamcoPreferences::pins.bPedal);
-                    //Serial.print("External Pedal 2: ");
-                    Serial.println(SamcoPreferences::pins.bPedal2);
-                    //Serial.print("Home Button: ");
-                    Serial.println(SamcoPreferences::pins.bHome);
-                    //Serial.print("Pump Action: ");
-                    Serial.println(SamcoPreferences::pins.bPump);
-                    //Serial.print("Rumble Signal Wire: ");
-                    Serial.println(SamcoPreferences::pins.oRumble);
-                    // for some reason, at this point, QT stops reading output.
-                    // so we'll just wait for a ping to print out the rest.
-                    while(!Serial.available()) {
-                      // derp
-                    }
-                    //Serial.print("Solenoid Signal Wire: ");
-                    Serial.println(SamcoPreferences::pins.oSolenoid);
-                    //Serial.print("Rumble Switch: ");
-                    Serial.println(SamcoPreferences::pins.sRumble);
-                    //Serial.print("Solenoid Switch: ");
-                    Serial.println(SamcoPreferences::pins.sSolenoid);
-                    //Serial.print("Autofire Switch: ");
-                    Serial.println(SamcoPreferences::pins.sAutofire);
-                    //Serial.print("Custom NeoPixel Pin: ");
-                    Serial.println(SamcoPreferences::pins.oPixel);
-                    //Serial.print("LED R: ");
-                    Serial.println(SamcoPreferences::pins.oLedR);
-                    //Serial.print("LED G: ");
-                    Serial.println(SamcoPreferences::pins.oLedG);
-                    //Serial.print("LED B: ");
-                    Serial.println(SamcoPreferences::pins.oLedB);
-                    //Serial.print("Camera SDA: ");
-                    Serial.println(SamcoPreferences::pins.pCamSDA);
-                    //Serial.print("Camera SCL: ");
-                    Serial.println(SamcoPreferences::pins.pCamSCL);
-                    //Serial.print("Peripheral SDA: ");
-                    Serial.println(SamcoPreferences::pins.pPeriphSDA);
-                    //Serial.print("Peripheral SCL: ");
-                    Serial.println(SamcoPreferences::pins.pPeriphSCL);
-                    //Serial.print("Battery Sensor: ");
-                    Serial.println(SamcoPreferences::pins.aBattRead);
-                    //Serial.print("Analog Joystick X: ");
-                    Serial.println(SamcoPreferences::pins.aStickX);
-                    //Serial.print("Analog Joystick Y: ");
-                    Serial.println(SamcoPreferences::pins.aStickY);
-                    //Serial.print("Temperature Sensor: ");
-                    Serial.println(SamcoPreferences::pins.aTMP36);
-                    // clean house now from my dirty hack.
-                    while(Serial.available()) {
-                      serialInput = Serial.read();
-                    }
+                    Serial.printf(
+                    "%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
+                    SamcoPreferences::pins.bTrigger,
+                    SamcoPreferences::pins.bGunA,
+                    SamcoPreferences::pins.bGunB,
+                    SamcoPreferences::pins.bGunC,
+                    SamcoPreferences::pins.bStart,
+                    SamcoPreferences::pins.bSelect,
+                    SamcoPreferences::pins.bGunUp,
+                    SamcoPreferences::pins.bGunDown,
+                    SamcoPreferences::pins.bGunLeft,
+                    SamcoPreferences::pins.bGunRight,
+                    SamcoPreferences::pins.bPedal,
+                    SamcoPreferences::pins.bPedal2,
+                    SamcoPreferences::pins.bHome,
+                    SamcoPreferences::pins.bPump,
+                    SamcoPreferences::pins.oRumble,
+                    SamcoPreferences::pins.oSolenoid,
+                    SamcoPreferences::pins.sRumble,
+                    SamcoPreferences::pins.sSolenoid,
+                    SamcoPreferences::pins.sAutofire,
+                    SamcoPreferences::pins.oPixel,
+                    SamcoPreferences::pins.oLedR,
+                    SamcoPreferences::pins.oLedG,
+                    SamcoPreferences::pins.oLedB,
+                    SamcoPreferences::pins.pCamSDA,
+                    SamcoPreferences::pins.pCamSCL,
+                    SamcoPreferences::pins.pPeriphSDA,
+                    SamcoPreferences::pins.pPeriphSCL,
+                    SamcoPreferences::pins.aBattRead,
+                    SamcoPreferences::pins.aStickX,
+                    SamcoPreferences::pins.aStickY,
+                    SamcoPreferences::pins.aTMP36
+                    );
                     break;
                   case 's':
-                    //Serial.println("----------OTHER SETTINGS-----------");
-                    //Serial.print("Rumble Intensity Value: ");
-                    Serial.println(SamcoPreferences::settings.rumbleIntensity);
-                    //Serial.print("Rumble Length: ");
-                    Serial.println(SamcoPreferences::settings.rumbleInterval);
-                    //Serial.print("Solenoid Normal Interval: ");
-                    Serial.println(SamcoPreferences::settings.solenoidNormalInterval);
-                    //Serial.print("Solenoid Fast Interval: ");
-                    Serial.println(SamcoPreferences::settings.solenoidFastInterval);
-                    //Serial.print("Solenoid Hold Length: ");
-                    Serial.println(SamcoPreferences::settings.solenoidLongInterval);
-                    //Serial.print("Autofire Wait Factor: ");
-                    Serial.println(SamcoPreferences::settings.autofireWaitFactor);
-                    //Serial.print("Hold to Pause Length: ");
-                    Serial.println(SamcoPreferences::settings.pauseHoldLength);
-                    //Serial.print("Custom NeoPixel Strip Length: ");
-                    Serial.println(SamcoPreferences::settings.customLEDcount);
-                    //Serial.print("Custom Static Pixels Count: ");
-                    Serial.println(SamcoPreferences::settings.customLEDstatic);
-                    //Serial.print("Custom Pixel Color 1: ");
-                    Serial.println(SamcoPreferences::settings.customLEDcolor1);
-                    //Serial.print("Custom Pixel Color 2: ");
-                    Serial.println(SamcoPreferences::settings.customLEDcolor2);
-                    //Serial.print("Custom Pixel Color 3: ");
-                    Serial.println(SamcoPreferences::settings.customLEDcolor3);
+                    Serial.printf("%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
+                    SamcoPreferences::settings.rumbleIntensity,
+                    SamcoPreferences::settings.rumbleInterval,
+                    SamcoPreferences::settings.solenoidNormalInterval,
+                    SamcoPreferences::settings.solenoidFastInterval,
+                    SamcoPreferences::settings.solenoidLongInterval,
+                    SamcoPreferences::settings.autofireWaitFactor,
+                    SamcoPreferences::settings.pauseHoldLength,
+                    SamcoPreferences::settings.customLEDcount,
+                    SamcoPreferences::settings.customLEDstatic,
+                    SamcoPreferences::settings.customLEDcolor1,
+                    SamcoPreferences::settings.customLEDcolor2,
+                    SamcoPreferences::settings.customLEDcolor3
+                    );
                     break;
                   case 'P':
                     serialInput = Serial.read();
-                    if(serialInput == '0' || serialInput == '1' ||
-                       serialInput == '2' || serialInput == '3') {
+                    if(serialInput >= '0' && serialInput <= '3') {
                         uint8_t i = serialInput - '0';
-                        Serial.println(profileData[i].topOffset);
-                        Serial.println(profileData[i].bottomOffset);
-                        Serial.println(profileData[i].leftOffset);
-                        Serial.println(profileData[i].rightOffset);
-                        Serial.println(profileData[i].TLled);
-                        Serial.println(profileData[i].TRled);
-                        //Serial.println(profileData[i].adjX);
-                        //Serial.println(profileData[i].adjY);
-                        Serial.println(profileData[i].irSensitivity);
-                        Serial.println(profileData[i].runMode);
-                        Serial.println(profileData[i].irLayout);
-                        Serial.println(profileData[i].color);
+                        Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,",
+                        profileData[i].topOffset,
+                        profileData[i].bottomOffset,
+                        profileData[i].leftOffset,
+                        profileData[i].rightOffset,
+                        profileData[i].TLled,
+                        profileData[i].TRled,
+                        profileData[i].irSensitivity,
+                        profileData[i].runMode,
+                        profileData[i].irLayout,
+                        profileData[i].color
+                        );
                         Serial.println(profileData[i].name);
                     }
                     break;
                   #ifdef USE_TINYUSB
-                  case 'n':
+                  case 'i':
+                    Serial.printf("%i,",SamcoPreferences::usb.devicePID);
                     if(SamcoPreferences::usb.deviceName[0] == '\0') {
                         Serial.println("SERIALREADERR01");
                     } else {
                         Serial.println(SamcoPreferences::usb.deviceName);
                     }
-                    break;
-                  case 'i':
-                    Serial.println(SamcoPreferences::usb.devicePID);
                     break;
                   #endif // USE_TINYUSB
                 }
@@ -3788,13 +3734,6 @@ void SetMode(GunMode_e newMode)
         break;
     case GunMode_Docked:
         stateFlags |= StateFlag_SavePreferencesEn;
-        if(!dockedCalibrating) {
-            Serial.println("OpenFIRE");
-            Serial.println(OPENFIRE_VERSION, 1);
-            Serial.println(OPENFIRE_CODENAME);
-            Serial.println(OPENFIRE_BOARD);
-            Serial.println(selectedProfile);
-        }
         #ifdef USES_DISPLAY
           OLED.ScreenModeChange(ExtDisplay::Screen_Docked);
         #endif // USES_DISPLAY
