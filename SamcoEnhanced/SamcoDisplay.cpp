@@ -36,31 +36,40 @@ ExtDisplay::ExtDisplay() {}
 
 bool ExtDisplay::Begin()
 {
-    if(display != nullptr) { delete display, displayValid = false; }
-    if(bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
-        // I2C1
-        if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
-            // SDA/SCL are indeed on verified correct pins
-            Wire1.setSDA(SamcoPreferences::pins.pPeriphSDA);
-            Wire1.setSCL(SamcoPreferences::pins.pPeriphSCL);
-            display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
-            displayValid = true;
+    if(display != nullptr) { display->clearDisplay(); delete display, displayValid = false; }
+
+    if(SamcoPreferences::pins.pPeriphSCL >= 0 && SamcoPreferences::pins.pPeriphSDA >= 0) {
+        if(bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
+            // I2C1
+            if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
+                // SDA/SCL are indeed on verified correct pins
+                Wire1.setSDA(SamcoPreferences::pins.pPeriphSDA);
+                Wire1.setSCL(SamcoPreferences::pins.pPeriphSCL);
+                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
+                displayValid = true;
+            } else {
+                displayValid = false;
+                return false;
+            }
+        } else if(!bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
+            // I2C0
+            if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
+                // SDA/SCL are indeed on verified correct pins
+                Wire.setSDA(SamcoPreferences::pins.pPeriphSDA);
+                Wire.setSCL(SamcoPreferences::pins.pPeriphSCL);
+                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
+                displayValid = true;
+            } else {
+                displayValid = false;
+                return false;
+            }
         } else {
             displayValid = false;
             return false;
         }
-    } else if(!bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
-        // I2C0
-        if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
-            // SDA/SCL are indeed on verified correct pins
-            Wire.setSDA(SamcoPreferences::pins.pPeriphSDA);
-            Wire.setSCL(SamcoPreferences::pins.pPeriphSCL);
-            display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
-            displayValid = true;
-        } else {
-            displayValid = false;
-            return false;
-        }
+    } else {
+        displayValid = false;
+        return false;
     }
 
     if(display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -98,6 +107,9 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode)
         screenState = screenMode;
         display->setTextColor(WHITE, BLACK);
         switch(screenMode) {
+          case Screen_Normal:
+            
+            break;
           case Screen_None:
           case Screen_Docked:
             display->fillRect(0, 0, 128, 16, BLACK);

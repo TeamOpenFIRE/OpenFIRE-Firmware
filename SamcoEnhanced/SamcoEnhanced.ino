@@ -852,6 +852,7 @@ void PinsReset()
         #endif // FOURPIN_LED
         #ifdef CUSTOM_NEOPIXEL
             if(externPixel != nullptr) {
+                externPixel->clear();
                 delete externPixel;
             }
         #endif // CUSTOM_NEOPIXEL
