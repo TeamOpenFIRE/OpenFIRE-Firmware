@@ -41,8 +41,7 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 
 ## TODO:
 - (Re-)expose button function remapping.
-- Should implement support for rumble as an alternative force-feedback system (currently under `RUMBLE_FF` define, but should be a normal toggleable option).
-- Use more appropriate RP2040-specific subsystems? See [TimerInterrupt](https://github.com/git2212/RPI_PICO_TimerInterrupt) for hw timers library, not sure if NeoPixels has such an option for our use case.
+- Use more appropriate RP2040-specific subsystems (i.e. hardware timers)?
 - Start librarifying more sections of the code for better readability/portability, i.e. pause mode and serial processing/handling in bespoke classes.
 
 ## Thanks:
