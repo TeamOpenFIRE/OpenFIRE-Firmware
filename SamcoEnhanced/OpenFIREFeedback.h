@@ -57,6 +57,8 @@ public:
 
     bool burstFireActive = false;
 
+    uint8_t temperatureCurrent;
+
 private:
     // For solenoid:
     bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
@@ -67,9 +69,18 @@ private:
     
     unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
 
-    uint16_t tempNormal = 50;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-    uint16_t tempWarning = 60;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    bool tempTriggered = false;                 // Temp threshold been hit?
+    enum TempStatuses_e {
+        Temp_Safe = 0,
+        Temp_Warning,
+        Temp_Fatal
+    };
+
+    uint8_t tempNormal = 35;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
+    uint8_t tempWarning = 42;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
+    uint8_t tempStatus = Temp_Safe;
+    unsigned long previousMillisTemp = 0;
+    unsigned int temperatureGraph[4];
+    uint8_t temperatureIndex = 0;
     const unsigned int solenoidWarningInterval = SamcoPreferences::settings.solenoidFastInterval * 5; // for if solenoid is getting toasty.
 
     // For burst firing stuff:
