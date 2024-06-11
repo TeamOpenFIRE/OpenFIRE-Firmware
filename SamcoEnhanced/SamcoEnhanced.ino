@@ -3134,7 +3134,7 @@ void SerialProcessing()
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
                   OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-                  if(gunMode == GunMode_Run) { OLED.ScreenModeChange(ExtDisplay::Screen_Normal); }
+                  if(gunMode == GunMode_Run) { OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput); }
                   #endif // USES_DISPLAY
                   #ifdef LED_ENABLE
                       serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -3207,6 +3207,9 @@ void SerialProcessing()
                       }
                       break;
                 }
+                #ifdef USES_DISPLAY
+                    if(!serialMode && gunMode == GunMode_Run) { OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput); }
+                #endif // USES_DISPLAY
                 break;
               // Set Autofire Interval Length
               case 'I':
@@ -3713,7 +3716,7 @@ void SetMode(GunMode_e newMode)
           } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
             OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
           } else {
-            OLED.ScreenModeChange(ExtDisplay::Screen_Normal);
+            OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput);
           }
           OLED.TopPanelUpdate("Prof: ", profileData[selectedProfile].name);
         #endif // USES_DISPLAY

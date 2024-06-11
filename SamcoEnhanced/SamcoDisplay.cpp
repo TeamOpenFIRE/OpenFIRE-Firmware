@@ -97,7 +97,7 @@ void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
     }
 }
 
-void ExtDisplay::ScreenModeChange(int8_t screenMode)
+void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 {
     if(displayValid) {
         display->fillRect(0, 16, 128, 48, BLACK);
@@ -111,6 +111,8 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode)
           case Screen_Normal:
             if(TinyUSBDevices.onBattery) { display->drawBitmap(2, 46, btConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
             else { display->drawBitmap(2, 46, usbConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
+            if(isAnalog) { display->drawBitmap(108, 49, gamepadIco, GAMEPAD_WIDTH, GAMEPAD_HEIGHT, WHITE); }
+            else { display->drawBitmap(109, 48, mouseIco, MOUSE_WIDTH, MOUSE_HEIGHT, WHITE); }
             break;
           case Screen_None:
           case Screen_Docked:
