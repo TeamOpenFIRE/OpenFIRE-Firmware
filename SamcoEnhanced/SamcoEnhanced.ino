@@ -3108,7 +3108,7 @@ void SerialProcessing()
                     if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
                         OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
                     } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
-                        OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+                        OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
                     }
                 }
                 break;
@@ -3209,6 +3209,11 @@ void SerialProcessing()
                 }
                 #ifdef USES_DISPLAY
                     if(!serialMode && gunMode == GunMode_Run) { OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput); }
+                    else if(serialMode && gunMode == GunMode_Run &&
+                            OLED.serialDisplayType > ExtDisplay::ScreenSerial_None &&
+                            OLED.serialDisplayType < ExtDisplay::ScreenSerial_Both) {
+                        OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
+                    }
                 #endif // USES_DISPLAY
                 break;
               // Set Autofire Interval Length
@@ -3714,7 +3719,7 @@ void SetMode(GunMode_e newMode)
           if(OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
             OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
           } else if(OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
-            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single);
+            OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
           } else {
             OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput);
           }
