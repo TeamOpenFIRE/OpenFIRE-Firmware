@@ -2026,8 +2026,8 @@ void GetPosition()
                 }
                 moveXAxisArr[moveIndex] = mouseX;
                 moveYAxisArr[moveIndex] = mouseY;
-                mouseX = (mouseX + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[1] + 2) / 4;
-                mouseY = (mouseY + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[1] + 2) / 4;
+                mouseX = (mouseX + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[2]) / 4;
+                mouseY = (mouseY + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[2]) / 4;
                 break;
             default:
                 break;
