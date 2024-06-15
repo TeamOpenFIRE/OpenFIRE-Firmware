@@ -18,10 +18,14 @@
    - [Change USB ID for Multiple Guns](#change-usb-id-for-multiple-guns)
 
 ## IR Emitter setup
-The IR emitters must be arranged with 2 emitters on the top and bottom of your screen/monitor, forming a rectangle or square. For example, if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building or buying a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
+The IR emitters can be arranged in either two ways:
+ - As dual lightbars, or "square" layout (Samco, preferred)
+ - At four separate points on the display, or "diamond" layout (Xwiigun)
 
-For visual reference, the purple/pinkish trapezoids are how your emitters should be placed on the display:
-![Emitters](../Emitters%20Layout-monitor.png)
+if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building or buying a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
+
+You can use this graphic (view in fullscreen on your display!) to help with ideal alignment for either supported layout.
+![Emitters](../Emitters-Layout-Template.png)
 
 ## Board Configuration
 The gun is configured through the companion [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App) application. The gun must be plugged in *prior to* starting the application.
