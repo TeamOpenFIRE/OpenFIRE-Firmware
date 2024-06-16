@@ -37,6 +37,8 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 
 ## Known Issues:
 - With Pico W & Bluetooth enabled, TinyUSB/Serial fails to initialize properly when connected via USB, so the firmware is deadlocked either sending serial or USB report data.
+- Gamepad output does not work on some Windows setups, but does work on Linux.
+- Mouse cursor might visually wrap around from rightmost to leftmost/bottommost to topmost edge in some Windows setups when aiming offscreen - this does not affect normal functionality, nor reflected on Linux setups.
 
 > [!NOTE]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
