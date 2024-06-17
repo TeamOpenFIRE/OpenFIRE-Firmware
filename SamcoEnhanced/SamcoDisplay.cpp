@@ -58,7 +58,7 @@ bool ExtDisplay::Begin()
                 // SDA/SCL are indeed on verified correct pins
                 Wire.setSDA(SamcoPreferences::pins.pPeriphSDA);
                 Wire.setSCL(SamcoPreferences::pins.pPeriphSCL);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
+                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
                 displayValid = true;
             } else {
                 displayValid = false;
