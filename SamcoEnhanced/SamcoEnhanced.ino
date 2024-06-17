@@ -562,14 +562,18 @@ void setup() {
             SamcoPreferences::LoadSettings();
             SamcoPreferences::LoadUSBID();
         }
-        // this is needed for both customs and builtins, as defaults are all uninitialized
-        UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
         TinyUSBInit();
     #endif // USE_TINYUSB
+    if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
+        playerStartBtn = SamcoPreferences::usb.devicePID + '0';
+        playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
+    }
+    // this is needed for both customs and builtins, as defaults are all uninitialized
+    UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
 
     // Initialize DFRobot Camera Wires & Object
     CameraSet();
@@ -2361,6 +2365,10 @@ void SerialProcessingDocked()
                     #endif // LED_ENABLE
                 }
                 CameraSet();
+                if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
+                    playerStartBtn = SamcoPreferences::usb.devicePID + '0';
+                    playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
+                }
                 UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
                 buttons.Begin();
                 dockedSaving = false;
@@ -3229,32 +3237,13 @@ void SerialProcessing()
               // Remap player numbers
               case 'R':
                 serialInput = Serial.read();
-                switch(serialInput) {
-                    case '1':
-                      playerStartBtn = '1';
-                      playerSelectBtn = '5';
-                      Serial.println("Remapping to player slot 1.");
-                      break;
-                    case '2':
-                      playerStartBtn = '2';
-                      playerSelectBtn = '6';
-                      Serial.println("Remapping to player slot 2.");
-                      break;
-                    case '3':
-                      playerStartBtn = '3';
-                      playerSelectBtn = '7';
-                      Serial.println("Remapping to player slot 3.");
-                      break;
-                    case '4':
-                      playerStartBtn = '4';
-                      playerSelectBtn = '8';
-                      Serial.println("Remapping to player slot 4.");
-                      break;
-                    default:
-                      Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
-                      break;
+                if(serialInput >= '1' && serialInput <= '4') {
+                    playerStartBtn = serialInput;
+                    playerSelectBtn = serialInput + 4;
+                    UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
+                } else {
+                    Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                 }
-                UpdateBindings(SamcoPreferences::toggles.lowButtonMode);
                 break;
               // Enter Docked Mode
               case 'P':
