@@ -1864,11 +1864,6 @@ void ExecCalMode()
                           // (re)set current values to factory defaults
                           profileData[selectedProfile].topOffset = 0, profileData[selectedProfile].bottomOffset = 0,
                           profileData[selectedProfile].leftOffset = 0, profileData[selectedProfile].rightOffset = 0;
-                          if(profileData[selectedProfile].irLayout) {
-                              profileData[selectedProfile].TLled = 0, profileData[selectedProfile].TRled = 1920 << 2;
-                          } else {
-                              profileData[selectedProfile].TLled = 500 << 2, profileData[selectedProfile].TRled = 1420 << 2;
-                          }
                           profileData[selectedProfile].adjX = 512 << 2, profileData[selectedProfile].adjY = 384 << 2;
                           SetMode(GunMode_Calibration);
                           delay(1);
