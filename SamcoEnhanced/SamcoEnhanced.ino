@@ -1801,7 +1801,7 @@ void ExecCalMode()
                   // Set Offset buffer
                   profileData[selectedProfile].topOffset = mouseY;
                   // Move to bottom calibration point
-                  AbsMouse5.move(32768/2, 32768);
+                  AbsMouse5.move(32768/2, 32767);
                   break;
 
                 case Cali_Left:
@@ -1815,7 +1815,7 @@ void ExecCalMode()
                   // Set Offset buffer
                   profileData[selectedProfile].leftOffset = mouseX;
                   // Move to right calibration point
-                  AbsMouse5.move(32768, 32768/2);
+                  AbsMouse5.move(32767, 32768/2);
                   break;
 
                 case Cali_Center:
@@ -1945,14 +1945,14 @@ void CaliMousePosMove(uint8_t caseNumber)
           delay(5);
           break;
         case Cali_Bottom:
-          for(yPos = 0; yPos < 32768; yPos = yPos + 30) {
-              if(yPos > 32768-31) { yPos = 32768; }
+          for(yPos = 0; yPos < 32767; yPos = yPos + 30) {
+              if(yPos > 32767-31) { yPos = 32767; }
               AbsMouse5.move(32768/2, yPos);
           }
           delay(5);
           break;
         case Cali_Left:
-          yPos = 32768;
+          yPos = 32767;
           for(xPos = 32768/2; xPos > 0; xPos = xPos - 30) {
               if(xPos < 31) { xPos = 0; }
               if(yPos > 32768/2) { yPos = yPos - 30; }
@@ -1962,14 +1962,14 @@ void CaliMousePosMove(uint8_t caseNumber)
           delay(5);
           break;
         case Cali_Right:
-          for(xPos = 0; xPos < 32768; xPos = xPos + 30) {
-              if(xPos > 32768-31) { xPos = 32768; }
+          for(xPos = 0; xPos < 32767; xPos = xPos + 30) {
+              if(xPos > 32767-31) { xPos = 32767; }
               AbsMouse5.move(xPos, 32768/2);
           }
           delay(5);
           break;
         case Cali_Center:
-          for(xPos = 32768; xPos > 32768/2; xPos = xPos - 30) {
+          for(xPos = 32767; xPos > 32768/2; xPos = xPos - 30) {
               if(xPos < 32768/2) { xPos = 32768/2; }
               AbsMouse5.move(xPos, 32768/2);
           }
@@ -2042,25 +2042,25 @@ void GetPosition()
         int32_t conMoveY = constrain(mouseY, 0, res_y);
 
         // Output mapped to Mouse resolution
-        conMoveX = map(conMoveX, 0, res_x, 0, 32768);
-        conMoveY = map(conMoveY, 0, res_y, 0, 32768);
+        conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
 
         if(gunMode == GunMode_Run) {
             UpdateLastSeen();
 
             if(serialARcorrection) {
-                conMoveX = map(conMoveX, 4147, 28697, 0, 32768);
-                conMoveX = constrain(conMoveX, 0, 32768);
+                conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
+                conMoveX = constrain(conMoveX, 0, 32767);
             }
 
             bool offXAxis = false;
             bool offYAxis = false;
 
-            if(conMoveX == 0 || conMoveX == 32768) {
+            if(conMoveX == 0 || conMoveX == 32767) {
                 offXAxis = true;
             }
             
-            if(conMoveY == 0 || conMoveY == 32768) {
+            if(conMoveY == 0 || conMoveY == 32767) {
                 offYAxis = true;
             }
 
