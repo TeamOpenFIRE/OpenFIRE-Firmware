@@ -1716,6 +1716,11 @@ void ExecCalMode()
 {
     buttons.ReportDisable();
     uint8_t calStage = 0;
+    // hold values in a buffer till calibration is complete
+    int topOffset;             
+    int bottomOffset;         
+    int leftOffset;     
+    int rightOffset;   
     // backup current values in case the user cancels
     int _topOffset = profileData[selectedProfile].topOffset;
     int _bottomOffset = profileData[selectedProfile].bottomOffset;
@@ -1728,12 +1733,7 @@ void ExecCalMode()
     // set current values to factory defaults
     profileData[selectedProfile].topOffset = 0, profileData[selectedProfile].bottomOffset = 0,
     profileData[selectedProfile].leftOffset = 0, profileData[selectedProfile].rightOffset = 0;
-    if(profileData[selectedProfile].irLayout) {
-        profileData[selectedProfile].TLled = 0, profileData[selectedProfile].TRled = 1920 << 2;
-    } else {
-        profileData[selectedProfile].TLled = 500 << 2, profileData[selectedProfile].TRled = 1420 << 2;
-    }
-    profileData[selectedProfile].adjX = 512 << 2, profileData[selectedProfile].adjY = 384 << 2;
+
     // force center mouse to center
     AbsMouse5.move(32768/2, 32768/2);
     // jack in, CaliMan, execute!!!
@@ -1775,13 +1775,15 @@ void ExecCalMode()
                 case Cali_Init:
                   break;
                 case Cali_Top:
+                  // Resest Offsets
+                  topOffset = 0;             
+                  bottomOffset = 0;         
+                  leftOffset = 0; 
+                  rightOffset = 0;
                   // Set Cam center offsets
                   if(profileData[selectedProfile].irLayout) {
                       profileData[selectedProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) - (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);       
                       profileData[selectedProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) + (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
-                      // Work out Led locations by assuming height is 100%
-                      profileData[selectedProfile].TLled = (res_x / 2) - ( (OpenFIREdiamond.W() * (res_y  / OpenFIREdiamond.H()) ) / 2);            
-                      profileData[selectedProfile].TRled = (res_x / 2) + ( (OpenFIREdiamond.W() * (res_y  / OpenFIREdiamond.H()) ) / 2);
                   } else {
                       profileData[selectedProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) - (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);       
                       profileData[selectedProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) + (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
@@ -1799,28 +1801,34 @@ void ExecCalMode()
 
                 case Cali_Bottom:
                   // Set Offset buffer
-                  profileData[selectedProfile].topOffset = mouseY;
+                  topOffset = mouseY;
                   // Move to bottom calibration point
                   AbsMouse5.move(32768/2, 32767);
                   break;
 
                 case Cali_Left:
                   // Set Offset buffer
-                  profileData[selectedProfile].bottomOffset = (res_y - mouseY);
+                  bottomOffset = (res_y - mouseY);
                   // Move to left calibration point
                   AbsMouse5.move(0, 32768/2);
                   break;
 
                 case Cali_Right:
                   // Set Offset buffer
-                  profileData[selectedProfile].leftOffset = mouseX;
+                  leftOffset = mouseX;
                   // Move to right calibration point
                   AbsMouse5.move(32767, 32768/2);
                   break;
 
                 case Cali_Center:
                   // Set Offset buffer
-                  profileData[selectedProfile].rightOffset = (res_x - mouseX);
+                  rightOffset = (res_x - mouseX);
+                  delay(100);
+                  // Save Offset buffer to profile
+                  profileData[selectedProfile].topOffset = topOffset;
+                  profileData[selectedProfile].bottomOffset = bottomOffset;
+                  profileData[selectedProfile].leftOffset = leftOffset;
+                  profileData[selectedProfile].rightOffset = rightOffset;
                   // Move back to center calibration point
                   AbsMouse5.move(32768/2, 32768/2);
                   break;
