@@ -462,11 +462,11 @@ void AbsMouse5_::release(uint8_t button)
 
   void Gamepad16_::moveCam(uint16_t origX, uint16_t origY) {
     if(stickRight) {
-        gamepad16Report.X = map(origX, 0, 32768, 0, 65535);
-        gamepad16Report.Y = map(origY, 0, 32768, 0, 65535);
+        gamepad16Report.X = map(origX, 0, 32767, 0, 65535);
+        gamepad16Report.Y = map(origY, 0, 32767, 0, 65535);
     } else {
-        gamepad16Report.Rx = map(origX, 0, 32768, 0, 65535);
-        gamepad16Report.Ry = map(origY, 0, 32768, 0, 65535);
+        gamepad16Report.Rx = map(origX, 0, 32767, 0, 65535);
+        gamepad16Report.Ry = map(origY, 0, 32767, 0, 65535);
     }
     if(_autoReport) {
         report();
