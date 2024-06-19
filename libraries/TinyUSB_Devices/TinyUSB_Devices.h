@@ -217,44 +217,44 @@ extern Keyboard_ Keyboard;
 
 #ifdef USE_TINYUSB
 #define TUD_HID_REPORT_DESC_GAMEPAD16(...) \
-          0x05, 0x01, \
-	    0x09, 0x05, \
-	    0xa1, 0x01, \
-              0xa1, 0x00, \
-              __VA_ARGS__ \
-              0x05, 0x01, \
-                0x09, 0x30, \
-                0x09, 0x31, \
-                0x09, 0x33, \
-                0x09, 0x34, \
-                0x15, 0x00, \
-                0x27, 0xFF, 0xFF, 0x00, 0x00, \
-                0x75, 0x10, \
-                0x95, 0x04, \
-                0x81, 0x02, \
-                HID_USAGE          ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
-                HID_LOGICAL_MIN    ( 1                                      ) ,\
-                HID_LOGICAL_MAX    ( 8                                      ) ,\
-                HID_PHYSICAL_MIN   ( 0                                      ) ,\
-                HID_PHYSICAL_MAX_N ( 315, 2                                 ) ,\
-                HID_REPORT_COUNT   ( 1                                      ) ,\
-                HID_REPORT_SIZE    ( 8                                      ) ,\
-                0x81, 0x02, \
-                0x75, 0x08, \
-                0x95, 0x01, \
-                HID_INPUT          ( HID_CONSTANT | HID_VARIABLE | HID_ABSOLUTE ) ,\
-              0x05, 0x09, \
-                0x19, 0x01, \
-                0x29, 0x10, \
-                0x15, 0x00, \
-                0x25, 0x01, \
-                0x75, 0x01, \
-                0x95, 0x20, \
-                0x81, 0x02, \
-              0xc0,       \
-	    0xc0
+  HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                 ,\
+  HID_USAGE      ( HID_USAGE_DESKTOP_GAMEPAD  )                 ,\
+  HID_COLLECTION ( HID_COLLECTION_APPLICATION )                 ,\
+    /* Report ID if any */\
+    __VA_ARGS__ \
+    /* 16 bit X, Y, Rx, Ry (min -32767, max 32767 ) */ \
+    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_X                    ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_Y                    ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_RX                   ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_RY                   ) ,\
+    HID_LOGICAL_MIN_N  ( -32767, 2                              ) ,\
+    HID_LOGICAL_MAX_N  ( 32767, 2                               ) ,\
+    HID_REPORT_COUNT   ( 4                                      ) ,\
+    HID_REPORT_SIZE    ( 16                                     ) ,\
+    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+    /* 8 bit DPad/Hat Button Map  */ \
+    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+    HID_LOGICAL_MIN    ( 1                                      ) ,\
+    HID_LOGICAL_MAX    ( 8                                      ) ,\
+    HID_PHYSICAL_MIN   ( 0                                      ) ,\
+    HID_PHYSICAL_MAX_N ( 315, 2                                 ) ,\
+    HID_REPORT_COUNT   ( 1                                      ) ,\
+    HID_REPORT_SIZE    ( 8                                      ) ,\
+    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+    /* 16 bit Button Map */ \
+    HID_USAGE_PAGE     ( HID_USAGE_PAGE_BUTTON                  ) ,\
+    HID_USAGE_MIN      ( 1                                      ) ,\
+    HID_USAGE_MAX      ( 15                                     ) ,\
+    HID_LOGICAL_MIN    ( 0                                      ) ,\
+    HID_LOGICAL_MAX    ( 1                                      ) ,\
+    HID_REPORT_COUNT   ( 16                                     ) ,\
+    HID_REPORT_SIZE    ( 1                                      ) ,\
+    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+  HID_COLLECTION_END
 #endif // USE_TINYUSB
-// Seong: I really... REAAAAALLY HATE these descriptors
+// Using the Adafruit Gamepad desc as the basis, but with 4 16-bit axis and a 16-bit 15 button report
 
 #define PAD_A      0
 #define PAD_B      1
@@ -287,14 +287,13 @@ extern Keyboard_ Keyboard;
 #define GAMEPAD_HAT_UP_LEFT 8
 
 typedef struct {
-	uint16_t X = 32768;
-        uint16_t Y = 32768;
-        uint16_t Rx = 32768;
-        uint16_t Ry = 32768;
+        int16_t X = 0;
+        int16_t Y = 0;
+        int16_t Rx = 0;
+        int16_t Ry = 0;
         uint8_t hat;
-        uint8_t padding;
         uint16_t buttons;     // button bitmask
-} gamepad16Report_s;
+} __attribute__ ((packed)) gamepad16Report_s;
 
 class Gamepad16_ {
 private:

@@ -462,11 +462,11 @@ void AbsMouse5_::release(uint8_t button)
 
   void Gamepad16_::moveCam(uint16_t origX, uint16_t origY) {
     if(stickRight) {
-        gamepad16Report.X = map(origX, 0, 32767, 0, 65535);
-        gamepad16Report.Y = map(origY, 0, 32767, 0, 65535);
+        gamepad16Report.X = map(origX, 0, 32767, -32767, 32767);
+        gamepad16Report.Y = map(origY, 0, 32767, -32767, 32767);
     } else {
-        gamepad16Report.Rx = map(origX, 0, 32767, 0, 65535);
-        gamepad16Report.Ry = map(origY, 0, 32767, 0, 65535);
+        gamepad16Report.Rx = map(origX, 0, 32767, -32767, 32767);
+        gamepad16Report.Ry = map(origY, 0, 32767, -32767, 32767);
     }
     if(_autoReport) {
         report();
@@ -478,11 +478,11 @@ void AbsMouse5_::release(uint8_t button)
     if(origX != _x || origY != _y) {
         _x = origX, _y = origY;
         if(stickRight) {
-            gamepad16Report.Rx = map(_x, 0, 4095, 65535, 0);
-            gamepad16Report.Ry = map(_y, 0, 4095, 65535, 0);
+            gamepad16Report.Rx = map(_x, 0, 4095, 32767, -32767);
+            gamepad16Report.Ry = map(_y, 0, 4095, 32767, -32767);
         } else {
-            gamepad16Report.X = map(_x, 0, 4095, 65535, 0);
-            gamepad16Report.Y = map(_y, 0, 4095, 65535, 0);
+            gamepad16Report.X = map(_x, 0, 4095, 32767, -32767);
+            gamepad16Report.Y = map(_y, 0, 4095, 32767, -32767);
         }
         if(_autoReport) {
             report();
@@ -535,10 +535,10 @@ void AbsMouse5_::release(uint8_t button)
   void Gamepad16_::releaseAll() {
     gamepad16Report.buttons = 0;
     gamepad16Report.hat = 0;
-    gamepad16Report.X = 32767;
-    gamepad16Report.Y = 32767;
-    gamepad16Report.Rx = 32767;
-    gamepad16Report.Ry = 32767;
+    gamepad16Report.X = 0;
+    gamepad16Report.Y = 0;
+    gamepad16Report.Rx = 0;
+    gamepad16Report.Ry = 0;
     report();
   }
 
