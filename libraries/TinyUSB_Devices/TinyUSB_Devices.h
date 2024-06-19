@@ -70,7 +70,7 @@ extern TinyUSBDevices_ TinyUSBDevices;
 #define MOUSE_BUTTON4 0x08
 #define MOUSE_BUTTON5 0x10
 
-#ifdef USE_TINYUSB
+#if defined(USE_TINYUSB)
 #define TUD_HID_REPORT_DESC_ABSMOUSE5(...) \
 	0x05, 0x01, \
 	0x09, 0x02, \
@@ -218,10 +218,10 @@ extern Keyboard_ Keyboard;
 #ifdef USE_TINYUSB
 #define TUD_HID_REPORT_DESC_GAMEPAD16(...) \
           0x05, 0x01, \
-	    0x09, 0x05, \
-	    0xa1, 0x01, \
+			0x09, 0x05, \
+			0xa1, 0x01, \
               0xa1, 0x00, \
-              0x85, 0x03, \
+              __VA_ARGS__ \
               0x05, 0x01, \
                 0x09, 0x30, \
                 0x09, 0x31, \
@@ -252,9 +252,9 @@ extern Keyboard_ Keyboard;
                 0x95, 0x20, \
                 0x81, 0x02, \
               0xc0,       \
-	    0xc0
+			0xc0
 #endif // USE_TINYUSB
-// Seong: I really... REAAAAALLY HATE these descriptors
+// I really... REAAAAALLY HATE these descriptors
 
 #define PAD_A      0
 #define PAD_B      1
@@ -287,7 +287,7 @@ extern Keyboard_ Keyboard;
 #define GAMEPAD_HAT_UP_LEFT 8
 
 typedef struct {
-	uint16_t X = 32768;
+		uint16_t X = 32768;
         uint16_t Y = 32768;
         uint16_t Rx = 32768;
         uint16_t Ry = 32768;
