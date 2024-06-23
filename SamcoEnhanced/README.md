@@ -24,7 +24,7 @@ The IR emitters can be arranged in either two ways:
 
 if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building or buying a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
-You can use this graphic (view in fullscreen on your display!) to help with ideal alignment for either supported layout.
+You can use this graphic (view in fullscreen on your display!) to help with ideal alignment for either supported layout - alternatively, you can refer to this interactive online alignment guide [here @ diylightgun.com](https://diylightgun.com/align/)
 ![Emitters](../Emitters-Layout-Template.png)
 
 ## Board Configuration
