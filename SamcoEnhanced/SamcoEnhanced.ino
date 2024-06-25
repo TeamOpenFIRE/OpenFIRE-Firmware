@@ -532,6 +532,12 @@ void setup() {
     // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
     EEPROM.begin(1024);
 
+    #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+        // SAMCO 1.1 needs Pin 5 normally HIGH for the camera
+        pinMode(5, OUTPUT);
+        digitalWrite(5, HIGH);
+    #endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+
     SamcoPreferences::LoadPresets();
     
     if(nvAvailable) {
@@ -632,6 +638,8 @@ void setup() {
      profileData[selectedProfile].leftOffset == 0 &&
      profileData[selectedProfile].rightOffset == 0)) {
         // SHIT, it's a first boot! Prompt to start calibration.
+        Serial.println("Preferences data is empty!");
+        Serial.println("Pull the trigger to start your first calibration!");
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
         LedOff();
