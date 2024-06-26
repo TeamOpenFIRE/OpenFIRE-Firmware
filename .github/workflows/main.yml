@@ -43,16 +43,14 @@ jobs:
       - name: Compile for ${{ matrix.name }}
         uses: arduino/compile-sketches@v1.1.0
         with:
-          fqbn: |
-            rp2040:rp2040:${{ matrix.fqbn }}
+          fqbn: rp2040:rp2040:${{ matrix.fqbn }}
           libraries: |
             source-path: ${{github.workspace}}/libraries/
             name: WiFiNINA
           platforms: |
             name: rp2040:rp2040
             source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
-          sketch-paths: |
-            ${{github.workspace}}/SamcoEnhanced
+          sketch-paths: ${{github.workspace}}/SamcoEnhanced
           cli-compile-flags: |
             --export-binaries
             --board-options
