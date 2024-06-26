@@ -52,25 +52,27 @@ jobs:
         run: arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
       - name: Compile for ${{ matrix.name }}
         run: arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced --libraries libraries
+      - name: Rename build file
+        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.fqbn }}.uf2
       # TODO: when USB + Bluetooth is fixed, we won't need these
-      - name: Upload Artifact (Non-Pico W)
+      - name: Upload artifact (Non-Pico W)
         if: ${{ matrix.fqbn != 'rpipicow' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2
-          name: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          path: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
-      - name: Upload Artifact (Pico W USB)
+      - name: Upload artifact (Pico W USB)
         if: ${{ matrix.name == 'Raspberry Pi Pico W (USB)' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2
-          name: OpenFIREfw.${{ matrix.fqbn }}-noBT.uf2
+          path: OpenFIREfw.${{ matrix.fqbn }}-noBT.uf2
+          name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
-      - name: Upload Artifact (Pico W BT)
+      - name: Upload artifact (Pico W BT)
         if: ${{ matrix.name == 'Raspberry Pi Pico W (Bluetooth)' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2
-          name: OpenFIREfw.${{ matrix.fqbn }}-btBETA.uf2
+          path: OpenFIREfw.${{ matrix.fqbn }}-btBETA.uf2
+          name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
