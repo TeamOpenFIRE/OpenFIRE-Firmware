@@ -5,6 +5,7 @@ on:
 
 jobs:
   arduino-build:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -43,6 +44,7 @@ jobs:
       - name: Compile for ${{ matrix.name }}
         uses: arduino/compile-sketches@v1.1.0
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           fqbn: rp2040:rp2040:${{ matrix.fqbn }}
           libraries: |
             - source-path: ./
@@ -50,8 +52,7 @@ jobs:
           platforms: |
             - name: rp2040:rp2040
               source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
-          sketch-paths: |
-            - SamcoEnhanced
+          sketch-paths: SamcoEnhanced
           cli-compile-flags: |
             - --export-binaries
               --board-options
@@ -61,17 +62,17 @@ jobs:
         if: ${{ matrix.fqbn != 'rpipicow' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          name: OpenFIREfw.${{ matrix.fqbn }}.uf2
           path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.uf2
+          name: OpenFIREfw.${{ matrix.fqbn }}.uf2
       - name: Upload Artifact (Pico W USB)
         if: ${{ matrix.name == 'Raspberry Pi Pico W (USB)' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          name: OpenFIREfw.${{ matrix.fqbn }}-noBT.uf2
           path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.uf2
+          name: OpenFIREfw.${{ matrix.fqbn }}-noBT.uf2
       - name: Upload Artifact (Pico W BT)
         if: ${{ matrix.name == 'Raspberry Pi Pico W (Bluetooth)' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          name: OpenFIREfw.${{ matrix.fqbn }}-btBETA.uf2
           path: ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.uf2
+          name: OpenFIREfw.${{ matrix.fqbn }}-btBETA.uf2
