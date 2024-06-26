@@ -48,9 +48,8 @@ jobs:
         with:
           fqbn: rp2040:rp2040:${{ matrix.fqbn }}
           platforms: |
-            - name: rp2040:rp2040
-              source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
-              version: 3.9.2-fix
+            - name: "rp2040:rp2040"
+              source-url: "https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json"
           libraries: |
             - source-path: libraries
             - name: WiFiNINA
