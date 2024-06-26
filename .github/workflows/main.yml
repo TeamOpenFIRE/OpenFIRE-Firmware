@@ -59,7 +59,7 @@ jobs:
             ${{ matrix.flags }}
       # TODO: when USB + Bluetooth is fixed, we won't need these
       - name: Upload Artifact (Non-Pico W)
-        if: ${{ matrix.fqbn != rpipicow }}
+        if: ${{ matrix.fqbn != 'rpipicow' }}
         uses: actions/upload-artifact@v4.3.3
         with:
           name: OpenFIREfw.${{ matrix.fqbn }}.uf2
