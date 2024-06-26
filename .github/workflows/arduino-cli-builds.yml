@@ -12,38 +12,47 @@ jobs:
         include:
           - name: Raspberry Pi Pico
             fqbn: rpipico
+            pretty: rpipico
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Raspberry Pi Pico W (USB)
             fqbn: rpipicow
+            pretty: rpipicow-noBT
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Raspberry Pi Pico W (Bluetooth)
             fqbn: rpipicow
+            pretty: rpipicow-btBETA
             flags: freq=133,usbstack=tinyusb,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
             
           - name: Adafruit ItsyBitsy RP2040
             fqbn: adafruit_itsybitsy
+            pretty: adafruitItsy
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Adafruit KB2040
             fqbn: adafruit_kb2040
+            pretty: adafruitKB2040
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Arduino Nano RP2040 Connect
             fqbn: arduino_nano_connect
+            pretty: arduinoNano
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: VCC-GND YD RP2040
             fqbn: vccgnd_yd_rp2040
+            pretty: vccgndYD
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Waveshare RP2040 Zero
             fqbn: waveshare_rp2040_zero
+            pretty: waveshareZero
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
           - name: Generic RP2040
             fqbn: generic
+            pretty: generic
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
 
     steps:
@@ -67,14 +76,14 @@ jobs:
         run: arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced --libraries libraries
         
       - name: Rename build file
-        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.fqbn }}.uf2
+        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
         
       # TODO: when USB + Bluetooth is fixed, we won't need the Pico W method
       - name: Upload artifact (Non-Pico W)
         if: ${{ matrix.fqbn != 'rpipicow' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          path: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          path: OpenFIREfw.${{ matrix.pretty }}.uf2
           name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
           
@@ -82,6 +91,6 @@ jobs:
         if: ${{ matrix.fqbn == 'rpipicow' }}
         uses: actions/upload-artifact@v4.3.3
         with:
-          path: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          path: OpenFIREfw.${{ matrix.pretty }}.uf2
           name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
