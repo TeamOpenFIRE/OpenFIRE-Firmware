@@ -41,23 +41,15 @@ jobs:
     steps:
       - name: Checkout OpenFIRE-Firmware
         uses: actions/checkout@v4
+      - name: Install Arduino-cli
+        uses: arduino/setup-arduino-cli@v1
+      - name: Install Arduino Nano Connect library
+        if: ${{ matrix.fqbn == 'arduino_nano_connect' }}
+        run: arduino-cli lib install WiFiNINA
       - name: Compile for ${{ matrix.name }}
-        uses: arduino/compile-sketches@main
-        with:
-          fqbn: rp2040:rp2040:${{ matrix.fqbn }}
-          platforms: |
-            - name: "rp2040:rp2040"
-              source-url: "https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json"
-          libraries: |
-            - source-path: libraries
-            - name: WiFiNINA
-          sketch-paths: |
-            - SamcoEnhanced
-          cli-compile-flags: |
-            - --export-binaries
-            - --board-options
-            - ${{ matrix.flags }}
-          verbose: true
+        run: |
+          arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
+          arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced --libraries libraries
       # TODO: when USB + Bluetooth is fixed, we won't need these
       - name: Upload Artifact (Non-Pico W)
         if: ${{ matrix.fqbn != 'rpipicow' }}
