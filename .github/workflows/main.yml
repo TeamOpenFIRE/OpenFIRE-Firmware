@@ -42,7 +42,7 @@ jobs:
       - name: Checkout OpenFIRE-Firmware
         uses: actions/checkout@v4
       - name: Compile for ${{ matrix.name }}
-        uses: arduino/compile-sketches@v1
+        uses: arduino/compile-sketches@main
         with:
           fqbn: rp2040:rp2040:${{ matrix.fqbn }}
           platforms: |
