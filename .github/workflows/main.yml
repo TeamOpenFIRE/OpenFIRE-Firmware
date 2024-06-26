@@ -49,8 +49,8 @@ jobs:
             - source-path: ./
             - name: WiFiNINA
           platforms: |
-            - name: rp2040:rp2040
-              source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
+            - source-path: .github/workflows/package_rp2040_fix_index_orig.json
+              name: rp2040:rp2040
           sketch-paths: |
             - SamcoEnhanced
           cli-compile-flags: |
