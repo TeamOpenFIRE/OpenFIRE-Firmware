@@ -1,0 +1,87 @@
+name: OpenFIRE Builds
+on:
+  push:
+  pull_request:
+
+jobs:
+  arduino-build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: Raspberry Pi Pico
+            fqbn: rpipico
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Raspberry Pi Pico W (USB)
+            fqbn: rpipicow
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Raspberry Pi Pico W (Bluetooth)
+            fqbn: rpipicow
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
+            
+          - name: Adafruit ItsyBitsy RP2040
+            fqbn: adafruit_itsybitsy
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Adafruit KB2040
+            fqbn: adafruit_kb2040
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Arduino Nano RP2040 Connect
+            fqbn: arduino_nano_connect
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: VCC-GND YD RP2040
+            fqbn: vccgnd_yd_rp2040
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Waveshare RP2040 Zero
+            fqbn: waveshare_rp2040_zero
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            
+          - name: Generic RP2040
+            fqbn: generic
+            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+
+    steps:
+      - name: Checkout OpenFIRE-Firmware
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          
+      - name: Install Arduino-cli
+        uses: arduino/setup-arduino-cli@v1
+
+      # arduino nano uses this just to access LEDs, grr...
+      - name: Install Arduino Nano Connect library
+        if: ${{ matrix.fqbn == 'arduino_nano_connect' }}
+        run: arduino-cli lib install WiFiNINA
+        
+      - name: Setting up Arduino-cli
+        run: arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
+        
+      - name: Compile for ${{ matrix.name }}
+        run: arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced --libraries libraries
+        
+      - name: Rename build file
+        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.fqbn }}.uf2
+        
+      # TODO: when USB + Bluetooth is fixed, we won't need the Pico W method
+      - name: Upload artifact (Non-Pico W)
+        if: ${{ matrix.fqbn != 'rpipicow' }}
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          path: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          name: OpenFIREfw - ${{ matrix.name }}
+          if-no-files-found: error
+          
+      - name: Upload artifact (Pico W)
+        if: ${{ matrix.fqbn == 'rpipicow' }}
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          path: OpenFIREfw.${{ matrix.fqbn }}.uf2
+          name: OpenFIREfw - ${{ matrix.name }}
+          if-no-files-found: error
