@@ -53,10 +53,7 @@ jobs:
             - name: rp2040:rp2040
               source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
           sketch-paths: SamcoEnhanced
-          cli-compile-flags: |
-            - --export-binaries
-              --board-options
-              ${{ matrix.flags }}
+          cli-compile-flags: --export-binaries --board-options ${{ matrix.flags }}
       # TODO: when USB + Bluetooth is fixed, we won't need these
       - name: Upload Artifact (Non-Pico W)
         if: ${{ matrix.fqbn != 'rpipicow' }}
