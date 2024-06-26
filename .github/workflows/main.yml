@@ -40,17 +40,16 @@ jobs:
 
     steps:
       - name: Checkout OpenFIRE-Firmware
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
       - name: Compile for ${{ matrix.name }}
-        uses: arduino/compile-sketches@v1.1.0
+        uses: arduino/compile-sketches@v1
         with:
           fqbn: rp2040:rp2040:${{ matrix.fqbn }}
           libraries: |
             - source-path: ./
-            - name: WiFiNINA
           platforms: |
-            - source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
-              name: rp2040:rp2040
+            - name: rp2040:rp2040
+              source-url: https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
           sketch-paths: |
             - SamcoEnhanced
           cli-compile-flags: |
