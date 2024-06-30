@@ -46,6 +46,9 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
 
 ## TODO:
+- Add temperature monitoring/tempering for serial solenoid activations (only perform every other solenoid-on op).
+- Add configurable temperature thresholds.
+- Experiment with more AR correction presets for non-16:9 screens (per cali profile?)
 - (Re-)expose button function remapping.
 - Use more appropriate RP2040-specific subsystems (i.e. hardware timers)?
 - Start librarifying more sections of the code for better readability/portability, i.e. pause mode and serial processing/handling in bespoke classes.
