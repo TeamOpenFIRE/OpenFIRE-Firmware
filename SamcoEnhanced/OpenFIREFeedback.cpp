@@ -46,7 +46,7 @@ void FFB::FFBOnScreen()
         } else if(burstFiring) {  // If we're in a burst firing sequence,
             BurstFire();                                // Process it.
         } else if(SamcoPreferences::toggles.autofireActive &&  // Else, if we've been holding the trigger, is the autofire switch active?
-        !burstFireActive) {          // (WITHOUT burst firing enabled)
+                  !burstFireActive) {                          // (WITHOUT burst firing enabled)
             if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // Is the solenoid engaged?
                 SolenoidActivation(SamcoPreferences::settings.solenoidFastInterval); // If so, immediately pass the autofire faster interval to solenoid method
             } else {                                    // Or if it's not,
@@ -54,12 +54,12 @@ void FFB::FFBOnScreen()
             }
         } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
             if(digitalRead(SamcoPreferences::pins.oSolenoid)) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
-                unsigned long currentMillis = millis(); // Initialize timer to check if we've passed it.
+                currentMillis = millis();
                 if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidNormalInterval) { // If we finally surpassed the wait threshold...
                     digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);     // Let it go.
                 }
             } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
-                unsigned long currentMillis = millis(); // Initialize timer.
+                currentMillis = millis();
                 if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidLongInterval) { // If we finally surpassed the LONGER wait threshold...
                     solenoidFirstShot = false;          // We're gonna turn this off so we don't have to pass through this check anymore.
                     SolenoidActivation(SamcoPreferences::settings.solenoidNormalInterval); // Process it now.
@@ -96,14 +96,12 @@ void FFB::FFBOffScreen()
     if(burstFiring) {                                  // If we're in a burst firing sequence,
         BurstFire();
     } else if(digitalRead(SamcoPreferences::pins.oSolenoid) && !burstFireActive) { // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
-        unsigned long currentMillis = millis();         // Calibrate current time
+        currentMillis = millis();                      // Calibrate current time
         if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
             previousMillisSol = currentMillis;
             digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);
         }
-    } //else if(rumbleHappening && !burstFireActive) {
-      // TODO: actually implement
-  //}
+    }
 }
 
 void FFB::FFBRelease()
@@ -113,9 +111,9 @@ void FFB::FFBRelease()
             BurstFire();                                    // Continue processing it.
         } else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
             solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
-            unsigned long currentMillis = millis();         // Start the timer
+            currentMillis = millis();
             if(currentMillis - previousMillisSol >= SamcoPreferences::settings.solenoidFastInterval) { // I guess if we're not firing, may as well use the fastest shutoff.
-                previousMillisSol = currentMillis;          // Timer calibration, yawn.
+                previousMillisSol = currentMillis;
                 digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);             // Make sure to turn it off.
             }
         }
@@ -135,40 +133,8 @@ void FFB::SolenoidActivation(int solenoidFinalInterval)
         previousMillisSol = millis();                             // Calibrate the timer for future calcs.
         digitalWrite(SamcoPreferences::pins.oSolenoid, HIGH);     // Since we're shooting the first time, just turn it on aaaaand fire.
     } else {
-        unsigned long currentMillis = millis();
         if(SamcoPreferences::pins.aTMP36 >= 0) { // If a temp sensor is installed and enabled,
-            if(currentMillis - previousMillisTemp > 2) {
-                previousMillisTemp = currentMillis;
-                temperatureGraph[temperatureIndex] = (((analogRead(SamcoPreferences::pins.aTMP36) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
-                if(temperatureIndex < 3) {
-                    temperatureIndex++;
-                } else {
-                    // average out temperature from four samples taken 3ms apart from each other
-                    temperatureIndex = 0;
-                    temperatureCurrent = (temperatureGraph[0] +
-                                        temperatureGraph[1] +
-                                        temperatureGraph[2] +
-                                        temperatureGraph[3]) / 4;
-                    if(tempStatus == Temp_Fatal) {
-                        if(temperatureCurrent < tempWarning-5) {
-                            tempStatus = Temp_Warning;
-                        }
-                    } else {
-                        if(temperatureCurrent >= tempWarning) {
-                            tempStatus = Temp_Fatal;
-                        } else if(tempStatus == Temp_Warning) {
-                            if(temperatureCurrent < tempNormal-5) {
-                                tempStatus = Temp_Safe;
-                            }
-                        } else {
-                            if(temperatureCurrent >= tempNormal) {
-                                tempStatus = Temp_Warning;
-                            }
-                        }
-                    }
-                    //Serial.printf("Temperature: %i*C\r\n", temperatureCurrent);
-                }
-            }
+            TemperatureUpdate();
 
             if(tempStatus < Temp_Fatal) {
                 if(tempStatus == Temp_Warning) {
@@ -196,6 +162,7 @@ void FFB::SolenoidActivation(int solenoidFinalInterval)
                 digitalWrite(SamcoPreferences::pins.oSolenoid, LOW);                       // Make sure it's off if we're this dangerously close to the sun.
             }
         } else { // No temp sensor, so just go ahead.
+            currentMillis = millis();
             if(currentMillis - previousMillisSol >= solenoidFinalInterval) { // If we've waited long enough for this interval,
                 previousMillisSol = currentMillis;                    // Since we've waited long enough, calibrate the timer
                 digitalWrite(SamcoPreferences::pins.oSolenoid, !digitalRead(SamcoPreferences::pins.oSolenoid)); // run the solenoid into the state we've just inverted it to.
@@ -204,10 +171,46 @@ void FFB::SolenoidActivation(int solenoidFinalInterval)
     }
 }
 
+void FFB::TemperatureUpdate()
+{
+    currentMillis = millis();
+    if(currentMillis - previousMillisTemp > 2) {
+        previousMillisTemp = currentMillis;
+        temperatureGraph[temperatureIndex] = (((analogRead(SamcoPreferences::pins.aTMP36) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
+        if(temperatureIndex < 3) {
+            temperatureIndex++;
+        } else {
+            // average out temperature from four samples taken 3ms apart from each other
+            temperatureIndex = 0;
+            temperatureCurrent = (temperatureGraph[0] +
+                                  temperatureGraph[1] +
+                                  temperatureGraph[2] +
+                                  temperatureGraph[3]) / 4;
+            if(tempStatus == Temp_Fatal) {
+                if(temperatureCurrent < tempWarning-5) {
+                    tempStatus = Temp_Warning;
+                }
+            } else {
+                if(temperatureCurrent >= tempWarning) {
+                    tempStatus = Temp_Fatal;
+                } else if(tempStatus == Temp_Warning) {
+                    if(temperatureCurrent < tempNormal-5) {
+                        tempStatus = Temp_Safe;
+                    }
+                } else {
+                    if(temperatureCurrent >= tempNormal) {
+                        tempStatus = Temp_Warning;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void FFB::RumbleActivation()
 {
     if(rumbleHappening) {                                         // Are we in a rumble command rn?
-        unsigned long currentMillis = millis();                   // Calibrate a timer to set how long we've been rumbling.
+        currentMillis = millis();                                 // Calibrate a timer to set how long we've been rumbling.
         if(SamcoPreferences::toggles.rumbleFF) {
             if(currentMillis - previousMillisRumble >= SamcoPreferences::settings.rumbleInterval / 2) { // If we've been waiting long enough for this whole rumble command,
                 digitalWrite(SamcoPreferences::pins.oRumble, LOW);                         // Make sure the rumble is OFF.

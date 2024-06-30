@@ -39,6 +39,10 @@ public:
     /// @details 
     void SolenoidActivation(int solenoidFinalInterval);
 
+    /// @brief Monitors temperature
+    /// @return Current temperature in C(elsius)
+    void TemperatureUpdate();
+
     /// @brief Subroutine managing rumble state
     void RumbleActivation();
 
@@ -47,10 +51,6 @@ public:
 
     /// @brief Macro to shut down all force feedback
     void FFBShutdown();
-
-    /// @brief Monitors temperature
-    /// @return Current temperature in C(elsius)
-    uint8_t TemperaturePoll(int8_t pin);
 
     // For autofire:
     bool triggerHeld = false;                        // Trigger SHOULDN'T be being pulled by default, right?
@@ -78,6 +78,7 @@ private:
     uint8_t tempNormal = 35;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
     uint8_t tempWarning = 42;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
     uint8_t tempStatus = Temp_Safe;
+    unsigned long currentMillis = 0;
     unsigned long previousMillisTemp = 0;
     unsigned int temperatureGraph[4];
     uint8_t temperatureIndex = 0;

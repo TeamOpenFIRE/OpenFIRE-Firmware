@@ -1637,16 +1637,14 @@ void ExecGunModeDocked()
                   Serial.println("Released: 14");
                   break;
             }
+
+            OF_FFB.TemperatureUpdate();
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
-                if(SamcoPreferences::pins.aTMP36 >= 0) {
-                    int tempSensor = analogRead(SamcoPreferences::pins.aTMP36);
-                    tempSensor = (((tempSensor * 3.3) / 4096) - 0.5) * 100;
-                    Serial.print("Temperature: ");
-                    Serial.println(tempSensor);
-                }
+                if(SamcoPreferences::pins.aTMP36 >= 0) { Serial.printf("Temperature: %d\r\n", OF_FFB.temperatureCurrent); }
                 tempChecked = currentMillis;
             }
+            
             if(analogIsValid) {
                 if(currentMillis - aStickChecked >= 16) {
                     unsigned int analogValueX = analogRead(SamcoPreferences::pins.aStickX);
