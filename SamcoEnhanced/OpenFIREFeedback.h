@@ -36,11 +36,11 @@ public:
     void FFBRelease();
 
     /// @brief Manages solenoid state w/ temperature tempering
-    /// @details 
+    /// @details Temp tempering is based on last poll of TemperatureUpdate()
     void SolenoidActivation(int solenoidFinalInterval);
 
-    /// @brief Monitors temperature
-    /// @return Current temperature in C(elsius)
+    /// @brief Updates current temperature (averaged), if available
+    /// @details Only polls every 3ms, with updates committed to temperatureCurrent after four successful polling cycles
     void TemperatureUpdate();
 
     /// @brief Subroutine managing rumble state
@@ -53,21 +53,22 @@ public:
     void FFBShutdown();
 
     // For autofire:
-    bool triggerHeld = false;                        // Trigger SHOULDN'T be being pulled by default, right?
+    bool triggerHeld = false;                  // Trigger SHOULDN'T be being pulled by default, right?
 
     bool burstFireActive = false;
 
+    // Current temperature as read from TMP36, in (approximate) Celsius
     uint8_t temperatureCurrent;
 
 private:
     // For solenoid:
-    bool solenoidFirstShot = false;              // default to off, but actually set this the first time we shoot.
+    bool solenoidFirstShot = false;            // default to off, but is set this the first time we shoot.
 
     // For rumble:
-    bool rumbleHappening = false;                // To keep track on if this is a rumble command or not.
-    bool rumbleHappened = false;                 // If we're holding, this marks we sent a rumble command already.
+    bool rumbleHappening = false;              // To keep track on if this is a rumble command or not.
+    bool rumbleHappened = false;               // If we're holding, this marks we sent a rumble command already; is cleared when trigger is released
     
-    unsigned long previousMillisSol = 0;         // our timer (holds the last time since a successful interval pass)
+    unsigned long previousMillisSol = 0;       // Timestamp of last time since unique solenoid state change
 
     enum TempStatuses_e {
         Temp_Safe = 0,
@@ -77,20 +78,24 @@ private:
 
     uint8_t tempNormal = 35;                   // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
     uint8_t tempWarning = 42;                  // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    uint8_t tempStatus = Temp_Safe;
-    unsigned long currentMillis = 0;
-    unsigned long previousMillisTemp = 0;
-    unsigned int temperatureGraph[4];
-    uint8_t temperatureIndex = 0;
+    uint8_t tempStatus = Temp_Safe;            // Current state of the solenoid,
+
+    // timer stuff
+    unsigned long currentMillis = 0;           // Current millis() value, which is globally updated/read across all functions in this class
+    unsigned long previousMillisTemp = 0;      // Timestamp of last time TMP36 was read
+
+    unsigned int temperatureGraph[4];          // Table of collected (converted) TMP36 readings, to be averaged into temperatureCurrent on the fourth value.
+    uint8_t temperatureIndex = 0;              // Current index of temperatureGraph to update; initiates temperatureCurrent update/averaging when = 3.
+
     const unsigned int solenoidWarningInterval = SamcoPreferences::settings.solenoidFastInterval * 5; // for if solenoid is getting toasty.
 
     // For burst firing stuff:
-    byte burstFireCount = 0;                         // What shot are we on?
-    byte burstFireCountLast = 0;                     // What shot have we last processed?
-    bool burstFiring = false;                        // Are we in a burst fire command?
+    byte burstFireCount = 0;                   // What shot are we on?
+    byte burstFireCountLast = 0;               // What shot have we last processed?
+    bool burstFiring = false;                  // Are we in a burst fire command?
 
     // For rumble:
-    unsigned long previousMillisRumble = 0;      // our time since the rumble motor event started
+    unsigned long previousMillisRumble = 0;    // our time since the rumble motor event started
     // We need the rumbleHappening because of the variable nature of the PWM controlling the motor.
 };
 
