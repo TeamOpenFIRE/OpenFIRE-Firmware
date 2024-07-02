@@ -62,7 +62,7 @@ public:
 
 private:
     // For solenoid:
-    bool solenoidFirstShot = false;            // default to off, but is set this the first time we shoot.
+    bool solenoidFirstShot = false;            // default to off, but set this on the first time we shoot.
 
     // For rumble:
     bool rumbleHappening = false;              // To keep track on if this is a rumble command or not.
