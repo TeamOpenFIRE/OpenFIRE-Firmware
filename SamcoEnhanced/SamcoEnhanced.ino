@@ -152,11 +152,6 @@
     #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
 #endif // PLAYER_NUMBER
 
-char playerUpArrow = 0xDA;
-char playerDownArrow = 0xD9;
-char playerLeftArrow = 0xD8;
-char playerRightArrow = 0xD7;
-
 // enable extra serial debug during run mode
 //#define PRINT_VERBOSE 1
 //#define DEBUG_SERIAL 1
@@ -209,10 +204,10 @@ LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {SamcoPreferences::pins.bGunB, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Mouse, MOUSE_MIDDLE, LightgunButtons::ReportType_Gamepad, PAD_Y, 15, BTN_AG_MASK2},
     {SamcoPreferences::pins.bStart, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Keyboard, playerStartBtn, LightgunButtons::ReportType_Gamepad, PAD_START, 20, BTN_AG_MASK2},
     {SamcoPreferences::pins.bSelect, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad, PAD_SELECT, 20, BTN_AG_MASK2},
-    {SamcoPreferences::pins.bGunUp, LightgunButtons::ReportType_Keyboard, playerUpArrow, LightgunButtons::ReportType_Keyboard, playerUpArrow, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2}, 		// Modified with keyboard arrows instead dpad when in mouse+kb mode
-    {SamcoPreferences::pins.bGunDown, LightgunButtons::ReportType_Keyboard, playerDownArrow, LightgunButtons::ReportType_Keyboard, playerDownArrow, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},	// Modified with keyboard arrows instead dpad when in mouse+kb mode
-    {SamcoPreferences::pins.bGunLeft, LightgunButtons::ReportType_Keyboard, playerLeftArrow, LightgunButtons::ReportType_Keyboard, playerLeftArrow, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},	// Modified with keyboard arrows instead dpad when in mouse+kb mode
-    {SamcoPreferences::pins.bGunRight, LightgunButtons::ReportType_Keyboard, playerRightArrow, LightgunButtons::ReportType_Keyboard, playerRightArrow, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},	// Modified with keyboard arrows instead dpad when in mouse+kb mode
+    {SamcoPreferences::pins.bGunUp, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, LightgunButtons::ReportType_Gamepad, PAD_UP, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunDown, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, LightgunButtons::ReportType_Gamepad, PAD_DOWN, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunLeft, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, LightgunButtons::ReportType_Gamepad, PAD_LEFT, 20, BTN_AG_MASK2},
+    {SamcoPreferences::pins.bGunRight, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, LightgunButtons::ReportType_Gamepad, PAD_RIGHT, 20, BTN_AG_MASK2},
     {SamcoPreferences::pins.bGunC, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_A, 15, BTN_AG_MASK2},
     {SamcoPreferences::pins.bPedal, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON4, LightgunButtons::ReportType_Gamepad, PAD_X, 15, BTN_AG_MASK2},
     {SamcoPreferences::pins.bPedal2, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Mouse, MOUSE_BUTTON5, LightgunButtons::ReportType_Gamepad, PAD_B, 15, BTN_AG_MASK2},
@@ -373,10 +368,8 @@ bool buttonPressed = false;                      // Sanity check.
     #endif // USES_SOLENOID
     #ifdef USES_DISPLAY
     bool serialDisplayChange = false;                // Signal of pending display update, sent by Core 2 to be used by Core 1 in dual core configs
-    uint16_t serialLifeCount = 0; //Changed from unit8_t for games with higer life numbers (Aliens Armageddon have 1000 for lifecount)
+    uint8_t serialLifeCount = 0;
     uint8_t serialAmmoCount = 0;
-    uint16_t VidaMax = 0; //Max life value
-    uint16_t Porcentaje = 0; //Value % to show in lifebar
     #endif // USES_DISPLAY
 #endif // MAMEHOOKER
 
@@ -3266,7 +3259,6 @@ void SerialProcessing()
                 }
                 if(Serial.read() == 'B') {
                     OLED.lifeBar = true;
-		    VidaMax = 0; //rese max life to 0 whan game ghange
                 } else { OLED.lifeBar = false; }
                 // prevent glitching if currently in pause mode
                 if(gunMode == GunMode_Run) {
@@ -3578,10 +3570,6 @@ void SerialProcessing()
                         }
                     }
                     serialLifeCount = atoi(serialInputS);
-		    if (OLED.lifeBar){
-			if (serialLifeCount > VidaMax) { VidaMax = serialLifeCount; }
-			Porcentaje = (100 * serialLifeCount) / VidaMax; 
-		    }
                     break;
                   }
                 }
@@ -3771,20 +3759,12 @@ void SerialHandling()
 void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
-    offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
-            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
-                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);	//If gamepad mode is enabled Press A Button
-                } else {
-        	AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
-		} 
+    offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?
+        AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
     } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
-		if(buttons.analogOutput) {	     //Check if gamepad mode is enabled
-                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); //If gamepad mode is enabled Press Trigger Button
-            	} else {
-        	AbsMouse5.press(MOUSE_LEFT);         // We're handling the trigger button press ourselves for a reason.
-		}
+        AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
         buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
     }
 }
@@ -3794,18 +3774,10 @@ void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3); //If gamepad mode is enabled release A Button
-                } else {
-            	AbsMouse5.release(MOUSE_RIGHT);      // Release the right mouse,
-	    	}
+            AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
             offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
-            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); // If gamepad mode is enabled release the Trigger button
-            	} else {
-            	AbsMouse5.release(MOUSE_LEFT);       // It was a normal shot, so just release the left mouse button.
-	    	}
+            AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
         }
         buttonPressed = false;                       // Unset the button pressed bit.
     }
