@@ -3759,12 +3759,20 @@ void SerialHandling()
 void TriggerFireSimple()
 {
     if(!buttonPressed &&                             // Have we not fired the last cycle,
-    offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?
-        AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
+    offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
+            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
+                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);	//If gamepad mode is enabled Press A Button
+                } else {
+        	AbsMouse5.press(MOUSE_RIGHT);                // Press the right mouse button
+		} 
         offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         buttonPressed = true;                        // Mark so we're not spamming these press events.
     } else if(!buttonPressed) {                      // Else, have we simply not fired the last cycle?
-        AbsMouse5.press(MOUSE_LEFT);                 // We're handling the trigger button press ourselves for a reason.
+		if(buttons.analogOutput) {	     //Check if gamepad mode is enabled
+                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); //If gamepad mode is enabled Press Trigger Button
+            	} else {
+        	AbsMouse5.press(MOUSE_LEFT);         // We're handling the trigger button press ourselves for a reason.
+		}
         buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
     }
 }
@@ -3774,10 +3782,18 @@ void TriggerNotFireSimple()
 {
     if(buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            AbsMouse5.release(MOUSE_RIGHT);          // Release the right mouse,
+            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
+                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3); //If gamepad mode is enabled release A Button
+                } else {
+            	AbsMouse5.release(MOUSE_RIGHT);      // Release the right mouse,
+	    	}
             offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
-            AbsMouse5.release(MOUSE_LEFT);           // It was a normal shot, so just release the left mouse button.
+            if(buttons.analogOutput) {		     //Check if gamepad mode is enabled
+                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); // If gamepad mode is enabled release the Trigger button
+            	} else {
+            	AbsMouse5.release(MOUSE_LEFT);       // It was a normal shot, so just release the left mouse button.
+	    	}
         }
         buttonPressed = false;                       // Unset the button pressed bit.
     }
