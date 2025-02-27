@@ -1,7 +1,26 @@
+ /*!
+ * @file OpenFIREdefines.h
+ * @brief Global precompiler definitions & build options for the OpenFIRE project.
+ *
+ * @copyright That One Seong, 2025
+ * @copyright GNU Lesser General Public License
+ */ 
+
 #ifndef _OPENFIREDEFINES_H_
 #define _OPENFIREDEFINES_H_
 
+#define OPENFIRE_VERSION 5.2
+#define OPENFIRE_CODENAME "Dawn"
+
+ // For custom builders, remember to check (COMPILING.md) for IDE instructions!
+ // ISSUERS: REMEMBER TO SPECIFY YOUR USING A CUSTOM BUILD & WHAT CHANGES ARE MADE TO THE SKETCH; OTHERWISE YOUR ISSUE MAY BE CLOSED!
+
     // GLOBAL PREDEFINES ----------------------------------------------------------------------------------------------------------
+// enable extra serial debug during run mode
+//#define PRINT_VERBOSE 1
+//#define DEBUG_SERIAL 1
+//#define DEBUG_SERIAL 2
+
   // Enables input processing on the second core, if available. Currently exclusive to Raspberry Pi Pico, or boards based on the RP2040.
   // Isn't necessarily faster, but might make responding to force feedback more consistent.
   // If unsure, leave this uncommented - it only affects RP2040 anyways.
@@ -51,13 +70,9 @@
 #define CUSTOM_NEOPIXEL
 #ifdef CUSTOM_NEOPIXEL
     #define LED_ENABLE
-    #include <Adafruit_NeoPixel.h>
 #endif // CUSTOM_NEOPIXEL
 
   // Leave this uncommented to enable optional support for SSD1306 monochrome OLED displays.
 #define USES_DISPLAY
-#ifdef USES_DISPLAY
-  #include "SamcoDisplay.h"
-#endif // USES_DISPLAY
 
 #endif // _OPENFIREDEFINES_H_
