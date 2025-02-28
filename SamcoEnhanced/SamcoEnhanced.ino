@@ -56,7 +56,7 @@ void setup() {
 
             SamcoPreferences::LoadToggles();
 
-            if(SamcoPreferences::toggles[OF_Const::OF_Const::customPins])
+            if(SamcoPreferences::toggles[OF_Const::customPins])
                 SamcoPreferences::LoadPins();
 
             SamcoPreferences::LoadSettings();

@@ -1,3 +1,4 @@
+#include "Wire.h"
  /*!
  * @file OpenFIREcommon.h
  * @brief Shared objects and values used throughout the OpenFIRE project.

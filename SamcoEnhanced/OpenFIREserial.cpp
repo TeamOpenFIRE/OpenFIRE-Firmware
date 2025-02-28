@@ -812,12 +812,22 @@ void OF_Serial::SerialProcessingDocked()
               // Save current profile
               case 'S':
                 Serial.println("Saving preferences...");
-                // Update bindings so LED/Pixel changes are reflected immediately
-                FW_Common::FeedbackSet();
+                Serial.flush();
                 // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
                 FW_Common::SavePreferences();
                 // load everything back to commit custom pins setting to memory
                 if(FW_Common::nvPrefsError == SamcoPreferences::Error_Success) {
+                    FW_Common::PinsReset();
+                    FW_Common::CameraSet();
+                    FW_Common::FeedbackSet();
+
+                    // Update bindings so LED/Pixel changes are reflected immediately
+                    if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
+                        playerStartBtn = SamcoPreferences::usb.devicePID + '0';
+                        playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
+                    }
+                    FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+
                     #ifdef LED_ENABLE
                     // Save op above resets color, so re-set it back to docked idle color
                     if(FW_Common::gunMode == GunMode_Docked) {
@@ -827,12 +837,6 @@ void OF_Serial::SerialProcessingDocked()
                     }
                     #endif // LED_ENABLE
                 }
-                FW_Common::CameraSet();
-                if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
-                    playerStartBtn = SamcoPreferences::usb.devicePID + '0';
-                    playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
-                }
-                FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
                 buttons.Begin();
                 FW_Common::dockedSaving = false;
                 break;
@@ -849,7 +853,6 @@ void OF_Serial::SerialProcessingDocked()
               {
                 if(!FW_Common::dockedSaving) {
                     buttons.Unset();
-                    FW_Common::PinsReset();
                     FW_Common::dockedSaving = true; // mark so button presses won't interrupt this process.
                 } else {
                     Serial.read(); // nomf
@@ -861,22 +864,22 @@ void OF_Serial::SerialProcessingDocked()
                         Serial.read(); // nomf
                         SamcoPreferences::toggles[sCase] = Serial.read() - '0';
                         SamcoPreferences::toggles[sCase] = constrain(SamcoPreferences::toggles[sCase], 0, 1);
-                        Serial.println("OK: Toggled setting.");
+                        Serial.printf("OK: Toggled setting %d to %d.\r\n", sCase, SamcoPreferences::toggles[sCase]);
                     // Pins
                     } else if(serialInput == '1') {
                         Serial.read(); // nomf
                         int8_t sCase = Serial.parseInt();
                         Serial.read(); // nomf
                         SamcoPreferences::pins[sCase] = Serial.parseInt();
-                        SamcoPreferences::pins[sCase] = constrain(SamcoPreferences::pins[sCase], -1, 40);
-                        Serial.println("OK: Set pin.");
+                        SamcoPreferences::pins[sCase] = constrain(SamcoPreferences::pins[sCase], -1, 29);
+                        Serial.printf("OK: Set function %d to pin %d.\r\n", sCase, SamcoPreferences::pins[sCase]);
                     // Extended Settings
                     } else if(serialInput == '2') {
                         Serial.read(); // nomf
                         uint32_t sCase = Serial.parseInt();
                         Serial.read(); // nomf
                         SamcoPreferences::settings[sCase] = Serial.parseInt();
-                        Serial.println("OK: Set setting.");
+                        Serial.printf("OK: Set setting %d to %d.\r\n", sCase, SamcoPreferences::settings[sCase]);
                     #ifdef USE_TINYUSB
                     // TinyUSB Identifier Settings
                     } else if(serialInput == '3') {

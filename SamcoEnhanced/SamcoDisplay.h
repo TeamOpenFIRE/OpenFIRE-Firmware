@@ -1,3 +1,4 @@
+#include "Wire.h"
 /*!
  * @file SamcoDisplay.h
  * @brief Macros for lightgun HUD display (primarily for SSD1306 OLED modules).
@@ -10,59 +11,52 @@
 #define _SAMCODISPLAY_H_
 
 #include <stdint.h>
+#include <Adafruit_SSD1306.h>
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
 class ExtDisplay {
 public:
-    /// @brief Constructor
-    ExtDisplay();
-
     /// @brief Attempt to start display using current pin numbers from SamcoPreferences
     /// @return success (true) or fail (false)
     bool Begin();
 
+    /// @brief Cleanup and delete current OLED object
+    /// @details This is needed to ensure the wire object is cleaned up
+    void Stop();
+
     /// @brief Update top panel with new info
-    /// @return nothing
     void TopPanelUpdate(char textPrefix[7], char textInput[16]);
 
     /// @brief Clear screen for different gun modes
-    /// @return nothing
     void ScreenModeChange(int8_t screenMode, bool isAnalog = false);
 
     /// @brief Perform maintenance operations (WIP)
     /// @details For when values aren't being updated, but still want to change something on the screen
     /// (i.e. small text printouts when health/ammo empty)
-    /// @return nothing
     void IdleOps();
 
     /// @brief Draw seen points here
     /// @details Should ONLY be used in scenarios where the mouse isn't being updated, i.e. calibration.
-    /// @return nothing
     void DrawVisibleIR(int pointX[4], int pointY[4]);
 
     /// @brief Draw hotkey pause mode layout
-    /// @return nothing
     void PauseScreenShow(uint8_t currentProf, char name1[16], char name2[16], char name3[16], char name4[16]);
 
     /// @brief Update simple pause mode list on screen
-    /// @return nothing
     void PauseListUpdate(uint8_t selection);
 
     /// @brief Update simple pause mode profiles list on screen
-    /// @return nothing
     void PauseProfileUpdate(uint8_t selection, char name1[16], char name2[16], char name3[16], char name4[16]);
 
     /// @brief Print save status message
     void SaveScreen(uint8_t status);
 
     /// @brief Update main screen ammo glyphs
-    /// @return nothing
     void PrintAmmo(uint8_t ammo);
 
     /// @brief Update main screen life glyphs
-    /// @return nothing
     void PrintLife(uint8_t life);
 
     enum ScreenMode_e {
@@ -97,6 +91,8 @@ public:
         ScreenSerial_Both
     };
 
+    Adafruit_SSD1306 *display = nullptr;
+
     /// @brief Whether life updates are in lifebar or life glyphs form
     bool lifeBar = false;
 
@@ -104,8 +100,6 @@ public:
     uint8_t serialDisplayType = 0;
 
 private:
-    bool displayValid = false;
-
     int8_t screenState = Screen_None;
 
     bool ammoEmpty = false;

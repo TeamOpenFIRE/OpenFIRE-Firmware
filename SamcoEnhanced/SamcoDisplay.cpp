@@ -10,20 +10,18 @@
 #define SSD1306_NO_SPLASH
 
 #include <Arduino.h>
-#include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 #include <Wire.h>
 #include "SamcoDisplay.h"
 #include "SamcoPreferences.h"
 #include <TinyUSB_Devices.h>
 
-Adafruit_SSD1306 *display;
-
-ExtDisplay::ExtDisplay() {}
-
 bool ExtDisplay::Begin()
 {
-    if(display != nullptr) { display->clearDisplay(); delete display, displayValid = false; }
+    if(display != nullptr) {
+        delete display;
+        display = nullptr;
+    }
 
     if(SamcoPreferences::pins[OF_Const::periphSCL] >= 0 && SamcoPreferences::pins[OF_Const::periphSDA] >= 0) {
         if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
@@ -33,11 +31,7 @@ bool ExtDisplay::Begin()
                 Wire1.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
                 Wire1.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
                 display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
-                displayValid = true;
-            } else {
-                displayValid = false;
-                return false;
-            }
+            } else return false;
         } else if(!bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
             // I2C0
             if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 0)) {
@@ -45,33 +39,27 @@ bool ExtDisplay::Begin()
                 Wire.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
                 Wire.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
                 display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-                displayValid = true;
-            } else {
-                displayValid = false;
-                return false;
-            }
-        } else {
-            displayValid = false;
-            return false;
-        }
-    } else {
-        displayValid = false;
-        return false;
-    }
+            } else return false;
+        } else return false;
+    } else return false;
 
     if(display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("Display initialized!"), Serial.flush();
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;
-    } else {
-      displayValid = false;
-      return false;
-    }
+    } else return false;
+}
+
+void ExtDisplay::Stop()
+{
+    delete display;
+    display = nullptr;
 }
 
 void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 0, 128, 16, BLACK);
         display->drawFastHLine(0, 15, 128, WHITE);
         display->setCursor(2, 2);
@@ -85,7 +73,7 @@ void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
 
 void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         if(screenState >= Screen_Mamehook_Single &&
            screenMode == Screen_Normal) {
@@ -172,7 +160,7 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 
 void ExtDisplay::IdleOps()
 {
-    if(displayValid) {
+    if(display != nullptr) {
         switch(screenState) {
           case Screen_Normal:
             break;
@@ -196,7 +184,7 @@ void ExtDisplay::IdleOps()
 // Use at your own discression.
 void ExtDisplay::DrawVisibleIR(int pointX[4], int pointY[4])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         for(uint8_t i = 0; i < 4; i++) {
           pointX[i] = map(pointX[i], 0, 1920, 0, 128);
@@ -210,7 +198,7 @@ void ExtDisplay::DrawVisibleIR(int pointX[4], int pointY[4])
 
 void ExtDisplay::PauseScreenShow(uint8_t currentProf, char name1[16], char name2[16], char name3[16], char name4[16])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         char* namesList[16] = { name1, name2, name3, name4 };
         TopPanelUpdate("Using ", namesList[currentProf]); // names are placeholder
         display->fillRect(0, 16, 128, 48, BLACK);
@@ -233,7 +221,7 @@ void ExtDisplay::PauseScreenShow(uint8_t currentProf, char name1[16], char name2
 
 void ExtDisplay::PauseListUpdate(uint8_t selection)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->drawBitmap(60, 18, upArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
         display->drawBitmap(60, 59, downArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
@@ -380,7 +368,7 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
 
 void ExtDisplay::PauseProfileUpdate(uint8_t selection, char name1[16], char name2[16], char name3[16], char name4[16])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->drawBitmap(60, 18, upArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
         display->drawBitmap(60, 59, downArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
@@ -437,7 +425,7 @@ void ExtDisplay::PauseProfileUpdate(uint8_t selection, char name1[16], char name
 
 void ExtDisplay::SaveScreen(uint8_t status)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->setTextColor(WHITE, BLACK);
         display->setTextSize(2);
@@ -449,7 +437,7 @@ void ExtDisplay::SaveScreen(uint8_t status)
 
 void ExtDisplay::PrintAmmo(uint8_t ammo)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         currentAmmo = ammo;
         // use the rounding error to get the left & right digits
         uint8_t ammoLeft = ammo / 10;
@@ -599,7 +587,7 @@ void ExtDisplay::PrintAmmo(uint8_t ammo)
 
 void ExtDisplay::PrintLife(uint8_t life)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         currentLife = life;
         if(!life) { lifeEmpty = true; } else { lifeEmpty = false; }
         if(screenState == Screen_Mamehook_Single) {

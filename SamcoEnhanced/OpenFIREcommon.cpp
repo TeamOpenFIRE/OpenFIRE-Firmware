@@ -68,7 +68,6 @@ void FW_Common::FeedbackSet()
 
     #ifdef CUSTOM_NEOPIXEL
     if(SamcoPreferences::pins[OF_Const::neoPixel] >= 0)
-      // TODO: put this in OpenFIRElights instead
         OF_RGB::InitExternPixel(SamcoPreferences::pins[OF_Const::neoPixel]);
     #endif // CUSTOM_NEOPIXEL
 
@@ -84,34 +83,34 @@ void FW_Common::FeedbackSet()
 
 void FW_Common::PinsReset()
 {
+    if(dfrIRPos != nullptr) {
+        delete dfrIRPos;
+        dfrIRPos = nullptr;
+    }
+
     #ifdef USES_RUMBLE
-        if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0) {
+        if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0)
             pinMode(SamcoPreferences::pins[OF_Const::rumblePin], INPUT);
-        }
     #endif // USES_RUMBLE
 
     #ifdef USES_SOLENOID
-        if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0) {
+        if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0)
             pinMode(SamcoPreferences::pins[OF_Const::solenoidPin], INPUT);
-        }
     #endif // USES_SOLENOID
 
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
+            if(SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0)
                 pinMode(SamcoPreferences::pins[OF_Const::rumbleSwitch], INPUT);
-            }
         #endif // USES_RUMBLE
 
         #ifdef USES_SOLENOID
-            if(SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
+            if(SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0)
                 pinMode(SamcoPreferences::pins[OF_Const::solenoidSwitch], INPUT);
-            }  
         #endif // USES_SOLENOID
 
-        if(SamcoPreferences::pins[OF_Const::autofireSwitch] >= 0) {
+        if(SamcoPreferences::pins[OF_Const::autofireSwitch] >= 0)
             pinMode(SamcoPreferences::pins[OF_Const::autofireSwitch], INPUT);
-        }
     #endif // USES_SWITCHES
 
     #ifdef LED_ENABLE
@@ -129,16 +128,19 @@ void FW_Common::PinsReset()
             if(OF_RGB::externPixel != nullptr) {
                 OF_RGB::externPixel->clear();
                 delete OF_RGB::externPixel;
+                OF_RGB::externPixel = nullptr;
             }
         #endif // CUSTOM_NEOPIXEL
     #endif // LED_ENABLE
+
+    #ifdef USES_DISPLAY
+        if(OLED.display != nullptr)
+            OLED.Stop();
+    #endif // USES_DISPLAY
 }
 
 void FW_Common::CameraSet()
 {
-    if(dfrIRPos != nullptr)
-        delete dfrIRPos;
-
     // Sanity check: which channel do these pins correlate to?
     if(bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1)) {
         // I2C1
@@ -672,25 +674,24 @@ void FW_Common::GetPosition()
                 }
 
                 if(runMode == RunMode_Processing) {
-                    for(int i = 0; i < 4; i++) {
-                        Serial.print(rawX[i]);
-                        Serial.print( "," );
-                        Serial.print(rawY[i]);
-                        Serial.print( "," );
-                    }
-                    Serial.print( mouseX / 4 );
-                    Serial.print( "," );
-                    Serial.print( mouseY / 4 );
-                    Serial.print( "," );
-                    // Median for viewing in processing
                     if(profileData[profiles.selectedProfile].irLayout) {
-                        Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0));
-                        Serial.print( "," );
-                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
+                        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r\n",
+                                      rawX[0], rawY[0],
+                                      rawX[1], rawY[1],
+                                      rawX[2], rawY[2],
+                                      rawX[3], rawY[3],
+                                      mouseX / 4, mouseY / 4,
+                                      map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0),
+                                      map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
                     } else {
-                        Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920));
-                        Serial.print( "," );
-                        Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080));
+                        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r\n",
+                                      rawX[0], rawY[0],
+                                      rawX[1], rawY[1],
+                                      rawX[2], rawY[2],
+                                      rawX[3], rawY[3],
+                                      mouseX / 4, mouseY / 4,
+                                      map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920),
+                                      map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080));
                     }
                 }
 
@@ -858,7 +859,8 @@ void FW_Common::SavePreferences()
         stateFlags &= ~StateFlag_SavePreferencesEn;
 
         #ifdef USES_DISPLAY
-            OLED.ScreenModeChange(ExtDisplay::Screen_Saving);
+            if(OLED.display != nullptr)
+                OLED.ScreenModeChange(ExtDisplay::Screen_Saving);
         #endif // USES_DISPLAY
     }
     
