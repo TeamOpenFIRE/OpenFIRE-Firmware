@@ -48,7 +48,7 @@ void OF_RGB::LedInit()
 #ifdef CUSTOM_NEOPIXEL
 void OF_RGB::InitExternPixel(const int8_t &pin)
 {
-    externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings[OF_Const::customLEDcount], SamcoPreferences::pins[OF_Const::neoPixel], NEO_GRB + NEO_KHZ800);
+    externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings[OF_Const::customLEDcount], pin, NEO_GRB + NEO_KHZ800);
     externPixel->begin();
     if(SamcoPreferences::settings[OF_Const::customLEDstatic] > 0 &&
        SamcoPreferences::settings[OF_Const::customLEDstatic] <= SamcoPreferences::settings[OF_Const::customLEDcount]) {
@@ -85,7 +85,7 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
 #endif // NEOPIXEL_PIN
 
 #ifdef CUSTOM_NEOPIXEL
-    if(SamcoPreferences::pins[OF_Const::neoPixel] >= 0) {
+    if(externPixel != nullptr) {
         if(SamcoPreferences::settings[OF_Const::customLEDstatic] < SamcoPreferences::settings[OF_Const::customLEDcount]) {
             externPixel->fill(color, SamcoPreferences::settings[OF_Const::customLEDstatic]);
             externPixel->show();
@@ -151,7 +151,7 @@ void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
     #endif // NEOPIXEL_PIN
 
     #ifdef CUSTOM_NEOPIXEL
-        if(SamcoPreferences::pins[OF_Const::neoPixel] >= 0) {
+        if(externPixel != nullptr) {
             if(SamcoPreferences::settings[OF_Const::customLEDstatic] < SamcoPreferences::settings[OF_Const::customLEDcount]) {
                 externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), SamcoPreferences::settings[OF_Const::customLEDstatic]);
                 externPixel->show();
