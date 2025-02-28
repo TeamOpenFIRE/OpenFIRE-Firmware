@@ -23,6 +23,8 @@ bool ExtDisplay::Begin()
         display = nullptr;
     }
 
+    // TODO: for some reason, doing this AFTER saving updated pins settings (even when doing it from defaults and there's no default mappings for peripheral pins)
+    // causes the board to hang. Even though this is all correct (and any display objects should get deleted from the above, so don't think it can be a new object thing)...
     if(SamcoPreferences::pins[OF_Const::periphSCL] >= 0 && SamcoPreferences::pins[OF_Const::periphSDA] >= 0) {
         if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
             // I2C1
