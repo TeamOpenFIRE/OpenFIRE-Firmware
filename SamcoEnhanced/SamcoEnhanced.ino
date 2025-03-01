@@ -162,9 +162,19 @@ void setup() {
             
             if(FW_Common::gunMode == GunMode_Docked) {
                 ExecGunModeDocked();
+
+                // Because the app offers cali options, exit straight to normal runmode
+                // if we exited from docking with a setup profile.
+                if(!(FW_Common::profileData[FW_Common::profiles.selectedProfile].topOffset == 0 &&
+                     FW_Common::profileData[FW_Common::profiles.selectedProfile].bottomOffset == 0 && 
+                     FW_Common::profileData[FW_Common::profiles.selectedProfile].leftOffset == 0 &&
+                     FW_Common::profileData[FW_Common::profiles.selectedProfile].rightOffset == 0)) {
+                      FW_Common::SetMode(GunMode_Run);
+                      break;
                 #ifdef USES_DISPLAY
-                  FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
+                } else { FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
                 #endif // USES_DISPLAY
+                }
             }
 
             FW_Common::buttons.Poll(1);
@@ -187,20 +197,12 @@ void setup() {
                 } 
             }
         }
-        
-        // Because the app offers cali options, just check to make sure that
-        // current prof wasn't cal'd from THERE for sanity.
-        if((FW_Common::profileData[FW_Common::profiles.selectedProfile].topOffset == 0 &&
-            FW_Common::profileData[FW_Common::profiles.selectedProfile].bottomOffset == 0 && 
-            FW_Common::profileData[FW_Common::profiles.selectedProfile].leftOffset == 0 &&
-            FW_Common::profileData[FW_Common::profiles.selectedProfile].rightOffset == 0))
-              FW_Common::SetMode(GunMode_Calibration);
-        else FW_Common::SetMode(GunMode_Run);
+
+        // skip cali if we're prematurely set to run from the above loop
+        // (i.e. cal'd from Desktop)
+        if(FW_Common::gunMode != GunMode_Run)
+            FW_Common::SetMode(GunMode_Calibration);
     } else {
-        /* In case someone wants to implement functionality when user holds trigger on boot, here's the former "mister mode" template c:
-        if(SamcoPreferences::pins[OF_Const::btnTrigger] >= 0 && !digitalRead(SamcoPreferences::pins[OF_Const::btnTrigger])) {
-            
-        }*/
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
         FW_Common::SetMode(GunMode_Run);
     }
@@ -894,100 +896,8 @@ void ExecGunModeDocked()
             if(FW_Common::buttons.pressed)
                 Serial.printf("Pressed: %d\n", FW_Common::buttons.pressed);
 
-            /*
-            switch(FW_Common::buttons.pressed) {
-                case BtnMask_Trigger:
-                  Serial.println("Pressed: 1");
-                  break;
-                case BtnMask_A:
-                  Serial.println("Pressed: 2");
-                  break;
-                case BtnMask_B:
-                  Serial.println("Pressed: 3");
-                  break;
-                case BtnMask_Reload:
-                  Serial.println("Pressed: 4");
-                  break;
-                case BtnMask_Start:
-                  Serial.println("Pressed: 5");
-                  break;
-                case BtnMask_Select:
-                  Serial.println("Pressed: 6");
-                  break;
-                case BtnMask_Up:
-                  Serial.println("Pressed: 7");
-                  break;
-                case BtnMask_Down:
-                  Serial.println("Pressed: 8");
-                  break;
-                case BtnMask_Left:
-                  Serial.println("Pressed: 9");
-                  break;
-                case BtnMask_Right:
-                  Serial.println("Pressed: 10");
-                  break;
-                case BtnMask_Pedal:
-                  Serial.println("Pressed: 11");
-                  break;
-                case BtnMask_Pedal2:
-                  Serial.println("Pressed: 12");
-                  break;
-                case BtnMask_Home:
-                  Serial.println("Pressed: 13");
-                  break;
-                case BtnMask_Pump:
-                  Serial.println("Pressed: 14");
-                  break;
-            }*/
-
             if(FW_Common::buttons.released)
                 Serial.printf("Released: %d\n", FW_Common::buttons.released);
-
-            /*
-            switch(FW_Common::buttons.released) {
-                case BtnMask_Trigger:
-                  Serial.println("Released: 1");
-                  break;
-                case BtnMask_A:
-                  Serial.println("Released: 2");
-                  break;
-                case BtnMask_B:
-                  Serial.println("Released: 3");
-                  break;
-                case BtnMask_Reload:
-                  Serial.println("Released: 4");
-                  break;
-                case BtnMask_Start:
-                  Serial.println("Released: 5");
-                  break;
-                case BtnMask_Select:
-                  Serial.println("Released: 6");
-                  break;
-                case BtnMask_Up:
-                  Serial.println("Released: 7");
-                  break;
-                case BtnMask_Down:
-                  Serial.println("Released: 8");
-                  break;
-                case BtnMask_Left:
-                  Serial.println("Released: 9");
-                  break;
-                case BtnMask_Right:
-                  Serial.println("Released: 10");
-                  break;
-                case BtnMask_Pedal:
-                  Serial.println("Released: 11");
-                  break;
-                case BtnMask_Pedal2:
-                  Serial.println("Released: 12");
-                  break;
-                case BtnMask_Home:
-                  Serial.println("Released: 13");
-                  break;
-                case BtnMask_Pump:
-                  Serial.println("Released: 14");
-                  break;
-            }*/
 
             OF_FFB::TemperatureUpdate();
             unsigned long currentMillis = millis();

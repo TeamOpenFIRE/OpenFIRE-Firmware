@@ -545,7 +545,10 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         // If this is an initial calibration, save it immediately!
         stateFlags |= StateFlag_SavePreferencesEn;
         SavePreferences();
+        if(fromDesktop)
+            SetMode(GunMode_Docked);
     } else if(fromDesktop) {
+        // TODO: won't be needed, as we send prof data with each cali stage.
         Serial.printf("UpdatedProf: %d\r\n", profiles.selectedProfile);
         Serial.println(profileData[profiles.selectedProfile].topOffset);
         Serial.println(profileData[profiles.selectedProfile].bottomOffset);
