@@ -283,6 +283,8 @@ public:
     static inline bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)
     static inline bool dockedSaving = false;                           // To block sending test output in docked mode.
 
+    static LightgunButtons buttons;
+
     // For offscreen button stuff:
     static inline bool offscreenButton = false;                    // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
     static inline bool offscreenBShot = false;                     // For offscreenButton functionality, to track if we shot off the screen.
@@ -352,8 +354,5 @@ inline LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
 
     // button runtime data arrays
     static inline LightgunButtonsStatic<ButtonCount> lgbData;
-
-    // button object instance
-    static inline LightgunButtons buttons(lgbData, ButtonCount);
 
 #endif // _OPENFIRECOMMON_H_

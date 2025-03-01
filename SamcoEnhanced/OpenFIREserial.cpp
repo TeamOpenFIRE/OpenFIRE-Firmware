@@ -38,7 +38,7 @@ void OF_Serial::SerialProcessing()
               #ifdef USES_DISPLAY
                   // init basic display to show mamehook icon
                   if(FW_Common::gunMode == GunMode_Run)
-                      FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
+                      FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
               #endif // USES_DISPLAY
           }
           break;
@@ -54,16 +54,16 @@ void OF_Serial::SerialProcessing()
                 switch(serialInput) {
                     case '2': // "hybrid" - just use the default m&kb mode
                     case '0': // mouse & kb 
-                      buttons.analogOutput = false;
+                      FW_Common::buttons.analogOutput = false;
                       break;
                     // gamepad
                     case '1':
-                      buttons.analogOutput = true;
+                      FW_Common::buttons.analogOutput = true;
                       Gamepad16.stickRight = (Serial.peek() == 'L') ? true: false;
                       break;
                     // official "MiSTer optimized" mode
                     case '9':
-                      buttons.analogOutput = true;
+                      FW_Common::buttons.analogOutput = true;
                       Gamepad16.stickRight = true;
                       // HACK SHACK - testing MiSTer-friendly default gamepad maps
                       LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3 = PAD_A,
@@ -87,11 +87,11 @@ void OF_Serial::SerialProcessing()
                 Gamepad16.releaseAll();
                 #ifdef USES_DISPLAY
                     if(!serialMode && FW_Common::gunMode == GunMode_Run)
-                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput);
+                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
                     else if(serialMode && FW_Common::gunMode == GunMode_Run &&
                             FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None &&
                             FW_Common::OLED.serialDisplayType < ExtDisplay::ScreenSerial_Both) {
-                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
+                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
                     }
                 #endif // USES_DISPLAY
                 break;
@@ -244,7 +244,7 @@ void OF_Serial::SerialProcessing()
                     if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
                     } else if(FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
-                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
+                        FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
                     }
                 }
                 break;
@@ -270,7 +270,7 @@ void OF_Serial::SerialProcessing()
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
                       FW_Common::OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-                      if(FW_Common::gunMode == GunMode_Run) { FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput); }
+                      if(FW_Common::gunMode == GunMode_Run) { FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput); }
                   #endif // USES_DISPLAY
                   #ifdef LED_ENABLE
                       serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -837,7 +837,7 @@ void OF_Serial::SerialProcessingDocked()
                     }
                     #endif // LED_ENABLE
                 }
-                buttons.Begin();
+                FW_Common::buttons.Begin();
                 FW_Common::dockedSaving = false;
                 break;
               // Clear EEPROM.
@@ -852,7 +852,7 @@ void OF_Serial::SerialProcessingDocked()
               case 'm':
               {
                 if(!FW_Common::dockedSaving) {
-                    buttons.Unset();
+                    FW_Common::buttons.Unset();
                     FW_Common::dockedSaving = true; // mark so button presses won't interrupt this process.
                 } else {
                     Serial.read(); // nomf

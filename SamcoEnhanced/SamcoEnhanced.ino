@@ -93,7 +93,7 @@ void setup() {
     FW_Common::CameraSet();
 
     // initialize buttons & feedback devices
-    buttons.Begin();
+    FW_Common::buttons.Begin();
     FW_Common::FeedbackSet();
 
     #ifdef LED_ENABLE
@@ -155,7 +155,7 @@ void setup() {
         #ifdef USES_DISPLAY
             FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
         #endif // USES_DISPLAY
-        while(!(buttons.pressedReleased == BtnMask_Trigger)) {
+        while(!(FW_Common::buttons.pressedReleased == BtnMask_Trigger)) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available())
                 OF_Serial::SerialProcessingDocked();
@@ -167,8 +167,8 @@ void setup() {
                 #endif // USES_DISPLAY
             }
 
-            buttons.Poll(1);
-            buttons.Repeat();
+            FW_Common::buttons.Poll(1);
+            FW_Common::buttons.Repeat();
 
             // LED update:
             if(LEDisOn) {
@@ -262,22 +262,22 @@ void loop1()
 
     while(FW_Common::gunMode == GunMode_Run) {
         // For processing the trigger specifically.
-        // (buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-        buttons.Poll(0);
+        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        FW_Common::buttons.Poll(0);
 
         #ifdef MAMEHOOKER
             if(Serial.available())
                 OF_Serial::SerialProcessing();
 
             if(!OF_Serial::serialMode) {   // Have we released a serial signal pulse? If not,
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFire();                                      // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
                 }
             } else {   // This is if we've received a serial signal pulse in the last n millis.
                 // For safety reasons, we're just using the second core for polling, and the main core for sending signals entirely. Too much a headache otherwise. =w='
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                             // Release button inputs.
@@ -285,7 +285,7 @@ void loop1()
                 OF_Serial::SerialHandling();                                       // Process the force feedback.
             }
         #else
-            if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+            if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                 TriggerFire();                                          // Handle button events and feedback ourselves.
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
@@ -299,18 +299,18 @@ void loop1()
             }
         #endif // USES_ANALOG
         
-        if(buttons.pressedReleased == EscapeKeyBtnMask)
+        if(FW_Common::buttons.pressedReleased == EscapeKeyBtnMask)
             SendEscapeKey();
 
         if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
-            if((buttons.debounced == EnterPauseModeHoldBtnMask)
+            if((FW_Common::buttons.debounced == EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 if(!OF_Serial::serialMode)
                     Serial.println("Started holding pause mode signal buttons!");
 
-            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
+            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
                 pauseHoldStarted = false;
                 if(!OF_Serial::serialMode)
                     Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
@@ -323,17 +323,17 @@ void loop1()
                     FW_Common::offscreenBShot = false;
                     FW_Common::buttonPressed = false;
                     FW_Common::pauseModeSelection = PauseMode_Calibrate;
-                    buttons.ReportDisable();
+                    FW_Common::buttons.ReportDisable();
                     FW_Common::SetMode(GunMode_Pause);
                 }
             }
         } else {
-            if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
+            if(FW_Common::buttons.pressedReleased == EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
                 FW_Common::offscreenBShot = false;
                 FW_Common::buttonPressed = false;
-                buttons.ReportDisable();
+                FW_Common::buttons.ReportDisable();
                 FW_Common::SetMode(GunMode_Pause);
                 // at this point, the other core should be stopping us now.
             }
@@ -348,8 +348,8 @@ void loop1()
 void loop()
 {
     // poll/update button states with 1ms interval so debounce mask is more effective
-    buttons.Poll(1);
-    buttons.Repeat();
+    FW_Common::buttons.Poll(1);
+    FW_Common::buttons.Repeat();
 
     if(SamcoPreferences::toggles[OF_Const::holdToPause] && pauseHoldStarted) {
         #ifdef USES_RUMBLE
@@ -357,9 +357,9 @@ void loop()
             delay(300);
             digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
         #endif // USES_RUMBLE
-        while(buttons.debounced != 0) {
+        while(FW_Common::buttons.debounced != 0) {
             // Should release the buttons to continue, pls.
-            buttons.Poll(1);
+            FW_Common::buttons.Poll(1);
         }
         pauseHoldStarted = false;
         pauseModeSelectingProfile = false;
@@ -373,11 +373,11 @@ void loop()
         case GunMode_Pause:
             if(SamcoPreferences::toggles[OF_Const::simplePause]) {
                 if(pauseModeSelectingProfile) {
-                    if(buttons.pressedReleased == BtnMask_A) {
+                    if(FW_Common::buttons.pressedReleased == BtnMask_A) {
                         SetProfileSelection(false);
-                    } else if(buttons.pressedReleased == BtnMask_B) {
+                    } else if(FW_Common::buttons.pressedReleased == BtnMask_B) {
                         SetProfileSelection(true);
-                    } else if(buttons.pressedReleased == BtnMask_Trigger) {
+                    } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
                         FW_Common::SelectCalProfile(profileModeSelection);
                         pauseModeSelectingProfile = false;
                         FW_Common::pauseModeSelection = PauseMode_Calibrate;
@@ -393,7 +393,7 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
 
-                    } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
+                    } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
                         if(!OF_Serial::serialMode)
                             Serial.println("Exiting profile selection.");
 
@@ -415,11 +415,11 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
                     }
-                } else if(buttons.pressedReleased == BtnMask_A) {
+                } else if(FW_Common::buttons.pressedReleased == BtnMask_A) {
                     SetPauseModeSelection(false);
-                } else if(buttons.pressedReleased == BtnMask_B) {
+                } else if(FW_Common::buttons.pressedReleased == BtnMask_B) {
                     SetPauseModeSelection(true);
-                } else if(buttons.pressedReleased == BtnMask_Trigger) {
+                } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
                     switch(FW_Common::pauseModeSelection) {
                         case PauseMode_Calibrate:
                           FW_Common::SetMode(GunMode_Calibration);
@@ -514,13 +514,13 @@ void loop()
                           Serial.println("Oops, somethnig went wrong.");
                           break;
                     }
-                } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
+                } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
                     if(!OF_Serial::serialMode)
                         Serial.println("Exiting pause mode...");
                     FW_Common::SetMode(GunMode_Run);
                 }
                 if(pauseExitHoldStarted &&
-                (buttons.debounced & ExitPauseModeHoldBtnMask)) {
+                (FW_Common::buttons.debounced & ExitPauseModeHoldBtnMask)) {
                     unsigned long t = millis();
                     if(t - pauseHoldStartstamp > (SamcoPreferences::settings[OF_Const::holdToPauseLength] / 2)) {
                         if(!OF_Serial::serialMode)
@@ -551,45 +551,45 @@ void loop()
                             }
                         #endif // USES_RUMBLE
 
-                        while(buttons.debounced != 0)
+                        while(FW_Common::buttons.debounced != 0)
                             // keep polling until all buttons are debounced
-                            buttons.Poll(1);
+                            FW_Common::buttons.Poll(1);
 
                         FW_Common::SetMode(GunMode_Run);
                         pauseExitHoldStarted = false;
                     }
-                } else if(buttons.debounced & ExitPauseModeHoldBtnMask) {
+                } else if(FW_Common::buttons.debounced & ExitPauseModeHoldBtnMask) {
                     pauseExitHoldStarted = true;
                     pauseHoldStartstamp = millis();
-                } else if(buttons.pressedReleased & ExitPauseModeHoldBtnMask)
+                } else if(FW_Common::buttons.pressedReleased & ExitPauseModeHoldBtnMask)
                     pauseExitHoldStarted = false;
-            } else if(buttons.pressedReleased & ExitPauseModeBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
                 FW_Common::SetMode(GunMode_Run);
-            } else if(buttons.pressedReleased == BtnMask_Trigger) {
+            } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
                 FW_Common::SetMode(GunMode_Calibration);
-            } else if(buttons.pressedReleased == RunModeNormalBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == RunModeNormalBtnMask) {
                 FW_Common::SetRunMode(RunMode_Normal);
-            } else if(buttons.pressedReleased == RunModeAverageBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == RunModeAverageBtnMask) {
                 FW_Common::SetRunMode(FW_Common::runMode == RunMode_Average ? RunMode_Average2 : RunMode_Average);
-            } else if(buttons.pressedReleased == IRSensitivityUpBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == IRSensitivityUpBtnMask) {
                 IncreaseIrSensitivity();
-            } else if(buttons.pressedReleased == IRSensitivityDownBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == IRSensitivityDownBtnMask) {
                 DecreaseIrSensitivity();
-            } else if(buttons.pressedReleased == SaveBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == SaveBtnMask) {
                 FW_Common::SavePreferences();
-            } else if(buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
                 OffscreenToggle();
-            } else if(buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle();
             #ifdef USES_RUMBLE
-                } else if(buttons.pressedReleased == RumbleToggleBtnMask && SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == RumbleToggleBtnMask && SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(buttons.pressedReleased == SolenoidToggleBtnMask && SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == SolenoidToggleBtnMask && SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
-            } else SelectCalProfileFromBtnMask(buttons.pressedReleased);
+            } else SelectCalProfileFromBtnMask(FW_Common::buttons.pressedReleased);
 
             if(!OF_Serial::serialMode)
                 OF_Serial::PrintResults();
@@ -634,7 +634,7 @@ void ExecRunMode()
     Serial.println(RunModeLabels[FW_Common::runMode]);
 #endif
 
-    buttons.ReportEnable();
+    FW_Common::buttons.ReportEnable();
     if(FW_Common::justBooted) {
         // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
         delay(100);  // Exact time needed to wait seems to vary, so make a safe assumption here.
@@ -683,7 +683,7 @@ void ExecRunMode()
 
         // If we're on RP2040, we offload the button polling to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        buttons.Poll(0);
+        FW_Common::buttons.Poll(0);
 
         // The main FW_Common::gunMode loop: here it splits off to different paths,
         // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
@@ -694,15 +694,15 @@ void ExecRunMode()
 
             if(!OF_Serial::serialMode) {  // Normal (gun-handled) mode
                 // For processing the trigger specifically.
-                // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
+                // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
                 // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFire();                                  // Handle button events and feedback ourselves.
                 } else {   // Or we haven't pressed the trigger.
                     TriggerNotFire();                               // Releasing button inputs and sending stop signals to feedback devices.
                 }
             } else {  // Serial handoff mode
-                if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                     TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                         // Release button inputs.
@@ -711,9 +711,9 @@ void ExecRunMode()
             }
         #else
             // For processing the trigger specifically.
-            // (buttons.debounced is a binary variable intended to be read 1 bit at a time,
+            // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
             // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-            if(bitRead(buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
+            if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
                 TriggerFire();                                      // Handle button events and feedback ourselves.
             } else {   // Or we haven't pressed the trigger.
                 TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
@@ -760,18 +760,18 @@ void ExecRunMode()
             }
         #endif // USES_ANALOG
 
-        if(buttons.pressedReleased == EscapeKeyBtnMask)
+        if(FW_Common::buttons.pressedReleased == EscapeKeyBtnMask)
             SendEscapeKey();
 
         if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
-            if((buttons.debounced == EnterPauseModeHoldBtnMask)
+            if((FW_Common::buttons.debounced == EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 if(!OF_Serial::serialMode)
                     Serial.println("Started holding pause mode signal buttons!");
 
-            } else if(pauseHoldStarted && (buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
+            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
                 pauseHoldStarted = false;
                 if(!OF_Serial::serialMode)
                     Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
@@ -787,12 +787,12 @@ void ExecRunMode()
                     buttonPressed = false;
 	    	            FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::SetMode(GunMode_Pause);
-                    buttons.ReportDisable();
+                    FW_Common::buttons.ReportDisable();
                     return;
                 }
             }
         } else {
-            if(buttons.pressedReleased == EnterPauseModeBtnMask || buttons.pressedReleased == BtnMask_Home) {
+            if(FW_Common::buttons.pressedReleased == EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
 		            FW_Common::Keyboard.releaseAll();
@@ -800,7 +800,7 @@ void ExecRunMode()
                 FW_Common::offscreenBShot = false;
                 buttonPressed = false;
 		            FW_Common::SetMode(GunMode_Pause);
-                buttons.ReportDisable();
+                FW_Common::buttons.ReportDisable();
                 return;
             }
         }
@@ -823,14 +823,14 @@ void ExecRunMode()
 // for use with the Samco_4IR_Processing_Sketch_BETA Processing sketch
 void ExecRunModeProcessing()
 {
-    buttons.ReportDisable();
+    FW_Common::buttons.ReportDisable();
 
     #ifdef USES_DISPLAY
         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_IRTest);
     #endif // USES_DISPLAY
 
     for(;;) {
-        buttons.Poll(1);
+        FW_Common::buttons.Poll(1);
 
         if(Serial.available()) {
             #ifdef USES_DISPLAY
@@ -853,7 +853,7 @@ void ExecRunModeProcessing()
 // For use with the OpenFIRE app when it connects to this board.
 void ExecGunModeDocked()
 {
-    buttons.ReportDisable();
+    FW_Common::buttons.ReportDisable();
 
     if(FW_Common::justBooted) {
         // center the joystick so RetroArch/Windows doesn't throw a hissy fit about uncentered joysticks
@@ -885,17 +885,17 @@ void ExecGunModeDocked()
 #endif // GIT_HASH
 
     for(;;) {
-        buttons.Poll(1);
+        FW_Common::buttons.Poll(1);
 
         if(Serial.available())
             OF_Serial::SerialProcessingDocked();
 
         if(!FW_Common::dockedSaving) {
-            if(buttons.pressed)
-                Serial.printf("Pressed: %d\n", buttons.pressed);
+            if(FW_Common::buttons.pressed)
+                Serial.printf("Pressed: %d\n", FW_Common::buttons.pressed);
 
             /*
-            switch(buttons.pressed) {
+            switch(FW_Common::buttons.pressed) {
                 case BtnMask_Trigger:
                   Serial.println("Pressed: 1");
                   break;
@@ -940,11 +940,11 @@ void ExecGunModeDocked()
                   break;
             }*/
 
-            if(buttons.released)
-                Serial.printf("Released: %d\n", buttons.released);
+            if(FW_Common::buttons.released)
+                Serial.printf("Released: %d\n", FW_Common::buttons.released);
 
             /*
-            switch(buttons.released) {
+            switch(FW_Common::buttons.released) {
                 case BtnMask_Trigger:
                   Serial.println("Released: 1");
                   break;
@@ -1072,8 +1072,8 @@ void ExecGunModeDocked()
 void SetModeWaitNoButtons(const GunMode_e &newMode, const unsigned long &maxWait)
 {
     unsigned long ms = millis();
-    while(buttons.debounced && (millis() - ms < maxWait))
-        buttons.Poll(1);
+    while(FW_Common::buttons.debounced && (millis() - ms < maxWait))
+        FW_Common::buttons.Poll(1);
 
     FW_Common::SetMode(newMode);
 }
@@ -1081,35 +1081,34 @@ void SetModeWaitNoButtons(const GunMode_e &newMode, const unsigned long &maxWait
 // Handles events when trigger is pulled/held
 void TriggerFire()
 {
-    if(!buttons.offScreen &&                                     // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
+    if(!FW_Common::buttons.offScreen &&                                     // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
     !FW_Common::offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
         if(!FW_Common::buttonPressed) {
-            if(buttons.analogOutput)
+            if(FW_Common::buttons.analogOutput)
                 Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); // No reason to handle this ourselves here, but eh.
             else AbsMouse5.press(MOUSE_LEFT);                     // We're handling the trigger button press ourselves for a reason.
 
             FW_Common::buttonPressed = true;                                // Set this so we won't spam a repeat press event again.
         }
 
-        if(!bitRead(buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
-        !bitRead(buttons.debounced, 4))
+        if(!bitRead(FW_Common::buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
+        !bitRead(FW_Common::buttons.debounced, 4))
             OF_FFB::FFBOnScreen();
     } else {  // We're shooting outside of the screen boundaries!
         if(!FW_Common::buttonPressed) {  // If we haven't pressed a trigger key yet,
             if(!OF_FFB::triggerHeld && FW_Common::offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
-                if(buttons.analogOutput)
+                if(FW_Common::buttons.analogOutput)
                     Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
                 else AbsMouse5.press(MOUSE_RIGHT);
 
                 FW_Common::offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
-                FW_Common::buttonPressed = true;                      // Mark so we're not spamming these press events.
             } else {  // Or if we're not in offscreen button mode,
-                if(buttons.analogOutput)
+                if(FW_Common::buttons.analogOutput)
                     Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
                 else AbsMouse5.press(MOUSE_LEFT);
-
-                FW_Common::buttonPressed = true;                      // Mark so we're not spamming these press events.
             }
+
+            FW_Common::buttonPressed = true;                      // Mark so we're not spamming these press events.
         }
         OF_FFB::FFBOffScreen();
     }
@@ -1122,19 +1121,18 @@ void TriggerNotFire()
     OF_FFB::triggerHeld = false;                                    // Disable the holding function
     if(FW_Common::buttonPressed) {
         if(FW_Common::offscreenBShot) {                                // If we fired off screen with the FW_Common::offscreenButton set,
-            if(buttons.analogOutput)
+            if(FW_Common::buttons.analogOutput)
                 Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
             else AbsMouse5.release(MOUSE_RIGHT);             // We were pressing the right mouse, so release that.
 
             FW_Common::offscreenBShot = false;
-            FW_Common::buttonPressed = false;
         } else {                                            // Or if not,
-            if(buttons.analogOutput)
+            if(FW_Common::buttons.analogOutput)
                 Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
             else AbsMouse5.release(MOUSE_LEFT);              // We were pressing the left mouse, so release that instead.
-
-            FW_Common::buttonPressed = false;
         }
+        
+        FW_Common::buttonPressed = false;
     }
     
     OF_FFB::FFBRelease();
@@ -1162,15 +1160,15 @@ void AnalogStickPoll()
 void TriggerFireSimple()
 {
     if(!FW_Common::buttonPressed &&                             // Have we not fired the last cycle,
-    OF_Serial::offscreenButtonSerial && buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
-        if(buttons.analogOutput)
+    OF_Serial::offscreenButtonSerial && FW_Common::buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
+        if(FW_Common::buttons.analogOutput)
             Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
 	      else AbsMouse5.press(MOUSE_RIGHT);
 
         FW_Common::offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         FW_Common::buttonPressed = true;                        // Mark so we're not spamming these press events.
     } else if(!FW_Common::buttonPressed) {                      // Else, have we simply not fired the last cycle?
-	      if(buttons.analogOutput) 
+	      if(FW_Common::buttons.analogOutput) 
             Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
 	      else AbsMouse5.press(MOUSE_LEFT);
 
@@ -1183,12 +1181,12 @@ void TriggerNotFireSimple()
 {
     if(FW_Common::buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(FW_Common::offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            if(buttons.analogOutput)
+            if(FW_Common::buttons.analogOutput)
                 Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
 	          else AbsMouse5.release(MOUSE_RIGHT);
             FW_Common::offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
-            if(buttons.analogOutput)
+            if(FW_Common::buttons.analogOutput)
                 Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
 	          else AbsMouse5.release(MOUSE_LEFT);
         }
