@@ -803,6 +803,19 @@ void OF_Serial::SerialProcessingDocked()
                     Serial.println(i-1);
                     if(Serial.peek() == 'C') {
                         Serial.read(); // nomf
+
+                        // sensitivity preset
+                        if(Serial.peek() == 'I') {
+                            Serial.read(); // nomf
+                            FW_Common::SetIrSensitivity(Serial.read() - '0');
+                        }
+                        
+                        // ir layout type preset
+                        if(Serial.peek() == 'L') {
+                            Serial.read(); // nomf
+                            FW_Common::SetIrLayout(Serial.read() - '0');
+                        }
+
                         FW_Common::SetMode(GunMode_Calibration);
                         FW_Common::ExecCalMode(true);
                     }

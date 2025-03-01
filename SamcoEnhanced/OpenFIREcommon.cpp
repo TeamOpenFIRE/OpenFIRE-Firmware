@@ -820,6 +820,18 @@ void FW_Common::SetIrSensitivity(const uint8_t &sensitivity)
     }
 }
 
+void FW_Common::SetIrLayout(const uint8_t &layout)
+{
+    // TODO: we need an enum for layout types available
+    if(layout > 1)
+        return;
+
+    if(profileData[profiles.selectedProfile].irLayout != layout) {
+        profileData[profiles.selectedProfile].irLayout = layout;
+        stateFlags |= StateFlag_SavePreferencesEn;
+    }
+}
+
 void FW_Common::LoadPreferences()
 {
     if(!nvAvailable)
@@ -832,7 +844,7 @@ void FW_Common::LoadPreferences()
 #endif // SAMCO_FLASH_ENABLE
     
     // Profile sanity checks
-    // center 0 is used as "no cal data"
+    // resets offsets that are wayyyyy too unreasonably high
     for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
         if(profileData[i].rightOffset >= 32768 || profileData[i].bottomOffset >= 32768 ||
            profileData[i].topOffset >= 32768 || profileData[i].leftOffset >= 32768) {
@@ -941,7 +953,7 @@ void FW_Common::SavePreferences()
     #endif // USES_DISPLAY
 }
 
-void FW_Common::UpdateBindings(const bool &offscreenEnable)
+void FW_Common::UpdateBindings(const bool &lowButtons)
 {
     // Updates pins
     LightgunButtons::ButtonDesc[BtnIdx_Trigger].pin = SamcoPreferences::pins[OF_Const::btnTrigger];
@@ -960,7 +972,7 @@ void FW_Common::UpdateBindings(const bool &offscreenEnable)
     LightgunButtons::ButtonDesc[BtnIdx_Home].pin = SamcoPreferences::pins[OF_Const::btnHome];
 
     // Updates button functions for low-button mode
-    if(offscreenEnable) {
+    if(lowButtons) {
         LightgunButtons::ButtonDesc[BtnIdx_A].reportType2 = LightgunButtons::ReportType_Keyboard;
         LightgunButtons::ButtonDesc[BtnIdx_A].reportCode2 = playerStartBtn;
         LightgunButtons::ButtonDesc[BtnIdx_B].reportType2 = LightgunButtons::ReportType_Keyboard;

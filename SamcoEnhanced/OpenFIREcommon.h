@@ -167,29 +167,47 @@ class FW_Common
 {
 public:
     //// Methods
+    /// @brief    Sets feedback devices to appropriate I/O modes and initializes external devices.
+    /// @details  Mainly Force Feedbacks, analog RGB, and digital devices (I2C peripherals or
+    //            external NeoPixels)
     static void FeedbackSet();
 
+    /// @brief    Unsets any currently mapped pins back to board defaults (non-pullup inputs).
+    /// @note     This should be run before any sync operation, to ensure no problems
+    ///           when setting pins to any new values.
     static void PinsReset();
 
+    /// @brief    (Re-)sets IR camera position object.
+    /// @note     This is run at startup, and can also be run from Docked mode
+    ///           when new camera pins are defined.
     static void CameraSet();
 
-    // Macro for functions to run when gun enters new gunmode
+    /// @brief    Macro for functions to run when gun enters new gunmode
+    /// @param    GunMode_e
+    ///           GunMode to switch to
+    /// @note     Some cleanup functions are performed depending on the mode
+    ///           being switched away from.
     static void SetMode(const GunMode_e&);
 
-    // set new run mode and apply it to the selected profile
+    /// @brief    Set new IR mode and apply it to the selected profile.
+    /// @param    RunMode_e
+    ///           IR Mode to switch to (either averaging modes, or Processing test mode)
     static void SetRunMode(const RunMode_e&);
 
     /// @brief    Gun Mode that handles calibration.
-    /// @details  Bool represents whether this session is invoked from the PC App.
-    ///           When true, mouse movement is skipped entirely.
-    static void ExecCalMode(const bool& = false);
+    /// @param    fromDesktop
+    ///           Flag that's set when calibration is signalled from the Desktop App.
+    ///           When true, any mouse position movements during calibration are skipped
+    ///           to keep the process smooth for the end user.
+    static void ExecCalMode(const bool &fromDesktop = false);
 
-    /// @brief    Updates current sight position from IR cam
+    /// @brief    Updates current sight position from IR cam.
     /// @details  Updates finalX and finalY values.
     static void GetPosition();
 
-    /// @brief    Update the last seen value
-    /// @details  Only to be called during run mode since this will modify the LED colour
+    /// @brief    Update the last seen value.
+    /// @note     Only to be called during run mode, since this will modify the LED colour
+    ///           of any (non-static) devices.
     static void UpdateLastSeen();
 
     #ifdef LED_ENABLE
@@ -197,21 +215,36 @@ public:
     static void SetLedColorFromMode();
     #endif // LED_ENABLE
 
-    // applies loaded gun profile settings
-    static bool SelectCalProfile(const uint8_t&);
+    /// @brief    Applies loaded gun profile settings from profileData[PROFILE_COUNT]
+    /// @param    profile
+    ///           Profile slot number to load settings from.
+    static bool SelectCalProfile(const uint8_t &profile);
 
-    // set a new IR camera sensitivity and apply to the selected profile
-    static void SetIrSensitivity(const uint8_t&);
+    /// @brief    Set a new IR camera sensitivity, and apply to the currently selected calibration profile
+    /// @param    sensitivity
+    ///           New sensitivity to set for current cali profile.
+    static void SetIrSensitivity(const uint8_t &sensitivity);
 
-    // Loads preferences from EEPROM, then verifies.
+    /// @brief    Set a new IR layout type, and apply to the currently selected calibration profile
+    /// @param    layout
+    ///           New layout type to set for current cali profile.
+    static void SetIrLayout(const uint8_t &layout);
+
+    /// @brief    Loads preferences from EEPROM, then verifies.
     static void LoadPreferences();
 
-    // Saves profile settings to EEPROM
-    // Blinks LEDs (if any) on success or failure.
+    /// @brief    Saves profile settings to EEPROM
+    /// @note     Blinks LEDs (if any) on success or failure.
     static void SavePreferences();
 
-    // Updates the button array with new pin mappings and control bindings, if any.
-    static void UpdateBindings(const bool & = false);
+    /// @brief    Updates LightgunButtons::ButtonDesc[] buttons descriptor array
+    ///           with new pin mappings and control bindings, if any.
+    /// @param    lowButtons
+    ///           Flag that determines whether offscreen button compatibility bit is enabled.
+    ///           When true, Mouse+Keyboard slots' offscreen mapping is set to a different key.
+    ///           TODO: should be able to set offscreen button mode mappings too,
+    ///           but these are handled directly in firing modes currently.
+    static void UpdateBindings(const bool &lowButtons = false);
 
     // initial gunmode
     static inline GunMode_e gunMode = GunMode_Init;
