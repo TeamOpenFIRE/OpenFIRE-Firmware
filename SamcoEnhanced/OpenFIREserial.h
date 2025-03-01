@@ -91,6 +91,8 @@ private:
     static inline unsigned long serialSolPulsesLastUpdate = 0;     // The timestamp of the last serial-invoked pulse solenoid event we updated.
     static inline int serialSolPulses = 0;                         // How many solenoid pulses are we being told to do?
     static inline int serialSolPulsesLast = 0;                     // What solenoid pulse we've processed last.
+    static inline uint32_t serialSolTimestamp = 0;                 // Timestamp of how long a solenoid on command's been engaged
+    #define SERIAL_SOLENOID_MAXSHUTOFF 2000
     #endif // USES_SOLENOID
 
     #endif // MAMEHOOKER

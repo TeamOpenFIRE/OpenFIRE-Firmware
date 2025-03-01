@@ -566,15 +566,28 @@ void OF_Serial::SerialProcessing()
 
 void OF_Serial::SerialHandling()
 {
-    // The Mamehook feedback system handles all the timing and safety for us.
-    // So all we have to do is just read and process what it sends us at face value.
-    // The only exception is rumble PULSE bits, where we actually do need to calculate that ourselves.
+    // The Mamehook feedback system handles most of the timing for us.
+    // For the most part, all we have to do is just read and process what it sends us at face value.
+    // Solenoid "normal" enable bits need to be monitored to ensure it isn't on for too long, and force shutdown if it is.
+    // Solenoid "pulse" bits will borrow from current force feedback settings.
+    // Rumble pulse bits are also something we do need to calculate ourselves.
+    // The display (if enabled) is handled in the normal Core 0 gunmode run method.
 
     #ifdef USES_SOLENOID
       if(SamcoPreferences::toggles[OF_Const::solenoid]) {
-          if(bitRead(serialQueue, SerialQueue_Solenoid)) {          // If the solenoid digital bit is on,
-              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);      // Make it go!
-          } else if(bitRead(serialQueue, SerialQueue_SolPulse)) {   // if the solenoid pulse bit is on,
+          // solenoid enable bit on
+          if(bitRead(serialQueue, SerialQueue_Solenoid)) {
+              if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
+                  if(millis() - serialSolTimestamp > SERIAL_SOLENOID_MAXSHUTOFF) {
+                      digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+                      bitClear(serialQueue, SerialQueue_Solenoid);
+                  }
+              } else {
+                  digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);
+                  serialSolTimestamp = millis();
+              }
+          // solenoid pulse bit on
+          } else if(bitRead(serialQueue, SerialQueue_SolPulse)) {
               if(!serialSolPulsesLast) {                            // Have we started pulsing?
                   digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);  // Start pulsing it on!
                   serialSolPulsesLast = 1;                               // Start the sequence.
@@ -596,13 +609,12 @@ void OF_Serial::SerialHandling()
                   digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);   // Finally shut it off for good.
                   bitClear(serialQueue, SerialQueue_SolPulse);           // Set the pulse bit as off.
               }
-          } else {  // or if it's not,
-              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);       // turn it off!
-          }
-      } else {
-          digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
-      }
+          // no solenoid bits
+          } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+      // solenoid toggle not allowed, just force it off.
+      } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
   #endif // USES_SOLENOID
+
   #ifdef USES_RUMBLE
       if(SamcoPreferences::toggles[OF_Const::rumble]) {
           if(bitRead(serialQueue, SerialQueue_Rumble)) {                 // Is the rumble on bit set?
@@ -645,6 +657,7 @@ void OF_Serial::SerialHandling()
           digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
       }
   #endif // USES_RUMBLE
+
   #ifdef LED_ENABLE
     if(serialLEDChange) {                                     // Has the LED command state changed?
         if(bitRead(serialQueue, SerialQueue_LEDPulse)) { // Or is it an LED pulse command?
@@ -729,7 +742,6 @@ void OF_Serial::SerialHandling()
         }
     }
     #endif // LED_ENABLE
-    // Display is handled in core 0
 }
 #endif // MAMEHOOKER
 
@@ -809,7 +821,7 @@ void OF_Serial::SerialProcessingDocked()
                             Serial.read(); // nomf
                             FW_Common::SetIrSensitivity(Serial.read() - '0');
                         }
-                        
+
                         // ir layout type preset
                         if(Serial.peek() == 'L') {
                             Serial.read(); // nomf
