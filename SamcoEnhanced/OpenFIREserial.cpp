@@ -600,7 +600,8 @@ void OF_Serial::SerialHandling()
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
                   } else {
-                      if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
+                      if(millis() - serialSolPulsesLastUpdate >=
+                         SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
