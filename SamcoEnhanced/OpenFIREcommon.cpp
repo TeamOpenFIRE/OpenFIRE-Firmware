@@ -77,7 +77,8 @@ void FW_Common::FeedbackSet()
       // check it's not using the camera's I2C line
        bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) &&
        bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1))
-        OLED.Begin();
+        if(!OLED.Begin())
+            if(OLED.display != nullptr) delete OLED.display;
     #endif // USES_DISPLAY
 }
 

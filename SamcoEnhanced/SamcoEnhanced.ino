@@ -474,7 +474,7 @@ void loop()
                           SendEscapeKey();
 
                           #ifdef USES_DISPLAY
-                              FW_Common::OLED.TopPanelUpdate("", "Sent Escape Key!");
+                              FW_Common::OLED.TopPanelUpdate("Sent Escape Key!");
                           #endif // USES_DISPLAY
 
                           #ifdef LED_ENABLE
@@ -1575,7 +1575,7 @@ void RumbleToggle()
             Serial.println("Rumble enabled!");
 
         #ifdef USES_DISPLAY
-            FW_Common::OLED.TopPanelUpdate("Toggli", "ng Rumble ON");
+            FW_Common::OLED.TopPanelUpdate("Toggling Rumble ON");
         #endif // USES_DISPLAY
 
         #ifdef LED_ENABLE
@@ -1594,7 +1594,7 @@ void RumbleToggle()
             Serial.println("Rumble disabled!");
 
         #ifdef USES_DISPLAY
-            FW_Common::OLED.TopPanelUpdate("Toggli", "ng Rumble OFF");
+            FW_Common::OLED.TopPanelUpdate("Toggling Rumble OFF");
         #endif // USES_DISPLAY
 
         #ifdef LED_ENABLE
@@ -1627,7 +1627,7 @@ void SolenoidToggle()
             Serial.println("Solenoid enabled!");
 
         #ifdef USES_DISPLAY
-            FW_Common::OLED.TopPanelUpdate("Toggli", "ng Solenoid ON");
+            FW_Common::OLED.TopPanelUpdate("Toggling Solenoid ON");
         #endif // USES_DISPLAY
 
         #ifdef LED_ENABLE
@@ -1647,7 +1647,7 @@ void SolenoidToggle()
             Serial.println("Solenoid disabled!");
 
         #ifdef USES_DISPLAY
-            FW_Common::OLED.TopPanelUpdate("Toggli", "ng Solenoid OFF");
+            FW_Common::OLED.TopPanelUpdate("Toggling Solenoid OFF");
         #endif // USES_DISPLAY
 
         #ifdef LED_ENABLE

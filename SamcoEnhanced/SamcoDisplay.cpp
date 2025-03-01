@@ -29,6 +29,7 @@ bool ExtDisplay::Begin()
         if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
             // I2C1
             if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 0)) {
+                Wire1.end();
                 // SDA/SCL are indeed on verified correct pins
                 Wire1.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
                 Wire1.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
@@ -37,6 +38,7 @@ bool ExtDisplay::Begin()
         } else if(!bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
             // I2C0
             if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 0)) {
+                Wire.end();
                 // SDA/SCL are indeed on verified correct pins
                 Wire.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
                 Wire.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
@@ -46,7 +48,6 @@ bool ExtDisplay::Begin()
     } else return false;
 
     if(display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("Display initialized!"), Serial.flush();
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;
@@ -55,11 +56,11 @@ bool ExtDisplay::Begin()
 
 void ExtDisplay::Stop()
 {
-    delete display;
-    display = nullptr;
+    if(display != nullptr)
+        delete display;
 }
 
-void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
+void ExtDisplay::TopPanelUpdate(const char *textPrefix, const char *profText)
 {
     if(display != nullptr) {
         display->fillRect(0, 0, 128, 16, BLACK);
@@ -68,7 +69,8 @@ void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
         display->setTextSize(1);
         display->setTextColor(WHITE, BLACK);
         display->print(textPrefix);
-        display->println(textInput);
+        if(profText != nullptr)
+            display->println(profText);
         display->display();
     }
 }
@@ -441,149 +443,24 @@ void ExtDisplay::PrintAmmo(uint8_t ammo)
 {
     if(display != nullptr) {
         currentAmmo = ammo;
+
         // use the rounding error to get the left & right digits
         uint8_t ammoLeft = ammo / 10;
         uint8_t ammoRight = ammo - ammoLeft * 10;
+
         if(!ammo) { ammoEmpty = true; } else { ammoEmpty = false; }
+
         if(screenState == Screen_Mamehook_Single) {
-            display->fillRect(40, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoLeft) {
-              case 0:
-                display->drawBitmap(40, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(40, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(40, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(40, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(40, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(40, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(40, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(40, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(40, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(40, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-
-            display->fillRect(40+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoRight) {
-              case 0:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-            display->display();
+            display->fillRect(40, 22, (NUMBER_GLYPH_WIDTH*2)+6, NUMBER_GLYPH_HEIGHT, BLACK);
+            display->drawBitmap(40,                      22, numbers[ammoLeft],  NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+            display->drawBitmap(40+6+NUMBER_GLYPH_WIDTH, 22, numbers[ammoRight], NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
         } else if(screenState == Screen_Mamehook_Dual) {
-            display->fillRect(72, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoLeft) {
-              case 0:
-                display->drawBitmap(72, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(72, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(72, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(72, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(72, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(72, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(72, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(72, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(72, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(72, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-
-            display->fillRect(72+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoRight) {
-              case 0:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-            display->display();
+            display->fillRect(72, 22, (NUMBER_GLYPH_WIDTH*2)+6, NUMBER_GLYPH_HEIGHT, BLACK);
+            display->drawBitmap(72,                      22, numbers[ammoLeft],  NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+            display->drawBitmap(72+6+NUMBER_GLYPH_WIDTH, 22, numbers[ammoRight], NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
         }
+
+        display->display();
     }
 }
 
@@ -597,6 +474,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                 display->fillRect(14, 37, 100, 9, BLACK);
                 display->fillRect(52, 51, 30, 8, BLACK);
                 display->fillRect(14, 37, life, 9, WHITE);
+
                 if(life) {
                   display->setTextSize(1);
                   display->setCursor(52, 51);
@@ -604,6 +482,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                   display->print(life);
                   display->println(" %");
                 }
+
                 display->display();
             } else {
                 display->fillRect(22, 19, HEART_LARGE_WIDTH*5+4, HEART_LARGE_HEIGHT+22+HEART_LARGE_HEIGHT, BLACK);
@@ -698,6 +577,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                 display->fillRect(4, 39, 55, 5, BLACK);
                 display->fillRect(20, 51, 30, 8, BLACK);
                 display->fillRect(4, 39, map(life, 0, 100, 0, 55), 5, WHITE);
+
                 if(life) {
                   display->setTextSize(1);
                   display->setCursor(20, 51);
@@ -705,6 +585,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                   display->print(life);
                   display->println(" %");
                 }
+
                 display->display();
             } else {
                 display->fillRect(1, 22, HEART_SMALL_WIDTH*5, HEART_SMALL_HEIGHT+20+HEART_SMALL_HEIGHT, BLACK);
