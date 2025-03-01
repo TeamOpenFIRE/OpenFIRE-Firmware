@@ -871,6 +871,11 @@ void ExecGunModeDocked()
     unsigned long aStickChecked = millis();
     uint8_t aStickDirPrev;
 
+    if(FW_Common::camNotAvailable) {
+        Serial.println("CAMERROR: Not available");
+        FW_Common::camNotAvailable = false;
+    }
+
 #ifdef GIT_HASH
     Serial.printf("OpenFIRE,%.1f-%s,%s,%s,%i\r\n",
     OPENFIRE_VERSION,

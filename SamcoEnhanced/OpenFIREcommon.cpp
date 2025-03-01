@@ -707,8 +707,12 @@ void FW_Common::GetPosition()
                 #endif // USES_DISPLAY
             }
         }
-    } else if(error != DFRobotIRPositionEx::Error_DataMismatch)
-        Serial.println("Device not available!");
+    } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
+        if(!camNotAvailable) {
+            Serial.println("Device not available!");
+            camNotAvailable = true;
+        }
+    }
 }
 
 void FW_Common::UpdateLastSeen()

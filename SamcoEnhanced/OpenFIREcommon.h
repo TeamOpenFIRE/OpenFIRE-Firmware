@@ -278,6 +278,9 @@ public:
     // IR camera sensitivity
     static inline DFRobotIRPositionEx::Sensitivity_e irSensitivity = DFRobotIRPositionEx::Sensitivity_Default;
 
+    // flag to warn docked server if camera is not working currently
+    static inline bool camNotAvailable = false;
+
     // OpenFIRE Positioning - one for Square, one for Diamond, and a shared perspective object
     static inline OpenFIRE_Square OpenFIREsquare;
     static inline OpenFIRE_Diamond OpenFIREdiamond;
