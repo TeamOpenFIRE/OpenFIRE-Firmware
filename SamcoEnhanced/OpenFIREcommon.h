@@ -281,6 +281,9 @@ public:
     // flag to warn docked server if camera is not working currently
     static inline bool camNotAvailable = false;
 
+    static inline uint32_t camWarningTimestamp = 0;
+    #define CAM_WARNING_INTERVAL 3000
+
     // OpenFIRE Positioning - one for Square, one for Diamond, and a shared perspective object
     static inline OpenFIRE_Square OpenFIREsquare;
     static inline OpenFIRE_Diamond OpenFIREdiamond;

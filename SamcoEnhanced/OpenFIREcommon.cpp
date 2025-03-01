@@ -708,9 +708,13 @@ void FW_Common::GetPosition()
             }
         }
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
-        if(!camNotAvailable) {
-            Serial.println("Device not available!");
+        // set flag to warn desktop app when docking
+        if(!camNotAvailable)
             camNotAvailable = true;
+
+        if(millis() - camWarningTimestamp > CAM_WARNING_INTERVAL) {
+            Serial.println("CAMERROR: Not available");
+            camWarningTimestamp = millis();
         }
     }
 }
