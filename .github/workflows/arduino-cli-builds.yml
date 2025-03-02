@@ -20,10 +20,10 @@ jobs:
             pretty: rpipicow-noBT
             flags: freq=133,usbstack=tinyusb,opt=Optimize3
             
-          - name: Raspberry Pi Pico W (Bluetooth)
-            fqbn: rpipicow
-            pretty: rpipicow-btBETA
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
+          #- name: Raspberry Pi Pico W (Bluetooth)
+          #  fqbn: rpipicow
+          #  pretty: rpipicow-btBETA
+          #  flags: freq=133,usbstack=tinyusb,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
             
           - name: Adafruit ItsyBitsy RP2040
             fqbn: adafruit_itsybitsy
@@ -79,24 +79,19 @@ jobs:
           echo "id=$id" >> $GITHUB_OUTPUT
         
       - name: Compile for ${{ matrix.name }}
-        run: arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced --libraries libraries --build-property 'build.extra_flags=-DPLAYER_NUMBER=1 -DGIT_HASH="${{steps.get-short-sha.outputs.id}}" -DDUAL_CORE -DMAMEHOOKER -DUSES_SOLENOID -DUSES_TEMP -DUSES_RUMBLE -DUSES_SWITCHES -DUSES_ANALOG -DFOURPIN_LED -DCUSTOM_NEOPIXEL -DUSES_DISPLAY'
+        run: >
+          arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced
+          --libraries libraries
+          --build-property 'build.extra_flags=
+          -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"'
         
       - name: Rename build file
         run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
         
-      # TODO: when USB + Bluetooth is fixed, we won't need the Pico W method
-      - name: Upload artifact (Non-Pico W)
-        if: ${{ matrix.fqbn != 'rpipicow' }}
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           path: OpenFIREfw.${{ matrix.pretty }}.uf2
           name: OpenFIREfw - ${{ matrix.name }}
           if-no-files-found: error
           
-      - name: Upload artifact (Pico W)
-        if: ${{ matrix.fqbn == 'rpipicow' }}
-        uses: actions/upload-artifact@v4
-        with:
-          path: OpenFIREfw.${{ matrix.pretty }}.uf2
-          name: OpenFIREfw - ${{ matrix.name }}
-          if-no-files-found: error
