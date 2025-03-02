@@ -73,11 +73,11 @@ void setup() {
         if(SamcoPreferences::usb.devicePID) {
             TinyUSBDevice.setID(DEVICE_VID, SamcoPreferences::usb.devicePID);
             if(SamcoPreferences::usb.deviceName[0] == '\0')
-                TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
+                 TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
             else TinyUSBDevice.setProductDescriptor(SamcoPreferences::usb.deviceName);
         } else {
             TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
-            TinyUSBDevice.setID(DEVICE_VID, DEVICE_PID);
+            TinyUSBDevice.setID(DEVICE_VID, PLAYER_NUMBER);
         }
     #endif // USE_TINYUSB
 
@@ -876,20 +876,18 @@ void ExecGunModeDocked()
         FW_Common::camNotAvailable = false;
     }
 
+    Serial.printf("OpenFIRE,%.1f"
 #ifdef GIT_HASH
-    Serial.printf("OpenFIRE,%.1f-%s,%s,%s,%i\r\n",
-    OPENFIRE_VERSION,
-    GIT_HASH,
-    OPENFIRE_CODENAME,
-    OPENFIRE_BOARD,
-    FW_Common::profiles.selectedProfile);
-#else
-    Serial.printf("OpenFIRE,%.1f,%s,%s,%i\r\n",
-    OPENFIRE_VERSION,
-    OPENFIRE_CODENAME,
-    OPENFIRE_BOARD,
-    FW_Common::profiles.selectedProfile);
+    "-%s"
 #endif // GIT_HASH
+    ",%s,%s,%i\r\n",
+    OPENFIRE_VERSION,
+#ifdef GIT_HASH
+    GIT_HASH,
+#endif // GIT_HASH
+    OPENFIRE_CODENAME,
+    OPENFIRE_BOARD,
+    FW_Common::profiles.selectedProfile);
 
     for(;;) {
         FW_Common::buttons.Poll(1);
