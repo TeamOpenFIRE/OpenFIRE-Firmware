@@ -334,7 +334,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         }
 
         // Handle button presses and calibration stages
-        if((buttons.pressedReleased & (ExitPauseModeBtnMask | ExitPauseModeHoldBtnMask)) && !justBooted) {
+        if((buttons.pressedReleased & (ExitPauseModeBtnMask | ExitPauseModeHoldBtnMask) || Serial.available()) && !justBooted) {
             Serial.printf("CalStage: %d\r\n", Cali_Verify+1);
 
             // Reapplying backed up data
@@ -406,7 +406,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case Cali_Bottom:
                     // Set Offset buffer
                     topOffset = mouseY;
-                    Serial.printf("CalUpd: 1. %d\r\n", topOffset);
+                    Serial.printf("CalUpd: 1.%d\r\n", topOffset);
 
                     // Set mouse movement to bottom position
                     if(!fromDesktop) {
@@ -418,7 +418,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case Cali_Left:
                     // Set Offset buffer
                     bottomOffset = (res_y - mouseY);
-                    Serial.printf("CalUpd: 2. %d\r\n", bottomOffset);
+                    Serial.printf("CalUpd: 2.%d\r\n", bottomOffset);
 
                     // Set mouse movement to left position
                     if(!fromDesktop) {
@@ -430,7 +430,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case Cali_Right:
                     // Set Offset buffer
                     leftOffset = mouseX;
-                    Serial.printf("CalUpd: 3. %d\r\n", leftOffset);
+                    Serial.printf("CalUpd: 3.%d\r\n", leftOffset);
 
                     // Set mouse movement to right position
                     if(!fromDesktop) {
@@ -442,7 +442,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case Cali_Center:
                     // Set Offset buffer
                     rightOffset = (res_x - mouseX);
-                    Serial.printf("CalUpd: 4. %d\r\n", rightOffset);
+                    Serial.printf("CalUpd: 4.%d\r\n", rightOffset);
 
                     // Save Offset buffer to profile
                     profileData[profiles.selectedProfile].topOffset = topOffset;
@@ -471,8 +471,8 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                     }
 
-                    Serial.printf("CalUpd: 5. %f\r\n", profileData[profiles.selectedProfile].TLled);
-                    Serial.printf("CalUpd: 6. %f\r\n", profileData[profiles.selectedProfile].TRled);
+                    Serial.printf("CalUpd: 5.%f\r\n", profileData[profiles.selectedProfile].TLled);
+                    Serial.printf("CalUpd: 6.%f\r\n", profileData[profiles.selectedProfile].TRled);
                     Serial.flush();
 
                     // Update Cam centre in perspective library
