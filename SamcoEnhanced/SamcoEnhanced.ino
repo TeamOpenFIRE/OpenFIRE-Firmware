@@ -2149,26 +2149,29 @@ void GetPosition()
                     }
                 }
                 if(runMode == RunMode_Processing) {
-                    for(int i = 0; i < 4; i++) {
-                        Serial.print(rawX[i]);
-                        Serial.print( "," );
-                        Serial.print(rawY[i]);
-                        Serial.print( "," );
-                    }
-                    Serial.print( mouseX / 4 );
-                    Serial.print( "," );
-                    Serial.print( mouseY / 4 );
-                    Serial.print( "," );
-                    // Median for viewing in processing
-                    if(profileData[selectedProfile].irLayout) {
-                        Serial.print(map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0));
-                        Serial.print( "," );
-                        Serial.println(map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
-                    } else {
-                        Serial.print(map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920));
-                        Serial.print( "," );
-                        Serial.println(map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080));
-                    }
+
+                  char buffer[128];
+                  int pos = 0;
+			
+                  for (int i = 0; i < 4; i++) {
+                    pos += sprintf(buffer + pos, "%d,", rawX[i]);
+                    pos += sprintf(buffer + pos, "%d,", rawY[i]);
+                  }
+    
+                  pos += sprintf(buffer + pos, "%d,", mouseX / 4);
+                  pos += sprintf(buffer + pos, "%d,", mouseY / 4);
+    
+                  if (profileData[selectedProfile].irLayout) {
+                    int medianX = map(OpenFIREdiamond.testMedianX(), 0, 4092, 1920, 0);
+                    int medianY = map(OpenFIREdiamond.testMedianY(), 0, 3072, 0, 1080);
+                    pos += sprintf(buffer + pos, "%d,%d\n", medianX, medianY);
+                  } else {
+                    int medianX = map(OpenFIREsquare.testMedianX(), 0, 4092, 0, 1920);
+                    int medianY = map(OpenFIREsquare.testMedianY(), 0, 3072, 0, 1080);
+                    pos += sprintf(buffer + pos, "%d,%d\n", medianX, medianY);
+                  }
+			
+                  Serial.print(buffer);
                 }
                 #ifdef USES_DISPLAY
                     OLED.DrawVisibleIR(rawX, rawY);
