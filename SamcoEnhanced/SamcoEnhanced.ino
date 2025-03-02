@@ -898,11 +898,19 @@ void ExecGunModeDocked()
             OF_Serial::SerialProcessingDocked();
 
         if(!FW_Common::dockedSaving) {
-            if(FW_Common::buttons.pressed)
-                Serial.printf("Pressed: %d\n", FW_Common::buttons.pressed);
+            if(FW_Common::buttons.pressed) {
+                uint8_t i = 0;
+                for(; i < 32; i++)
+                    if(bitRead(FW_Common::buttons.pressed, i))
+                        Serial.printf("Pressed: %d\n", i);
+            }
 
-            if(FW_Common::buttons.released)
-                Serial.printf("Released: %d\n", FW_Common::buttons.released);
+            if(FW_Common::buttons.released) {
+                uint8_t i = 0;
+                for(; i < 32; i++)
+                    if(bitRead(FW_Common::buttons.released, i))
+                        Serial.printf("Released: %d\n", i);
+            }
 
             OF_FFB::TemperatureUpdate();
             unsigned long currentMillis = millis();
