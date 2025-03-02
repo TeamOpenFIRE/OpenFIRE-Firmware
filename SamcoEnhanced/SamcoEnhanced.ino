@@ -2176,8 +2176,19 @@ void GetPosition()
             }
         }
     } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
-        Serial.println("Device not available!");
+        SendCameraErrorMessage();
     }
+}
+
+void SendCameraErrorMessage(void)
+{
+  static unsigned long lastMillis = 0;
+  unsigned long currentMillis = millis();
+
+  if ( (currentMillis - lastMillis > 200) || (lastMillis == 0) ) {
+    Serial.println("Device not available!");
+    lastMillis = currentMillis;
+  }
 }
 
 // wait up to given amount of time for no buttons to be pressed before setting the mode
