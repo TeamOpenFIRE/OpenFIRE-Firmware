@@ -293,6 +293,8 @@ void OF_Serial::SerialProcessing()
                       digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
                       serialSolPulses = 0;
                       serialSolPulsesLast = 0;
+                      serialSolCustomHoldLength = 0;
+                      serialSolCustomPauseLength = 0;
                   #endif // USES_SOLENOID
                   AbsMouse5.releaseAll();
                   Keyboard.releaseAll();
@@ -358,15 +360,13 @@ void OF_Serial::SerialProcessing()
                     char serialInputS[4];
                     for(byte n = 0; n < 3; n++) {                      // For three runs,
                         serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
+                        if(Serial.peek() < '0' || Serial.peek() > '9')
                             break;
-                        }
                     }
                     serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
                     serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
-                } else if(serialInput == '0') {  // Else, it's a solenoid off signal.
+                } else if(serialInput == '0')  // Else, it's a solenoid off signal.
                     bitClear(serialQueue, SerialQueue_Solenoid);       // Disable the solenoid off bit!
-                }
                 break;
               #endif // USES_SOLENOID
               #ifdef USES_RUMBLE
@@ -561,6 +561,32 @@ void OF_Serial::SerialProcessing()
           }
           // End of 'F'
           break;
+          // Custom Pulse Overrides
+        case 'R':
+          serialInput = Serial.read();
+          switch(serialInput) {
+              // Solenoid
+              case '0':
+                Serial.read(); // nomf
+                serialInput = Serial.read();
+                Serial.read();
+                char serialInputS[4];
+                for(byte n = 0; n < 3; n++) {
+                    serialInputS[n] = Serial.read();
+                    if(Serial.peek() < '0' || Serial.peek() > '9')
+                        break;
+                }
+                // 0 = hold length, 1 = pause length
+                if(serialInput - '0')
+                     serialSolCustomHoldLength = atoi(serialInputS);
+                else serialSolCustomPauseLength = atoi(serialInputS);
+                break;
+              // Rumble?
+              case '1':
+                break;
+          }
+          // End of 'R'
+          break;
     }
 }
 
@@ -594,14 +620,25 @@ void OF_Serial::SerialHandling()
                   serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
               } else if(serialSolPulsesLast <= serialSolPulses) {   // Have we met the pulses quota?
                   if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
-                      if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidNormalInterval]) {
+                      if(serialSolCustomHoldLength) {
+                          if(millis() - serialSolPulsesLastUpdate >= serialSolCustomHoldLength) {
+                              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
+                              serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
+                              serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                          }
+                      } else if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidNormalInterval]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
                           serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
                   } else {
-                      if(millis() - serialSolPulsesLastUpdate >=
-                         SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
+                      if(serialSolCustomPauseLength) {
+                          if(millis() - serialSolPulsesLastUpdate >= serialSolCustomPauseLength) {
+                              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
+                              serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                          }
+                      } else if(millis() - serialSolPulsesLastUpdate >=
+                                SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }

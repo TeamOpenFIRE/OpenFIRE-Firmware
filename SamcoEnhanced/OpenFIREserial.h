@@ -71,20 +71,20 @@ private:
     static inline unsigned int serialLEDPulsesLength = 2;          // How long each stage of a serial-invoked pulse rumble is, in ms.
     static inline bool serialLEDChange = false;                    // Set on if we set an LED command this cycle.
     static inline bool serialLEDPulseRising = true;                // In LED pulse events, is it rising now? True to indicate rising, false to indicate falling; default to on for very first pulse.
-    static inline byte serialLEDPulses = 0;                        // How many LED pulses are we being told to do?
-    static inline byte serialLEDPulsesLast = 0;                    // What LED pulse we've processed last.
-    static inline byte serialLEDR = 0;                             // For the LED, how strong should it be?
-    static inline byte serialLEDG = 0;                             // Each channel is defined as three brightness values
-    static inline byte serialLEDB = 0;                             // So yeah.
-    static inline byte serialLEDPulseColorMap = 0b00000000;        // The map of what LEDs should be pulsing (we use the rightmost three of this bitmask for R, G, or B).
+    static inline uint8_t serialLEDPulses = 0;                        // How many LED pulses are we being told to do?
+    static inline uint8_t serialLEDPulsesLast = 0;                    // What LED pulse we've processed last.
+    static inline uint8_t serialLEDR = 0;                             // For the LED, how strong should it be?
+    static inline uint8_t serialLEDG = 0;                             // Each channel is defined as three brightness values
+    static inline uint8_t serialLEDB = 0;                             // So yeah.
+    static inline uint8_t serialLEDPulseColorMap = 0b00000000;        // The map of what LEDs should be pulsing (we use the rightmost three of this bitmask for R, G, or B).
     #endif // LED_ENABLE
 
     #ifdef USES_RUMBLE
     static inline unsigned long serialRumbPulsesLastUpdate = 0;    // The timestamp of the last serial-invoked pulse rumble we updated.
     static inline unsigned int serialRumbPulsesLength = 60;        // How long each stage of a serial-invoked pulse rumble is, in ms.
-    static inline byte serialRumbPulseStage = 0;                   // 0 = start/rising, 1 = peak, 2 = falling, 3 = reset to start
-    static inline byte serialRumbPulses = 0;                       // If rumble is commanded to do pulse responses, how many?
-    static inline byte serialRumbPulsesLast = 0;                   // Counter of how many pulse rumbles we did so far.
+    static inline uint8_t serialRumbPulseStage = 0;                   // 0 = start/rising, 1 = peak, 2 = falling, 3 = reset to start
+    static inline uint8_t serialRumbPulses = 0;                       // If rumble is commanded to do pulse responses, how many?
+    static inline uint8_t serialRumbPulsesLast = 0;                   // Counter of how many pulse rumbles we did so far.
     #endif // USES_RUMBLE
 
     #ifdef USES_SOLENOID
@@ -92,6 +92,8 @@ private:
     static inline int serialSolPulses = 0;                         // How many solenoid pulses are we being told to do?
     static inline int serialSolPulsesLast = 0;                     // What solenoid pulse we've processed last.
     static inline uint32_t serialSolTimestamp = 0;                 // Timestamp of how long a solenoid on command's been engaged
+    static inline uint8_t serialSolCustomHoldLength = 0;           // Determines custom solenoid ON state length for sol "pulse" commands - 0 = use system settings
+    static inline uint8_t serialSolCustomPauseLength = 0;          // Determines custom solenoid OFF state length for sol "pulse" commands - 0 = use system settings
     #define SERIAL_SOLENOID_MAXSHUTOFF 2000
     #endif // USES_SOLENOID
 
