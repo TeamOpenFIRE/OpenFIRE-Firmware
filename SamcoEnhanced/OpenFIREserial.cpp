@@ -50,7 +50,6 @@ void OF_Serial::SerialProcessing()
               case '0':
                 Serial.read();
                 serialInput = Serial.read();
-
                 switch(serialInput) {
                     case '2': // "hybrid" - just use the default m&kb mode
                     case '0': // mouse & kb 
@@ -79,9 +78,11 @@ void OF_Serial::SerialProcessing()
                       LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode3   = PAD_LB,
                       LightgunButtons::ButtonDesc[BtnIdx_Pedal2].reportCode3  = PAD_RB,
                       LightgunButtons::ButtonDesc[BtnIdx_Pump].reportCode3    = PAD_C;
+                      #ifdef USES_DISPLAY
+                          FW_Common::OLED.mister = true;
+                      #endif // USES_DISPLAY
                       break;
                 }
-
                 AbsMouse5.releaseAll();
                 Keyboard.releaseAll();
                 Gamepad16.releaseAll();
