@@ -334,7 +334,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         }
 
         // Handle button presses and calibration stages
-        if((buttons.pressedReleased & (ExitPauseModeBtnMask | ExitPauseModeHoldBtnMask) || Serial.peek() == 'X') && !justBooted) {
+        if((buttons.pressedReleased & (ExitPauseModeBtnMask | ExitPauseModeHoldBtnMask) || Serial.read() == 'X') && !justBooted) {
             Serial.printf("CalStage: %d\r\n", Cali_Verify+1);
 
             // Reapplying backed up data
