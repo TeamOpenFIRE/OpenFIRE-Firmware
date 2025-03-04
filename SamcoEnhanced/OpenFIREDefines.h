@@ -13,7 +13,7 @@
 #define OPENFIRE_VERSION 5.5
 #endif // OPENFIRE_VERSION
 #ifndef OPENFIRE_CODENAME
-#define OPENFIRE_CODENAME "Dawn Sigma rc1"
+#define OPENFIRE_CODENAME "Dawn Sigma rc2"
 #endif // OPENFIRE_CODENAME
 
  // For custom builders, remember to check (COMPILING.md) for IDE instructions!
