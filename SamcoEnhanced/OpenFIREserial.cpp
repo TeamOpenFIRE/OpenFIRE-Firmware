@@ -30,6 +30,16 @@ void OF_Serial::SerialProcessing()
               OF_FFB::FFBShutdown();
               FW_Common::offscreenBShot = false;
 
+              #ifdef USES_SOLENOID
+              serialSolCustomHoldLength = 0;
+              serialSolCustomPauseLength = 0;
+              #endif // USES_SOLENOID
+
+              #ifdef USES_RUMBLE
+              serialRumbCustomHoldLength = 0;
+              serialRumbCustomPauseLength = 0;
+              #endif // USES_RUMBLE
+
               #ifdef LED_ENABLE
                   // Set the LEDs to a mid-intense white.
                   OF_RGB::LedUpdate(127, 127, 127);
@@ -242,18 +252,15 @@ void OF_Serial::SerialProcessing()
 
                 // prevent glitching if currently in pause mode
                 if(FW_Common::gunMode == GunMode_Run) {
-                    if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                    if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both)
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
-                    } else if(FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None) {
+                    else if(FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None)
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
-                    }
                 }
                 break;
               #endif // USES_DISPLAY
               default:
-                if(!serialMode) {
-                    Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
-                }
+                if(!serialMode) Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
                 break;
           }
           break;
@@ -262,16 +269,15 @@ void OF_Serial::SerialProcessing()
         // by ensuring that there's no adjacent bit.
         case 'E':
           if(Serial.peek() == -1) {
-              if(!serialMode) {
-                  Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
-              } else {
+              if(!serialMode) Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
+              else {
                   serialMode = false;                                    // Turn off serial mode then.
                   offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
-                  serialQueue = 0b00000000;
+                  serialQueue[SerialQueueBitsCount] = {false};
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
                       FW_Common::OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-                      if(FW_Common::gunMode == GunMode_Run) { FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput); }
+                      if(FW_Common::gunMode == GunMode_Run) FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
                   #endif // USES_DISPLAY
                   #ifdef LED_ENABLE
                       serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -282,13 +288,15 @@ void OF_Serial::SerialProcessing()
                       serialLEDG = 0;
                       serialLEDB = 0;
                       serialLEDChange = false;
-                      if(FW_Common::gunMode == GunMode_Run) { OF_RGB::LedOff(); }           // Turn it off, and let lastSeen handle it from here.
+                      if(FW_Common::gunMode == GunMode_Run) OF_RGB::LedOff();           // Turn it off, and let lastSeen handle it from here.
                   #endif // LED_ENABLE
                   #ifdef USES_RUMBLE
                       digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
                       serialRumbPulseStage = 0;
                       serialRumbPulses = 0;
                       serialRumbPulsesLast = 0;
+                      serialRumbCustomHoldLength = 0;
+                      serialRumbCustomPauseLength = 0;
                   #endif // USES_RUMBLE
                   #ifdef USES_SOLENOID
                       digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
@@ -351,165 +359,188 @@ void OF_Serial::SerialProcessing()
               // Solenoid bits
               case '0':
                 Serial.read();                                         // nomf the padding
-                serialInput = Serial.read();                           // Read the next number.
-                if(serialInput == '1') {         // Is it a solenoid "on" command?)
-                    bitSet(serialQueue, SerialQueue_Solenoid);         // Queue the solenoid on bit.
-                } else if(serialInput == '2' &&  // Is it a solenoid pulse command?
-                !bitRead(serialQueue, SerialQueue_SolPulse)) {  // (and we aren't already pulsing?)
-                    bitSet(serialQueue, SerialQueue_SolPulse);         // Set the solenoid pulsing bit!
+                serialInput = Serial.read();
+                // Solenoid "on" command
+                if(serialInput == '1') {         
+                    serialQueue[SerialQueue_Solenoid] = true;
+                // Solenoud "pulse" command (only if not already pulsing)
+                } else if(serialInput == '2' &&
+                !serialQueue[SerialQueue_SolPulse]) {
                     Serial.read();                                     // nomf the padding bit.
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9')
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialQueue[SerialQueue_SolPulse] = true;
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
+                                break;
+                        }
+                        serialSolPulses = atoi(serialInputS);
+                        serialSolPulsesLast = 0;
                     }
-                    serialSolPulses = atoi(serialInputS);              // Import the amount of pulses we're being told to do.
-                    serialSolPulsesLast = 0;                           // PulsesLast on zero indicates we haven't started pulsing.
-                } else if(serialInput == '0')  // Else, it's a solenoid off signal.
-                    bitClear(serialQueue, SerialQueue_Solenoid);       // Disable the solenoid off bit!
+                // Solenoid "off" command
+                } else if(serialInput == '0') serialQueue[SerialQueue_Solenoid] = false, serialQueue[SerialQueue_SolPulse] = false;
                 break;
               #endif // USES_SOLENOID
               #ifdef USES_RUMBLE
               // Rumble bits
               case '1':
                 Serial.read();                                         // nomf the padding
-                serialInput = Serial.read();                           // read the next number.
-                if(serialInput == '1') {         // Is it an on signal?
-                    bitSet(serialQueue, SerialQueue_Rumble);           // Queue the rumble on bit.
-                } else if(serialInput == '2' &&  // Is it a pulsed on signal?
-                !bitRead(serialQueue, SerialQueue_RumbPulse)) {  // (and we aren't already pulsing?)
-                    bitSet(serialQueue, SerialQueue_RumbPulse);        // Set the rumble pulses bit.
+                serialInput = Serial.read();
+                // Rumble "on" command
+                if(serialInput == '1') {
+                    serialQueue[SerialQueue_Rumble] = true;
+                // Rumble "pulse" command (only if not already pulsing)
+                } else if(serialInput == '2' &&
+                !serialQueue[SerialQueue_RumbPulse]) {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' && Serial.peek() <= '9') {
+                        serialQueue[SerialQueue_RumbPulse] = true;
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialRumbPulses = atoi(serialInputS);
+                        serialRumbPulsesLast = 0;
                     }
-                    serialRumbPulses = atoi(serialInputS);             // and set as the amount of rumble pulses queued.
-                    serialRumbPulsesLast = 0;                          // Reset the serialPulsesLast count.
-                } else if(serialInput == '0') {  // Else, it's a rumble off signal.
-                    bitClear(serialQueue, SerialQueue_Rumble);         // Queue the rumble off bit... 
-                    //bitClear(serialQueue, 3); // And the rumble pulsed bit.
-                    // TODO: do we want to set this off if we get a rumble off bit?
-                }
+                // Rumble "off" command
+                } else if(serialInput == '0') serialQueue[SerialQueue_Rumble] = false, serialQueue[SerialQueue_RumbPulse] = false;
                 break;
               #endif // USES_RUMBLE
               #ifdef LED_ENABLE
               // LED Red bits
               case '2':
-                serialLEDChange = true;                                // Set that we've changed an LED here!
                 Serial.read();                                         // nomf the padding
-                serialInput = Serial.read();                           // Read the next number
-                if(serialInput == '1') {         // is it an "on" command?
-                    bitSet(serialQueue, SerialQueue_Red);              // set that here!
+                serialInput = Serial.read();
+                // LED Red "on" command
+                if(serialInput == '1') {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true;
+                        serialQueue[SerialQueue_Red] = true;
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDR = atoi(serialInputS);                   // Set array as the strength of the red value that's requested!
+                        serialQueue[SerialQueue_LEDPulse] = false;         // Static emitting overrides pulse bits
+                        serialLEDPulseColorMap = 0;
                     }
-                    serialLEDR = atoi(serialInputS);                   // And set that as the strength of the red value that's requested!
-                    bitClear(serialQueue, SerialQueue_LEDPulse);       // Overwrite pulse bits.
-                    serialLEDPulseColorMap = 0;
-                } else if(serialInput == '2' &&  // else, is it a pulse command?
-                !bitRead(serialQueue, SerialQueue_LEDPulse)) {  // (and we haven't already sent a pulse command?)
-                    bitSet(serialQueue, SerialQueue_LEDPulse);         // Set the pulse bit!
-                    serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
+                // LED Red "pulse" command (only if not already pulsing)
+                } else if(serialInput == '2' &&
+                !serialQueue[SerialQueue_LEDPulse]) {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
+                        serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDPulses = atoi(serialInputS);
+                        serialLEDPulsesLast = 0;
                     }
-                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
-                } else if(serialInput == '0') {  // else, it's an off command.
-                    serialQueue &= 0b01101111;                         // Set the R and Pulse commands off.
-                    serialLEDR = 0;                                    // Clear the R value. 
-                    serialLEDPulseColorMap = 0;
+                // LED Red "off" command
+                } else if(serialInput == '0') {
+                    serialLEDChange = true,
+                    serialQueue[SerialQueue_Red] = false, serialQueue[SerialQueue_LEDPulse] = false,
+                    serialLEDR = 0, serialLEDPulseColorMap = 0;
                 }
                 break;
               // LED Green bits
               case '3':
-                serialLEDChange = true;                                // Set that we've changed an LED here!
                 Serial.read();                                         // nomf the padding
-                serialInput = Serial.read();                           // Read the next number
-                if(serialInput == '1') {         // is it an "on" command?
-                    bitSet(serialQueue, SerialQueue_Green);            // set that here!
+                serialInput = Serial.read();
+                // LED Green "on" command
+                if(serialInput == '1') {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true, serialQueue[SerialQueue_Green] = true;
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDG = atoi(serialInputS);
+                        serialQueue[SerialQueue_LEDPulse] = false, serialLEDPulseColorMap = 0;
                     }
-                    serialLEDG = atoi(serialInputS);                   // And set that here!
-                    bitClear(serialQueue, SerialQueue_LEDPulse);       // Overwrite pulse bits.
-                    serialLEDPulseColorMap = 0;
-                } else if(serialInput == '2' &&  // else, is it a pulse command?
-                !bitRead(serialQueue, SerialQueue_LEDPulse)) {  // (and we haven't already sent a pulse command?)
-                    bitSet(serialQueue, SerialQueue_LEDPulse);         // Set the pulse bit!
-                    serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
+                // LED Green "pulse" command
+                } else if(serialInput == '2' &&
+                !serialQueue[SerialQueue_LEDPulse]) {  // (and we haven't already sent a pulse command?)
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
+                        serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDPulses = atoi(serialInputS);
+                        serialLEDPulsesLast = 0;
                     }
-                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
-                } else if(serialInput == '0') {  // else, it's an off command.
-                    serialQueue &= 0b01011111;                         // Set the G and Pulse commands off.
-                    serialLEDG = 0;                                    // Clear the G value.
-                    serialLEDPulseColorMap = 0;
+                // LED Green "off" command
+                } else if(serialInput == '0') {
+                    serialLEDChange = true,
+                    serialQueue[SerialQueue_Green] = false, serialQueue[SerialQueue_LEDPulse] = false,
+                    serialLEDG = 0, serialLEDPulseColorMap = 0;
                 }
                 break;
               // LED Blue bits
               case '4':
-                serialLEDChange = true;                                // Set that we've changed an LED here!
                 Serial.read();                                         // nomf the padding
-                serialInput = Serial.read();                           // Read the next number
-                if(serialInput == '1') {         // is it an "on" command?
-                    bitSet(serialQueue, SerialQueue_Blue);             // set that here!
+                serialInput = Serial.read();
+                // LED Blue "on" command
+                if(serialInput == '1') {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true, serialQueue[SerialQueue_Blue] = true;
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDB = atoi(serialInputS);
+                        serialQueue[SerialQueue_LEDPulse] = false;
+                        serialLEDPulseColorMap = 0;
                     }
-                    serialLEDB = atoi(serialInputS);                   // And set that as the strength requested here!
-                    bitClear(serialQueue, SerialQueue_LEDPulse);       // Overwrite pulse bits.
-                    serialLEDPulseColorMap = 0;
-                } else if(serialInput == '2' &&  // else, is it a pulse command?
-                !bitRead(serialQueue, SerialQueue_LEDPulse)) {  // (and we haven't already sent a pulse command?)
-                    bitSet(serialQueue, SerialQueue_LEDPulse);         // Set the pulse bit!
-                    serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
+                // LED Blue "pulse" command
+                } else if(serialInput == '2' &&
+                !serialQueue[SerialQueue_LEDPulse]) {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
+                        serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                                break;
+                            }
                         }
+                        serialLEDPulses = atoi(serialInputS);
+                        serialLEDPulsesLast = 0;
                     }
-                    serialLEDPulses = atoi(serialInputS);              // and set that as the amount of pulses requested
-                    serialLEDPulsesLast = 0;                           // reset the pulses done count.
-                } else if(serialInput == '0') {  // else, it's an off command.
-                    serialQueue &= 0b00111111;                         // Set the B and Pulse commands off.
-                    serialLEDB = 0;                                    // Clear the B value.
-                    serialLEDPulseColorMap = 0;
+                // LED Blue "off" command
+                } else if(serialInput == '0') {
+                    serialLEDChange = true,
+                    serialQueue[SerialQueue_Blue] = false, serialQueue[SerialQueue_LEDPulse] = false,
+                    serialLEDB = 0, serialLEDPulseColorMap = 0;
                 }
                 break;
               #endif // LED_ENABLE
@@ -520,39 +551,41 @@ void OF_Serial::SerialProcessing()
                   case 'A':
                   {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' && Serial.peek() <= '9') {
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
+                                break;
                         }
+                        serialAmmoCount = atoi(serialInputS);
+                        serialAmmoCount = constrain(serialAmmoCount, 0, 99);
+                        serialDisplayChange = true;
                     }
-                    serialAmmoCount = atoi(serialInputS);
-                    serialAmmoCount = constrain(serialAmmoCount, 0, 99);
                     break;
                   }
                   case 'L':
                   {
                     Serial.read();                                     // nomf the padding
-                    char serialInputS[4];
-                    for(byte n = 0; n < 3; n++) {                      // For three runs,
-                        serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                        if(Serial.peek() < '0' || Serial.peek() > '9') {
-                            break;
+                    if(Serial.peek() >= '0' && Serial.peek() <= '9') {
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                            serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
+                                break;
                         }
-                    }
 
-                    serialLifeCount = atoi(serialInputS);
-                    if (FW_Common::OLED.lifeBar){
-                        if (serialLifeCount > FW_Common::dispMaxLife)
-                            FW_Common::dispMaxLife = serialLifeCount;
-                        FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife; // Calculate the Life % to show 
+                        serialLifeCount = atoi(serialInputS);
+                        if (FW_Common::OLED.lifeBar) {
+                            if(serialLifeCount > FW_Common::dispMaxLife)
+                                FW_Common::dispMaxLife = serialLifeCount;
+                            FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife; // Calculate the Life % to show 
+                        }
+                        serialDisplayChange = true;
                     }
                     break;
                   }
                 }
-                // screen is handled by core 0, so just signal that it's ready to go now.
-                serialDisplayChange = true;
                 break;
               #endif // USES_DISPLAY
               #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
@@ -562,28 +595,79 @@ void OF_Serial::SerialProcessing()
           }
           // End of 'F'
           break;
-          // Custom Pulse Overrides
+        // Custom Pulse Overrides
         case 'R':
           serialInput = Serial.read();
           switch(serialInput) {
               // Solenoid
               case '0':
                 Serial.read(); // nomf
-                serialInput = Serial.read();
-                Serial.read();
-                char serialInputS[4];
-                for(byte n = 0; n < 3; n++) {
-                    serialInputS[n] = Serial.read();
-                    if(Serial.peek() < '0' || Serial.peek() > '9')
-                        break;
+                if(Serial.peek() >= '0' && Serial.peek() <= '2') {
+                    serialInput = Serial.read();
+                    Serial.read(); // nomf
+                    if(Serial.peek() >= '0' && Serial.peek() <='9') {
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {
+                            serialInputS[n] = Serial.read();
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
+                                break;
+                        }
+
+                        switch(serialInput) {
+                            // hold length
+                            case '0':
+                              serialSolCustomHoldLength = atoi(serialInputS);
+                              break;
+                            // pause length
+                            case '1':
+                              serialSolCustomPauseLength = atoi(serialInputS);
+                              break;
+                            // analog(?)
+                            case '2':
+                            default:
+                              break;
+                        }
+                    }
                 }
-                // 0 = hold length, 1 = pause length
-                if(serialInput - '0')
-                     serialSolCustomHoldLength = atoi(serialInputS);
-                else serialSolCustomPauseLength = atoi(serialInputS);
                 break;
-              // Rumble?
+              // Rumble
               case '1':
+                Serial.read(); // nomf
+                if(Serial.peek() >= '0' & Serial.peek() <= '2') {
+                    serialInput = Serial.read();
+                    Serial.read();
+                    if(Serial.peek() >= '0' & Serial.peek() <= '9') {
+                        char serialInputS[4];
+                        for(byte n = 0; n < 3; n++) {
+                            serialInputS[n] = Serial.read();
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
+                                break;
+                        }
+
+                        switch(serialInput) {
+                            // hold length
+                            case '0':
+                              serialRumbCustomHoldLength = atoi(serialInputS);
+                              break;
+                            // pause length
+                            case '1':
+                              serialRumbCustomPauseLength = atoi(serialInputS);
+                              break;
+                            // analog(?)
+                            case '2':
+                            default:
+                              break;
+                        }
+                    }
+                }
+                break;
+              // LED Red
+              case '2':
+              // LED Green
+              case '3':
+              // LED Blue
+              case '4':
+              default:
                 break;
           }
           // End of 'R'
@@ -602,53 +686,56 @@ void OF_Serial::SerialHandling()
 
     #ifdef USES_SOLENOID
       if(SamcoPreferences::toggles[OF_Const::solenoid]) {
-          // solenoid enable bit on
-          if(bitRead(serialQueue, SerialQueue_Solenoid)) {
+          // Solenoid "on" command
+          if(serialQueue[SerialQueue_Solenoid]) {
               if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
                   if(millis() - serialSolTimestamp > SERIAL_SOLENOID_MAXSHUTOFF) {
                       digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
-                      bitClear(serialQueue, SerialQueue_Solenoid);
+                      serialQueue[SerialQueue_Solenoid] = false;
                   }
               } else {
                   digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);
                   serialSolTimestamp = millis();
               }
-          // solenoid pulse bit on
-          } else if(bitRead(serialQueue, SerialQueue_SolPulse)) {
+          // Solenoid "pulse" command
+          } else if(serialQueue[SerialQueue_SolPulse]) {
               if(!serialSolPulsesLast) {                            // Have we started pulsing?
                   digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);  // Start pulsing it on!
-                  serialSolPulsesLast = 1;                               // Start the sequence.
-                  serialSolPulses++;                                     // Cheating and scooting the pulses bit up.
+                  serialSolPulsesLast++;                                 // Start the sequence.
+                  serialSolPulsesLastUpdate = millis();                  // timestamp
               } else if(serialSolPulsesLast <= serialSolPulses) {   // Have we met the pulses quota?
                   if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
+                      // custom hold length
                       if(serialSolCustomHoldLength) {
                           if(millis() - serialSolPulsesLastUpdate >= serialSolCustomHoldLength) {
                               digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
-                              serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
-                              serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                              if(serialSolPulsesLast == serialSolPulses)
+                                  serialQueue[SerialQueue_SolPulse] = false;
+                              else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                           }
+                      // current settings hold length
                       } else if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidNormalInterval]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
-                          serialSolPulsesLast++;                         // Iterate that we've done a pulse cycle,
-                          serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
+                          if(serialSolPulsesLast == serialSolPulses)
+                              serialQueue[SerialQueue_SolPulse] = false;
+                          else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                       }
                   } else {
+                      // custom pause length
                       if(serialSolCustomPauseLength) {
                           if(millis() - serialSolPulsesLastUpdate >= serialSolCustomPauseLength) {
                               digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                               serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                           }
+                      // current settings pause length
                       } else if(millis() - serialSolPulsesLastUpdate >=
                                 SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
                   }
-              } else { // finished pulsing
-                  digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);   // Finally shut it off for good.
-                  bitClear(serialQueue, SerialQueue_SolPulse);           // Set the pulse bit as off.
               }
-          // no solenoid bits
+          // Solenoid "off" command
           } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
       // solenoid toggle not allowed, just force it off.
       } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
@@ -656,129 +743,143 @@ void OF_Serial::SerialHandling()
 
   #ifdef USES_RUMBLE
       if(SamcoPreferences::toggles[OF_Const::rumble]) {
-          if(bitRead(serialQueue, SerialQueue_Rumble)) {                 // Is the rumble on bit set?
+          // Rumble "on" command
+          if(serialQueue[SerialQueue_Rumble]) {
               analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]); // turn/keep it on.
-              //bitClear(serialQueue, 3);
-          } else if(bitRead(serialQueue, SerialQueue_RumbPulse)) {  // or if the rumble pulse bit is set,
-              if(!serialRumbPulsesLast) {                           // is the pulses last bit set to off?
-                  analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3); // we're starting fresh, so use the stage 0 value.
+          // Rumble "pulse" command
+          } else if(serialQueue[SerialQueue_RumbPulse]) {
+              // Pulses start
+              if(!serialRumbPulsesLast) {
+                  if(serialRumbCustomHoldLength && serialRumbCustomPauseLength)
+                       analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                  else analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3);
                   serialRumbPulseStage = 0;                              // Set that we're at stage 0.
-                  serialRumbPulsesLast = 1;                              // Set that we've started a pulse rumble command, and start counting how many pulses we're doing.
-              } else if(serialRumbPulsesLast <= serialRumbPulses) { // Have we exceeded the set amount of pulses the rumble command called for?
-                  if(millis() - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
-                      switch(serialRumbPulseStage) {                     // If so, let's start processing.
-                          case 0:                                        // Basically, each case
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]); // bumps up the intensity, (lowest to rising)
-                              serialRumbPulseStage++;                    // and increments the stage of the pulse.
+                  serialRumbPulsesLast++;
+                  serialRumbPulsesLastUpdate = millis();
+              // Pulses processing
+              } else if(serialRumbPulsesLast <= serialRumbPulses) {
+                  // G4IR-style on/off style ramping
+                  if(serialRumbCustomHoldLength && serialRumbCustomPauseLength) {
+                      if(!serialRumbPulseStage) {
+                          if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomHoldLength) {
+                              serialRumbPulseStage = 0;
+                              digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                              if(serialRumbPulsesLast == serialRumbPulses)
+                                  serialQueue[SerialQueue_RumbPulse] = false;
+                          }
+                      } else if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomPauseLength) {
+                          serialRumbPulseStage++;
+                          analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                      }
+                  // OF-style analog ramping
+                  } else if(millis() - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
+                      switch(serialRumbPulseStage) {
+                          // Rising to Sustain
+                          case 0:
+                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                              serialRumbPulseStage++;                    // Increments the stage of the pulse.
                               serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
-                              break;                                     // Then quits the switch.
+                              break;                                     // Then quits until next pulse stage
+                          // Sustain to Falling
                           case 1:
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 2); // (rising to peak)
+                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 2);
                               serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
                               break;
+                          // Falloff
                           case 2:
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3); // (peak to falling,)
-                              serialRumbPulseStage = 0;
-                              serialRumbPulsesLast++;
+                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3);
+                              serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
+                              break;
+                          // Check
+                          case 3:
+                              if(serialRumbPulsesLast == serialRumbPulses) {
+                                  digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                                  serialQueue[SerialQueue_RumbPulse] = false;
+                              } else serialRumbPulsesLast++, serialRumbPulseStage = 0;
                               break;
                       }
                   }
-              } else {                                              // ...or the pulses count is complete.
-                  digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);     // turn off the motor,
-                  bitClear(serialQueue, SerialQueue_RumbPulse);          // and set the rumble pulses bit off, now that we've completed it.
               }
-          } else {                                                  // ...or we're being told to turn it off outright.
-              digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
-          }
-      } else {
-          digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
-      }
+          // Rumble "off"
+          } else digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+      // Rumble disabled, not allowed to be on
+      } else digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
   #endif // USES_RUMBLE
 
   #ifdef LED_ENABLE
     if(serialLEDChange) {                                     // Has the LED command state changed?
-        if(bitRead(serialQueue, SerialQueue_LEDPulse)) { // Or is it an LED pulse command?
+        // LED "pulse" command
+        if(serialQueue[SerialQueue_LEDPulse]) {
+            // LED pulsing start
             if(!serialLEDPulsesLast) {                        // Are we just starting?
-                serialQueue &= 0b10001111;                         // Clear static LED bits.
+                serialQueue[SerialQueue_Red] = false, serialQueue[SerialQueue_Green] = false, serialQueue[SerialQueue_Blue] = false;
                 serialLEDPulsesLast = 1;                           // Set that we have started.
                 serialLEDPulseRising = true;                       // Set the LED cycle to rising.
                 // Reset all the LEDs to zero, the color map will tell us which one to focus on.
-                serialLEDR = 0;
-                serialLEDG = 0;
-                serialLEDB = 0;
-            } else if(serialLEDPulsesLast <= serialLEDPulses) { // Else, have we not reached the number of pulses requested?
+                serialLEDR = 0, serialLEDG = 0, serialLEDB = 0;
+            // LED pulsing processing
+            } else if(serialLEDPulsesLast <= serialLEDPulses) {
                 if(millis() - serialLEDPulsesLastUpdate > serialLEDPulsesLength) { // have we waited enough time between pulse stages?
-                    if(serialLEDPulseRising) {                // If we're in the rising stage,
-                        switch(serialLEDPulseColorMap) {           // Check the color map
-                            case 0b00000001:                       // Basically for R, G, or B,
+                    switch(serialLEDPulseColorMap) {           // Check the color map
+                        case 0b00000001:                       // Basically for R, G, or B,
+                            if(serialLEDPulseRising) {
                                 serialLEDR += 3;                   // Set the LED value up by three (it's easiest to do blindly like this without over/underflowing tbh)
-                                if(serialLEDR == 255) {       // If we've reached the max value,
+                                if(serialLEDR == 255)       // If we've reached the max value,
                                     serialLEDPulseRising = false;  // Set that we're in the falling state now.
-                                }
-                                serialLEDPulsesLastUpdate = millis(); // Timestamp this event.
-                                break;                             // And get out.
-                            case 0b00000010:
-                                serialLEDG += 3;
-                                if(serialLEDG == 255) {
-                                    serialLEDPulseRising = false;
-                                }
-                                serialLEDPulsesLastUpdate = millis();
-                                break;
-                            case 0b00000100:
-                                serialLEDB += 3;
-                                if(serialLEDB == 255) {
-                                    serialLEDPulseRising = false;
-                                }
-                                serialLEDPulsesLastUpdate = millis();
-                                break;
-                        }
-                    } else {                                  // Or, we're in the falling stage.
-                        switch(serialLEDPulseColorMap) {           // Check the color map.
-                            case 0b00000001:                       // Then here, for the set color,
+                            } else {
                                 serialLEDR -= 3;                   // Decrement the value.
                                 if(serialLEDR == 0) {         // If the LED value has reached the lowest point,
                                     serialLEDPulseRising = true;   // Set that we should be in the rising part of a new cycle.
                                     serialLEDPulsesLast++;         // This was a pulse cycle, so increment that.
                                 }
-                                serialLEDPulsesLastUpdate = millis(); // Timestamp this event.
-                                break;                             // Get outta here.
-                            case 0b00000010:
+                            }
+                            serialLEDPulsesLastUpdate = millis(); // Timestamp this event.
+                            break;                             // And get out.
+                        case 0b00000010:
+                            if(serialLEDPulseRising) {
+                                serialLEDG += 3;
+                                if(serialLEDG == 255)
+                                    serialLEDPulseRising = false;
+                            } else {
                                 serialLEDG -= 3;
                                 if(serialLEDG == 0) {
                                     serialLEDPulseRising = true;
                                     serialLEDPulsesLast++;
                                 }
-                                serialLEDPulsesLastUpdate = millis();
-                                break;
-                            case 0b00000100:
+                            }
+                            serialLEDPulsesLastUpdate = millis();
+                            break;
+                        case 0b00000100:
+                            if(serialLEDPulseRising) {
+                                serialLEDB += 3;
+                                if(serialLEDB == 255)
+                                    serialLEDPulseRising = false;
+                            } else {
                                 serialLEDB -= 3;
                                 if(serialLEDB == 0) {
                                     serialLEDPulseRising = true;
                                     serialLEDPulsesLast++;
                                 }
-                                serialLEDPulsesLastUpdate = millis();
-                                break;
-                        }
+                            }
+                            serialLEDPulsesLastUpdate = millis();
+                            break;
                     }
                     // Then, commit the changed value.
                     OF_RGB::LedUpdate(serialLEDR, serialLEDG, serialLEDB);
                 }
-            } else {                                       // Or, we're done with the amount of pulse commands.
-                serialLEDPulseColorMap = 0b00000000;               // Clear the now-stale pulse color map,
-                bitClear(serialQueue, SerialQueue_LEDPulse);       // And flick the pulse command bit off.
-            }
-        } else if(bitRead(serialQueue, SerialQueue_Red) ||           // Are either the R,
-                  bitRead(serialQueue, SerialQueue_Green) ||         // G,
-                  bitRead(serialQueue, SerialQueue_Blue)) {          // OR B digital bits set to on?
+            // LED pulsing finishing
+            } else serialLEDPulseColorMap = 0b00000000, serialQueue[SerialQueue_LEDPulse] = false;
+        // Any LED static bits
+        } else if(serialQueue[SerialQueue_Red] ||           // Are either the R,
+                  serialQueue[SerialQueue_Green] ||         // G,
+                  serialQueue[SerialQueue_Blue]) {          // OR B digital bits set to on?
             // Command the LED to change/turn on with the values serialProcessing set for us.
             OF_RGB::LedUpdate(serialLEDR, serialLEDG, serialLEDB);
             serialLEDChange = false;                               // Set the bit to off.
-        } else {                                           // Or, all the LED bits are off, so we should be setting it off entirely.
-            OF_RGB::LedOff();                                              // Turn it off.
-            serialLEDChange = false;                               // We've done the change, so set it off to reduce redundant LED updates.
-        }
+        // LEDs off
+        } else OF_RGB::LedOff(), serialLEDChange = false;     // We've done the change, so set it off to reduce redundant LED updates.
     }
     #endif // LED_ENABLE
 }
