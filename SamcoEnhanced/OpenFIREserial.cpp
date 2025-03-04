@@ -711,14 +711,14 @@ void OF_Serial::SerialHandling()
                       if(serialSolCustomHoldLength) {
                           if(millis() - serialSolPulsesLastUpdate >= serialSolCustomHoldLength) {
                               digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
-                              if(serialSolPulsesLast == serialSolPulses)
+                              if(serialSolPulsesLast >= serialSolPulses)
                                   serialQueue[SerialQueue_SolPulse] = false;
                               else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                           }
                       // current settings hold length
                       } else if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidNormalInterval]) {
                           digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
-                          if(serialSolPulsesLast == serialSolPulses)
+                          if(serialSolPulsesLast >= serialSolPulses)
                               serialQueue[SerialQueue_SolPulse] = false;
                           else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                       }
@@ -766,7 +766,7 @@ void OF_Serial::SerialHandling()
                           if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomHoldLength) {
                               serialRumbPulseStage = 0;
                               digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
-                              if(serialRumbPulsesLast == serialRumbPulses)
+                              if(serialRumbPulsesLast >= serialRumbPulses)
                                   serialQueue[SerialQueue_RumbPulse] = false;
                           }
                       } else if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomPauseLength) {
@@ -796,7 +796,7 @@ void OF_Serial::SerialHandling()
                               break;
                           // Check
                           case 3:
-                              if(serialRumbPulsesLast == serialRumbPulses) {
+                              if(serialRumbPulsesLast >= serialRumbPulses) {
                                   digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
                                   serialQueue[SerialQueue_RumbPulse] = false;
                               } else serialRumbPulsesLast++, serialRumbPulseStage = 0;
