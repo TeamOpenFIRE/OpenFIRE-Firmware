@@ -376,6 +376,7 @@ void OF_Serial::SerialProcessing()
                                 break;
                         }
                         serialSolPulses = atoi(serialInputS);
+                        if(!serialSolPulses) serialSolPulses++;
                         serialSolPulsesLast = 0;
                     }
                 // Solenoid "off" command
@@ -404,6 +405,7 @@ void OF_Serial::SerialProcessing()
                             }
                         }
                         serialRumbPulses = atoi(serialInputS);
+                        if(!serialRumbPulses) serialRumbPulses++;
                         serialRumbPulsesLast = 0;
                     }
                 // Rumble "off" command
