@@ -39,11 +39,9 @@ int SamcoPreferences::CheckHeader()
 {
     uint32_t u32;
     EEPROM.get(0, u32);
-    if(u32 != HeaderId.u32) {
+    if(u32 != HeaderId.u32)
         return Error_NoData;
-    } else {
-        return Error_Success;
-    }
+    else return Error_Success;
 }
 
 int SamcoPreferences::LoadProfiles()
@@ -52,13 +50,11 @@ int SamcoPreferences::LoadProfiles()
     if(status == Error_Success) {
         FW_Common::profiles.selectedProfile = EEPROM.read(4);
         uint8_t* p = ((uint8_t*)FW_Common::profiles.pProfileData);
-        for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i) {
+        for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i)
             p[i] = EEPROM.read(5 + i);
-        }
+        
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveProfiles()
@@ -66,9 +62,8 @@ int SamcoPreferences::SaveProfiles()
     WriteHeader();
     EEPROM.update(4, FW_Common::profiles.selectedProfile);
     uint8_t* p = ((uint8_t*)FW_Common::profiles.pProfileData);
-    for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i) {
+    for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i)
         EEPROM.write(5 + i, p[i]);
-    }
 
     // Remember that we need to commit changes to the virtual EEPROM on RP2040!
     EEPROM.commit();
@@ -81,9 +76,7 @@ int SamcoPreferences::LoadToggles()
     if(status == Error_Success) {
         EEPROM.get(300, toggles);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveToggles()
@@ -100,9 +93,7 @@ int SamcoPreferences::LoadPins()
     if(status == Error_Success) {
         EEPROM.get(350, pins);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SavePins()
@@ -119,9 +110,7 @@ int SamcoPreferences::LoadSettings()
     if(status == Error_Success) {
         EEPROM.get(400, settings);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveSettings()
@@ -138,9 +127,7 @@ int SamcoPreferences::LoadUSBID()
     if(status == Error_Success) {
         EEPROM.get(900, usb);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveUSBID()
@@ -153,19 +140,22 @@ int SamcoPreferences::SaveUSBID()
 
 void SamcoPreferences::ResetPreferences()
 {
-    for(uint16_t i = 0; i < EEPROM.length(); ++i) {
+    for(uint16_t i = 0; i < EEPROM.length(); ++i)
         EEPROM.update(i, 0);
-    }
 
     EEPROM.commit();
 }
 
 void SamcoPreferences::LoadPresets()
 {
-    if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD))
-        for(int i = 0; i < OF_Const::boardInputsCount; i++)
-            pins[i] = OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i];
-    else for(int i = 0; i < OF_Const::boardInputsCount; i++)
+    for(int i = 0; i < OF_Const::boardInputsCount; i++)
+        pins[i] = -1;
+
+    if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
+        for(int i = 0; i < sizeof(OF_Const::boardMap_t); i++)
+            if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i] > -1)
+                pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i]] = i;
+    } else for(int i = 0; i < OF_Const::boardInputsCount; i++)
         pins[i] = -1;
 }
 #else

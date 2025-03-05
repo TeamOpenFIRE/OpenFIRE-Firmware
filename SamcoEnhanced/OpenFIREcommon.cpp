@@ -47,10 +47,13 @@ void FW_Common::FeedbackSet()
     #ifdef USES_ANALOG
         analogReadResolution(12);
         #ifdef USES_TEMP
-        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 && SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY] &&
-           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::tempPin] && SamcoPreferences::pins[OF_Const::analogY] != SamcoPreferences::pins[OF_Const::tempPin])
+        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 &&
+           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY] &&
+           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::tempPin] &&
+           SamcoPreferences::pins[OF_Const::analogY] != SamcoPreferences::pins[OF_Const::tempPin])
         #else
-        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 && SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY])
+        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 &&
+           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY])
         #endif // USES_TEMP
             //pinMode(analogPinX, INPUT);
             //pinMode(analogPinY, INPUT);
