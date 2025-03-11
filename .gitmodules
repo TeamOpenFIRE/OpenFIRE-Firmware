@@ -10,3 +10,6 @@
 [submodule "libraries/Adafruit_BusIO"]
 	path = libraries/Adafruit_BusIO
 	url = https://github.com/adafruit/Adafruit_BusIO
+[submodule "SamcoEnhanced/boards"]
+	path = SamcoEnhanced/boards
+	url = https://github.com/TeamOpenFIRE/OpenFIRE-Boards

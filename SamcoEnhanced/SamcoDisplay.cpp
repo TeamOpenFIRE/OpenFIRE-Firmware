@@ -1,105 +1,83 @@
 /*!
  * @file SamcoDisplay.cpp
- * @brief Macros for lightgun HUD display.
+ * @brief Macros for lightgun HUD display (primarily for SSD1306 OLED modules).
  *
  * @copyright That One Seong, 2024
- *
- *  SamcoDisplay is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * @copyright GNU Lesser General Public License
  */
 
 // we're using our own splash screen kthx ada
 #define SSD1306_NO_SPLASH
 
 #include <Arduino.h>
-#include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 #include <Wire.h>
 #include "SamcoDisplay.h"
 #include "SamcoPreferences.h"
 #include <TinyUSB_Devices.h>
 
-// include heuristics for determining Wire or Wire1 SDA/SCL pins, ref'd from SamcoPreferences::pins
-
-Adafruit_SSD1306 *display;
-
-ExtDisplay::ExtDisplay() {}
-
 bool ExtDisplay::Begin()
 {
-    if(display != nullptr) { display->clearDisplay(); delete display, displayValid = false; }
-
-    if(SamcoPreferences::pins.pPeriphSCL >= 0 && SamcoPreferences::pins.pPeriphSDA >= 0) {
-        if(bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
-            // I2C1
-            if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
-                // SDA/SCL are indeed on verified correct pins
-                Wire1.setSDA(SamcoPreferences::pins.pPeriphSDA);
-                Wire1.setSCL(SamcoPreferences::pins.pPeriphSCL);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
-                displayValid = true;
-            } else {
-                displayValid = false;
-                return false;
-            }
-        } else if(!bitRead(SamcoPreferences::pins.pPeriphSCL, 1) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 1)) {
-            // I2C0
-            if(bitRead(SamcoPreferences::pins.pPeriphSCL, 0) && !bitRead(SamcoPreferences::pins.pPeriphSDA, 0)) {
-                // SDA/SCL are indeed on verified correct pins
-                Wire.setSDA(SamcoPreferences::pins.pPeriphSDA);
-                Wire.setSCL(SamcoPreferences::pins.pPeriphSCL);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-                displayValid = true;
-            } else {
-                displayValid = false;
-                return false;
-            }
-        } else {
-            displayValid = false;
-            return false;
-        }
-    } else {
-        displayValid = false;
-        return false;
+    if(display != nullptr) {
+        delete display;
+        display = nullptr;
     }
+
+    // TODO: for some reason, doing this AFTER saving updated pins settings (even when doing it from defaults and there's no default mappings for peripheral pins)
+    // causes the board to hang. Even though this is all correct (and any display objects should get deleted from the above, so don't think it can be a new object thing)...
+    if(SamcoPreferences::pins[OF_Const::periphSCL] >= 0 && SamcoPreferences::pins[OF_Const::periphSDA] >= 0) {
+        if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
+            // I2C1
+            if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 0)) {
+                Wire1.end();
+                // SDA/SCL are indeed on verified correct pins
+                Wire1.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
+                Wire1.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
+                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
+            } else return false;
+        } else if(!bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
+            // I2C0
+            if(bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 0)) {
+                Wire.end();
+                // SDA/SCL are indeed on verified correct pins
+                Wire.setSDA(SamcoPreferences::pins[OF_Const::periphSDA]);
+                Wire.setSCL(SamcoPreferences::pins[OF_Const::periphSCL]);
+                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+            } else return false;
+        } else return false;
+    } else return false;
 
     if(display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;
-    } else {
-      displayValid = false;
-      return false;
-    }
+    } else return false;
 }
 
-void ExtDisplay::TopPanelUpdate(char textPrefix[7], char textInput[16])
+void ExtDisplay::Stop()
 {
-    if(displayValid) {
+    if(display != nullptr)
+        delete display;
+}
+
+void ExtDisplay::TopPanelUpdate(const char *textPrefix, const char *profText)
+{
+    if(display != nullptr) {
         display->fillRect(0, 0, 128, 16, BLACK);
         display->drawFastHLine(0, 15, 128, WHITE);
         display->setCursor(2, 2);
         display->setTextSize(1);
         display->setTextColor(WHITE, BLACK);
         display->print(textPrefix);
-        display->println(textInput);
+        if(profText != nullptr)
+            display->println(profText);
         display->display();
     }
 }
 
 void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         if(screenState >= Screen_Mamehook_Single &&
            screenMode == Screen_Normal) {
@@ -109,10 +87,13 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
         display->setTextColor(WHITE, BLACK);
         switch(screenMode) {
           case Screen_Normal:
-            if(TinyUSBDevices.onBattery) { display->drawBitmap(2, 46, btConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
-            else { display->drawBitmap(2, 46, usbConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
-            if(isAnalog) { display->drawBitmap(108, 49, gamepadIco, GAMEPAD_WIDTH, GAMEPAD_HEIGHT, WHITE); }
-            else { display->drawBitmap(109, 48, mouseIco, MOUSE_WIDTH, MOUSE_HEIGHT, WHITE); }
+            if(mister) display->drawBitmap(48, 23, misterIco, MISTERKUN_WIDTH, MISTERKUN_HEIGHT, WHITE);
+            else {
+                if(TinyUSBDevices.onBattery) { display->drawBitmap(2, 46, btConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
+                else { display->drawBitmap(2, 46, usbConnectIco, CONNECTION_WIDTH, CONNECTION_HEIGHT, WHITE); }
+                if(isAnalog) { display->drawBitmap(108, 49, gamepadIco, GAMEPAD_WIDTH, GAMEPAD_HEIGHT, WHITE); }
+                else { display->drawBitmap(109, 48, mouseIco, MOUSE_WIDTH, MOUSE_HEIGHT, WHITE); }
+            }
             break;
           case Screen_None:
           case Screen_Docked:
@@ -186,7 +167,7 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 
 void ExtDisplay::IdleOps()
 {
-    if(displayValid) {
+    if(display != nullptr) {
         switch(screenState) {
           case Screen_Normal:
             break;
@@ -210,7 +191,7 @@ void ExtDisplay::IdleOps()
 // Use at your own discression.
 void ExtDisplay::DrawVisibleIR(int pointX[4], int pointY[4])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         for(uint8_t i = 0; i < 4; i++) {
           pointX[i] = map(pointX[i], 0, 1920, 0, 128);
@@ -224,7 +205,7 @@ void ExtDisplay::DrawVisibleIR(int pointX[4], int pointY[4])
 
 void ExtDisplay::PauseScreenShow(uint8_t currentProf, char name1[16], char name2[16], char name3[16], char name4[16])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         char* namesList[16] = { name1, name2, name3, name4 };
         TopPanelUpdate("Using ", namesList[currentProf]); // names are placeholder
         display->fillRect(0, 16, 128, 48, BLACK);
@@ -247,7 +228,7 @@ void ExtDisplay::PauseScreenShow(uint8_t currentProf, char name1[16], char name2
 
 void ExtDisplay::PauseListUpdate(uint8_t selection)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->drawBitmap(60, 18, upArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
         display->drawBitmap(60, 59, downArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
@@ -287,9 +268,9 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
             display->println(" Save Gun Settings ");
             display->setTextColor(WHITE, BLACK);
             display->setCursor(0, 47);
-            if(SamcoPreferences::pins.oRumble >= 0 && SamcoPreferences::pins.sRumble == -1) {
+            if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0 && SamcoPreferences::pins[OF_Const::rumbleSwitch] == -1) {
               display->println(" Rumble Toggle ");
-            } else if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+            } else if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
               display->println(" Solenoid Toggle ");
             } else {
               display->println(" Send Escape Keypress");
@@ -301,16 +282,16 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
             display->println(" Save Gun Settings ");
             display->setTextColor(BLACK, WHITE);
             display->setCursor(0, 36);
-            if(SamcoPreferences::pins.oRumble >= 0 && SamcoPreferences::pins.sRumble == -1) {
+            if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0 && SamcoPreferences::pins[OF_Const::rumbleSwitch] == -1) {
               display->println(" Rumble Toggle ");
               display->setTextColor(WHITE, BLACK);
               display->setCursor(0, 47);
-              if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+              if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
                 display->println(" Solenoid Toggle ");
               } else {
                 display->println(" Send Escape Keypress");
               }
-            } else if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+            } else if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
               display->println(" Solenoid Toggle ");
               display->setTextColor(WHITE, BLACK);
               display->setCursor(0, 47);
@@ -325,11 +306,11 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
           case ScreenPause_Solenoid:
             display->setTextColor(WHITE, BLACK);
             display->setCursor(0, 25);
-            if(SamcoPreferences::pins.oRumble >= 0 && SamcoPreferences::pins.sRumble == -1) {
+            if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0 && SamcoPreferences::pins[OF_Const::rumbleSwitch] == -1) {
               display->println(" Rumble Toggle ");
               display->setTextColor(BLACK, WHITE);
               display->setCursor(0, 36);
-              if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+              if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
                 display->println(" Solenoid Toggle ");
                 display->setTextColor(WHITE, BLACK);
                 display->setCursor(0, 47);
@@ -340,7 +321,7 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
                 display->setCursor(0, 47);
                 display->println("Calibrate");
               }
-            } else if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+            } else if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
               display->println(" Save Gun Settings");
               display->setTextColor(BLACK, WHITE);
               display->setCursor(0, 36);
@@ -361,7 +342,7 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
           case ScreenPause_EscapeKey:
             display->setTextColor(WHITE, BLACK);
             display->setCursor(0, 25);
-            if(SamcoPreferences::pins.oSolenoid >= 0 && SamcoPreferences::pins.sSolenoid == -1) {
+            if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0 && SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1) {
               display->println(" Solenoid Toggle ");
               display->setTextColor(BLACK, WHITE);
               display->setCursor(0, 36);
@@ -369,7 +350,7 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
               display->setTextColor(WHITE, BLACK);
               display->setCursor(0, 47);
               display->println(" Calibrate ");
-            } else if(SamcoPreferences::pins.oRumble >= 0 && SamcoPreferences::pins.sRumble == -1) {
+            } else if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0 && SamcoPreferences::pins[OF_Const::rumbleSwitch] == -1) {
               display->println(" Rumble Toggle ");
               display->setTextColor(BLACK, WHITE);
               display->setCursor(0, 36);
@@ -394,7 +375,7 @@ void ExtDisplay::PauseListUpdate(uint8_t selection)
 
 void ExtDisplay::PauseProfileUpdate(uint8_t selection, char name1[16], char name2[16], char name3[16], char name4[16])
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->drawBitmap(60, 18, upArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
         display->drawBitmap(60, 59, downArrowGlyph, ARROW_WIDTH, ARROW_HEIGHT, WHITE);
@@ -451,7 +432,7 @@ void ExtDisplay::PauseProfileUpdate(uint8_t selection, char name1[16], char name
 
 void ExtDisplay::SaveScreen(uint8_t status)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         display->fillRect(0, 16, 128, 48, BLACK);
         display->setTextColor(WHITE, BLACK);
         display->setTextSize(2);
@@ -463,157 +444,32 @@ void ExtDisplay::SaveScreen(uint8_t status)
 
 void ExtDisplay::PrintAmmo(uint8_t ammo)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         currentAmmo = ammo;
+
         // use the rounding error to get the left & right digits
         uint8_t ammoLeft = ammo / 10;
         uint8_t ammoRight = ammo - ammoLeft * 10;
+
         if(!ammo) { ammoEmpty = true; } else { ammoEmpty = false; }
+
         if(screenState == Screen_Mamehook_Single) {
-            display->fillRect(40, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoLeft) {
-              case 0:
-                display->drawBitmap(40, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(40, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(40, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(40, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(40, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(40, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(40, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(40, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(40, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(40, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-
-            display->fillRect(40+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoRight) {
-              case 0:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(40+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-            display->display();
+            display->fillRect(40, 22, (NUMBER_GLYPH_WIDTH*2)+6, NUMBER_GLYPH_HEIGHT, BLACK);
+            display->drawBitmap(40,                      22, numbers[ammoLeft],  NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+            display->drawBitmap(40+6+NUMBER_GLYPH_WIDTH, 22, numbers[ammoRight], NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
         } else if(screenState == Screen_Mamehook_Dual) {
-            display->fillRect(72, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoLeft) {
-              case 0:
-                display->drawBitmap(72, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(72, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(72, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(72, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(72, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(72, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(72, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(72, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(72, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(72, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-
-            display->fillRect(72+NUMBER_GLYPH_WIDTH+6, 22, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, BLACK);
-            switch(ammoRight) {
-              case 0:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_0, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 1:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_1, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 2:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_2, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 3:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_3, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 4:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_4, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 5:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_5, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 6:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_6, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 7:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_7, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 8:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_8, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-              case 9:
-                display->drawBitmap(72+NUMBER_GLYPH_WIDTH+6, 22, number_9, NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
-                break;
-            }
-            display->display();
+            display->fillRect(72, 22, (NUMBER_GLYPH_WIDTH*2)+6, NUMBER_GLYPH_HEIGHT, BLACK);
+            display->drawBitmap(72,                      22, numbers[ammoLeft],  NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
+            display->drawBitmap(72+6+NUMBER_GLYPH_WIDTH, 22, numbers[ammoRight], NUMBER_GLYPH_WIDTH, NUMBER_GLYPH_HEIGHT, WHITE);
         }
+
+        display->display();
     }
 }
 
 void ExtDisplay::PrintLife(uint8_t life)
 {
-    if(displayValid) {
+    if(display != nullptr) {
         currentLife = life;
         if(!life) { lifeEmpty = true; } else { lifeEmpty = false; }
         if(screenState == Screen_Mamehook_Single) {
@@ -621,6 +477,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                 display->fillRect(14, 37, 100, 9, BLACK);
                 display->fillRect(52, 51, 30, 8, BLACK);
                 display->fillRect(14, 37, life, 9, WHITE);
+
                 if(life) {
                   display->setTextSize(1);
                   display->setCursor(52, 51);
@@ -628,6 +485,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                   display->print(life);
                   display->println(" %");
                 }
+
                 display->display();
             } else {
                 display->fillRect(22, 19, HEART_LARGE_WIDTH*5+4, HEART_LARGE_HEIGHT+22+HEART_LARGE_HEIGHT, BLACK);
@@ -722,6 +580,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                 display->fillRect(4, 39, 55, 5, BLACK);
                 display->fillRect(20, 51, 30, 8, BLACK);
                 display->fillRect(4, 39, map(life, 0, 100, 0, 55), 5, WHITE);
+
                 if(life) {
                   display->setTextSize(1);
                   display->setCursor(20, 51);
@@ -729,6 +588,7 @@ void ExtDisplay::PrintLife(uint8_t life)
                   display->print(life);
                   display->println(" %");
                 }
+
                 display->display();
             } else {
                 display->fillRect(1, 22, HEART_SMALL_WIDTH*5, HEART_SMALL_HEIGHT+20+HEART_SMALL_HEIGHT, BLACK);

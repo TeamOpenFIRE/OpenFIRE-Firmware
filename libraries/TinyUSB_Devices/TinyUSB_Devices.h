@@ -41,6 +41,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef _TINYUSB_DEVICES_H_
+#define _TINYUSB_DEVICES_H_
+
 #include <Arduino.h>
 
 /*****************************
@@ -276,16 +279,6 @@ extern Keyboard_ Keyboard;
 #define PAD_LEFT   17
 #define PAD_RIGHT  18
 
-#define GAMEPAD_HAT_CENTERED 0
-#define GAMEPAD_HAT_UP 1
-#define GAMEPAD_HAT_UP_RIGHT 2
-#define GAMEPAD_HAT_RIGHT 3
-#define GAMEPAD_HAT_DOWN_RIGHT 4
-#define GAMEPAD_HAT_DOWN 5
-#define GAMEPAD_HAT_DOWN_LEFT 6
-#define GAMEPAD_HAT_LEFT 7
-#define GAMEPAD_HAT_UP_LEFT 8
-
 typedef struct {
         int16_t X = 0;
         int16_t Y = 0;
@@ -314,3 +307,5 @@ public:
   bool stickRight;
 };
 extern Gamepad16_ Gamepad16;
+
+#endif // _TINYUSB_DEVICES_H_

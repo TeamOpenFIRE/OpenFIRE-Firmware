@@ -19,8 +19,18 @@
  */
 
 #include <Arduino.h>
-#include <TinyUSB_Devices.h>
 #include "LightgunButtons.h"
+#include <TinyUSB_Devices.h>
+
+#define GAMEPAD_HAT_CENTERED 0
+#define GAMEPAD_HAT_UP 1
+#define GAMEPAD_HAT_UP_RIGHT 2
+#define GAMEPAD_HAT_RIGHT 3
+#define GAMEPAD_HAT_DOWN_RIGHT 4
+#define GAMEPAD_HAT_DOWN 5
+#define GAMEPAD_HAT_DOWN_LEFT 6
+#define GAMEPAD_HAT_LEFT 7
+#define GAMEPAD_HAT_UP_LEFT 8
 
 LightgunButtons::LightgunButtons(Data_t _data, unsigned int _count) :
     pressed(0),

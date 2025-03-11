@@ -13,26 +13,6 @@
 #ifndef _OPENFIREBOARD_H_
 #define _OPENFIREBOARD_H_
 
-//// GUI BOARD IDENTIFIERS
-
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
-#define OPENFIRE_BOARD "adafruitItsyRP2040"
-#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
-#define OPENFIRE_BOARD "adafruitKB2040"
-#elifdef ARDUINO_NANO_RP2040_CONNECT
-#define OPENFIRE_BOARD "arduinoNanoRP2040"
-#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
-#define OPENFIRE_BOARD "waveshareZero"
-#elifdef ARDUINO_YD_RP2040
-#define OPENFIRE_BOARD "vccgndYD"
-#elifdef ARDUINO_RASPBERRY_PI_PICO
-#define OPENFIRE_BOARD "rpipico"
-#elifdef ARDUINO_RASPBERRY_PI_PICO_W
-#define OPENFIRE_BOARD "rpipicow"
-#else
-#define OPENFIRE_BOARD "generic"
-#endif // board
-
 //// COMPATIBILIY FLAGS
 #if defined(ARDUINO_ARCH_RP2040)
     // Raspberry Pi Pico RP2040

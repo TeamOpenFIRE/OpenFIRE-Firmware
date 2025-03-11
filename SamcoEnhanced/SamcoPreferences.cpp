@@ -13,6 +13,7 @@
 
 #include "SamcoPreferences.h"
 #include <Arduino.h>
+#include "OpenFIREcommon.h"
 
 #ifdef SAMCO_EEPROM_ENABLE
 #include <EEPROM.h>
@@ -38,36 +39,31 @@ int SamcoPreferences::CheckHeader()
 {
     uint32_t u32;
     EEPROM.get(0, u32);
-    if(u32 != HeaderId.u32) {
+    if(u32 != HeaderId.u32)
         return Error_NoData;
-    } else {
-        return Error_Success;
-    }
+    else return Error_Success;
 }
 
 int SamcoPreferences::LoadProfiles()
 {
     int status = CheckHeader();
     if(status == Error_Success) {
-        profiles.selectedProfile = EEPROM.read(4);
-        uint8_t* p = ((uint8_t*)profiles.pProfileData);
-        for(unsigned int i = 0; i < sizeof(ProfileData_t) * profiles.profileCount; ++i) {
+        FW_Common::profiles.selectedProfile = EEPROM.read(4);
+        uint8_t* p = ((uint8_t*)FW_Common::profiles.pProfileData);
+        for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i)
             p[i] = EEPROM.read(5 + i);
-        }
+        
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveProfiles()
 {
     WriteHeader();
-    EEPROM.update(4, profiles.selectedProfile);
-    uint8_t* p = ((uint8_t*)profiles.pProfileData);
-    for(unsigned int i = 0; i < sizeof(ProfileData_t) * profiles.profileCount; ++i) {
+    EEPROM.update(4, FW_Common::profiles.selectedProfile);
+    uint8_t* p = ((uint8_t*)FW_Common::profiles.pProfileData);
+    for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i)
         EEPROM.write(5 + i, p[i]);
-    }
 
     // Remember that we need to commit changes to the virtual EEPROM on RP2040!
     EEPROM.commit();
@@ -80,9 +76,7 @@ int SamcoPreferences::LoadToggles()
     if(status == Error_Success) {
         EEPROM.get(300, toggles);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveToggles()
@@ -99,9 +93,7 @@ int SamcoPreferences::LoadPins()
     if(status == Error_Success) {
         EEPROM.get(350, pins);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SavePins()
@@ -118,9 +110,7 @@ int SamcoPreferences::LoadSettings()
     if(status == Error_Success) {
         EEPROM.get(400, settings);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveSettings()
@@ -137,9 +127,7 @@ int SamcoPreferences::LoadUSBID()
     if(status == Error_Success) {
         EEPROM.get(900, usb);
         return Error_Success;
-    } else {
-        return status;
-    }
+    } else return status;
 }
 
 int SamcoPreferences::SaveUSBID()
@@ -152,238 +140,24 @@ int SamcoPreferences::SaveUSBID()
 
 void SamcoPreferences::ResetPreferences()
 {
-    for(uint16_t i = 0; i < EEPROM.length(); ++i) {
+    for(uint16_t i = 0; i < EEPROM.length(); ++i)
         EEPROM.update(i, 0);
-    }
 
     EEPROM.commit();
 }
 
 void SamcoPreferences::LoadPresets()
 {
-// For the Adafruit ItsyBitsy RP2040 - optimized for SAMCO boards
-#ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+    for(int i = 0; i < OF_Const::boardInputsCount; i++)
+        pins[i] = -1;
 
-    #ifdef USES_SOLENOID
-        #ifdef USES_TEMP    
-            pins.aTMP36 = -1;
-        #endif // USES_TEMP
-    #endif // USES_SOLENOID
-
-      // Remember: PWM PINS ONLY!
-    #ifdef FOURPIN_LED
-        #define LED_ENABLE
-        pins.oLedR = -1;
-        pins.oLedG = -1;
-        pins.oLedB = -1;
-    #endif // FOURPIN_LED
-
-      // Any digital pin is fine for NeoPixels.
-    #ifdef CUSTOM_NEOPIXEL
-        #define LED_ENABLE
-        pins.oPixel = -1;
-    #endif // CUSTOM_NEOPIXEL
-
-    pins.oRumble = 24;
-    pins.oSolenoid = 25;
-    pins.bTrigger = 6;
-    pins.bGunA = 27;
-    pins.bGunB = 26;
-    pins.bGunC = 11;
-    pins.bStart = 28;
-    pins.bSelect = 29;
-    pins.bGunUp = 9;
-    pins.bGunDown = 7;
-    pins.bGunLeft = 8;
-    pins.bGunRight = 10;
-    pins.bPedal = 4;
-    pins.bPedal2 = -1;
-    pins.bPump = -1;
-    pins.bHome = -1;
-
-// For the Adafruit KB2040 - optimized for GUN4IR boards
-#elifdef ARDUINO_ADAFRUIT_KB2040_RP2040
-
-    #ifdef USES_SOLENOID
-        #ifdef USES_TEMP    
-            pins.aTMP36 = A0;
-        #endif // USES_TEMP
-    #endif // USES_SOLENOID
-
-      // Remember: PWM PINS ONLY!
-    #ifdef FOURPIN_LED
-        #define LED_ENABLE
-        pins.oLedR = -1;
-        pins.oLedG = -1;
-        pins.oLedB = -1;
-    #endif // FOURPIN_LED
-
-      // Any digital pin is fine for NeoPixels.
-    #ifdef CUSTOM_NEOPIXEL
-        #define LED_ENABLE
-        pins.oPixel = -1;
-    #endif // CUSTOM_NEOPIXEL
-
-    pins.oRumble = 5;
-    pins.oSolenoid = 7;
-    pins.bTrigger = A2;
-    pins.bGunA = A3;
-    pins.bGunB = 4;
-    pins.bGunC = 6;
-    pins.bStart = 9;
-    pins.bSelect = 8;
-    pins.bGunUp = 18;
-    pins.bGunDown = 20;
-    pins.bGunLeft = 19;
-    pins.bGunRight = 10;
-    pins.bPedal = -1;
-    pins.bPedal2 = -1;
-    pins.bPump = -1;
-    pins.bHome = A1;
-
-// For the Arduino Nano RP2040 Connect - because it was requested
-#elifdef ARDUINO_NANO_RP2040_CONNECT
-
-    #ifdef USES_SOLENOID
-        #ifdef USES_TEMP    
-            pins.aTMP36 = A2;
-        #endif // USES_TEMP
-    #endif // USES_SOLENOID
-
-      // Remember: PWM PINS ONLY!
-    #ifdef FOURPIN_LED
-        #define LED_ENABLE
-        pins.oLedR = -1;
-        pins.oLedG = -1;
-        pins.oLedB = -1;
-    #endif // FOURPIN_LED
-
-      // Any digital pin is fine for NeoPixels.
-    #ifdef CUSTOM_NEOPIXEL
-        #define LED_ENABLE
-        pins.oPixel = -1;
-    #endif // CUSTOM_NEOPIXEL
-
-      // Button Pins setup
-    pins.oRumble = 17;
-    pins.oSolenoid = 16;
-    pins.bTrigger = 15;
-    pins.bGunA = 0;
-    pins.bGunB = 1;
-    pins.bGunC = 18;
-    pins.bStart = 19;
-    pins.bSelect = 20;
-    pins.bGunUp = -1;
-    pins.bGunDown = -1;
-    pins.bGunLeft = -1;
-    pins.bGunRight = -1;
-    pins.bPedal = -1;
-    pins.bPedal2 = -1;
-    pins.bPump = -1;
-    pins.bHome = -1;
-
-// For the Waveshare RP2040 Zero - smallest/cheapest board
-#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
-
-    #ifdef USES_SOLENOID
-        #ifdef USES_TEMP    
-            pins.aTMP36 = A3;
-        #endif // USES_TEMP
-    #endif // USES_SOLENOID
-
-      // Remember: PWM PINS ONLY!
-    #ifdef FOURPIN_LED
-        #define LED_ENABLE
-        pins.oLedR = -1;
-        pins.oLedG = -1;
-        pins.oLedB = -1;
-    #endif // FOURPIN_LED
-
-      // Any digital pin is fine for NeoPixels.
-    #ifdef CUSTOM_NEOPIXEL
-        #define LED_ENABLE
-        pins.oPixel = -1;
-    #endif // CUSTOM_NEOPIXEL
-
-    pins.oRumble = 17;
-    pins.oSolenoid = 16;
-    pins.bTrigger = 0;
-    pins.bGunA = 1;
-    pins.bGunB = 2;
-    pins.bGunC = 3;
-    pins.bStart = 4;
-    pins.bSelect = 5;
-    pins.bGunUp = -1;
-    pins.bGunDown = -1;
-    pins.bGunLeft = -1;
-    pins.bGunRight = -1;
-    pins.bPedal = -1;
-    pins.bPedal2 = -1;
-    pins.bPump = -1;
-    pins.bHome = -1;
-
-// For the Raspberry Pi Pico - first party baybeeee
-#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
-
-    #ifdef USES_SOLENOID
-        #ifdef USES_TEMP    
-            pins.aTMP36 = A2;
-        #endif // USES_TEMP
-    #endif // USES_SOLENOID
-
-      // Remember: PWM PINS ONLY!
-    #ifdef FOURPIN_LED
-        #define LED_ENABLE
-        pins.oLedR = 10;
-        pins.oLedG = 11;
-        pins.oLedB = 12;
-    #endif // FOURPIN_LED
-
-      // Any digital pin is fine for NeoPixels.
-    #ifdef CUSTOM_NEOPIXEL
-        #define LED_ENABLE
-        pins.oPixel = -1;
-    #endif // CUSTOM_NEOPIXEL
-
-    pins.oRumble = 17;
-    pins.oSolenoid = 16;
-    pins.bTrigger = 15;
-    pins.bGunA = 0;
-    pins.bGunB = 1;
-    pins.bGunC = 2;
-    pins.bStart = 3;
-    pins.bSelect = 4;
-    pins.bGunUp = 6;
-    pins.bGunDown = 7;
-    pins.bGunLeft = 8;
-    pins.bGunRight = 9;
-    pins.bPedal = 14;
-    pins.bPedal2 = -1;
-    pins.bPump = 13;
-    pins.bHome = 5;
-
-    #endif // ARDUINO_BOARD
-
-    PresetCam();
+    if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
+        for(int i = 0; i < sizeof(OF_Const::boardMap_t); i++)
+            if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i] > -1)
+                pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i]] = i;
+    } else for(int i = 0; i < OF_Const::boardInputsCount; i++)
+        pins[i] = -1;
 }
-
-void SamcoPreferences::PresetCam()
-{
-#if defined(ARDUINO_ADAFRUIT_ITSYBITSY_RP2040) || defined(ARDUINO_ADAFRUIT_KB2040_RP2040)
-    pins.pCamSCL = 3;
-    pins.pCamSDA = 2;
-#elifdef ARDUINO_NANO_RP2040_CONNECT
-    pins.pCamSCL = 13;
-    pins.pCamSDA = 12;
-#elifdef ARDUINO_WAVESHARE_RP2040_ZERO
-    pins.pCamSCL = 15;
-    pins.pCamSDA = 14;
-#else // RASPBERRY_PI_PICO et al
-    pins.pCamSCL = 21;
-    pins.pCamSDA = 20;
-#endif // ARDUINO_BOARD
-}
-
 #else
 
 int SamcoPreferences::Load()
