@@ -20,23 +20,24 @@
 ## IR Emitter setup
 The IR emitters can be arranged in either two ways:
  - As dual lightbars, or "square" layout (Samco, preferred)
- - At four separate points on the display, or "diamond" layout (Xwiigun)
+ - At four separate points on the display, or "diamond" layout (Xwiigun and other legacy lightgun systems)
 
 if you're playing on a small PC monitor, you can use 2 Wii sensor bars; one on top of your screen and one below. However, if you're playing on a TV, you should consider building or buying a set of high power black IR LEDs and arranging them like (larger) sensor bars at the top and bottom of the display.
 
-You can use this graphic (view in fullscreen on your display!) to help with ideal alignment for either supported layout - alternatively, you can refer to this interactive online alignment guide [here @ diylightgun.com](https://diylightgun.com/align/)
-![Emitters](../Emitters-Layout-Template.png)
+The OpenFIRE Desktop App has an alignment assistant that can be used to help align your emitters to the display (by selecting *Help->Open IR Emitter Alignment Assistant*) - alternatively, you can refer to this online alignment guide [here @ diylightgun.com](https://diylightgun.com/align/)
 
 ## Board Configuration
-The gun is configured through the companion [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App) application. The gun must be plugged in *prior to* starting the application.
+The gun is configured through the companion [OpenFIRE Desktop Application.](https://github.com/TeamOpenFIRE/OpenFIRE-App) The latest version of the App can be opened without plugging in a microcontroller prior, and will regularly search for devices flashed with the latest Firmware.
 
-When the board's COM port is selected in the app, the gun will go into a *Docked* state - this is what allows for realtime configuration of pin mappings, settings, changing between and renaming calibration profiles, and testing button inputs and force feedback devices. The camera will be disabled while in this mode, unless the IR test mode is enabled.
+When the board's COM port is selected in the app, the gun will go into a *Docked* state - this is what allows for real-time configuration of pin mappings, settings, changing between and renaming calibration profiles, and testing button inputs and force feedback devices. The camera will be disabled while in this mode, unless the gun is set to IR test mode.
 
 ## First-time Setup
-When flashing a new board with OpenFIRE, or after clearing the EEPROM, the first time it's plugged in will prompt for the user to pull the trigger button to start initial calibration - see the [How to Calibrate](#how-to-calibrate) section for more information. If your build is using custom pins, or you would like to change any settings at this point, the gun can be docked to the OpenFIRE App and configured prior to starting initial calibration.
+When flashing a new board with OpenFIRE, or after clearing the EEPROM, the first time it's plugged in will prompt for the user to pull the trigger button to start initial calibration - this can be accomplished from the App using any of the *Calibrate Profile* buttons, or pressing the trigger for standalone calibration (see the [How to Calibrate](#how-to-calibrate) section for more information). If your build is using custom pins, or you would like to change any settings at this point, the gun can be docked to the OpenFIRE App and configured prior to starting initial calibration - at least *Trigger* and *Button A* should be mapped and confirmed working in the *Gun Tests* tab.
 
 ## Operations Manual
-The light gun operates as an absolute positioning mouse (like a stylus!) until the button/combination is pressed to enter pause mode. The Arduino serial monitor (or any serial terminal) can be used to see information while the gun is paused and during the calibration procedure.
+The light gun operates as an absolute positioning mouse (like a stylus!) until the button/combination is pressed to enter pause mode. Alternatively, the gun can be signaled to output using its corresponding HID Gamepad device using a Serial Feedback Distributor program such as MAMEHOOKER - see the [Serial Handoff](#serial-handoff-mame-hooker-mode) section for more info.
+
+Any serial terminal (Arduino IDE's Serial Monitor, *PuTTY,* *screen,* etc.) can be used to see information while the gun is paused and during the calibration procedure.
 
 Note that the buttons in pause mode (and to enter pause mode) activate when the last button of the combination releases. This is used to detect and differentiate button combinations vs a single button press.
 
@@ -47,7 +48,7 @@ The gun has the following modes of operation:
 1. Normal - The mouse position updates from each frame from the IR positioning camera (no averaging)
 2. Averaging - The position is calculated from a 2 frame moving average (current + previous position)
 3. Averaging2 - The position is calculated from a weighted average of the current frame and 2 previous frames
-4. Processing - Test mode for use with the GUI (this mode is prevented from being assigned to a profile)
+4. Processing - Test mode for use with the Desktop App (this mode is prevented from being assigned to a profile)
 
 The averaging modes are subtle but do reduce the motion jitter a bit without adding much if any noticeable lag.
 
@@ -64,7 +65,7 @@ The averaging modes are subtle but do reduce the motion jitter a bit without add
 - Alt Pedal: Mouse button 5/Side Button 2/Forward
 - C + Start: Esc key
 
-Pause mode can be entered by either pressing C + Select by default, pressing the *Home Button* if used in current pin layout, or *holding the trigger plus the A Button with **no IR points in sight*** if hold-to-pause is enabled (pointing the gun towards the ground is recommended).
+Pause mode can be entered by either pressing C + Select by default, pressing the *Home Button* if used in current pin layout, or *holding the trigger plus the A Button with **no IR points in sight*** if hold-to-pause is enabled - pointing the gun towards the ground is recommended here.
 
 #### Default Buttons in Pause mode (Hotkey)
 - A, B, Start, Select: select a profile
@@ -73,15 +74,14 @@ Pause mode can be entered by either pressing C + Select by default, pressing the
 - B + Down: Decrease IR camera sensitivity (use a serial monitor to see the setting)
 - B + Up: Increase IR camera sensitivity (use a serial monitor to see the setting)
 - C/Reload: Exit pause mode
-- C/Reload + A: Toggle Offscreen Button Mode
 - Left: Toggle Rumble *(when no rumble switch is detected)*
 - Right: Toggle Solenoid *(when no solenoid switch is detected)*
 - Trigger: Begin calibration
 - Start + Select: save settings to non-volatile memory (EEPROM or Flash depending on the board configuration)
 
 #### Controls for Simple Pause Menu
-- A: Navigate Left
-- B: Navigate Right
+- A: Navigate Cursor Up
+- B: Navigate Cursor Down
 - Trigger: Select option
 - C: Exit pause mode
   - Holding A or B for half the duration of the hold-to-pause time (so ~2s by default) will also exit the simple pause menu.
@@ -95,6 +95,7 @@ Available options in simple pause menu are as follows, from first option to last
 * Send escape key signal to the PC
 
 ### How to calibrate
+##### These instructions apply to the standalone on-board calibration process; the Calibration screens in the OpenFIRE App has a similar procedure with more info to guide the user through the process.
 1. Select the profile to calibrate - either through pressing A/B/Start/Select in the Hotkey Pause Mode, or selecting in the Simple Pause Menu - and pull the trigger to begin calibration. Alternatively, calibration can be initialized from the OpenFIRE App. 
 2. Shoot the pointer at center of the screen and press the trigger while keeping a steady aim.
 3. The mouse should move to the four edges of the screen; first topmost, bottommost, leftmost, rightmost. Shoot the edge of the screen where the cursor is at.
@@ -110,16 +111,15 @@ The IR camera sensitivity can be adjusted. It is recommended to adjust the sensi
 
 A sign that the IR sensitivity is too low is if the pointer moves in noticeable coarse steps, as if it has a low resolution to it. If you have the sensitivity level set to max and you notice this then the IR emitters may not be bright enough.
 
-A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. Test Mode can help daignose this problem since it will visually display the 4 IR points.
+A sign that the IR sensitivity is too high is if the pointer jumps around erratically. If this happens only while aiming at certain areas of the screen then this is a good indication a reflection is being detected by the camera. If the sensitivity is at max, step it down to high or minimum. Obviously the best solution is to eliminate the reflective surface. The Desktop App's Test Mode can help diagnose this problem, since it will visually display the 4 IR points.
 
 ### Profiles
-The sketch is configured with 4 profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select), or selecting them via the profiles submenu in simple pause menu.
+The main OpenFIRE builds are configured with 4 calibration profiles available. Each profile has its own calibration data, run mode, and IR camera sensitivity settings. Each profile can be selected from pause mode by pressing the associated button (A/B/Start/Select), or selecting them via the profiles submenu in simple pause menu.
 
 ### Software Toggles
 Hardware features can be toggled at runtime, even without hardware switches defined!
 
 While in pause mode, the toggles are as follows (color indicating what the board's builtin LED lights up with):
-- Button C/Reload + Button A: **Offscreen Button Mode** (White) - For older games that only activate a reload function with a button press, this enables offscreen shots to send a right mouse click instead of a left click. If a working motor is installed, it will pulse on and off when enabled.
 - Button C/Reload + Button B: **Rapid Fire Speed** (Magenta) - Sets the speed of the rapid fire (when autofire is enabled) by cycling between three different levels. When toggled, the solenoid will fire five times with the selected setting.
 - Left D-Pad: **Rumble Toggle** (Salmon) - Enables/disables the rumble functionality. When enabled, the motor will engage for a short period.
 - Right D-Pad: **Solenoid Toggle** (Yellow) - Enables/disables the solenoid force feedback. When enabled, the solenoid will engage for a short period.
@@ -128,10 +128,10 @@ These can also be done from the respective setting in the Simple Pause Menu.
 The current state of these settings (except Offscreen Button Mode) are saved when committed to, and pulled from EEPROM at boot.
 
 #### Saving Settings to Non-Volatile Memory
-The calibration data, profile settings, and extended gun options like custom pins mapping and rumble intensity, can be saved in non-volatile memory by pressing Start + Select (by default). The currently selected profile is saved as the default for when the light gun is plugged in - gun settings applies to *all profiles.*
+The calibration data, profile settings, and extended gun options like custom pins mapping and rumble intensity, can be saved in non-volatile memory by pressing Start + Select from the gun itself, or whenever new settings are committed from the Desktop App. The currently selected calibration profile is saved as the default for when the light gun is plugged in - gun settings (pins mapping, force feedback, etc.) applies to *all profiles.*
 
 #### Test Mode
-Test Mode lets you visually see the IR points as seen by the camera in the OpenFIRE App's test tab. This is very useful for aligning the camera when building your light gun, and for testing that the camera tracks all 4 points properly, as well as observing possible reflections. The validity of the test points shape (square in default IR layout, diamond in alt IR layout) depends on the current profile used and its IR layout setting.
+Test Mode lets you visually see the IR points as seen by the camera in the Desktop App's IR Test Mode screen. This is very useful for aligning the camera when building your light gun, and for testing that the camera tracks all 4 points properly, as well as observing possible reflections. The validity of the test points shape (square in default IR layout, diamond in alt IR layout) depends on the current profile used and its IR layout setting.
 
 ## Technical Details & Assorted Errata
 
@@ -148,4 +148,4 @@ If you intend to use multiple OpenFIRE guns, you'll want to change what the boar
 
 These are known as the **USB Implementer's Forum (USB-IF) identifiers**, and if multiple devices share a common display name and/or Product/Vendor ID, apps like RetroArch and TeknoParrot that read individual mouse devices will get VERY confused.
 
-These parameters can be saved to and loaded from EEPROM if a customized Device Product ID (PID) & Device Name are detected, which can be committed from the OpenFIRE App.
+These parameters can be saved to and loaded from EEPROM if a customized Device Product ID (PID) & Device Name are detected, which can be committed from the Desktop App.
