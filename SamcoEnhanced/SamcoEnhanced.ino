@@ -114,8 +114,8 @@ void setup() {
     } else {
         // Else, we're on batt, so init the Bluetooth chunks.
         if(SamcoPreferences::usb.deviceName[0] == '\0')
-            TinyUSBDevice.beginBT(DEVICE_NAME, DEVICE_NAME);
-        else TinyUSBDevice.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
+            TinyUSBDevices.beginBT(DEVICE_NAME, DEVICE_NAME);
+        else TinyUSBDevices.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
     }
     #else
     // Initializing the USB devices chunk.
