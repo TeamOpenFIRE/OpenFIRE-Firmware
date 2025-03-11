@@ -14,10 +14,7 @@
 #define _OPENFIREBOARD_H_
 
 //// COMPATIBILIY FLAGS
-#if defined(ARDUINO_ARCH_RP2040)
-    // Raspberry Pi Pico RP2040
-    #define SAMCO_RP2040 1
-    
+#if defined(ARDUINO_ARCH_RP2040)    
     // DFRobot IR camera IIC clock
     // even with cheap clips and the full length IR cam cable 1MHz is fine
     #define DFROBOT_IR_IIC_CLOCK 1000000
