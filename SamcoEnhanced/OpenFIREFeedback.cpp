@@ -107,7 +107,7 @@ void OF_FFB::FFBRelease()
     // If Rumble FF is enabled and Autofire is enabled, the motor needs to be disabled when the trigger is released. Otherwise, allow RumbleActivation to deal with the activation timer
     if(SamcoPreferences::toggles[OF_Const::rumbleFF] && SamcoPreferences::toggles[OF_Const::autofire]) {
         if(rumbleHappening || rumbleHappened) {
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);      // Make sure the rumble is OFF.
+            analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], 0);      // Make sure the rumble is OFF.
             rumbleHappening = false;                                // This rumble command is done now.
             rumbleHappened = false;                                 // Make it clear we've stopped holding.
         }
@@ -208,14 +208,14 @@ void OF_FFB::RumbleActivation()
         if(SamcoPreferences::toggles[OF_Const::rumbleFF]) {
             if(!SamcoPreferences::toggles[OF_Const::autofire]) {       // We only want to use the rumble timer if Autofire is not active. Otherwise, keep it going
                 if(currentMillis - previousMillisRumble >= SamcoPreferences::settings[OF_Const::rumbleInterval] / 2) { // If we've been waiting long enough for this whole rumble command,
-                    digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);                         // Make sure the rumble is OFF.
+                    analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], 0);                         // Make sure the rumble is OFF.
                     rumbleHappening = false;                              // This rumble command is done now.
                     rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
                 }
             }
         } else {
             if(currentMillis - previousMillisRumble >= SamcoPreferences::settings[OF_Const::rumbleInterval]) { // If we've been waiting long enough for this whole rumble command,
-                digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);                         // Make sure the rumble is OFF.
+                analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], 0);                         // Make sure the rumble is OFF.
                 rumbleHappening = false;                              // This rumble command is done now.
                 rumbleHappened = true;                                // And just to make sure, to prevent holding == repeat rumble commands.
             }
@@ -253,7 +253,7 @@ void OF_FFB::BurstFire()
 void OF_FFB::FFBShutdown()
 {
     digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
-    digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+    analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], 0);
     solenoidFirstShot = false;
     rumbleHappening = false;
     rumbleHappened = false;
