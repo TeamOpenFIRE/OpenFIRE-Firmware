@@ -60,7 +60,7 @@ int SamcoPreferences::LoadProfiles()
 int SamcoPreferences::SaveProfiles()
 {
     WriteHeader();
-    EEPROM.update(4, FW_Common::profiles.selectedProfile);
+    EEPROM.put(4, FW_Common::profiles.selectedProfile);
     uint8_t* p = ((uint8_t*)FW_Common::profiles.pProfileData);
     for(unsigned int i = 0; i < sizeof(ProfileData_t) * FW_Common::profiles.profileCount; ++i)
         EEPROM.write(5 + i, p[i]);
@@ -141,7 +141,7 @@ int SamcoPreferences::SaveUSBID()
 void SamcoPreferences::ResetPreferences()
 {
     for(uint16_t i = 0; i < EEPROM.length(); ++i)
-        EEPROM.update(i, 0);
+        EEPROM.put(i, 0);
 
     EEPROM.commit();
 }
