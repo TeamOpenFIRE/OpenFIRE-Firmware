@@ -101,12 +101,11 @@ void setup() {
     #endif // LED_ENABLE
     
 #ifdef USE_TINYUSB
-    TUSBDeviceSetup;
     #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     // is VBUS (USB voltage) detected?
     if(digitalRead(34)) {
         // If so, we're connected via USB, so initializing the USB devices chunk.
-        TUSBDeviceSetup.begin(1);
+        TinyUSBDevices.begin(1);
         // wait until device mounted
         while(!USBDevice.mounted()) { yield(); }
         Serial.begin(9600);
