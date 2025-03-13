@@ -566,11 +566,11 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         if(SamcoPreferences::toggles[OF_Const::rumble]) {
             analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
             delay(80);
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], false);
+            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
             delay(50);
             analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
             delay(125);
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], false);
+            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
         }
     #endif // USES_RUMBLE
 
