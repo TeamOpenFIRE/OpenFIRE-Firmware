@@ -1241,7 +1241,7 @@ void OF_Serial::SerialProcessingDocked()
                     serialInput = Serial.read();
                     if(serialInput >= '0' && serialInput <= '3') {
                         uint8_t i = serialInput - '0';
-                        Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,",
+                        Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,%s\r\n",
                         FW_Common::profileData[i].topOffset,
                         FW_Common::profileData[i].bottomOffset,
                         FW_Common::profileData[i].leftOffset,
@@ -1251,17 +1251,14 @@ void OF_Serial::SerialProcessingDocked()
                         FW_Common::profileData[i].irSensitivity,
                         FW_Common::profileData[i].runMode,
                         FW_Common::profileData[i].irLayout,
-                        FW_Common::profileData[i].color
+                        FW_Common::profileData[i].color,
+			FW_Common::profileData[i].name	
                         );
-                        Serial.println(FW_Common::profileData[i].name);
                     }
                     break;
                   #ifdef USE_TINYUSB
                   case 'i':
-                    Serial.printf("%i,",SamcoPreferences::usb.devicePID);
-                    if(SamcoPreferences::usb.deviceName[0] == '\0')
-                        Serial.println("SERIALREADERR01");
-                    else Serial.println(SamcoPreferences::usb.deviceName);
+                    Serial.printf("%i,%s\r\n",SamcoPreferences::usb.devicePID, (SamcoPreferences::usb.deviceName[0] == '\0') ? "SERIALREADERR01" : SamcoPreferences::usb.deviceName);
                     break;
                   #endif // USE_TINYUSB
                 }
