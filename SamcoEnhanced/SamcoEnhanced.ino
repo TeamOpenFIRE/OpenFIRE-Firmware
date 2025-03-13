@@ -692,7 +692,7 @@ void ExecRunMode()
         #ifdef MAMEHOOKER
             // Run through serial receive buffer once this run, if it has contents.
             if(Serial.available())
-                SerialProcessing();
+                OF_Serial::SerialProcessing();
 
             if(!OF_Serial::serialMode) {  // Normal (gun-handled) mode
                 // For processing the trigger specifically.
@@ -709,7 +709,7 @@ void ExecRunMode()
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                         // Release button inputs.
                 }
-                SerialHandling();                                   // Process the force feedback from the current queue.
+                OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
             }
         #else
             // For processing the trigger specifically.
@@ -783,11 +783,11 @@ void ExecRunMode()
                 if(t - pauseHoldStartstamp > SamcoPreferences::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-		                FW_Common::Keyboard.releaseAll();
-                    FW_Common::AbsMouse5.releaseAll();
+		    Keyboard.releaseAll();
+                    AbsMouse5.releaseAll();
                     FW_Common::offscreenBShot = false;
-                    buttonPressed = false;
-	    	            FW_Common::pauseModeSelection = PauseMode_Calibrate;
+                    FW_Common::buttonPressed = false;
+	    	    FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::SetMode(GunMode_Pause);
                     FW_Common::buttons.ReportDisable();
                     return;
@@ -797,11 +797,11 @@ void ExecRunMode()
             if(FW_Common::buttons.pressedReleased == EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-		            FW_Common::Keyboard.releaseAll();
-                FW_Common::AbsMouse5.releaseAll();
+		Keyboard.releaseAll();
+                AbsMouse5.releaseAll();
                 FW_Common::offscreenBShot = false;
-                buttonPressed = false;
-		            FW_Common::SetMode(GunMode_Pause);
+                FW_Common::buttonPressed = false;
+		FW_Common::SetMode(GunMode_Pause);
                 FW_Common::buttons.ReportDisable();
                 return;
             }
