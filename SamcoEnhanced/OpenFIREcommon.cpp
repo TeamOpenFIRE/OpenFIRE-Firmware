@@ -685,7 +685,7 @@ void FW_Common::GetPosition()
 
                 if(runMode == RunMode_Processing) {
                     if(profileData[profiles.selectedProfile].irLayout) {
-                        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r\n",
+                        Serial.printf("TM%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                                       rawX[0], rawY[0],
                                       rawX[1], rawY[1],
                                       rawX[2], rawY[2],
@@ -694,7 +694,7 @@ void FW_Common::GetPosition()
                                       map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0),
                                       map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
                     } else {
-                        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r\n",
+                        Serial.printf("TM%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                                       rawX[0], rawY[0],
                                       rawX[1], rawY[1],
                                       rawX[2], rawY[2],
