@@ -1259,9 +1259,6 @@ void OF_Serial::SerialProcessingDocked()
                     );
                     break;
                   #endif // USE_TINYUSB
-                  case 't':
-                    SamcoPreferences::TestRead();
-                    break;
                 }
                 break;
               }

@@ -124,8 +124,6 @@ public:
     /// @return An error code from Errors_e
     static int InitFS();
 
-    static void TestRead();
-
     /// @brief Load preferences
     /// @return An error code from Errors_e
     static int LoadProfiles();

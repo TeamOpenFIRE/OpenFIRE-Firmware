@@ -27,14 +27,6 @@ int SamcoPreferences::InitFS()
     else return Error_NoData;
 }
 
-void SamcoPreferences::TestRead()
-{
-    File prefs = LittleFS.open("profiles.conf", "r");
-    if(prefs) {
-        while(prefs.available()) Serial.printf("%X ", prefs.read());
-    }
-}
-
 int SamcoPreferences::LoadProfiles()
 {
     File prefs = LittleFS.open("profiles.conf", "r");
