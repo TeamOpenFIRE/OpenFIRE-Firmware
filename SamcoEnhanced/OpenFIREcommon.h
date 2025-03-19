@@ -1,7 +1,6 @@
-#include "Wire.h"
  /*!
  * @file OpenFIREcommon.h
- * @brief Shared objects and values used throughout the OpenFIRE project.
+ * @brief Shared runtime objects and methods used throughout the OpenFIRE firmware.
  *
  * @copyright That One Seong, 2025
  * @copyright GNU Lesser General Public License
@@ -22,146 +21,9 @@
 #include "SamcoPreferences.h"
 #include "SamcoDisplay.h"
 #include "OpenFIREDefines.h"
-
-// number of profiles
-#define PROFILE_COUNT 4
+#include "OpenFIREconstant.h"
 
 inline AbsMouse5_ AbsMouse5(2);
-
-// operating modes
-    enum GunMode_e {
-        GunMode_Init = -1,
-        GunMode_Run = 0,
-        GunMode_Calibration,
-        GunMode_Verification,
-        GunMode_Pause,
-        GunMode_Docked
-    };
-
-    // run modes
-    // note that this is a 5 bit value when stored in the profiles
-    enum RunMode_e {
-        RunMode_Normal = 0,         ///< Normal gun mode, no averaging
-        RunMode_Average = 1,        ///< 2 frame moving average
-        RunMode_Average2 = 2,       ///< weighted average with 3 frames
-        RunMode_ProfileMax = 2,     ///< maximum mode allowed for profiles
-        RunMode_Processing = 3,     ///< Processing test mode
-        RunMode_Count
-    };
-
-    enum CaliStage_e {
-        Cali_Init = 0,
-        Cali_Top,
-        Cali_Bottom,
-        Cali_Left,
-        Cali_Right,
-        Cali_Center,
-        Cali_Verify
-    };
-
-    // numbered index of buttons, must match ButtonDesc[] order
-    enum ButtonIndex_e {
-        BtnIdx_Trigger = 0,
-        BtnIdx_A,
-        BtnIdx_B,
-        BtnIdx_Start,
-        BtnIdx_Select,
-        BtnIdx_Up,
-        BtnIdx_Down,
-        BtnIdx_Left,
-        BtnIdx_Right,
-        BtnIdx_Reload,
-        BtnIdx_Pedal,
-        BtnIdx_Pedal2,
-        BtnIdx_Pump,
-        BtnIdx_Home
-    };
-
-    // bit mask for each button, must match ButtonDesc[] order to match the proper button events
-    enum ButtonMask_e {
-        BtnMask_Trigger = 1 << BtnIdx_Trigger,
-        BtnMask_A = 1 << BtnIdx_A,
-        BtnMask_B = 1 << BtnIdx_B,
-        BtnMask_Start = 1 << BtnIdx_Start,
-        BtnMask_Select = 1 << BtnIdx_Select,
-        BtnMask_Up = 1 << BtnIdx_Up,
-        BtnMask_Down = 1 << BtnIdx_Down,
-        BtnMask_Left = 1 << BtnIdx_Left,
-        BtnMask_Right = 1 << BtnIdx_Right,
-        BtnMask_Reload = 1 << BtnIdx_Reload,
-        BtnMask_Pedal = 1 << BtnIdx_Pedal,
-        BtnMask_Pedal2 = 1 << BtnIdx_Pedal2,
-        BtnMask_Pump = 1 << BtnIdx_Pump,
-        BtnMask_Home = 1 << BtnIdx_Home
-    };
-
-    //// Button Masks
-    // button combo to send an escape keypress
-    static inline uint32_t EscapeKeyBtnMask = BtnMask_Reload | BtnMask_Start;
-
-    // button combo to enter pause mode
-    static inline uint32_t EnterPauseModeBtnMask = BtnMask_Reload | BtnMask_Select;
-
-    // button combo to enter pause mode (holding ver)
-    static inline uint32_t EnterPauseModeHoldBtnMask = BtnMask_Trigger | BtnMask_A;
-
-    // press any button to exit hotkey pause mode back to run mode (this is not a button combo)
-    static inline uint32_t ExitPauseModeBtnMask = BtnMask_Reload | BtnMask_Home;
-
-    // press and hold any button to exit simple pause menu (this is not a button combo)
-    static inline uint32_t ExitPauseModeHoldBtnMask = BtnMask_A | BtnMask_B;
-
-    // button combo to skip the center calibration step
-    static inline uint32_t SkipCalCenterBtnMask = BtnMask_A;
-
-    // button combo to save preferences to non-volatile memory
-    static inline uint32_t SaveBtnMask = BtnMask_Start | BtnMask_Select;
-
-    // button combo to increase IR sensitivity
-    static inline uint32_t IRSensitivityUpBtnMask = BtnMask_B | BtnMask_Up;
-
-    // button combo to decrease IR sensitivity
-    static inline uint32_t IRSensitivityDownBtnMask = BtnMask_B | BtnMask_Down;
-
-    // button combinations to select a run mode
-    static inline uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
-    static inline uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
-
-    // button combination to toggle offscreen button mode in software:
-    static inline uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
-
-    // button combination to toggle offscreen button mode in software:
-    static inline uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
-
-    // button combination to toggle rumble in software:
-    static inline uint32_t RumbleToggleBtnMask = BtnMask_Left;
-
-    // button combination to toggle solenoid in software:
-    static inline uint32_t SolenoidToggleBtnMask = BtnMask_Right;
-
-    static inline const char* RunModeLabels[RunMode_Count] = {
-        "Normal",
-        "Averaging",
-        "Averaging2",
-        "Processing"
-    };
-
-    enum StateFlag_e {
-        // print selected profile once per pause state when the COM port is open
-        StateFlag_PrintSelectedProfile = (1 << 0),
-        
-        // report preferences once per pause state when the COM port is open
-        StateFlag_PrintPreferences = (1 << 1),
-        
-        // enable save (allow save once per pause state)
-        StateFlag_SavePreferencesEn = (1 << 2),
-        
-        // print preferences storage
-        StateFlag_PrintPreferencesStorage = (1 << 3)
-    };
-
-    // when serial connection resets, these flags are set
-    static inline constexpr uint32_t StateFlagsDtrReset = StateFlag_PrintSelectedProfile | StateFlag_PrintPreferences | StateFlag_PrintPreferencesStorage;
 
 class FW_Common
 {
@@ -187,12 +49,12 @@ public:
     ///           GunMode to switch to
     /// @note     Some cleanup functions are performed depending on the mode
     ///           being switched away from.
-    static void SetMode(const GunMode_e&);
+    static void SetMode(const FW_Const::GunMode_e&);
 
     /// @brief    Set new IR mode and apply it to the selected profile.
     /// @param    RunMode_e
     ///           IR Mode to switch to (either averaging modes, or Processing test mode)
-    static void SetRunMode(const RunMode_e&);
+    static void SetRunMode(const FW_Const::RunMode_e&);
 
     /// @brief    Gun Mode that handles calibration.
     /// @param    fromDesktop
@@ -215,6 +77,11 @@ public:
     static void SetLedColorFromMode();
     #endif // LED_ENABLE
 
+    #ifdef USES_DISPLAY
+    /// @brief    Redraws display based on current state.
+    static void RedrawDisplay();
+    #endif // USES_DISPLAY
+
     /// @brief    Applies loaded gun profile settings from profileData[PROFILE_COUNT]
     /// @param    profile
     ///           Profile slot number to load settings from.
@@ -230,12 +97,9 @@ public:
     ///           New layout type to set for current cali profile.
     static void SetIrLayout(const uint8_t &layout);
 
-    /// @brief    Loads preferences from EEPROM, then verifies.
-    static void LoadPreferences();
-
     /// @brief    Saves profile settings to EEPROM
     /// @note     Blinks LEDs (if any) on success or failure.
-    static void SavePreferences();
+    static int SavePreferences();
 
     /// @brief    Updates LightgunButtons::ButtonDesc[] buttons descriptor array
     ///           with new pin mappings and control bindings, if any.
@@ -247,29 +111,13 @@ public:
     static void UpdateBindings(const bool &lowButtons = false);
 
     // initial gunmode
-    static inline GunMode_e gunMode = GunMode_Init;
+    static inline FW_Const::GunMode_e gunMode = FW_Const::GunMode_Init;
 
     // run mode
-    static inline RunMode_e runMode = RunMode_Normal;
+    static inline FW_Const::RunMode_e runMode = FW_Const::RunMode_Normal;
 
     // state flags, see StateFlag_e
-    static inline uint32_t stateFlags = StateFlagsDtrReset;
-
-    // profiles ----------------------------------------------------------------------------------------------
-    // defaults can be populated here, but any values in EEPROM/Flash will override these.
-    // top/bottom/left/right offsets, TLled/TRled, adjX/adjY, sensitivity, runmode, button mask mapped to profile, layout toggle, color, name
-    static inline SamcoPreferences::ProfileData_t profileData[PROFILE_COUNT] = {
-        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_A,      false, 0xFF0000, "Profile A"},
-        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_B,      false, 0x00FF00, "Profile B"},
-        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Start,  false, 0x0000FF, "Profile Start"},
-        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, RunMode_Average, BtnMask_Select, false, 0xFF00FF, "Profile Select"}
-    };
-
-    // single instance of the preference data
-    static inline SamcoPreferences::Preferences_t profiles = {
-        profileData, PROFILE_COUNT, // profiles
-        0, // default profile
-    };
+    static inline uint32_t stateFlags = FW_Const::StateFlagsDtrReset;
 
     //// Camera
     // IR positioning camera
@@ -304,19 +152,6 @@ public:
 
     // Cam Test Mode last timestamp of last print
     static inline unsigned long testLastStamp = 0;
-
-    //// Non-volatile storage
-    #ifdef SAMCO_EEPROM_ENABLE
-    // EEPROM non-volatile storage
-    static inline const char* NVRAMlabel = "EEPROM";
-
-    // flag to indicate if non-volatile storage is available
-    // unconditional for EEPROM
-    static inline bool nvAvailable = true;
-    #endif
-
-    // non-volatile preferences error code
-    static inline int nvPrefsError = SamcoPreferences::Error_NoStorage;
     
     //// General Runtime Flags
     static inline bool justBooted = true;                              // For ops we need to do on initial boot (custom pins, joystick centering)

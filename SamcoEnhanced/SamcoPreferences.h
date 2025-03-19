@@ -14,10 +14,14 @@
 #ifndef _SAMCOPREFERENCES_H_
 #define _SAMCOPREFERENCES_H_
 
+// number of profiles
+#define PROFILE_COUNT 4
+
 #include <stdint.h>
 #include <OpenFIREBoard.h>
 #include "boards/OpenFIREshared.h"
 #include "OpenFIREDefines.h"
+#include <DFRobotIRPositionEx.h>
 
 /// @brief Static instance of preferences to save in non-volatile memory
 class SamcoPreferences
@@ -32,12 +36,24 @@ public:
         Error_Write = -4,
         Error_Erase = -5
     };
-    
-    /// @brief Header ID
-    typedef union HeaderId_u {
-        uint8_t bytes[4];
-        uint32_t u32;
-    } __attribute__ ((packed)) HeaderId_t;
+
+    enum ProfileDataTypes_e {
+        Profile_ProfileNum = 0,
+        Profile_TopOffset,
+        Profile_BottomOffset,
+        Profile_LeftOffset,
+        Profile_RightOffset,
+        Profile_TLled,
+        Profile_TRled,
+        Profile_AdjX,
+        Profile_AdjY,
+        Profile_IrSens,
+        Profile_RunMode,
+        Profile_IrLayout,
+        Profile_Color,
+        Profile_Name,
+        Profile_Selected = 254
+    };
 
     /// @brief Profile data
     typedef struct ProfileData_s {
@@ -49,27 +65,21 @@ public:
         float TRled;
         float adjX;                 // Perspective: adjusted axis
         float adjY;
-        uint32_t irSensitivity : 3; // IR Sensitivity from 0-2
-        uint32_t runMode : 5;       // Averaging mode
-        uint32_t buttonMask : 16;   // Button mask assigned to this profile
-        bool irLayout;              // square or diamond IR for this display?
-        uint32_t color   : 24;      // packed color blob per profile
-        char name[16];               // Profile display name
-    } __attribute__ ((packed)) ProfileData_t;
+        uint32_t irSens;            // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
+        uint32_t runMode;           // Averaging mode (padded upto 32-bit for consistent spacing)
+        uint32_t irLayout;          // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
+        uint32_t color;             // packed color blob per profile (uses least sig 24-bits out of 32 bits)
+        char name[16];              // Profile display name
+    } ProfileData_t;
 
-    /// @brief Preferences that can be stored in flash
-    typedef struct Preferences_s {
-        // pointer to ProfileData_t array
-        SamcoPreferences::ProfileData_t* pProfileData;
-        
-        // number of ProfileData_t entries
-        uint8_t profileCount;
+    static inline ProfileData_t profiles[PROFILE_COUNT] = {
+        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0xFF0000, "Profile A"},
+        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0x00FF00, "Profile B"},
+        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0x0000FF, "Profile Start"},
+        {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0xFF00FF, "Profile Select"}
+    };
 
-        // default profile
-        uint8_t selectedProfile;
-    } __attribute__ ((packed)) Preferences_t;
-
-    static Preferences_t profiles;
+    static inline uint8_t currentProfile = 0;
 
     static inline bool toggles[OF_Const::boolTypesCount] = {
         false,
@@ -110,19 +120,11 @@ public:
         PLAYER_NUMBER
     };
 
-    // header ID to ensure junk isn't loaded if preferences aren't saved
-    static const HeaderId_t HeaderId;
-
-    /// @brief Required size for the preferences
-    static unsigned int Size() { return sizeof(ProfileData_t) * profiles.profileCount + sizeof(HeaderId_u) + sizeof(profiles.selectedProfile); }
-
-    /// @brief Save/Update header
-    /// @return Nothing
-    static void WriteHeader();
-
-    /// @brief Load and compare the header
+    /// @brief Initialize filesystem
     /// @return An error code from Errors_e
-    static int CheckHeader();
+    static int InitFS();
+
+    static void TestRead();
 
     /// @brief Load preferences
     /// @return An error code from Errors_e
@@ -164,12 +166,10 @@ public:
     /// @return An error code from Errors_e
     static int SaveUSBID();
 
-    /// @brief Resets preferences with a zero-fill to the EEPROM.
-    /// @return Nothing
+    /// @brief Formats preferences filesystem, clearing any saved user data
     static void ResetPreferences();
 
     /// @brief Sets pre-set values according to the board
-    /// @return Nothing
     static void LoadPresets();
 };
 

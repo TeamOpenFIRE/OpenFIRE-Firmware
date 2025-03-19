@@ -22,12 +22,10 @@
 #include "OpenFIREserial.h"
 #include "OpenFIREFeedback.h"
 #include "SamcoPreferences.h"
+#include "OpenFIREconstant.h"
 
 // Sets up the environment
 void setup() {
-    // initialize EEPROM device. Arduino AVR has a 1k flash, so use that.
-    EEPROM.begin(1024);
-
     #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
         // SAMCO 1.1 needs Pin 5 normally HIGH for the camera
         pinMode(14, OUTPUT);
@@ -36,32 +34,43 @@ void setup() {
 
     SamcoPreferences::LoadPresets();
     
-    if(FW_Common::nvAvailable) {
-        FW_Common::LoadPreferences();
-
-        if(FW_Common::nvPrefsError == SamcoPreferences::Error_NoData) {
-            SamcoPreferences::ResetPreferences();
-        } else if(FW_Common::nvPrefsError == SamcoPreferences::Error_Success) {
-            // use values from preferences
-            // if default profile is valid then use it
-            if(FW_Common::profiles.selectedProfile < PROFILE_COUNT) {
-                // set the current IR camera sensitivity
-                if(FW_Common::profileData[FW_Common::profiles.selectedProfile].irSensitivity <= DFRobotIRPositionEx::Sensitivity_Max)
-                    FW_Common::irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)FW_Common::profileData[FW_Common::profiles.selectedProfile].irSensitivity;
-
-                // set the run mode
-                if(FW_Common::profileData[FW_Common::profiles.selectedProfile].runMode < RunMode_Count)
-                    FW_Common::runMode = (RunMode_e)FW_Common::profileData[FW_Common::profiles.selectedProfile].runMode;
+    if(SamcoPreferences::InitFS() == SamcoPreferences::Error_Success) {
+        SamcoPreferences::LoadProfiles();
+    
+        // Profile sanity checks
+        // resets offsets that are wayyyyy too unreasonably high
+        for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
+            if(SamcoPreferences::profiles[i].rightOffset >= 32768 || SamcoPreferences::profiles[i].bottomOffset >= 32768 ||
+               SamcoPreferences::profiles[i].topOffset >= 32768   || SamcoPreferences::profiles[i].leftOffset >= 32768) {
+                SamcoPreferences::profiles[i].topOffset = 0;
+                SamcoPreferences::profiles[i].bottomOffset = 0;
+                SamcoPreferences::profiles[i].leftOffset = 0;
+                SamcoPreferences::profiles[i].rightOffset = 0;
             }
+        
+            if(SamcoPreferences::profiles[i].irSens > DFRobotIRPositionEx::Sensitivity_Max)
+                SamcoPreferences::profiles[i].irSens = DFRobotIRPositionEx::Sensitivity_Default;
 
-            SamcoPreferences::LoadToggles();
-
-            if(SamcoPreferences::toggles[OF_Const::customPins])
-                SamcoPreferences::LoadPins();
-
-            SamcoPreferences::LoadSettings();
-            SamcoPreferences::LoadUSBID();
+            if(SamcoPreferences::profiles[i].runMode >= FW_Const::RunMode_Count)
+                SamcoPreferences::profiles[i].runMode = FW_Const::RunMode_Normal;
         }
+
+        // if selected profile is out of range, fallback to a default instead.
+        if(SamcoPreferences::currentProfile >= PROFILE_COUNT)
+            SamcoPreferences::currentProfile = 0;
+
+        // set the current IR camera sensitivity
+        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
+            FW_Common::irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens;
+        // set the run mode
+        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode < FW_Const::RunMode_Count)
+            FW_Common::runMode = (FW_Const::RunMode_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode;
+
+        SamcoPreferences::LoadToggles();
+        if(SamcoPreferences::toggles[OF_Const::customPins])
+            SamcoPreferences::LoadPins();
+        SamcoPreferences::LoadSettings();
+        SamcoPreferences::LoadUSBID();
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
@@ -135,17 +144,15 @@ void setup() {
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(209);
 
-    FW_Common::OpenFIREper.source(FW_Common::profileData[FW_Common::profiles.selectedProfile].adjX,
-                                  FW_Common::profileData[FW_Common::profiles.selectedProfile].adjY);
+    FW_Common::OpenFIREper.source(SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX,
+                                  SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY);
     FW_Common::OpenFIREper.deinit(0);
 
-    // First boot sanity checks.
-    // Check if loading has failde
-    if((FW_Common::nvPrefsError != SamcoPreferences::Error_Success) ||
-    (FW_Common::profileData[FW_Common::profiles.selectedProfile].topOffset == 0 &&
-     FW_Common::profileData[FW_Common::profiles.selectedProfile].bottomOffset == 0 && 
-     FW_Common::profileData[FW_Common::profiles.selectedProfile].leftOffset == 0 &&
-     FW_Common::profileData[FW_Common::profiles.selectedProfile].rightOffset == 0)) {
+    // First boot sanity checks; all zeroes are initial config
+    if((SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset    == 0 &&
+        SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset == 0 && 
+        SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset   == 0 &&
+        SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset  == 0)) {
         // This is a first boot! Prompt to start calibration.
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
@@ -155,21 +162,21 @@ void setup() {
         #ifdef USES_DISPLAY
             FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
         #endif // USES_DISPLAY
-        while(!(FW_Common::buttons.pressedReleased == BtnMask_Trigger)) {
+        while(!(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger)) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available())
                 OF_Serial::SerialProcessingDocked();
             
-            if(FW_Common::gunMode == GunMode_Docked) {
+            if(FW_Common::gunMode == FW_Const::GunMode_Docked) {
                 ExecGunModeDocked();
 
                 // Because the app offers cali options, exit straight to normal runmode
                 // if we exited from docking with a setup profile.
-                if(!(FW_Common::profileData[FW_Common::profiles.selectedProfile].topOffset == 0 &&
-                     FW_Common::profileData[FW_Common::profiles.selectedProfile].bottomOffset == 0 && 
-                     FW_Common::profileData[FW_Common::profiles.selectedProfile].leftOffset == 0 &&
-                     FW_Common::profileData[FW_Common::profiles.selectedProfile].rightOffset == 0)) {
-                      FW_Common::SetMode(GunMode_Run);
+                if(!(SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset == 0 &&
+                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset == 0 && 
+                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset == 0 &&
+                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset == 0)) {
+                      FW_Common::SetMode(FW_Const::GunMode_Run);
                       break;
                 #ifdef USES_DISPLAY
                 } else { FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
@@ -200,11 +207,11 @@ void setup() {
 
         // skip cali if we're prematurely set to run from the above loop
         // (i.e. cal'd from Desktop)
-        if(FW_Common::gunMode != GunMode_Run)
-            FW_Common::SetMode(GunMode_Calibration);
+        if(FW_Common::gunMode != FW_Const::GunMode_Run)
+            FW_Common::SetMode(FW_Const::GunMode_Calibration);
     } else {
         // this will turn off the DotStar/RGB LED and ensure proper transition to Run
-        FW_Common::SetMode(GunMode_Run);
+        FW_Common::SetMode(FW_Const::GunMode_Run);
     }
 }
 
@@ -262,7 +269,7 @@ void loop1()
         unsigned long lastAnalogPoll = millis();
     #endif // USES_ANALOG
 
-    while(FW_Common::gunMode == GunMode_Run) {
+    while(FW_Common::gunMode == FW_Const::GunMode_Run) {
         // For processing the trigger specifically.
         // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         FW_Common::buttons.Poll(0);
@@ -301,18 +308,18 @@ void loop1()
             }
         #endif // USES_ANALOG
         
-        if(FW_Common::buttons.pressedReleased == EscapeKeyBtnMask)
+        if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
 
         if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
-            if((FW_Common::buttons.debounced == EnterPauseModeHoldBtnMask)
+            if((FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 if(!OF_Serial::serialMode)
                     Serial.println("Started holding pause mode signal buttons!");
 
-            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
+            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != FW_Const::EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
                 pauseHoldStarted = false;
                 if(!OF_Serial::serialMode)
                     Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
@@ -326,17 +333,18 @@ void loop1()
                     FW_Common::buttonPressed = false;
                     FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::buttons.ReportDisable();
-                    FW_Common::SetMode(GunMode_Pause);
+                    FW_Common::SetMode(FW_Const::GunMode_Pause);
                 }
             }
         } else {
-            if(FW_Common::buttons.pressedReleased == EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == BtnMask_Home) {
+            if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask ||
+               FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
                 FW_Common::offscreenBShot = false;
                 FW_Common::buttonPressed = false;
                 FW_Common::buttons.ReportDisable();
-                FW_Common::SetMode(GunMode_Pause);
+                FW_Common::SetMode(FW_Const::GunMode_Pause);
                 // at this point, the other core should be stopping us now.
             }
         }
@@ -372,21 +380,21 @@ void loop()
     #endif // MAMEHOOKER
 
     switch(FW_Common::gunMode) {
-        case GunMode_Pause:
+        case FW_Const::GunMode_Pause:
             if(SamcoPreferences::toggles[OF_Const::simplePause]) {
                 if(pauseModeSelectingProfile) {
-                    if(FW_Common::buttons.pressedReleased == BtnMask_A) {
+                    if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
                         SetProfileSelection(false);
-                    } else if(FW_Common::buttons.pressedReleased == BtnMask_B) {
+                    } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
                         SetProfileSelection(true);
-                    } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
+                    } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                         FW_Common::SelectCalProfile(profileModeSelection);
                         pauseModeSelectingProfile = false;
                         FW_Common::pauseModeSelection = PauseMode_Calibrate;
 
                         if(!OF_Serial::serialMode) {
                             Serial.print("Switched to profile: ");
-                            Serial.println(FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+                            Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
@@ -395,7 +403,7 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
 
-                    } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
+                    } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask) {
                         if(!OF_Serial::serialMode)
                             Serial.println("Exiting profile selection.");
 
@@ -417,32 +425,32 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
                     }
-                } else if(FW_Common::buttons.pressedReleased == BtnMask_A) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
                     SetPauseModeSelection(false);
-                } else if(FW_Common::buttons.pressedReleased == BtnMask_B) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
                     SetPauseModeSelection(true);
-                } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                     switch(FW_Common::pauseModeSelection) {
                         case PauseMode_Calibrate:
-                          FW_Common::SetMode(GunMode_Calibration);
+                          FW_Common::SetMode(FW_Const::GunMode_Calibration);
                           if(!OF_Serial::serialMode) {
                               Serial.print("Calibrating for current profile: ");
-                              Serial.println(FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+                              Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
                           }
                           break;
                         case PauseMode_ProfileSelect:
                           if(!OF_Serial::serialMode) {
                               Serial.println("Pick a profile!");
                               Serial.print("Current profile in use: ");
-                              Serial.println(FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+                              Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
                           }
                           pauseModeSelectingProfile = true;
-                          profileModeSelection = FW_Common::profiles.selectedProfile;
+                          profileModeSelection = SamcoPreferences::currentProfile;
                           #ifdef USES_DISPLAY
-                              FW_Common::OLED.PauseProfileUpdate(profileModeSelection, FW_Common::profileData[0].name, FW_Common::profileData[1].name, FW_Common::profileData[2].name, FW_Common::profileData[3].name);
+                              FW_Common::OLED.PauseProfileUpdate(profileModeSelection, SamcoPreferences::profiles[0].name, SamcoPreferences::profiles[1].name, SamcoPreferences::profiles[2].name, SamcoPreferences::profiles[3].name);
                           #endif // USES_DISPLAY
                           #ifdef LED_ENABLE
-                              OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);
+                              OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
                           #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
@@ -489,55 +497,55 @@ void loop()
                           #endif // LED_ENABLE
 
                           #ifdef USES_DISPLAY
-                              FW_Common::OLED.TopPanelUpdate("Using ", FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+                              FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
                           #endif // USES_DISPLAY
                           break;
                         /*case PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
-                          if(FW_Common::runMode == RunMode_Processing) {
-                              switch(FW_Common::profileData[FW_Common::profiles.selectedProfile].FW_Common::runMode) {
-                                  case RunMode_Normal:
-                                    FW_Common::SetRunMode(RunMode_Normal);
+                          if(FW_Common::runMode == FW_Const::RunMode_Processing) {
+                              switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].FW_Common::runMode) {
+                                  case FW_Const::RunMode_Normal:
+                                    FW_Common::SetFW_Const::RunMode(FW_Const::RunMode_Normal);
                                     break;
-                                  case RunMode_Average:
-                                    FW_Common::SetRunMode(RunMode_Average);
+                                  case FW_Const::RunMode_Average:
+                                    FW_Common::SetFW_Const::RunMode(FW_Const::RunMode_Average);
                                     break;
-                                  case RunMode_Average2:
-                                    FW_Common::SetRunMode(RunMode_Average2);
+                                  case FW_Const::RunMode_Average2:
+                                    FW_Common::SetFW_Const::RunMode(FW_Const::RunMode_Average2);
                                     break;
                                   default:
                                     break;
                               }
                           }
-                          FW_Common::SetMode(GunMode_Run);
+                          FW_Common::SetMode(FW_Const::GunMode_Run);
                           break;
                         */
                         default:
                           Serial.println("Oops, somethnig went wrong.");
                           break;
                     }
-                } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
+                } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask) {
                     if(!OF_Serial::serialMode)
                         Serial.println("Exiting pause mode...");
-                    FW_Common::SetMode(GunMode_Run);
+                    FW_Common::SetMode(FW_Const::GunMode_Run);
                 }
                 if(pauseExitHoldStarted &&
-                (FW_Common::buttons.debounced & ExitPauseModeHoldBtnMask)) {
+                (FW_Common::buttons.debounced & FW_Const::ExitPauseModeHoldBtnMask)) {
                     unsigned long t = millis();
                     if(t - pauseHoldStartstamp > (SamcoPreferences::settings[OF_Const::holdToPauseLength] / 2)) {
                         if(!OF_Serial::serialMode)
                             Serial.println("Exiting pause mode via hold...");
 
-                        if(FW_Common::runMode == RunMode_Processing) {
-                            switch(FW_Common::profileData[FW_Common::profiles.selectedProfile].runMode) {
-                                case RunMode_Normal:
-                                  FW_Common::SetRunMode(RunMode_Normal);
+                        if(FW_Common::runMode == FW_Const::RunMode_Processing) {
+                            switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
+                                case FW_Const::RunMode_Normal:
+                                  FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                                   break;
-                                case RunMode_Average:
-                                  FW_Common::SetRunMode(RunMode_Average);
+                                case FW_Const::RunMode_Average:
+                                  FW_Common::SetRunMode(FW_Const::RunMode_Average);
                                   break;
-                                case RunMode_Average2:
-                                  FW_Common::SetRunMode(RunMode_Average2);
+                                case FW_Const::RunMode_Average2:
+                                  FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                                   break;
                                 default:
                                   break;
@@ -557,38 +565,38 @@ void loop()
                             // keep polling until all buttons are debounced
                             FW_Common::buttons.Poll(1);
 
-                        FW_Common::SetMode(GunMode_Run);
+                        FW_Common::SetMode(FW_Const::GunMode_Run);
                         pauseExitHoldStarted = false;
                     }
-                } else if(FW_Common::buttons.debounced & ExitPauseModeHoldBtnMask) {
+                } else if(FW_Common::buttons.debounced & FW_Const::ExitPauseModeHoldBtnMask) {
                     pauseExitHoldStarted = true;
                     pauseHoldStartstamp = millis();
-                } else if(FW_Common::buttons.pressedReleased & ExitPauseModeHoldBtnMask)
+                } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeHoldBtnMask)
                     pauseExitHoldStarted = false;
-            } else if(FW_Common::buttons.pressedReleased & ExitPauseModeBtnMask) {
-                FW_Common::SetMode(GunMode_Run);
-            } else if(FW_Common::buttons.pressedReleased == BtnMask_Trigger) {
-                FW_Common::SetMode(GunMode_Calibration);
-            } else if(FW_Common::buttons.pressedReleased == RunModeNormalBtnMask) {
-                FW_Common::SetRunMode(RunMode_Normal);
-            } else if(FW_Common::buttons.pressedReleased == RunModeAverageBtnMask) {
-                FW_Common::SetRunMode(FW_Common::runMode == RunMode_Average ? RunMode_Average2 : RunMode_Average);
-            } else if(FW_Common::buttons.pressedReleased == IRSensitivityUpBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask) {
+                FW_Common::SetMode(FW_Const::GunMode_Run);
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
+                FW_Common::SetMode(FW_Const::GunMode_Calibration);
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::RunModeNormalBtnMask) {
+                FW_Common::SetRunMode(FW_Const::RunMode_Normal);
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::RunModeAverageBtnMask) {
+                FW_Common::SetRunMode(FW_Common::runMode == FW_Const::RunMode_Average ? FW_Const::RunMode_Average2 : FW_Const::RunMode_Average);
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityUpBtnMask) {
                 IncreaseIrSensitivity();
-            } else if(FW_Common::buttons.pressedReleased == IRSensitivityDownBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityDownBtnMask) {
                 DecreaseIrSensitivity();
-            } else if(FW_Common::buttons.pressedReleased == SaveBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::SaveBtnMask) {
                 FW_Common::SavePreferences();
-            } else if(FW_Common::buttons.pressedReleased == OffscreenButtonToggleBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::OffscreenButtonToggleBtnMask) {
                 OffscreenToggle();
-            } else if(FW_Common::buttons.pressedReleased == AutofireSpeedToggleBtnMask) {
+            } else if(FW_Common::buttons.pressedReleased == FW_Const::AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle();
             #ifdef USES_RUMBLE
-                } else if(FW_Common::buttons.pressedReleased == RumbleToggleBtnMask && SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(FW_Common::buttons.pressedReleased == SolenoidToggleBtnMask && SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::SolenoidToggleBtnMask && SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
             } else SelectCalProfileFromBtnMask(FW_Common::buttons.pressedReleased);
@@ -597,21 +605,21 @@ void loop()
                 OF_Serial::PrintResults();
             
             break;
-        case GunMode_Docked:
+        case FW_Const::GunMode_Docked:
             ExecGunModeDocked();
             break;
-        case GunMode_Calibration:
+        case FW_Const::GunMode_Calibration:
             FW_Common::ExecCalMode();
             break;
         default:
             /* ---------------------- LET'S GO --------------------------- */
             switch(FW_Common::runMode) {
-            case RunMode_Processing:
+            case FW_Const::RunMode_Processing:
                 //ExecRunModeProcessing();
                 //break;
-            case RunMode_Average:
-            case RunMode_Average2:
-            case RunMode_Normal:
+            case FW_Const::RunMode_Average:
+            case FW_Const::RunMode_Average2:
+            case FW_Const::RunMode_Normal:
             default:
                 ExecRunMode();
                 break;
@@ -633,7 +641,7 @@ void ExecRunMode()
 {
 #ifdef DEBUG_SERIAL
     Serial.print("exec run mode ");
-    Serial.println(RunModeLabels[FW_Common::runMode]);
+    Serial.println(FW_Const::RunModeLabels[FW_Common::runMode]);
 #endif
 
     FW_Common::buttons.ReportEnable();
@@ -762,18 +770,18 @@ void ExecRunMode()
             }
         #endif // USES_ANALOG
 
-        if(FW_Common::buttons.pressedReleased == EscapeKeyBtnMask)
+        if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
 
         if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
-            if((FW_Common::buttons.debounced == EnterPauseModeHoldBtnMask)
+            if((FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 if(!OF_Serial::serialMode)
                     Serial.println("Started holding pause mode signal buttons!");
 
-            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
+            } else if(pauseHoldStarted && (FW_Common::buttons.debounced != FW_Const::EnterPauseModeHoldBtnMask || FW_Common::lastSeen)) {
                 pauseHoldStarted = false;
                 if(!OF_Serial::serialMode)
                     Serial.println("Either stopped holding pause mode buttons, aimed onscreen, or pressed other buttons");
@@ -788,26 +796,26 @@ void ExecRunMode()
                     FW_Common::offscreenBShot = false;
                     FW_Common::buttonPressed = false;
 	    	    FW_Common::pauseModeSelection = PauseMode_Calibrate;
-                    FW_Common::SetMode(GunMode_Pause);
+                    FW_Common::SetMode(FW_Const::GunMode_Pause);
                     FW_Common::buttons.ReportDisable();
                     return;
                 }
             }
         } else {
-            if(FW_Common::buttons.pressedReleased == EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == BtnMask_Home) {
+            if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
 		Keyboard.releaseAll();
                 AbsMouse5.releaseAll();
                 FW_Common::offscreenBShot = false;
                 FW_Common::buttonPressed = false;
-		FW_Common::SetMode(GunMode_Pause);
+		FW_Common::SetMode(FW_Const::GunMode_Pause);
                 FW_Common::buttons.ReportDisable();
                 return;
             }
         }
         #else  // if we're using dual cores, we just check if the gunmode has been changed by the other thread.
-        if(FW_Common::gunMode != GunMode_Run) {
+        if(FW_Common::gunMode != FW_Const::GunMode_Run) {
             Keyboard.releaseAll();
             AbsMouse5.releaseAll();
             return;
@@ -842,7 +850,7 @@ void ExecRunModeProcessing()
             OF_Serial::SerialProcessingDocked();
         }
 
-        if(FW_Common::runMode != RunMode_Processing)
+        if(FW_Common::runMode != FW_Const::RunMode_Processing)
             return;
 
         if(FW_Common::irPosUpdateTick) {
@@ -887,7 +895,7 @@ void ExecGunModeDocked()
 #endif // GIT_HASH
     OPENFIRE_CODENAME,
     OPENFIRE_BOARD,
-    FW_Common::profiles.selectedProfile);
+    SamcoPreferences::currentProfile);
 
     for(;;) {
         FW_Common::buttons.Poll(1);
@@ -981,16 +989,16 @@ void ExecGunModeDocked()
             }
         }
 
-        if(FW_Common::gunMode != GunMode_Docked)
+        if(FW_Common::gunMode != FW_Const::GunMode_Docked)
             return;
 
-        if(FW_Common::runMode == RunMode_Processing)
+        if(FW_Common::runMode == FW_Const::RunMode_Processing)
             ExecRunModeProcessing();
     }
 }
 
 // wait up to given amount of time for no buttons to be pressed before setting the mode
-void SetModeWaitNoButtons(const GunMode_e &newMode, const unsigned long &maxWait)
+void SetModeWaitNoButtons(const FW_Const::GunMode_e &newMode, const unsigned long &maxWait)
 {
     unsigned long ms = millis();
     while(FW_Common::buttons.debounced && (millis() - ms < maxWait))
@@ -1006,7 +1014,7 @@ void TriggerFire()
     !FW_Common::offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
         if(!FW_Common::buttonPressed) {
             if(FW_Common::buttons.analogOutput)
-                Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3); // No reason to handle this ourselves here, but eh.
+                Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3); // No reason to handle this ourselves here, but eh.
             else AbsMouse5.press(MOUSE_LEFT);                     // We're handling the trigger button press ourselves for a reason.
 
             FW_Common::buttonPressed = true;                                // Set this so we won't spam a repeat press event again.
@@ -1019,13 +1027,13 @@ void TriggerFire()
         if(!FW_Common::buttonPressed) {  // If we haven't pressed a trigger key yet,
             if(!OF_FFB::triggerHeld && FW_Common::offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
                 if(FW_Common::buttons.analogOutput)
-                    Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
+                    Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
                 else AbsMouse5.press(MOUSE_RIGHT);
 
                 FW_Common::offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
             } else {  // Or if we're not in offscreen button mode,
                 if(FW_Common::buttons.analogOutput)
-                    Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
+                    Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
                 else AbsMouse5.press(MOUSE_LEFT);
             }
 
@@ -1043,13 +1051,13 @@ void TriggerNotFire()
     if(FW_Common::buttonPressed) {
         if(FW_Common::offscreenBShot) {                                // If we fired off screen with the FW_Common::offscreenButton set,
             if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
+                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
             else AbsMouse5.release(MOUSE_RIGHT);             // We were pressing the right mouse, so release that.
 
             FW_Common::offscreenBShot = false;
         } else {                                            // Or if not,
             if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
+                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
             else AbsMouse5.release(MOUSE_LEFT);              // We were pressing the left mouse, so release that instead.
         }
         
@@ -1083,14 +1091,14 @@ void TriggerFireSimple()
     if(!FW_Common::buttonPressed &&                             // Have we not fired the last cycle,
     OF_Serial::offscreenButtonSerial && FW_Common::buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
         if(FW_Common::buttons.analogOutput)
-            Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
+            Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
 	      else AbsMouse5.press(MOUSE_RIGHT);
 
         FW_Common::offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
         FW_Common::buttonPressed = true;                        // Mark so we're not spamming these press events.
     } else if(!FW_Common::buttonPressed) {                      // Else, have we simply not fired the last cycle?
 	      if(FW_Common::buttons.analogOutput) 
-            Gamepad16.press(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
+            Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
 	      else AbsMouse5.press(MOUSE_LEFT);
 
         FW_Common::buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
@@ -1103,12 +1111,12 @@ void TriggerNotFireSimple()
     if(FW_Common::buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
         if(FW_Common::offscreenBShot) {                         // if it was marked as an offscreen button shot,
             if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3);
+                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
 	          else AbsMouse5.release(MOUSE_RIGHT);
             FW_Common::offscreenBShot = false;                  // And set it off.
         } else {                                     // Else,
             if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3);
+                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
 	          else AbsMouse5.release(MOUSE_LEFT);
         }
         FW_Common::buttonPressed = false;                       // Unset the button pressed bit.
@@ -1278,15 +1286,15 @@ void SetProfileSelection(const bool &isIncrement)
     }
 
     #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(FW_Common::profileData[profileModeSelection].color);
+        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[profileModeSelection].color);
     #endif // LED_ENABLE
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.PauseProfileUpdate(profileModeSelection, FW_Common::profileData[0].name, FW_Common::profileData[1].name, FW_Common::profileData[2].name, FW_Common::profileData[3].name);
+        FW_Common::OLED.PauseProfileUpdate(profileModeSelection, SamcoPreferences::profiles[0].name, SamcoPreferences::profiles[1].name, SamcoPreferences::profiles[2].name, SamcoPreferences::profiles[3].name);
     #endif // USES_DISPLAY
 
     Serial.print("Selecting profile: ");
-    Serial.println(FW_Common::profileData[profileModeSelection].name);
+    Serial.println(SamcoPreferences::profiles[profileModeSelection].name);
 
     return;
 }
@@ -1297,8 +1305,8 @@ void SelectCalProfileFromBtnMask(const uint32_t &mask)
     if(!mask)
         return;
 
-    for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
-        if(FW_Common::profileData[i].buttonMask == mask) {
+    for(uint8_t i = 0; i < PROFILE_COUNT; ++i) {
+        if(bitRead(mask, i)) {
             FW_Common::SelectCalProfile(i);
             return;
         }
@@ -1342,16 +1350,16 @@ bool SelectCalPrefs(unsigned int profile)
     }
 
     // if center values are set, assume profile is populated
-    if(FW_Common::profileData[profile].xCenter && FW_Common::profileData[profile].yCenter) {
-        xCenter = FW_Common::profileData[profile].xCenter;
-        yCenter = FW_Common::profileData[profile].yCenter;
+    if(SamcoPreferences::profiles[profile].xCenter && SamcoPreferences::profiles[profile].yCenter) {
+        xCenter = SamcoPreferences::profiles[profile].xCenter;
+        yCenter = SamcoPreferences::profiles[profile].yCenter;
         
         // 0 scale will be ignored
-        if(FW_Common::profileData[profile].xScale) {
-            xScale = CalScalePrefToFloat(FW_Common::profileData[profile].xScale);
+        if(SamcoPreferences::profiles[profile].xScale) {
+            xScale = CalScalePrefToFloat(SamcoPreferences::profiles[profile].xScale);
         }
-        if(FW_Common::profileData[profile].yScale) {
-            yScale = CalScalePrefToFloat(FW_Common::profileData[profile].yScale);
+        if(SamcoPreferences::profiles[profile].yScale) {
+            yScale = CalScalePrefToFloat(SamcoPreferences::profiles[profile].yScale);
         }
         return true;
     }
@@ -1384,7 +1392,7 @@ void OffscreenToggle()
         #endif // USES_RUMBLE
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
         return;
@@ -1400,7 +1408,7 @@ void OffscreenToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
         return;
@@ -1439,7 +1447,7 @@ void AutofireSpeedToggle()
     #endif // USES_SOLENOID
 
     #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);    // And reset the LED back to pause mode color
+        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);    // And reset the LED back to pause mode color
     #endif // LED_ENABLE
 }
 
@@ -1462,7 +1470,7 @@ void BurstFireToggle()
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {  // Or we flicked it off.
@@ -1476,7 +1484,7 @@ void BurstFireToggle()
             digitalWrite(solenoidPin, LOW);                       // Then off.
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -1506,7 +1514,7 @@ void RumbleToggle()
         digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);        // Then turn off,
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     } else {                                                      // Or if we're turning it OFF,
         if(!OF_Serial::serialMode) 
@@ -1525,12 +1533,12 @@ void RumbleToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     }
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.TopPanelUpdate("Using ", FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+        FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
     #endif // USES_DISPLAY
 }
 #endif // USES_RUMBLE
@@ -1558,7 +1566,7 @@ void SolenoidToggle()
         digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);                           // Release it,
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);    // And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
     } else {                                                      // Or if we're turning it OFF,
@@ -1578,12 +1586,12 @@ void SolenoidToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     }
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.TopPanelUpdate("Using ", FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+        FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
     #endif // USES_DISPLAY
 }
 #endif // USES_SOLENOID

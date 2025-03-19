@@ -47,7 +47,7 @@ void OF_Serial::SerialProcessing()
 
               #ifdef USES_DISPLAY
                   // init basic display to show mamehook icon
-                  if(FW_Common::gunMode == GunMode_Run)
+                  if(FW_Common::gunMode == FW_Const::GunMode_Run)
                       FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
               #endif // USES_DISPLAY
           }
@@ -75,19 +75,19 @@ void OF_Serial::SerialProcessing()
                       FW_Common::buttons.analogOutput = true;
                       Gamepad16.stickRight = true;
                       // HACK SHACK - testing MiSTer-friendly default gamepad maps
-                      LightgunButtons::ButtonDesc[BtnIdx_Trigger].reportCode3 = PAD_A,
-                      LightgunButtons::ButtonDesc[BtnIdx_A].reportCode3       = PAD_B,
-                      LightgunButtons::ButtonDesc[BtnIdx_B].reportCode3       = PAD_X,
-                      LightgunButtons::ButtonDesc[BtnIdx_Reload].reportCode3  = PAD_Y,
-                      LightgunButtons::ButtonDesc[BtnIdx_Start].reportCode3   = PAD_START,
-                      LightgunButtons::ButtonDesc[BtnIdx_Select].reportCode3  = PAD_SELECT,
-                      LightgunButtons::ButtonDesc[BtnIdx_Up].reportCode3      = PAD_UP,
-                      LightgunButtons::ButtonDesc[BtnIdx_Down].reportCode3    = PAD_DOWN,
-                      LightgunButtons::ButtonDesc[BtnIdx_Left].reportCode3    = PAD_LEFT,
-                      LightgunButtons::ButtonDesc[BtnIdx_Right].reportCode3   = PAD_RIGHT,
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode3   = PAD_LB,
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal2].reportCode3  = PAD_RB,
-                      LightgunButtons::ButtonDesc[BtnIdx_Pump].reportCode3    = PAD_C;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3 = PAD_A,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3       = PAD_B,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode3       = PAD_X,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Reload].reportCode3  = PAD_Y,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Start].reportCode3   = PAD_START,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Select].reportCode3  = PAD_SELECT,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Up].reportCode3      = PAD_UP,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Down].reportCode3    = PAD_DOWN,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Left].reportCode3    = PAD_LEFT,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Right].reportCode3   = PAD_RIGHT,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode3   = PAD_LB,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal2].reportCode3  = PAD_RB,
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pump].reportCode3    = PAD_C;
                       #ifdef USES_DISPLAY
                           FW_Common::OLED.mister = true;
                       #endif // USES_DISPLAY
@@ -97,9 +97,9 @@ void OF_Serial::SerialProcessing()
                 Keyboard.releaseAll();
                 Gamepad16.releaseAll();
                 #ifdef USES_DISPLAY
-                    if(!serialMode && FW_Common::gunMode == GunMode_Run)
+                    if(!serialMode && FW_Common::gunMode == FW_Const::GunMode_Run)
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
-                    else if(serialMode && FW_Common::gunMode == GunMode_Run &&
+                    else if(serialMode && FW_Common::gunMode == FW_Const::GunMode_Run &&
                             FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None &&
                             FW_Common::OLED.serialDisplayType < ExtDisplay::ScreenSerial_Both) {
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, FW_Common::buttons.analogOutput);
@@ -134,10 +134,10 @@ void OF_Serial::SerialProcessing()
                       // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
                       // TODO: make this its own dedicated method in OpenFIREinput?
                       if(SamcoPreferences::toggles[OF_Const::lowButtonsMode]) {
-                          LightgunButtons::ButtonDesc[BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
-                          LightgunButtons::ButtonDesc[BtnIdx_A].reportCode = MOUSE_BUTTON4;
-                          LightgunButtons::ButtonDesc[BtnIdx_B].reportType = LightgunButtons::ReportType_Mouse;
-                          LightgunButtons::ButtonDesc[BtnIdx_B].reportCode = MOUSE_BUTTON5;
+                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
+                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode = MOUSE_BUTTON4;
+                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType = LightgunButtons::ReportType_Mouse;
+                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode = MOUSE_BUTTON5;
                       }
                       break;
                 }
@@ -153,17 +153,17 @@ void OF_Serial::SerialProcessing()
                       break;
                     // make reload button (mouse right)
                     case '1':
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode = MOUSE_RIGHT;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode2 = MOUSE_RIGHT;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = MOUSE_RIGHT;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = MOUSE_RIGHT;
                       break;
                     // make middle mouse button (for VCop3 EZ mode)
                     case '2':
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode = MOUSE_MIDDLE;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[BtnIdx_Pedal].reportCode2 = MOUSE_MIDDLE;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = MOUSE_MIDDLE;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = MOUSE_MIDDLE;
                       break;
                 }
                 break;
@@ -251,7 +251,7 @@ void OF_Serial::SerialProcessing()
                 } else FW_Common::OLED.lifeBar = false;
 
                 // prevent glitching if currently in pause mode
-                if(FW_Common::gunMode == GunMode_Run) {
+                if(FW_Common::gunMode == FW_Const::GunMode_Run) {
                     if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both)
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Dual);
                     else if(FW_Common::OLED.serialDisplayType > ExtDisplay::ScreenSerial_None)
@@ -277,7 +277,7 @@ void OF_Serial::SerialProcessing()
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
                       FW_Common::OLED.serialDisplayType = ExtDisplay::ScreenSerial_None;
-                      if(FW_Common::gunMode == GunMode_Run) FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
+                      if(FW_Common::gunMode == FW_Const::GunMode_Run) FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
                   #endif // USES_DISPLAY
                   #ifdef LED_ENABLE
                       serialLEDPulseColorMap = 0b00000000;               // Clear any stale serial LED pulses
@@ -288,7 +288,7 @@ void OF_Serial::SerialProcessing()
                       serialLEDG = 0;
                       serialLEDB = 0;
                       serialLEDChange = false;
-                      if(FW_Common::gunMode == GunMode_Run) OF_RGB::LedOff();           // Turn it off, and let lastSeen handle it from here.
+                      if(FW_Common::gunMode == FW_Const::GunMode_Run) OF_RGB::LedOff();           // Turn it off, and let lastSeen handle it from here.
                   #endif // LED_ENABLE
                   #ifdef USES_RUMBLE
                       digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
@@ -341,7 +341,7 @@ void OF_Serial::SerialProcessing()
                 break;
               // Enter Docked Mode
               case 'P':
-                FW_Common::SetMode(GunMode_Docked);
+                FW_Common::SetMode(FW_Const::GunMode_Docked);
                 break;
               default:
                 Serial.println("SERIALREAD: Internal setting command detected, but no valid option found!");
@@ -900,7 +900,7 @@ void OF_Serial::SerialProcessingDocked()
               {
                 byte lvl = Serial.read() - '0';
                 if(lvl >= 0 && lvl <= 2) {
-                    if(FW_Common::gunMode != GunMode_Pause || FW_Common::gunMode != GunMode_Docked) {
+                    if(FW_Common::gunMode != FW_Const::GunMode_Pause || FW_Common::gunMode != FW_Const::GunMode_Docked) {
                         Serial.println("Can't set sensitivity in run mode! Please enter pause mode if you'd like to change IR sensitivity.");
                     } else FW_Common::SetIrSensitivity(lvl);
                 } else Serial.println("SERIALREAD: No valid IR sensitivity level set! (Expected 0 to 2)");
@@ -908,42 +908,42 @@ void OF_Serial::SerialProcessingDocked()
               }
               // Toggle Test/Processing Mode
               case 'T':
-                if(FW_Common::runMode == RunMode_Processing) {
+                if(FW_Common::runMode == FW_Const::RunMode_Processing) {
                     Serial.println("Exiting processing mode...");
-                    switch(FW_Common::profileData[FW_Common::profiles.selectedProfile].runMode) {
-                        case RunMode_Normal:
-                          FW_Common::SetRunMode(RunMode_Normal);
+                    switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
+                        case FW_Const::RunMode_Normal:
+                          FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                           break;
-                        case RunMode_Average:
-                          FW_Common::SetRunMode(RunMode_Average);
+                        case FW_Const::RunMode_Average:
+                          FW_Common::SetRunMode(FW_Const::RunMode_Average);
                           break;
-                        case RunMode_Average2:
-                          FW_Common::SetRunMode(RunMode_Average2);
+                        case FW_Const::RunMode_Average2:
+                          FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                           break;
                     }
                 } else {
                     Serial.println("Entering Test Mode...");
-                    FW_Common::SetRunMode(RunMode_Processing);
+                    FW_Common::SetRunMode(FW_Const::RunMode_Processing);
                 }
                 break;
               // Enter Docked Mode
               case 'P':
-                FW_Common::SetMode(GunMode_Docked);
+                FW_Common::SetMode(FW_Const::GunMode_Docked);
                 break;
               // Exit Docked Mode
               case 'E':
                 if(!FW_Common::justBooted)
-                    FW_Common::SetMode(GunMode_Run);
-                else FW_Common::SetMode(GunMode_Init);
-                switch(FW_Common::profileData[FW_Common::profiles.selectedProfile].runMode) {
-                    case RunMode_Normal:
-                      FW_Common::SetRunMode(RunMode_Normal);
+                    FW_Common::SetMode(FW_Const::GunMode_Run);
+                else FW_Common::SetMode(FW_Const::GunMode_Init);
+                switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
+                    case FW_Const::RunMode_Normal:
+                      FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                       break;
-                    case RunMode_Average:
-                      FW_Common::SetRunMode(RunMode_Average);
+                    case FW_Const::RunMode_Average:
+                      FW_Common::SetRunMode(FW_Const::RunMode_Average);
                       break;
-                    case RunMode_Average2:
-                      FW_Common::SetRunMode(RunMode_Average2);
+                    case FW_Const::RunMode_Average2:
+                      FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                       break;
                 }
                 break;
@@ -970,7 +970,7 @@ void OF_Serial::SerialProcessingDocked()
                             FW_Common::SetIrLayout(Serial.read() - '0');
                         }
 
-                        FW_Common::SetMode(GunMode_Calibration);
+                        FW_Common::SetMode(FW_Const::GunMode_Calibration);
                         FW_Common::ExecCalMode(true);
                     }
                 }
@@ -981,9 +981,8 @@ void OF_Serial::SerialProcessingDocked()
                 Serial.println("Saving preferences...");
                 Serial.flush();
                 // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
-                FW_Common::SavePreferences();
                 // load everything back to commit custom pins setting to memory
-                if(FW_Common::nvPrefsError == SamcoPreferences::Error_Success) {
+                if(FW_Common::SavePreferences() == SamcoPreferences::Error_Success) {
                     FW_Common::PinsReset();
                     FW_Common::CameraSet();
                     FW_Common::FeedbackSet();
@@ -997,10 +996,10 @@ void OF_Serial::SerialProcessingDocked()
 
                     #ifdef LED_ENABLE
                     // Save op above resets color, so re-set it back to docked idle color
-                    if(FW_Common::gunMode == GunMode_Docked) {
+                    if(FW_Common::gunMode == FW_Const::GunMode_Docked) {
                         OF_RGB::LedUpdate(127, 127, 255);
-                    } else if(FW_Common::gunMode == GunMode_Pause) {
-                        OF_RGB::SetLedPackedColor(FW_Common::profileData[FW_Common::profiles.selectedProfile].color);
+                    } else if(FW_Common::gunMode == FW_Const::GunMode_Pause) {
+                        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
                     }
                     #endif // LED_ENABLE
                 }
@@ -1065,14 +1064,11 @@ void OF_Serial::SerialProcessingDocked()
                           case '1':
                             Serial.read(); // nomf
                             // clears name
-                            for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
-                                SamcoPreferences::usb.deviceName[i] = '\0';
-                            }
+                            memset(SamcoPreferences::usb.deviceName, '\0', sizeof(SamcoPreferences::USBMap_t::deviceName));
                             for(byte i = 0; i < sizeof(SamcoPreferences::usb.deviceName); i++) {
                                 SamcoPreferences::usb.deviceName[i] = Serial.read();
-                                if(!Serial.available()) {
+                                if(!Serial.available())
                                     break;
-                                }
                             }
                             Serial.println("OK: Updated TinyUSB Device String.");
                             break;
@@ -1091,8 +1087,8 @@ void OF_Serial::SerialProcessingDocked()
                             Serial.read(); // nomf
                             uint8_t v = Serial.read() - '0';
                             v = constrain(v, 0, 2);
-                            FW_Common::profileData[i].irSensitivity = v;
-                            if(i == FW_Common::profiles.selectedProfile)
+                            SamcoPreferences::profiles[i].irSens = v;
+                            if(i == SamcoPreferences::currentProfile)
                                 FW_Common::SetIrSensitivity(v);
                             Serial.println("OK: Set IR sensitivity");
                             break;
@@ -1105,17 +1101,17 @@ void OF_Serial::SerialProcessingDocked()
                             Serial.read(); // nomf
                             uint8_t v = Serial.read() - '0';
                             v = constrain(v, 0, 2);
-                            FW_Common::profileData[i].runMode = v;
-                            if(i == FW_Common::profiles.selectedProfile) {
+                            SamcoPreferences::profiles[i].runMode = v;
+                            if(i == SamcoPreferences::currentProfile) {
                                 switch(v) {
                                   case 0:
-                                    FW_Common::SetRunMode(RunMode_Normal);
+                                    FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                                     break;
                                   case 1:
-                                    FW_Common::SetRunMode(RunMode_Average);
+                                    FW_Common::SetRunMode(FW_Const::RunMode_Average);
                                     break;
                                   case 2:
-                                    FW_Common::SetRunMode(RunMode_Average2);
+                                    FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                                     break;
                                 }
                             }
@@ -1130,7 +1126,7 @@ void OF_Serial::SerialProcessingDocked()
                             Serial.read(); // nomf
                             uint8_t v = Serial.read() - '0';
                             v = constrain(v, 0, 1);
-                            FW_Common::profileData[i].irLayout = v;
+                            SamcoPreferences::profiles[i].irLayout = v;
                             Serial.println("OK: Set IR layout type");
                             break;
                           }
@@ -1140,10 +1136,10 @@ void OF_Serial::SerialProcessingDocked()
                             uint8_t s = Serial.read() - '0';
                             s = constrain(s, 0, PROFILE_COUNT - 1);
                             Serial.read(); // nomf
-                            for(byte i = 0; i < sizeof(FW_Common::profileData[s].name); i++)
-                                FW_Common::profileData[s].name[i] = '\0';
-                            for(byte i = 0; i < sizeof(FW_Common::profileData[s].name); i++) {
-                                FW_Common::profileData[s].name[i] = Serial.read();
+                            for(byte i = 0; i < sizeof(SamcoPreferences::profiles[s].name); i++)
+                                SamcoPreferences::profiles[s].name[i] = '\0';
+                            for(byte i = 0; i < sizeof(SamcoPreferences::profiles[s].name); i++) {
+                                SamcoPreferences::profiles[s].name[i] = Serial.read();
                                 if(!Serial.available()) {
                                     break;
                                 }
@@ -1157,7 +1153,7 @@ void OF_Serial::SerialProcessingDocked()
                             uint8_t s = Serial.read() - '0';
                             s = constrain(s, 0, PROFILE_COUNT - 1);
                             Serial.read(); // nomf
-                            FW_Common::profileData[s].color = Serial.parseInt();
+                            SamcoPreferences::profiles[s].color = Serial.parseInt();
                             Serial.println("OK: Set Profile Color");
                             break;
                           }
@@ -1242,25 +1238,30 @@ void OF_Serial::SerialProcessingDocked()
                     if(serialInput >= '0' && serialInput <= '3') {
                         uint8_t i = serialInput - '0';
                         Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,%s\r\n",
-                        FW_Common::profileData[i].topOffset,
-                        FW_Common::profileData[i].bottomOffset,
-                        FW_Common::profileData[i].leftOffset,
-                        FW_Common::profileData[i].rightOffset,
-                        FW_Common::profileData[i].TLled,
-                        FW_Common::profileData[i].TRled,
-                        FW_Common::profileData[i].irSensitivity,
-                        FW_Common::profileData[i].runMode,
-                        FW_Common::profileData[i].irLayout,
-                        FW_Common::profileData[i].color,
-			FW_Common::profileData[i].name	
+                        SamcoPreferences::profiles[i].topOffset,
+                        SamcoPreferences::profiles[i].bottomOffset,
+                        SamcoPreferences::profiles[i].leftOffset,
+                        SamcoPreferences::profiles[i].rightOffset,
+                        SamcoPreferences::profiles[i].TLled,
+                        SamcoPreferences::profiles[i].TRled,
+                        SamcoPreferences::profiles[i].irSens,
+                        SamcoPreferences::profiles[i].runMode,
+                        SamcoPreferences::profiles[i].irLayout,
+                        SamcoPreferences::profiles[i].color,
+			                  SamcoPreferences::profiles[i].name	
                         );
                     }
                     break;
                   #ifdef USE_TINYUSB
                   case 'i':
-                    Serial.printf("%i,%s\r\n",SamcoPreferences::usb.devicePID, (SamcoPreferences::usb.deviceName[0] == '\0') ? "SERIALREADERR01" : SamcoPreferences::usb.deviceName);
+                    Serial.printf("%i,%s\r\n", SamcoPreferences::usb.devicePID,
+                                              (SamcoPreferences::usb.deviceName[0] == '\0') ? "SERIALREADERR01" : SamcoPreferences::usb.deviceName
+                    );
                     break;
                   #endif // USE_TINYUSB
+                  case 't':
+                    SamcoPreferences::TestRead();
+                    break;
                 }
                 break;
               }
@@ -1313,17 +1314,17 @@ void OF_Serial::PrintResults()
         return;
 
     if(!Serial) {
-        FW_Common::stateFlags |= StateFlagsDtrReset;
+        FW_Common::stateFlags |= FW_Const::StateFlagsDtrReset;
         return;
     }
 
-    if(FW_Common::stateFlags & StateFlag_PrintPreferences) {
-        FW_Common::stateFlags &= ~StateFlag_PrintPreferences;
+    if(FW_Common::stateFlags & FW_Const::StateFlag_PrintPreferences) {
+        FW_Common::stateFlags &= ~FW_Const::StateFlag_PrintPreferences;
 
         // Prints basic storage device information
         // an estimation of storage used, though doesn't take extended prefs into account.
-        if(FW_Common::stateFlags & StateFlag_PrintPreferencesStorage) {
-            FW_Common::stateFlags &= ~StateFlag_PrintPreferencesStorage;
+        if(FW_Common::stateFlags & FW_Const::StateFlag_PrintPreferencesStorage) {
+            FW_Common::stateFlags &= ~FW_Const::StateFlag_PrintPreferencesStorage;
             
             #ifdef SAMCO_FLASH_ENABLE
                 unsigned int required = SamcoPreferences::Size();
@@ -1342,7 +1343,7 @@ void OF_Serial::PrintResults()
                 Serial.print("Profile struct size: ");
                 Serial.print((unsigned int)sizeof(SamcoPreferences::profileData_t));
                 Serial.print(", Profile data array size: ");
-                Serial.println((unsigned int)sizeof(FW_Common::profileData));
+                Serial.println((unsigned int)sizeof(SamcoPreferences::profiles));
             #endif
 
             #endif // SAMCO_FLASH_ENABLE
@@ -1350,41 +1351,41 @@ void OF_Serial::PrintResults()
 
         // prints all stored preferences information in a table
         Serial.print("Default Profile: ");
-        Serial.println(FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
         
         Serial.println("Profiles:");
         for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
             // report if a profile has been cal'd
-            if(FW_Common::profileData[i].topOffset && FW_Common::profileData[i].bottomOffset &&
-              FW_Common::profileData[i].leftOffset && FW_Common::profileData[i].rightOffset) {
-                size_t len = strlen(FW_Common::profileData[i].name);
-                Serial.print(FW_Common::profileData[i].name);
+            if(SamcoPreferences::profiles[i].topOffset && SamcoPreferences::profiles[i].bottomOffset &&
+              SamcoPreferences::profiles[i].leftOffset && SamcoPreferences::profiles[i].rightOffset) {
+                size_t len = strlen(SamcoPreferences::profiles[i].name);
+                Serial.print(SamcoPreferences::profiles[i].name);
                 while(len < 18) {
                     Serial.print(' ');
                     ++len;
                 }
                 Serial.print("Top: ");
-                Serial.print(FW_Common::profileData[i].topOffset);
+                Serial.print(SamcoPreferences::profiles[i].topOffset);
                 Serial.print(", Bottom: ");
-                Serial.print(FW_Common::profileData[i].bottomOffset);
+                Serial.print(SamcoPreferences::profiles[i].bottomOffset);
                 Serial.print(", Left: ");
-                Serial.print(FW_Common::profileData[i].leftOffset);
+                Serial.print(SamcoPreferences::profiles[i].leftOffset);
                 Serial.print(", Right: ");
-                Serial.print(FW_Common::profileData[i].rightOffset);
+                Serial.print(SamcoPreferences::profiles[i].rightOffset);
                 Serial.print(", TLled: ");
-                Serial.print(FW_Common::profileData[i].TLled);
+                Serial.print(SamcoPreferences::profiles[i].TLled);
                 Serial.print(", TRled: ");
-                Serial.print(FW_Common::profileData[i].TRled);
+                Serial.print(SamcoPreferences::profiles[i].TRled);
                 //Serial.print(", AdjX: ");
-                //Serial.print(FW_Common::profileData[i].adjX);
+                //Serial.print(SamcoPreferences::profiles[i].adjX);
                 //Serial.print(", AdjY: ");
-                //Serial.print(FW_Common::profileData[i].adjY);
+                //Serial.print(SamcoPreferences::profiles[i].adjY);
                 Serial.print(" IR: ");
-                Serial.print((unsigned int)FW_Common::profileData[i].irSensitivity);
+                Serial.print((unsigned int)SamcoPreferences::profiles[i].irSens);
                 Serial.print(" Mode: ");
-                Serial.print((unsigned int)FW_Common::profileData[i].runMode);
+                Serial.print((unsigned int)SamcoPreferences::profiles[i].runMode);
                 Serial.print(" Layout: ");
-                if(FW_Common::profileData[i].irLayout)
+                if(SamcoPreferences::profiles[i].irLayout)
                     Serial.println("Diamond");
                 else Serial.println("Square");
             }
@@ -1404,21 +1405,21 @@ void OF_Serial::PrintResults()
         //Serial.print(conMoveXAxis);
         //Serial.println(conMoveYAxis);
         
-        if(FW_Common::stateFlags & StateFlag_PrintSelectedProfile) {
-            FW_Common::stateFlags &= ~StateFlag_PrintSelectedProfile;
+        if(FW_Common::stateFlags & FW_Const::StateFlag_PrintSelectedProfile) {
+            FW_Common::stateFlags &= ~FW_Const::StateFlag_PrintSelectedProfile;
 
             // Print selected profile
             Serial.print("Profile: ");
-            Serial.println(FW_Common::profileData[FW_Common::profiles.selectedProfile].name);
+            Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
 
             // Print current sensitivity
             Serial.print("IR Camera Sensitivity: ");
-            Serial.println((int)FW_Common::irSensitivity);
+            Serial.println((int)SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens);
 
             // Subroutine that prints current runmode
-            if(FW_Common::runMode < RunMode_Count) {
+            if(FW_Common::runMode < FW_Const::RunMode_Count) {
                 Serial.print("Mode: ");
-                Serial.println(RunModeLabels[FW_Common::runMode]);
+                Serial.println(FW_Const::RunModeLabels[FW_Common::runMode]);
             }
 
             // Extra settings to print to connected serial monitor when entering Pause Mode
