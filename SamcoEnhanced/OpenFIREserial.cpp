@@ -1235,21 +1235,23 @@ void OF_Serial::SerialProcessingDocked()
                     break;
                   case 'P':
                     serialInput = Serial.read();
-                    if(serialInput >= '0' && serialInput <= '3') {
+                    if(serialInput >= '0' && serialInput <= '9') {
                         uint8_t i = serialInput - '0';
-                        Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,%s\r\n",
-                        SamcoPreferences::profiles[i].topOffset,
-                        SamcoPreferences::profiles[i].bottomOffset,
-                        SamcoPreferences::profiles[i].leftOffset,
-                        SamcoPreferences::profiles[i].rightOffset,
-                        SamcoPreferences::profiles[i].TLled,
-                        SamcoPreferences::profiles[i].TRled,
-                        SamcoPreferences::profiles[i].irSens,
-                        SamcoPreferences::profiles[i].runMode,
-                        SamcoPreferences::profiles[i].irLayout,
-                        SamcoPreferences::profiles[i].color,
-			                  SamcoPreferences::profiles[i].name	
-                        );
+                        if(i < PROFILE_COUNT) {
+                            Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,%s\r\n",
+                            SamcoPreferences::profiles[i].topOffset,
+                            SamcoPreferences::profiles[i].bottomOffset,
+                            SamcoPreferences::profiles[i].leftOffset,
+                            SamcoPreferences::profiles[i].rightOffset,
+                            SamcoPreferences::profiles[i].TLled,
+                            SamcoPreferences::profiles[i].TRled,
+                            SamcoPreferences::profiles[i].irSens,
+                            SamcoPreferences::profiles[i].runMode,
+                            SamcoPreferences::profiles[i].irLayout,
+                            SamcoPreferences::profiles[i].color,
+                            SamcoPreferences::profiles[i].name	
+                            );
+                        } else Serial.println("PROFERR: Out of bounds");
                     }
                     break;
                   #ifdef USE_TINYUSB
