@@ -1176,6 +1176,7 @@ void OF_Serial::SerialProcessingDocked()
                     break;
                   case 's':
                   {
+                    // appeasing the wireless folks by using a single buffer instead of multiple packets
                     char buf[64];
                     for(int i = 0, pos = 0; i < OF_Const::settingsTypesCount; i++) {
                         if(pos >= 60) {
@@ -1186,7 +1187,7 @@ void OF_Serial::SerialProcessingDocked()
                         memcpy(&buf[pos], &SamcoPreferences::settings[i], sizeof(uint32_t));
                         pos += sizeof(uint32_t);
                         if(i == OF_Const::settingsTypesCount-1) {
-                            buf[pos++] = 255;
+                            buf[pos++] = OF_Const::serialTerminator;
                             Serial.write(buf, pos);
                         }
                     }
@@ -1200,19 +1201,19 @@ void OF_Serial::SerialProcessingDocked()
                         if(i < PROFILE_COUNT) {
                             // appeasing the wireless folks by using a buffer instead of multiple sends:
                             char buf[64];
-                            buf[0]  = 0,    memcpy(&buf[1],  &SamcoPreferences::profiles[i].topOffset,    sizeof(uint32_t));
-                            buf[5]  = 1,    memcpy(&buf[6],  &SamcoPreferences::profiles[i].bottomOffset, sizeof(uint32_t));
-                            buf[10] = 2,    memcpy(&buf[11], &SamcoPreferences::profiles[i].leftOffset,   sizeof(uint32_t));
-                            buf[15] = 3,    memcpy(&buf[16], &SamcoPreferences::profiles[i].rightOffset,  sizeof(uint32_t));
-                            buf[20] = 4,    memcpy(&buf[21], &SamcoPreferences::profiles[i].TLled,        sizeof(uint32_t));
-                            buf[25] = 5,    memcpy(&buf[26], &SamcoPreferences::profiles[i].TRled,        sizeof(uint32_t));
-                            buf[30] = 6,    memcpy(&buf[31], &SamcoPreferences::profiles[i].irSens,       sizeof(uint8_t));
-                            buf[32] = 7,    memcpy(&buf[33], &SamcoPreferences::profiles[i].runMode,      sizeof(uint8_t));
-                            buf[34] = 8,    memcpy(&buf[35], &SamcoPreferences::profiles[i].irLayout,     sizeof(uint8_t));
-                            buf[36] = 9,    memcpy(&buf[37], &SamcoPreferences::profiles[i].color,        sizeof(uint32_t));
-                            buf[41] = 0xFA, memcpy(&buf[42], &SamcoPreferences::profiles[i].name,         sizeof(SamcoPreferences::ProfileData_t::name));
+                            buf[0]  = OF_Const::profTopOffset,    memcpy(&buf[1],  &SamcoPreferences::profiles[i].topOffset,    sizeof(uint32_t));
+                            buf[5]  = OF_Const::profBottomOffset, memcpy(&buf[6],  &SamcoPreferences::profiles[i].bottomOffset, sizeof(uint32_t));
+                            buf[10] = OF_Const::profLeftOffset,   memcpy(&buf[11], &SamcoPreferences::profiles[i].leftOffset,   sizeof(uint32_t));
+                            buf[15] = OF_Const::profRightOffset,  memcpy(&buf[16], &SamcoPreferences::profiles[i].rightOffset,  sizeof(uint32_t));
+                            buf[20] = OF_Const::profTLled,        memcpy(&buf[21], &SamcoPreferences::profiles[i].TLled,        sizeof(uint32_t));
+                            buf[25] = OF_Const::profTRled,        memcpy(&buf[26], &SamcoPreferences::profiles[i].TRled,        sizeof(uint32_t));
+                            buf[30] = OF_Const::profIrSens,       memcpy(&buf[31], &SamcoPreferences::profiles[i].irSens,       sizeof(uint8_t));
+                            buf[32] = OF_Const::profRunMode,      memcpy(&buf[33], &SamcoPreferences::profiles[i].runMode,      sizeof(uint8_t));
+                            buf[34] = OF_Const::profIrLayout,     memcpy(&buf[35], &SamcoPreferences::profiles[i].irLayout,     sizeof(uint8_t));
+                            buf[36] = OF_Const::profColor,        memcpy(&buf[37], &SamcoPreferences::profiles[i].color,        sizeof(uint32_t));
+                            buf[41] = OF_Const::profName,         memcpy(&buf[42], &SamcoPreferences::profiles[i].name,         sizeof(SamcoPreferences::ProfileData_t::name));
                             Serial.write(buf, 58);
-                        } else Serial.write(0xFE);
+                        } else Serial.write(OF_Const::serialTerminator);
                     }
                     break;
                   #ifdef USE_TINYUSB
