@@ -1177,16 +1177,12 @@ void OF_Serial::SerialProcessingDocked()
                   case 's':
                   {
                     for(int i = 0; i < OF_Const::settingsTypesCount; i++) {
-                        char buf[sizeof(uint32_t)*2+1];
-                        memset(buf, '\0', sizeof(uint32_t)*2+1);
-
                         if(SamcoPreferences::settings[i] <= 0xFF)
-                             snprintf(buf, sizeof(uint16_t)+2, "%02x ", (uint8_t)SamcoPreferences::settings[i]);
+                             Serial.printf("%02x ", SamcoPreferences::settings[i]);
                         else if(SamcoPreferences::settings[i] <= 0xFFFF)
-                             snprintf(buf, sizeof(uint32_t)+2, "%04x ", (uint16_t)SamcoPreferences::settings[i]);
-                        else snprintf(buf, sizeof(uint32_t)*2+2, "%08x ", SamcoPreferences::settings[i]);
-                        
-                        Serial.print(buf);
+                             Serial.printf("%04x ", SamcoPreferences::settings[i]);
+                        else Serial.printf("%08x ", SamcoPreferences::settings[i]);
+
                         if(Serial.availableForWrite() < 8) Serial.flush();
                     }
                     Serial.write(255), Serial.flush();
