@@ -1169,70 +1169,41 @@ void OF_Serial::SerialProcessingDocked()
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'b':
-                    Serial.printf("%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
-                    SamcoPreferences::toggles[OF_Const::customPins],
-                    SamcoPreferences::toggles[OF_Const::rumble],
-                    SamcoPreferences::toggles[OF_Const::solenoid],
-                    SamcoPreferences::toggles[OF_Const::autofire],
-                    SamcoPreferences::toggles[OF_Const::simplePause],
-                    SamcoPreferences::toggles[OF_Const::holdToPause],
-                    SamcoPreferences::toggles[OF_Const::commonAnode],
-                    SamcoPreferences::toggles[OF_Const::lowButtonsMode],
-                    SamcoPreferences::toggles[OF_Const::rumbleFF]
-                    );
+                  {
+                    int8_t buf[OF_Const::boolTypesCount];
+                    memcpy(buf, SamcoPreferences::toggles, OF_Const::boolTypesCount);
+                    for(int i = 0; i < OF_Const::boolTypesCount; i++)
+                        buf[i] += 32;
+                    Serial.write((uint8_t*)&buf, OF_Const::boolTypesCount);
                     break;
+                  }
                   case 'p':
-                    Serial.printf(
-                    "%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
-                    SamcoPreferences::pins[OF_Const::btnTrigger],
-                    SamcoPreferences::pins[OF_Const::btnGunA],
-                    SamcoPreferences::pins[OF_Const::btnGunB],
-                    SamcoPreferences::pins[OF_Const::btnGunC],
-                    SamcoPreferences::pins[OF_Const::btnStart],
-                    SamcoPreferences::pins[OF_Const::btnSelect],
-                    SamcoPreferences::pins[OF_Const::btnGunUp],
-                    SamcoPreferences::pins[OF_Const::btnGunDown],
-                    SamcoPreferences::pins[OF_Const::btnGunLeft],
-                    SamcoPreferences::pins[OF_Const::btnGunRight],
-                    SamcoPreferences::pins[OF_Const::btnPedal],
-                    SamcoPreferences::pins[OF_Const::btnPedal2],
-                    SamcoPreferences::pins[OF_Const::btnHome],
-                    SamcoPreferences::pins[OF_Const::btnPump],
-                    SamcoPreferences::pins[OF_Const::rumblePin],
-                    SamcoPreferences::pins[OF_Const::solenoidPin],
-                    SamcoPreferences::pins[OF_Const::rumbleSwitch],
-                    SamcoPreferences::pins[OF_Const::solenoidSwitch],
-                    SamcoPreferences::pins[OF_Const::autofireSwitch],
-                    SamcoPreferences::pins[OF_Const::neoPixel],
-                    SamcoPreferences::pins[OF_Const::ledR],
-                    SamcoPreferences::pins[OF_Const::ledG],
-                    SamcoPreferences::pins[OF_Const::ledB],
-                    SamcoPreferences::pins[OF_Const::camSDA],
-                    SamcoPreferences::pins[OF_Const::camSCL],
-                    SamcoPreferences::pins[OF_Const::periphSDA],
-                    SamcoPreferences::pins[OF_Const::periphSCL],
-                    SamcoPreferences::pins[OF_Const::battery],
-                    SamcoPreferences::pins[OF_Const::analogX],
-                    SamcoPreferences::pins[OF_Const::analogY],
-                    SamcoPreferences::pins[OF_Const::tempPin]
-                    );
+                  {
+                    int8_t buf[OF_Const::boardInputsCount];
+                    memcpy(buf, SamcoPreferences::pins, OF_Const::boardInputsCount);
+                    for(int i = 0; i < OF_Const::boardInputsCount; i++)
+                        buf[i] += 32;
+                    Serial.write((uint8_t*)&buf, OF_Const::boardInputsCount);
                     break;
+                  }
                   case 's':
-                    Serial.printf("%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i,%i\r\n",
-                    SamcoPreferences::settings[OF_Const::rumbleStrength],
-                    SamcoPreferences::settings[OF_Const::rumbleInterval],
-                    SamcoPreferences::settings[OF_Const::solenoidNormalInterval],
-                    SamcoPreferences::settings[OF_Const::solenoidFastInterval],
-                    SamcoPreferences::settings[OF_Const::solenoidHoldLength],
-                    SamcoPreferences::settings[OF_Const::autofireWaitFactor],
-                    SamcoPreferences::settings[OF_Const::holdToPauseLength],
-                    SamcoPreferences::settings[OF_Const::customLEDcount],
-                    SamcoPreferences::settings[OF_Const::customLEDstatic],
-                    SamcoPreferences::settings[OF_Const::customLEDcolor1],
-                    SamcoPreferences::settings[OF_Const::customLEDcolor2],
-                    SamcoPreferences::settings[OF_Const::customLEDcolor3]
-                    );
+                  {
+                    for(int i = 0; i < OF_Const::settingsTypesCount; i++) {
+                        char buf[sizeof(uint32_t)*2+1];
+                        memset(buf, '\0', sizeof(uint32_t)*2+1);
+
+                        if(SamcoPreferences::settings[i] <= 0xFF)
+                             snprintf(buf, sizeof(uint16_t)+2, "%02x ", (uint8_t)SamcoPreferences::settings[i]);
+                        else if(SamcoPreferences::settings[i] <= 0xFFFF)
+                             snprintf(buf, sizeof(uint32_t)+2, "%04x ", (uint16_t)SamcoPreferences::settings[i]);
+                        else snprintf(buf, sizeof(uint32_t)*2+2, "%08x ", SamcoPreferences::settings[i]);
+                        
+                        Serial.print(buf);
+                        if(Serial.availableForWrite() < 8) Serial.flush();
+                    }
+                    Serial.write(255);
                     break;
+                  }
                   case 'P':
                     serialInput = Serial.read();
                     if(serialInput >= '0' && serialInput <= '9') {
