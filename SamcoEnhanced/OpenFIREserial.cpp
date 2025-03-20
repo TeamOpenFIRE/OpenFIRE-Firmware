@@ -1,3 +1,4 @@
+#include <sys/_stdint.h>
  /*!
  * @file OpenFIREserial.cpp
  * @brief Serial RX buffer reading routines.
@@ -1165,7 +1166,6 @@ void OF_Serial::SerialProcessingDocked()
               // Print EEPROM values.
               case 'l':
               {
-                //Serial.println("Printing values saved in EEPROM...");
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'b':
@@ -1176,16 +1176,21 @@ void OF_Serial::SerialProcessingDocked()
                     break;
                   case 's':
                   {
-                    for(int i = 0; i < OF_Const::settingsTypesCount; i++) {
-                        if(SamcoPreferences::settings[i] <= 0xFF)
-                             Serial.printf("%02x ", SamcoPreferences::settings[i]);
-                        else if(SamcoPreferences::settings[i] <= 0xFFFF)
-                             Serial.printf("%04x ", SamcoPreferences::settings[i]);
-                        else Serial.printf("%08x ", SamcoPreferences::settings[i]);
-
-                        if(Serial.availableForWrite() < 8) Serial.flush();
+                    char buf[64];
+                    for(int i = 0, pos = 0; i < OF_Const::settingsTypesCount; i++) {
+                        if(pos >= 60) {
+                            Serial.write(buf, pos);
+                            Serial.flush();
+                        }
+                        buf[pos++] = i;
+                        memcpy(&buf[pos], &SamcoPreferences::settings[i], sizeof(uint32_t));
+                        pos += sizeof(uint32_t);
+                        if(i == OF_Const::settingsTypesCount-1) {
+                            buf[pos++] = 255;
+                            Serial.write(buf, pos);
+                        }
                     }
-                    Serial.write(255), Serial.flush();
+                    Serial.flush();
                     break;
                   }
                   case 'P':
@@ -1193,20 +1198,21 @@ void OF_Serial::SerialProcessingDocked()
                     if(serialInput >= '0' && serialInput <= '9') {
                         uint8_t i = serialInput - '0';
                         if(i < PROFILE_COUNT) {
-                            Serial.printf("%i,%i,%i,%i,%.2f,%.2f,%i,%i,%i,%i,%s\r\n",
-                            SamcoPreferences::profiles[i].topOffset,
-                            SamcoPreferences::profiles[i].bottomOffset,
-                            SamcoPreferences::profiles[i].leftOffset,
-                            SamcoPreferences::profiles[i].rightOffset,
-                            SamcoPreferences::profiles[i].TLled,
-                            SamcoPreferences::profiles[i].TRled,
-                            SamcoPreferences::profiles[i].irSens,
-                            SamcoPreferences::profiles[i].runMode,
-                            SamcoPreferences::profiles[i].irLayout,
-                            SamcoPreferences::profiles[i].color,
-                            SamcoPreferences::profiles[i].name	
-                            );
-                        } else Serial.println("PROFERR: Out of bounds");
+                            // appeasing the wireless folks by using a buffer instead of multiple sends:
+                            char buf[64];
+                            buf[0]  = 0,    memcpy(&buf[1],  &SamcoPreferences::profiles[i].topOffset,    sizeof(uint32_t));
+                            buf[5]  = 1,    memcpy(&buf[6],  &SamcoPreferences::profiles[i].bottomOffset, sizeof(uint32_t));
+                            buf[10] = 2,    memcpy(&buf[11], &SamcoPreferences::profiles[i].leftOffset,   sizeof(uint32_t));
+                            buf[15] = 3,    memcpy(&buf[16], &SamcoPreferences::profiles[i].rightOffset,  sizeof(uint32_t));
+                            buf[20] = 4,    memcpy(&buf[21], &SamcoPreferences::profiles[i].TLled,        sizeof(uint32_t));
+                            buf[25] = 5,    memcpy(&buf[26], &SamcoPreferences::profiles[i].TRled,        sizeof(uint32_t));
+                            buf[30] = 6,    memcpy(&buf[31], &SamcoPreferences::profiles[i].irSens,       sizeof(uint8_t));
+                            buf[32] = 7,    memcpy(&buf[33], &SamcoPreferences::profiles[i].runMode,      sizeof(uint8_t));
+                            buf[34] = 8,    memcpy(&buf[35], &SamcoPreferences::profiles[i].irLayout,     sizeof(uint8_t));
+                            buf[36] = 9,    memcpy(&buf[37], &SamcoPreferences::profiles[i].color,        sizeof(uint32_t));
+                            buf[41] = 0xFA, memcpy(&buf[42], &SamcoPreferences::profiles[i].name,         sizeof(SamcoPreferences::ProfileData_t::name));
+                            Serial.write(buf, 58);
+                        } else Serial.write(0xFE);
                     }
                     break;
                   #ifdef USE_TINYUSB
