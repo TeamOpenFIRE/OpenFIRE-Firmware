@@ -1169,23 +1169,11 @@ void OF_Serial::SerialProcessingDocked()
                 serialInput = Serial.read();
                 switch(serialInput) {
                   case 'b':
-                  {
-                    int8_t buf[OF_Const::boolTypesCount];
-                    memcpy(buf, SamcoPreferences::toggles, OF_Const::boolTypesCount);
-                    for(int i = 0; i < OF_Const::boolTypesCount; i++)
-                        buf[i] += 32;
-                    Serial.write((uint8_t*)&buf, OF_Const::boolTypesCount);
+                    Serial.write((uint8_t*)&SamcoPreferences::toggles, OF_Const::boolTypesCount);
                     break;
-                  }
                   case 'p':
-                  {
-                    int8_t buf[OF_Const::boardInputsCount];
-                    memcpy(buf, SamcoPreferences::pins, OF_Const::boardInputsCount);
-                    for(int i = 0; i < OF_Const::boardInputsCount; i++)
-                        buf[i] += 32;
-                    Serial.write((uint8_t*)&buf, OF_Const::boardInputsCount);
+                    Serial.write((uint8_t*)&SamcoPreferences::pins, OF_Const::boardInputsCount);
                     break;
-                  }
                   case 's':
                   {
                     for(int i = 0; i < OF_Const::settingsTypesCount; i++) {
@@ -1201,7 +1189,7 @@ void OF_Serial::SerialProcessingDocked()
                         Serial.print(buf);
                         if(Serial.availableForWrite() < 8) Serial.flush();
                     }
-                    Serial.write(255);
+                    Serial.write(255), Serial.flush();
                     break;
                   }
                   case 'P':
