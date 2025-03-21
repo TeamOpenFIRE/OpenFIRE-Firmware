@@ -884,18 +884,30 @@ void ExecGunModeDocked()
         FW_Common::camNotAvailable = false;
     }
 
-    Serial.printf("OpenFIRE,%.1f"
-#ifdef GIT_HASH
-    "-%s"
-#endif // GIT_HASH
-    ",%s,%s,%i\r\n",
-    OPENFIRE_VERSION,
-#ifdef GIT_HASH
-    GIT_HASH,
-#endif // GIT_HASH
-    OPENFIRE_CODENAME,
-    OPENFIRE_BOARD,
-    SamcoPreferences::currentProfile);
+    {
+        char buf[64];
+        int pos = sprintf(&buf[0], "%.1f"
+                                    #ifdef GIT_HASH
+                                    "-%s"
+                                    #endif // GIT_HASH
+                                    , OPENFIRE_VERSION
+                                    #ifdef GIT_HASH
+                                    ,GIT_HASH
+                                    #endif // GIT_HASH
+                          );
+        buf[pos++] = OF_Const::serialTerminator;
+        pos += sprintf(&buf[pos], "%s", OPENFIRE_CODENAME);
+        buf[pos++] = OF_Const::serialTerminator;
+        pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
+        buf[pos++] = OF_Const::serialTerminator;
+        buf[pos++] = SamcoPreferences::currentProfile;
+        buf[pos++] = OF_Const::serialTerminator;
+        memcpy(&buf[pos], &SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
+        pos += 2;
+        pos += sprintf(&buf[pos], "%s", SamcoPreferences::usb.deviceName);
+        Serial.write(buf, pos+1);
+        Serial.flush();
+    }
 
     for(;;) {
         FW_Common::buttons.Poll(1);

@@ -1,4 +1,3 @@
-#include <sys/_stdint.h>
  /*!
  * @file OpenFIREserial.cpp
  * @brief Serial RX buffer reading routines.
@@ -1216,13 +1215,6 @@ void OF_Serial::SerialProcessingDocked()
                         } else Serial.write(OF_Const::serialTerminator);
                     }
                     break;
-                  #ifdef USE_TINYUSB
-                  case 'i':
-                    Serial.printf("%i,%s\r\n", SamcoPreferences::usb.devicePID,
-                                              (SamcoPreferences::usb.deviceName[0] == '\0') ? "SERIALREADERR01" : SamcoPreferences::usb.deviceName
-                    );
-                    break;
-                  #endif // USE_TINYUSB
                 }
                 break;
               }
