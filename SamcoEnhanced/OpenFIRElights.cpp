@@ -139,7 +139,7 @@ void OF_RGB::LedOff()
 }
 
 // Generic R/G/B value update across all LED units
-void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
+void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
 {
     #ifdef DOTSTAR_ENABLE
         dotstar.setPixelColor(0, r, g, b);
@@ -168,9 +168,9 @@ void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
     #ifdef FOURPIN_LED
         if(FW_Common::ledIsValid) {
             if(SamcoPreferences::toggles[OF_Const::commonAnode]) {
-                analogWrite(SamcoPreferences::pins[OF_Const::ledR], ~r);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledG], ~g);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledB], ~b);
+                analogWrite(SamcoPreferences::pins[OF_Const::ledR], Invert(r));
+                analogWrite(SamcoPreferences::pins[OF_Const::ledG], Invert(g));
+                analogWrite(SamcoPreferences::pins[OF_Const::ledB], Invert(b));
             } else {
                 analogWrite(SamcoPreferences::pins[OF_Const::ledR], r);
                 analogWrite(SamcoPreferences::pins[OF_Const::ledG], g);

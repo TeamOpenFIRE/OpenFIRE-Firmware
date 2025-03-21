@@ -46,9 +46,11 @@ public:
 
     static void LedOff();
 
-    static void LedUpdate(const byte &, const byte &, const byte &);
+    static void LedUpdate(const uint8_t &, const uint8_t &, const uint8_t &);
 
     static void SetLedColorFromMode();
+
+    static uint8_t Invert(const uint8_t &orig) { return ~orig; }
 
     #ifdef CUSTOM_NEOPIXEL
     static inline Adafruit_NeoPixel* externPixel = nullptr;
