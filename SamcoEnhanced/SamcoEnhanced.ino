@@ -917,30 +917,37 @@ void ExecGunModeDocked()
 
         if(!FW_Common::dockedSaving) {
             if(FW_Common::buttons.pressed) {
-                uint8_t i = 0;
-                for(; i < 32; i++)
-                    if(bitRead(FW_Common::buttons.pressed, i))
-                        Serial.printf("Pressed: %d\n", i);
+                for(uint8_t i = 0; i < 32; i++)
+                    if(bitRead(FW_Common::buttons.pressed, i)) {
+                        const char buf[] = {OF_Const::sBtnPressed, i};
+                        Serial.write(buf, 2);
+                    }
             }
 
             if(FW_Common::buttons.released) {
-                uint8_t i = 0;
-                for(; i < 32; i++)
-                    if(bitRead(FW_Common::buttons.released, i))
-                        Serial.printf("Released: %d\n", i);
+                for(uint8_t i = 0; i < 32; i++)
+                    if(bitRead(FW_Common::buttons.released, i)) {
+                        const char buf[] = {OF_Const::sBtnReleased, i};
+                        Serial.write(buf, 2);
+                    }
             }
 
             OF_FFB::TemperatureUpdate();
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
-                if(SamcoPreferences::pins[OF_Const::tempPin] >= 0)
-                    Serial.printf("Temperature: %d\r\n", OF_FFB::temperatureCurrent);
+                if(SamcoPreferences::pins[OF_Const::tempPin] >= 0) {
+                    const char buf[] = {OF_Const::sTemperatureUpd, OF_FFB::temperatureCurrent};
+                    Serial.write(buf, 2);
+                }
 
                 tempChecked = currentMillis;
             }
             
             if(FW_Common::analogIsValid) {
-                if(currentMillis - aStickChecked >= 16) {
+                if(currentMillis - aStickChecked >= 100) {
+                    aStickChecked = currentMillis;
+
+                    // TODO: replace with just sending coords normally instead of an approximated cardinal.
                     unsigned int analogValueX = analogRead(SamcoPreferences::pins[OF_Const::analogX]);
                     unsigned int analogValueY = analogRead(SamcoPreferences::pins[OF_Const::analogY]);
                     // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.

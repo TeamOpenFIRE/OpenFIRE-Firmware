@@ -302,7 +302,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
 
     // Jack in, CaliMan, execute!!!
     SetMode(FW_Const::GunMode_Calibration);
-    Serial.printf("CalStage: %d\r\n", FW_Const::Cali_Init);
+    Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Init);
 
     while(gunMode == FW_Const::GunMode_Calibration) {
         buttons.Poll(1);
@@ -337,8 +337,8 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         }
 
         // Handle button presses and calibration stages
-        if((buttons.pressedReleased & (FW_Const::ExitPauseModeBtnMask | FW_Const::ExitPauseModeHoldBtnMask) || Serial.read() == 'X') && !justBooted) {
-            Serial.printf("CalStage: %d\r\n", FW_Const::Cali_Verify+1);
+        if((buttons.pressedReleased & (FW_Const::ExitPauseModeBtnMask | FW_Const::ExitPauseModeHoldBtnMask) || Serial.read() == OF_Const::serialTerminator) && !justBooted) {
+            Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
 
             // Reapplying backed up data
             SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = _topOffset;
@@ -360,8 +360,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
 
             return;
         } else if(buttons.pressed == FW_Const::BtnMask_Trigger && !mouseMoving) {
-            calStage++;
-            Serial.printf("CalStage: %d\r\n", calStage);
+            Serial.printf("%c%c", OF_Const::sCaliStageUpd, ++calStage);
 
             // Ensure our messages go through, or else the HID reports eat UART.
             Serial.flush();
@@ -409,7 +408,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Bottom:
                     // Set Offset buffer
                     topOffset = mouseY;
-                    Serial.printf("CalUpd: 1.%d\r\n", topOffset);
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 1;
+                      memcpy(&buf[2], &topOffset, sizeof(int));
+                      Serial.write(buf, sizeof(buf));
+                      Serial.flush();
+                    }
 
                     // Set mouse movement to bottom position
                     if(!fromDesktop) {
@@ -421,7 +427,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Left:
                     // Set Offset buffer
                     bottomOffset = (res_y - mouseY);
-                    Serial.printf("CalUpd: 2.%d\r\n", bottomOffset);
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 2;
+                      memcpy(&buf[2], &bottomOffset, sizeof(int));
+                      Serial.write(buf, sizeof(buf));
+                      Serial.flush();
+                    }
 
                     // Set mouse movement to left position
                     if(!fromDesktop) {
@@ -433,7 +446,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Right:
                     // Set Offset buffer
                     leftOffset = mouseX;
-                    Serial.printf("CalUpd: 3.%d\r\n", leftOffset);
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 3;
+                      memcpy(&buf[2], &leftOffset, sizeof(int));
+                      Serial.write(buf, sizeof(buf));
+                      Serial.flush();
+                    }
 
                     // Set mouse movement to right position
                     if(!fromDesktop) {
@@ -445,7 +465,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Center:
                     // Set Offset buffer
                     rightOffset = (res_x - mouseX);
-                    Serial.printf("CalUpd: 4.%d\r\n", rightOffset);
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 4;
+                      memcpy(&buf[2], &rightOffset, sizeof(int));
+                      Serial.write(buf, sizeof(buf));
+                      Serial.flush();
+                    }
 
                     // Save Offset buffer to profile
                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = topOffset;
@@ -474,8 +501,20 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                     }
 
-                    Serial.printf("CalUpd: 5.%f\r\n", SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled);
-                    Serial.printf("CalUpd: 6.%f\r\n", SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled);
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 5;
+                      memcpy(&buf[2], &SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, sizeof(float));
+                      Serial.write(buf, sizeof(buf));
+                    }
+                    {
+                      char buf[6];
+                      buf[0] = OF_Const::sCaliInfoUpd;
+                      buf[1] = 6;
+                      memcpy(&buf[2], &SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, sizeof(float));
+                      Serial.write(buf, sizeof(buf));
+                    }
                     Serial.flush();
 
                     // Update Cam centre in perspective library
@@ -500,7 +539,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                         // Press A/B to restart calibration for current profile
                         } else if(buttons.pressedReleased & FW_Const::ExitPauseModeHoldBtnMask) {
                             calStage = 0;
-                            Serial.printf("CalStage: %d\r\n", FW_Const::Cali_Init);
+                            Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Init);
                             Serial.flush();
 
                             // (Re)set current values to factory defaults
@@ -514,7 +553,8 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                             AbsMouse5.move(32768/2, 32768/2);
                         // Press C/Home to exit without committing new calibration values
                         } else if(buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask && !justBooted) {
-                            Serial.printf("CalStage: %d\r\n", FW_Const::Cali_Verify+1);
+                            Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
+                            Serial.flush();
 
                             // Reapply backed-up data
                             SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = _topOffset;
@@ -551,14 +591,6 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         if(fromDesktop)
             SetMode(FW_Const::GunMode_Docked);
     } else if(fromDesktop) {
-        // TODO: won't be needed, as we send prof data with each cali stage.
-        Serial.printf("UpdatedProf: %d\r\n", SamcoPreferences::currentProfile);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled);
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled);
         SetMode(FW_Const::GunMode_Docked);
     } else SetMode(FW_Const::GunMode_Run);
 
@@ -574,7 +606,8 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         }
     #endif // USES_RUMBLE
 
-    Serial.printf("CalStage: %d\r\n", FW_Const::Cali_Verify+1);
+    Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
+    Serial.flush();
 }
 
 void FW_Common::GetPosition()
@@ -684,24 +717,45 @@ void FW_Common::GetPosition()
                 }
 
                 if(runMode == FW_Const::RunMode_Processing) {
+                    int mouseXscaled = mouseX / 4;
+                    int mouseYscaled = mouseY / 4;
+
                     if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-                        Serial.printf("TM%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                                      rawX[0], rawY[0],
-                                      rawX[1], rawY[1],
-                                      rawX[2], rawY[2],
-                                      rawX[3], rawY[3],
-                                      mouseX / 4, mouseY / 4,
-                                      map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0),
-                                      map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080));
+                        int testMedianX = map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0);
+                        int testMedianY = map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080);
+                        char buf[49];
+                        buf[0] = OF_Const::sTestCoords;
+                        memcpy(&buf[1],  &rawX[0],      sizeof(int));
+                        memcpy(&buf[5],  &rawY[0],      sizeof(int));
+                        memcpy(&buf[9],  &rawX[1],      sizeof(int));
+                        memcpy(&buf[13], &rawY[1],      sizeof(int));
+                        memcpy(&buf[17], &rawX[2],      sizeof(int));
+                        memcpy(&buf[21], &rawY[2],      sizeof(int));
+                        memcpy(&buf[25], &rawX[3],      sizeof(int));
+                        memcpy(&buf[29], &rawY[3],      sizeof(int));
+                        memcpy(&buf[33], &mouseXscaled, sizeof(int));
+                        memcpy(&buf[37], &mouseYscaled, sizeof(int));
+                        memcpy(&buf[41], &testMedianX,  sizeof(int));
+                        memcpy(&buf[45], &testMedianY,  sizeof(int));
+                        Serial.write(buf, sizeof(buf));
                     } else {
-                        Serial.printf("TM%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                                      rawX[0], rawY[0],
-                                      rawX[1], rawY[1],
-                                      rawX[2], rawY[2],
-                                      rawX[3], rawY[3],
-                                      mouseX / 4, mouseY / 4,
-                                      map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920),
-                                      map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080));
+                        int testMedianX = map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920);
+                        int testMedianY = map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080);
+                        char buf[49];
+                        buf[0] = OF_Const::sTestCoords;
+                        memcpy(&buf[1],  &rawX[0],      sizeof(int));
+                        memcpy(&buf[5],  &rawY[0],      sizeof(int));
+                        memcpy(&buf[9],  &rawX[1],      sizeof(int));
+                        memcpy(&buf[13], &rawY[1],      sizeof(int));
+                        memcpy(&buf[17], &rawX[2],      sizeof(int));
+                        memcpy(&buf[21], &rawY[2],      sizeof(int));
+                        memcpy(&buf[25], &rawX[3],      sizeof(int));
+                        memcpy(&buf[29], &rawY[3],      sizeof(int));
+                        memcpy(&buf[33], &mouseXscaled, sizeof(int));
+                        memcpy(&buf[37], &mouseYscaled, sizeof(int));
+                        memcpy(&buf[41], &testMedianX,  sizeof(int));
+                        memcpy(&buf[45], &testMedianY,  sizeof(int));
+                        Serial.write(buf, sizeof(buf));
                     }
                 }
 

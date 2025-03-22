@@ -280,7 +280,10 @@ int SamcoPreferences::LoadUSBID()
             {
               char buf[sizeof(USBMap_t::deviceName)];
               int bWritten = idFile.readBytes(buf, sizeof(USBMap_t::deviceName));
-              if(bWritten > 0) strcpy(usb.deviceName, buf);
+              if(bWritten > 0) {
+                  memset(usb.deviceName, '\0', sizeof(USBMap_t::deviceName));
+                  strcpy(usb.deviceName, buf);
+              }
               break;
             }
             case 2:

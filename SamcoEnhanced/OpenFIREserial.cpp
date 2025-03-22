@@ -979,10 +979,10 @@ void OF_Serial::SerialProcessingDocked()
             FW_Common::SelectCalProfile(Serial.read());
             char buf[2] = {OF_Const::sCurrentProf, SamcoPreferences::currentProfile};
             Serial.write(buf, 2);
-            if(Serial.read() == 'C') {
+            if(Serial.read() == OF_Const::sCaliStart) {
                 // sensitivity/layout preset
                 if(Serial.peek() != -1) {
-                    FW_Common::SetIrSensitivity(Serial.read() & 0b11110000);
+                    FW_Common::SetIrSensitivity(Serial.peek() & 0b11110000);
                     FW_Common::SetIrLayout(Serial.read() >> 4);
                 }
                 FW_Common::SetMode(FW_Const::GunMode_Calibration);
@@ -1139,8 +1139,7 @@ void OF_Serial::SerialProcessingDocked()
                     uint8_t s = Serial.read() - '0';
                     s = constrain(s, 0, PROFILE_COUNT - 1);
                     Serial.read(); // nomf
-                    for(byte i = 0; i < sizeof(SamcoPreferences::profiles[s].name); i++)
-                        SamcoPreferences::profiles[s].name[i] = '\0';
+                    memset(SamcoPreferences::profiles[s].name, '\0', sizeof(SamcoPreferences::profiles[s].name));
                     for(byte i = 0; i < sizeof(SamcoPreferences::profiles[s].name); i++) {
                         SamcoPreferences::profiles[s].name[i] = Serial.read();
                         if(!Serial.available()) {
