@@ -67,6 +67,9 @@ public:
     /// @details  Updates finalX and finalY values.
     static void GetPosition();
 
+    /// @brief    Updates state of bad camera, prints when interval is met
+    static void PrintIrError();
+
     /// @brief    Update the last seen value.
     /// @note     Only to be called during run mode, since this will modify the LED colour
     ///           of any (non-static) devices.

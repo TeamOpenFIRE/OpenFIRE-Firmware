@@ -155,20 +155,27 @@ void FW_Common::CameraSet()
             // SDA/SCL are indeed on verified correct pins
             Wire1.setSDA(SamcoPreferences::pins[OF_Const::camSDA]);
             Wire1.setSCL(SamcoPreferences::pins[OF_Const::camSCL]);
+            dfrIRPos = new DFRobotIRPositionEx(Wire1);
         }
-        dfrIRPos = new DFRobotIRPositionEx(Wire1);
+        
     } else if(!bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) && !bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1)) {
         // I2C0
         if(bitRead(SamcoPreferences::pins[OF_Const::camSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::camSDA], 0)) {
             // SDA/SCL are indeed on verified correct pins
             Wire.setSDA(SamcoPreferences::pins[OF_Const::camSDA]);
             Wire.setSCL(SamcoPreferences::pins[OF_Const::camSCL]);
+            dfrIRPos = new DFRobotIRPositionEx(Wire);
         }
-        dfrIRPos = new DFRobotIRPositionEx(Wire);
     }
 
     // Start IR Camera with basic data format
-    dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity);
+    if(dfrIRPos != nullptr) {
+        if(!dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity)) {
+            delete dfrIRPos;
+            dfrIRPos = nullptr;
+            PrintIrError();
+        } else camNotAvailable = false;
+    } else PrintIrError();
 }
 
 void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
@@ -612,167 +619,173 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
 
 void FW_Common::GetPosition()
 {
-    int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
-    if(error == DFRobotIRPositionEx::Error_Success) {
-        // if diamond layout, or square
-        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-            OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
-            OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
-                             OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
-                             OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
-                             OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
-                             res_x / 2, 0, 0,
-                             res_y / 2, res_x / 2,
-                             res_y, res_x, res_y / 2);
-        } else {
-            OpenFIREsquare.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
-            OpenFIREper.warp(OpenFIREsquare.X(0), OpenFIREsquare.Y(0),
-                             OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
-                             OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
-                             OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
-                             SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, 0,
-                             SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, 0,
-                             SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, res_y,
-                             SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, res_y);
-        }
-
-        // Output mapped to screen resolution because offsets are measured in pixels
-        mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset), (res_x + SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset));                 
-        mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset), (res_y + SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset));
-
-        switch(runMode) {
-            case FW_Const::RunMode_Average:
-                // 2 position moving average
-                moveIndex ^= 1;
-                moveXAxisArr[moveIndex] = mouseX;
-                moveYAxisArr[moveIndex] = mouseY;
-                mouseX = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
-                mouseY = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
-                break;
-            case FW_Const::RunMode_Average2:
-                // weighted average of current position and previous 2
-                if(moveIndex < 2)
-                    ++moveIndex;
-                else moveIndex = 0;
-
-                moveXAxisArr[moveIndex] = mouseX;
-                moveYAxisArr[moveIndex] = mouseY;
-                mouseX = (mouseX + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[2]) / 4;
-                mouseY = (mouseY + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[2]) / 4;
-                break;
-            default:
-                break;
+    if(dfrIRPos != nullptr) {
+        int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
+        if(error == DFRobotIRPositionEx::Error_Success) {
+            // if diamond layout, or square
+            if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+                OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
+                OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
+                                OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
+                                OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
+                                OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
+                                res_x / 2, 0, 0,
+                                res_y / 2, res_x / 2,
+                                res_y, res_x, res_y / 2);
+            } else {
+                OpenFIREsquare.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
+                OpenFIREper.warp(OpenFIREsquare.X(0), OpenFIREsquare.Y(0),
+                                OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
+                                OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
+                                OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
+                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, 0,
+                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, 0,
+                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, res_y,
+                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, res_y);
             }
 
-        // Constrain that bisch so negatives don't cause underflow
-        int32_t conMoveX = constrain(mouseX, 0, res_x);
-        int32_t conMoveY = constrain(mouseY, 0, res_y);
+            // Output mapped to screen resolution because offsets are measured in pixels
+            mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset), (res_x + SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset));                 
+            mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset), (res_y + SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset));
 
-        // Output mapped to Mouse resolution
-        conMoveX = map(conMoveX, 0, res_x, 0, 32767);
-        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+            switch(runMode) {
+                case FW_Const::RunMode_Average:
+                    // 2 position moving average
+                    moveIndex ^= 1;
+                    moveXAxisArr[moveIndex] = mouseX;
+                    moveYAxisArr[moveIndex] = mouseY;
+                    mouseX = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
+                    mouseY = (moveYAxisArr[0] + moveYAxisArr[1]) / 2;
+                    break;
+                case FW_Const::RunMode_Average2:
+                    // weighted average of current position and previous 2
+                    if(moveIndex < 2)
+                        ++moveIndex;
+                    else moveIndex = 0;
 
-        if(gunMode == FW_Const::GunMode_Run) {
-            UpdateLastSeen();
-
-            if(OF_Serial::serialARcorrection) {
-                conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
-                conMoveX = constrain(conMoveX, 0, 32767);
-            }
-
-            bool offXAxis = false;
-            bool offYAxis = false;
-
-            if(conMoveX == 0 || conMoveX == 32767)
-                offXAxis = true;
-            
-            if(conMoveY == 0 || conMoveY == 32767)
-                offYAxis = true;
-
-            if(offXAxis || offYAxis)
-                buttons.offScreen = true;
-            else buttons.offScreen = false;
-
-            if(buttons.analogOutput)
-                Gamepad16.moveCam(conMoveX, conMoveY);
-            else AbsMouse5.move(conMoveX, conMoveY);
-
-        } else if(gunMode == FW_Const::GunMode_Verification) {
-            AbsMouse5.move(conMoveX, conMoveY);
-        } else {
-            if(millis() - testLastStamp > 50) {
-                testLastStamp = millis();
-                // RAW Camera Output mapped to screen res (1920x1080)
-                int rawX[4];
-                int rawY[4];
-                // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
-                for (int i = 0; i < 4; i++) {
-                    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-                        rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0);
-                        rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
-                    } else {
-                        rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 0, 1920);
-                        rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 0, 1080);
-                    }
+                    moveXAxisArr[moveIndex] = mouseX;
+                    moveYAxisArr[moveIndex] = mouseY;
+                    mouseX = (mouseX + moveXAxisArr[0] + moveXAxisArr[1] + moveXAxisArr[2]) / 4;
+                    mouseY = (mouseY + moveYAxisArr[0] + moveYAxisArr[1] + moveYAxisArr[2]) / 4;
+                    break;
+                default:
+                    break;
                 }
 
-                if(runMode == FW_Const::RunMode_Processing) {
-                    int mouseXscaled = mouseX / 4;
-                    int mouseYscaled = mouseY / 4;
+            // Constrain that bisch so negatives don't cause underflow
+            int32_t conMoveX = constrain(mouseX, 0, res_x);
+            int32_t conMoveY = constrain(mouseY, 0, res_y);
 
-                    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-                        int testMedianX = map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0);
-                        int testMedianY = map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080);
-                        char buf[49];
-                        buf[0] = OF_Const::sTestCoords;
-                        memcpy(&buf[1],  &rawX[0],      sizeof(int));
-                        memcpy(&buf[5],  &rawY[0],      sizeof(int));
-                        memcpy(&buf[9],  &rawX[1],      sizeof(int));
-                        memcpy(&buf[13], &rawY[1],      sizeof(int));
-                        memcpy(&buf[17], &rawX[2],      sizeof(int));
-                        memcpy(&buf[21], &rawY[2],      sizeof(int));
-                        memcpy(&buf[25], &rawX[3],      sizeof(int));
-                        memcpy(&buf[29], &rawY[3],      sizeof(int));
-                        memcpy(&buf[33], &mouseXscaled, sizeof(int));
-                        memcpy(&buf[37], &mouseYscaled, sizeof(int));
-                        memcpy(&buf[41], &testMedianX,  sizeof(int));
-                        memcpy(&buf[45], &testMedianY,  sizeof(int));
-                        Serial.write(buf, sizeof(buf));
-                    } else {
-                        int testMedianX = map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920);
-                        int testMedianY = map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080);
-                        char buf[49];
-                        buf[0] = OF_Const::sTestCoords;
-                        memcpy(&buf[1],  &rawX[0],      sizeof(int));
-                        memcpy(&buf[5],  &rawY[0],      sizeof(int));
-                        memcpy(&buf[9],  &rawX[1],      sizeof(int));
-                        memcpy(&buf[13], &rawY[1],      sizeof(int));
-                        memcpy(&buf[17], &rawX[2],      sizeof(int));
-                        memcpy(&buf[21], &rawY[2],      sizeof(int));
-                        memcpy(&buf[25], &rawX[3],      sizeof(int));
-                        memcpy(&buf[29], &rawY[3],      sizeof(int));
-                        memcpy(&buf[33], &mouseXscaled, sizeof(int));
-                        memcpy(&buf[37], &mouseYscaled, sizeof(int));
-                        memcpy(&buf[41], &testMedianX,  sizeof(int));
-                        memcpy(&buf[45], &testMedianY,  sizeof(int));
-                        Serial.write(buf, sizeof(buf));
-                    }
+            // Output mapped to Mouse resolution
+            conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+            conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+
+            if(gunMode == FW_Const::GunMode_Run) {
+                UpdateLastSeen();
+
+                if(OF_Serial::serialARcorrection) {
+                    conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
+                    conMoveX = constrain(conMoveX, 0, 32767);
                 }
 
-                #ifdef USES_DISPLAY
-                    OLED.DrawVisibleIR(rawX, rawY);
-                #endif // USES_DISPLAY
-            }
-        }
-    } else if(error != DFRobotIRPositionEx::Error_DataMismatch) {
-        // set flag to warn desktop app when docking
-        if(!camNotAvailable)
-            camNotAvailable = true;
+                bool offXAxis = false;
+                bool offYAxis = false;
 
-        if(millis() - camWarningTimestamp > CAM_WARNING_INTERVAL) {
-            Serial.println("CAMERROR: Not available");
-            camWarningTimestamp = millis();
-        }
+                if(conMoveX == 0 || conMoveX == 32767)
+                    offXAxis = true;
+                
+                if(conMoveY == 0 || conMoveY == 32767)
+                    offYAxis = true;
+
+                if(offXAxis || offYAxis)
+                    buttons.offScreen = true;
+                else buttons.offScreen = false;
+
+                if(buttons.analogOutput)
+                    Gamepad16.moveCam(conMoveX, conMoveY);
+                else AbsMouse5.move(conMoveX, conMoveY);
+
+            } else if(gunMode == FW_Const::GunMode_Verification) {
+                AbsMouse5.move(conMoveX, conMoveY);
+            } else {
+                if(millis() - testLastStamp > 50) {
+                    testLastStamp = millis();
+                    // RAW Camera Output mapped to screen res (1920x1080)
+                    int rawX[4];
+                    int rawY[4];
+                    // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
+                    for (int i = 0; i < 4; i++) {
+                        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+                            rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0);
+                            rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
+                        } else {
+                            rawX[i] = map(OpenFIREsquare.X(i), 0, 1023 << 2, 0, 1920);
+                            rawY[i] = map(OpenFIREsquare.Y(i), 0, 768 << 2, 0, 1080);
+                        }
+                    }
+
+                    if(runMode == FW_Const::RunMode_Processing) {
+                        int mouseXscaled = mouseX / 4;
+                        int mouseYscaled = mouseY / 4;
+
+                        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+                            int testMedianX = map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0);
+                            int testMedianY = map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080);
+                            char buf[49];
+                            buf[0] = OF_Const::sTestCoords;
+                            memcpy(&buf[1],  &rawX[0],      sizeof(int));
+                            memcpy(&buf[5],  &rawY[0],      sizeof(int));
+                            memcpy(&buf[9],  &rawX[1],      sizeof(int));
+                            memcpy(&buf[13], &rawY[1],      sizeof(int));
+                            memcpy(&buf[17], &rawX[2],      sizeof(int));
+                            memcpy(&buf[21], &rawY[2],      sizeof(int));
+                            memcpy(&buf[25], &rawX[3],      sizeof(int));
+                            memcpy(&buf[29], &rawY[3],      sizeof(int));
+                            memcpy(&buf[33], &mouseXscaled, sizeof(int));
+                            memcpy(&buf[37], &mouseYscaled, sizeof(int));
+                            memcpy(&buf[41], &testMedianX,  sizeof(int));
+                            memcpy(&buf[45], &testMedianY,  sizeof(int));
+                            Serial.write(buf, sizeof(buf));
+                        } else {
+                            int testMedianX = map(OpenFIREsquare.testMedianX(), 0, 1023 << 2, 0, 1920);
+                            int testMedianY = map(OpenFIREsquare.testMedianY(), 0, 768 << 2, 0, 1080);
+                            char buf[49];
+                            buf[0] = OF_Const::sTestCoords;
+                            memcpy(&buf[1],  &rawX[0],      sizeof(int));
+                            memcpy(&buf[5],  &rawY[0],      sizeof(int));
+                            memcpy(&buf[9],  &rawX[1],      sizeof(int));
+                            memcpy(&buf[13], &rawY[1],      sizeof(int));
+                            memcpy(&buf[17], &rawX[2],      sizeof(int));
+                            memcpy(&buf[21], &rawY[2],      sizeof(int));
+                            memcpy(&buf[25], &rawX[3],      sizeof(int));
+                            memcpy(&buf[29], &rawY[3],      sizeof(int));
+                            memcpy(&buf[33], &mouseXscaled, sizeof(int));
+                            memcpy(&buf[37], &mouseYscaled, sizeof(int));
+                            memcpy(&buf[41], &testMedianX,  sizeof(int));
+                            memcpy(&buf[45], &testMedianY,  sizeof(int));
+                            Serial.write(buf, sizeof(buf));
+                        }
+                    }
+
+                    #ifdef USES_DISPLAY
+                        OLED.DrawVisibleIR(rawX, rawY);
+                    #endif // USES_DISPLAY
+                }
+            }
+        } else if(error != DFRobotIRPositionEx::Error_DataMismatch)
+            PrintIrError();
+    } else  PrintIrError();
+}
+
+void FW_Common::PrintIrError()
+{
+    // set flag to warn desktop app when docking
+    if(!camNotAvailable)
+        camNotAvailable = true;
+
+    if(millis() - camWarningTimestamp > CAM_WARNING_INTERVAL) {
+        Serial.println("CAMERROR: Not available");
+        camWarningTimestamp = millis();
     }
 }
 

@@ -47,12 +47,13 @@ DFRobotIRPositionEx::~DFRobotIRPositionEx()
 {
 }
 
-void DFRobotIRPositionEx::writeTwoIICByte(uint8_t first, uint8_t second)
+bool DFRobotIRPositionEx::writeTwoIICByte(uint8_t first, uint8_t second)
 {
     wire.beginTransmission(IRAddress);
     wire.write(first);
     wire.write(second);
-    wire.endTransmission();
+    if(wire.endTransmission()) return false;
+    else return true;
 }
 
 void DFRobotIRPositionEx::dataFormat(DataFormat_e format)
@@ -79,7 +80,7 @@ void DFRobotIRPositionEx::sensitivityLevel(Sensitivity_e sensitivity)
     delay(DFRIRdata_IICdelay);
 }
 
-void DFRobotIRPositionEx::begin(uint32_t clock, DataFormat_e format, Sensitivity_e sensitivity)
+bool DFRobotIRPositionEx::begin(uint32_t clock, DataFormat_e format, Sensitivity_e sensitivity)
 {
     // looking under the covers, the Wire default is only 100kHz (on AVR and SAMD), so allow a custom setting
     // so close to the code being 100% portable... yes the order you call setClock() appears to differ for the RP2040
@@ -93,14 +94,16 @@ void DFRobotIRPositionEx::begin(uint32_t clock, DataFormat_e format, Sensitivity
     wire.setClock(clock);
 #endif
     // stop camera?
-    writeTwoIICByte(0x30,0x01);
-    delay(DFRIRdata_IICdelay);
-    sensitivityLevel(sensitivity);
-    dataFormat(format);
-    // start camera?
-    writeTwoIICByte(0x30,0x08);
+    if(writeTwoIICByte(0x30,0x01)) {
+        delay(DFRIRdata_IICdelay);
+        sensitivityLevel(sensitivity);
+        dataFormat(format);
+        // start camera?
+        writeTwoIICByte(0x30,0x08);
 
-    delay(100);
+        delay(100);
+        return true;
+    } else return false;
 }
 
 void DFRobotIRPositionEx::requestPositionExtended()

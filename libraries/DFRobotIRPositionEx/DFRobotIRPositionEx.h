@@ -87,8 +87,9 @@ class DFRobotIRPositionEx {
     *
     * @param first the first byte
     * @param second the second byte
+    * @returns success (true) or not (false)
     */
-    void writeTwoIICByte(uint8_t first, uint8_t second);
+    bool writeTwoIICByte(uint8_t first, uint8_t second);
 
     /*!
     * @brief Request the position data. IIC will block the progress until all the data is recevied.
@@ -207,8 +208,9 @@ public:
     * @param[in] clock IIC clock rate. Defaults to 400kHz. Works up to at least 1MHz.
     * @param[in] format Initial data format. Defaults to basic.
     * @param[in] sensitivity Initial camera sensitivity.
+    * @returns whether communication was successfully initiated (true) or not (false)
     */
-    void begin(uint32_t clock = 400000, DataFormat_e format = DataFormat_Basic, Sensitivity_e sensitivity = Sensitivity_Default);
+    bool begin(uint32_t clock = 400000, DataFormat_e format = DataFormat_Basic, Sensitivity_e sensitivity = Sensitivity_Default);
 
     /*!
     * @brief Set the data format.

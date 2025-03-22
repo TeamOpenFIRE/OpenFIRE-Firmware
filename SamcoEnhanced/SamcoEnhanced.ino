@@ -26,6 +26,11 @@
 
 // Sets up the environment
 void setup() {
+    // In case some I2C devices deadlock the program
+    // (can happen due to bad pin mappings)
+    Wire.setTimeout(100);
+    Wire1.setTimeout(100);
+  
     #ifdef ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
         // SAMCO 1.1 needs Pin 5 normally HIGH for the camera
         pinMode(14, OUTPUT);
@@ -88,6 +93,30 @@ void setup() {
             TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
             TinyUSBDevice.setID(DEVICE_VID, PLAYER_NUMBER);
         }
+
+        #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
+        // is VBUS (USB voltage) detected?
+        if(digitalRead(34)) {
+            // If so, we're connected via USB, so initializing the USB devices chunk.
+            TUSBDeviceSetup.begin(1);
+            // wait until device mounted
+            while(!USBDevice.mounted()) { yield(); }
+            Serial.begin(9600);
+            Serial.setTimeout(0);
+        } else {
+            // Else, we're on batt, so init the Bluetooth chunks.
+            if(SamcoPreferences::usb.deviceName[0] == '\0')
+                TinyUSBDevices.beginBT(DEVICE_NAME, DEVICE_NAME);
+            else TinyUSBDevices.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
+        }
+        #else
+        // Initializing the USB devices chunk.
+        TUSBDeviceSetup.begin(1);
+        // wait until device mounted
+        while(!USBDevice.mounted()) { yield(); }
+        Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
+        Serial.setTimeout(0);
+        #endif // ARDUINO_RASPBERRY_PI_PICO_W
     #endif // USE_TINYUSB
 
     if(SamcoPreferences::usb.devicePID > 0 && SamcoPreferences::usb.devicePID < 5) {
@@ -109,36 +138,6 @@ void setup() {
         OF_RGB::LedInit();
     #endif // LED_ENABLE
     
-#ifdef USE_TINYUSB
-    TUSBDeviceSetup;
-    #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
-    // is VBUS (USB voltage) detected?
-    if(digitalRead(34)) {
-        // If so, we're connected via USB, so initializing the USB devices chunk.
-        TUSBDeviceSetup.begin(1);
-        // wait until device mounted
-        while(!USBDevice.mounted()) { yield(); }
-        Serial.begin(9600);
-        Serial.setTimeout(0);
-    } else {
-        // Else, we're on batt, so init the Bluetooth chunks.
-        if(SamcoPreferences::usb.deviceName[0] == '\0')
-            TinyUSBDevices.beginBT(DEVICE_NAME, DEVICE_NAME);
-        else TinyUSBDevices.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
-    }
-    #else
-    // Initializing the USB devices chunk.
-    TinyUSBDevices.begin(1);
-    // wait until device mounted
-    while(!USBDevice.mounted()) { yield(); }
-    Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
-    Serial.setTimeout(0);
-    #endif // ARDUINO_RASPBERRY_PI_PICO_W
-#else
-    // was getting weird hangups... maybe nothing, or maybe related to dragons, so wait a bit
-    delay(100);
-#endif
-    
     AbsMouse5.init(true);
 
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
@@ -153,16 +152,19 @@ void setup() {
         SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset == 0 && 
         SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset   == 0 &&
         SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset  == 0)) {
+
         // This is a first boot! Prompt to start calibration.
         unsigned int timerIntervalShort = 600;
         unsigned int timerInterval = 1000;
         OF_RGB::LedOff();
         unsigned long lastT = millis();
         bool LEDisOn = false;
+
         #ifdef USES_DISPLAY
             FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Init);
         #endif // USES_DISPLAY
-        while(!(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger)) {
+
+        while(!(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) || FW_Common::camNotAvailable) {
             // Check and process serial commands, in case user needs to change EEPROM settings.
             if(Serial.available())
                 OF_Serial::SerialProcessingDocked();
@@ -879,11 +881,6 @@ void ExecGunModeDocked()
     unsigned long aStickChecked = millis();
     uint8_t aStickDirPrev;
 
-    if(FW_Common::camNotAvailable) {
-        Serial.println("CAMERROR: Not available");
-        FW_Common::camNotAvailable = false;
-    }
-
     {
         char buf[64];
         int pos = sprintf(&buf[0], "%.1f"
@@ -905,6 +902,10 @@ void ExecGunModeDocked()
         memcpy(&buf[pos], &SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
         pos += 2;
         pos += sprintf(&buf[pos], "%s", SamcoPreferences::usb.deviceName);
+        if(FW_Common::camNotAvailable) {
+            buf[pos++] = OF_Const::serialTerminator;
+            buf[pos++] = OF_Const::sError;
+        }
         Serial.write(buf, pos+1);
         Serial.flush();
     }
