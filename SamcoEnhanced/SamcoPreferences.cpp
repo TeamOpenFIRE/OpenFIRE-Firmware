@@ -126,7 +126,10 @@ int SamcoPreferences::LoadProfiles()
               {
                 char buf[sizeof(ProfileData_t::name)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::name));
-                if(bWritten > 0) sprintf(profiles[profileNum].name, buf);
+                if(bWritten > 0) {
+                  memset(profiles[profileNum].name, '\0', sizeof(ProfileData_t::name));
+                  sprintf(profiles[profileNum].name, buf);
+                }
                 break;
               }
             case Profile_Selected:
