@@ -955,7 +955,9 @@ void OF_Serial::SerialProcessingDocked()
     //// State changes/direct control methods
     //
     case OF_Const::sIRTest:
-        if(FW_Common::runMode == FW_Const::RunMode_Processing) {
+        if(FW_Common::camNotAvailable) {
+            Serial.write(OF_Const::sError);
+        } else if(FW_Common::runMode == FW_Const::RunMode_Processing) {
             Serial.println("Exiting processing mode...");
             switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
             case FW_Const::RunMode_Normal:
@@ -980,13 +982,17 @@ void OF_Serial::SerialProcessingDocked()
             char buf[2] = {OF_Const::sCurrentProf, SamcoPreferences::currentProfile};
             Serial.write(buf, 2);
             if(Serial.read() == OF_Const::sCaliStart) {
-                // sensitivity/layout preset
-                if(Serial.peek() != -1) {
+                if(FW_Common::camNotAvailable) Serial.write(OF_Const::sError);
+                else {
+                  // sensitivity/layout preset
+                  if(Serial.peek() != -1) {
                     FW_Common::SetIrSensitivity(Serial.peek() & 0b11110000);
                     FW_Common::SetIrLayout(Serial.read() >> 4);
+                  }
+
+                  FW_Common::SetMode(FW_Const::GunMode_Calibration);
+                  FW_Common::ExecCalMode(true);
                 }
-                FW_Common::SetMode(FW_Const::GunMode_Calibration);
-                FW_Common::ExecCalMode(true);
             }
         }
         break;
