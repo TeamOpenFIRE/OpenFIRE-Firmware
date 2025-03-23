@@ -1207,11 +1207,6 @@ void OF_Serial::SerialProcessingDocked()
         Serial.println("Cleared! Please reset the board.");
         FW_Common::dockedSaving = false;
         break;
-        
-    case OF_Const::sGotoBootloader:
-        if(Serial.read() == OF_Const::sGotoBootloader) { rp2040.rebootToBootloader(); }
-        // we probably left the firmware by now, but eh.
-        break;
     }
 }
 
