@@ -124,6 +124,9 @@ public:
     /// @return An error code from Errors_e
     static int InitFS();
 
+    /// @brief Macro for loading all non-cali profile settings
+    static void Load();
+
     /// @brief Load preferences
     /// @return An error code from Errors_e
     static int LoadProfiles();

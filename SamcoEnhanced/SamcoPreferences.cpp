@@ -27,6 +27,15 @@ int SamcoPreferences::InitFS()
     else return Error_NoData;
 }
 
+void SamcoPreferences::Load()
+{
+    LoadToggles();
+    if(toggles[OF_Const::customPins])
+        LoadPins();
+    LoadSettings();
+    LoadUSBID();
+}
+
 int SamcoPreferences::LoadProfiles()
 {
     File prefs = LittleFS.open("profiles.conf", "r");

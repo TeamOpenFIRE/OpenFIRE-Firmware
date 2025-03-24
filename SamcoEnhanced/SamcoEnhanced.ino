@@ -71,11 +71,7 @@ void setup() {
         if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode < FW_Const::RunMode_Count)
             FW_Common::runMode = (FW_Const::RunMode_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode;
 
-        SamcoPreferences::LoadToggles();
-        if(SamcoPreferences::toggles[OF_Const::customPins])
-            SamcoPreferences::LoadPins();
-        SamcoPreferences::LoadSettings();
-        SamcoPreferences::LoadUSBID();
+        SamcoPreferences::Load();
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!

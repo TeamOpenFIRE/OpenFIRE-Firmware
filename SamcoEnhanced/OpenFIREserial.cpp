@@ -1032,6 +1032,7 @@ void OF_Serial::SerialProcessingDocked()
         while(!exit) {
             if(Serial.available()) {
                 switch(Serial.read()) {
+                //// Saving ops
                 case OF_Const::sCommitToggles:
                     if(Serial.available() >= 2) {
                         int type = Serial.read();
@@ -1099,18 +1100,54 @@ void OF_Serial::SerialProcessingDocked()
                         int type = Serial.read();
                         switch(type) {
                           case OF_Const::usbPID:
-                              Serial.readBytes((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(uint16_t));
+                              Serial.readBytes((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
+                              Serial.write((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID)), Serial.flush();
                               break;
                           case OF_Const::usbName:
                               if(Serial.available() > 0 && Serial.available() <= 16) {
                                   memset(SamcoPreferences::usb.deviceName, '\0', sizeof(SamcoPreferences::USBMap_t::deviceName));
                                   Serial.readBytes(SamcoPreferences::usb.deviceName, Serial.available());
+                                  Serial.write(SamcoPreferences::usb.deviceName), Serial.flush();
                               }
                               break;
                         }
                     }
                     break;
+
+                //// Commands
+                case OF_Const::sSave:
+                    if(FW_Common::SavePreferences() == SamcoPreferences::Error_Success) {
+                        Serial.printf("%c%c", OF_Const::sSave, true), Serial.flush();
+                        // For updating pin data for buttons, cams and periphs
+                        FW_Common::PinsReset();
+                        FW_Common::CameraSet();
+                        FW_Common::FeedbackSet();
+                        
+                        // Update bindings so LED/Pixel changes are reflected immediately
+                        if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
+                            playerStartBtn = SamcoPreferences::usb.devicePID + '0';
+                            playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
+                        }
+                        FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+
+                    #ifdef LED_ENABLE
+                        // Save op above resets color, so re-set it back to docked idle color
+                        if(FW_Common::gunMode == FW_Const::GunMode_Docked) {
+                            OF_RGB::LedUpdate(127, 127, 255);
+                        } else if(FW_Common::gunMode == FW_Const::GunMode_Pause) {
+                            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
+                        }
+                    #endif // LED_ENABLE
+                    } else {
+                        Serial.printf("%c%c", OF_Const::sSave, false), Serial.flush();
+                        SamcoPreferences::Load();
+                    }
+                    FW_Common::buttons.Begin();
+                    exit = true;
+                    break;
                 case OF_Const::serialTerminator:
+                    // Assumed failed/aborting save, so roll back to what's in flash.
+                    SamcoPreferences::Load();
                     exit = true;
                     break;
                 }
@@ -1118,42 +1155,10 @@ void OF_Serial::SerialProcessingDocked()
         }
         break;
     }
-        
-    case OF_Const::sSave:
-        Serial.println("Saving preferences...");
-        Serial.flush();
-        // dockedSaving flag is set by Xm, since that's required anyways for this to make any sense.
-        // load everything back to commit custom pins setting to memory
-        if(FW_Common::SavePreferences() == SamcoPreferences::Error_Success) {
-            FW_Common::PinsReset();
-            FW_Common::CameraSet();
-            FW_Common::FeedbackSet();
-            
-            // Update bindings so LED/Pixel changes are reflected immediately
-            if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
-                playerStartBtn = SamcoPreferences::usb.devicePID + '0';
-                playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
-            }
-            FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
-            
-    #ifdef LED_ENABLE
-            // Save op above resets color, so re-set it back to docked idle color
-            if(FW_Common::gunMode == FW_Const::GunMode_Docked) {
-                OF_RGB::LedUpdate(127, 127, 255);
-            } else if(FW_Common::gunMode == FW_Const::GunMode_Pause) {
-                OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
-            }
-    #endif // LED_ENABLE
-        }
-        FW_Common::buttons.Begin();
-        FW_Common::dockedSaving = false;
-        break;
 
     case OF_Const::sClearFlash:
-        FW_Common::dockedSaving = true;
         SamcoPreferences::ResetPreferences();
         Serial.println("Cleared! Please reset the board.");
-        FW_Common::dockedSaving = false;
         break;
     }
 }
