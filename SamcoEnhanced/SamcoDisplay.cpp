@@ -56,8 +56,10 @@ bool ExtDisplay::Begin()
 
 void ExtDisplay::Stop()
 {
-    if(display != nullptr)
+    if(display != nullptr) {
         delete display;
+        display = nullptr;
+    }
 }
 
 void ExtDisplay::TopPanelUpdate(const char *textPrefix, const char *profText)
