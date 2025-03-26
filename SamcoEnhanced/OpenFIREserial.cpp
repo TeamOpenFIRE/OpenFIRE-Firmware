@@ -907,19 +907,66 @@ void OF_Serial::SerialProcessingDocked()
     //// Prefs senders
     //
     case OF_Const::sGetToggles:
-        Serial.write((uint8_t*)&SamcoPreferences::toggles, OF_Const::boolTypesCount);
+    {
+        char buf[64];
+        uint8_t pos = 0;
+        if(OF_Const::boolTypesCount <= 63) {
+            memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::toggles, OF_Const::boolTypesCount);
+            pos += OF_Const::boolTypesCount;
+            buf[pos++] = OF_Const::serialTerminator;
+            Serial.write(buf, pos);
+        } else {
+            for(int i = 0; i < OF_Const::boolTypesCount; i++) {
+                if(pos >= 63) {
+                    Serial.write(buf, pos);
+                    Serial.flush();
+                    pos = 0;
+                }
+                memcpy(&buf[pos++], (uint8_t*)&SamcoPreferences::toggles[i], sizeof(bool));
+                if(i == OF_Const::settingsTypesCount-1) {
+                    buf[pos++] = OF_Const::serialTerminator;
+                    Serial.write(buf, pos);
+                    Serial.flush();
+                }
+            }
+        }
         break;
+    }
     case OF_Const::sGetPins:
+    {
+        char buf[64];
+        uint8_t pos = 0;
+        if(OF_Const::boardInputsCount <= 63) {
+            memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::pins, OF_Const::boardInputsCount);
+            pos += OF_Const::boardInputsCount;
+            buf[pos++] = OF_Const::serialTerminator;
+            Serial.write(buf, pos);
+        } else {
+            for(int i = 0; i < OF_Const::boolTypesCount; i++) {
+                if(pos >= 63) {
+                    Serial.write(buf, pos);
+                    Serial.flush();
+                    pos = 0;
+                }
+                memcpy(&buf[pos++], (uint8_t*)&SamcoPreferences::pins[i], sizeof(int8_t));
+                if(i == OF_Const::settingsTypesCount-1) {
+                    buf[pos++] = OF_Const::serialTerminator;
+                    Serial.write(buf, pos);
+                    Serial.flush();
+                }
+            }
+        }
         Serial.write((uint8_t*)&SamcoPreferences::pins, OF_Const::boardInputsCount);
         break;
+    }
     case OF_Const::sGetSettings:
     {
-        // appeasing the wireless folks by using a single buffer instead of multiple packets
         char buf[64];
         for(int i = 0, pos = 0; i < OF_Const::settingsTypesCount; i++) {
             if(pos >= 60) {
                 Serial.write(buf, pos);
                 Serial.flush();
+                pos = 0;
             }
             buf[pos++] = i;
             memcpy(&buf[pos], &SamcoPreferences::settings[i], sizeof(uint32_t));
@@ -931,6 +978,42 @@ void OF_Serial::SerialProcessingDocked()
             }
         }
         break;
+    }
+    case OF_Const::sGetPeriphs:
+    {
+        char buf[64];
+        int pos = 0;
+        buf[pos++] = OF_Const::i2cDevicesEnabled;
+        memcpy(&buf[pos], &SamcoPreferences::i2cPeriphs, OF_Const::i2cDevicesCount);
+        pos += OF_Const::i2cDevicesCount;
+        buf[pos++] = OF_Const::serialTerminator;
+        // any settings for I2C devices goes here:
+        for(int i = 0; i < OF_Const::i2cDevicesCount; i++) {
+            if(pos >= 60) {
+                Serial.write(buf, pos);
+                Serial.flush();
+                pos = 0;
+            }
+
+            switch(i) {
+            case OF_Const::i2cOLED: // OLED currently has no settings
+            // for devices with settings, do:
+            /*
+            case OF_Const::i2cNewDeviceTypeHere:
+                buf[pos++] = i;
+                // copy settings to buffer one at a time,
+                // incrementing pos by size of copied data after
+                break;
+            */
+            default: break;
+            }
+
+            if(i == OF_Const::i2cDevicesCount-1) {
+                buf[pos++] = OF_Const::serialTerminator;
+                Serial.write(buf, pos);
+                Serial.flush();
+            }
+        }
     }
     case OF_Const::sGetProfile:
     {
@@ -1071,15 +1154,18 @@ void OF_Serial::SerialProcessingDocked()
                     break;
                 case OF_Const::sCommitProfile:
                     if(Serial.available() >= 6) {
-                        int type = Serial.read();
                         int profNum = Serial.read();
                         if(profNum < PROFILE_COUNT) {
+                            int type = Serial.read();
                             switch(type) {
                               case OF_Const::profName:
                                   if(Serial.available() > 0 && Serial.available() <= 16) {
                                       memset(SamcoPreferences::profiles[profNum].name, '\0', sizeof(SamcoPreferences::ProfileData_t::name));
                                       Serial.readBytes((uint8_t*)&SamcoPreferences::profiles[profNum].name, Serial.available());
                                       Serial.write((uint8_t*)&SamcoPreferences::profiles[profNum].name, sizeof(SamcoPreferences::ProfileData_t::name)), Serial.flush();
+                                  } else {
+                                      while(Serial.available()) Serial.read();
+                                      Serial.write(OF_Const::serialTerminator), Serial.flush();
                                   }
                                   break;
                               default:
@@ -1097,8 +1183,7 @@ void OF_Serial::SerialProcessingDocked()
                     break;
                 case OF_Const::sCommitID:
                     if(Serial.available() >= 3) {
-                        int type = Serial.read();
-                        switch(type) {
+                        switch(Serial.read()) {
                           case OF_Const::usbPID:
                               Serial.readBytes((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
                               Serial.write((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID)), Serial.flush();
@@ -1108,9 +1193,35 @@ void OF_Serial::SerialProcessingDocked()
                                   memset(SamcoPreferences::usb.deviceName, '\0', sizeof(SamcoPreferences::USBMap_t::deviceName));
                                   Serial.readBytes(SamcoPreferences::usb.deviceName, Serial.available());
                                   Serial.write(SamcoPreferences::usb.deviceName), Serial.flush();
+                              } else {
+                                  while(Serial.available()) Serial.read();
+                                  Serial.write(OF_Const::serialTerminator), Serial.flush();
                               }
                               break;
                         }
+                    } else {
+                        while(Serial.available()) Serial.read();
+                        Serial.write(OF_Const::serialTerminator), Serial.flush();
+                    }
+                    break;
+                case OF_Const::sCommitPeriphs:
+                    if(Serial.available() >= 2) {
+                        switch(Serial.read()) {
+                        case OF_Const::i2cDevicesEnabled:
+                        {
+                            int type = Serial.read();
+                            if(type > -1 && type < OF_Const::i2cDevicesCount) {
+                                SamcoPreferences::i2cPeriphs[type] = Serial.read();
+                                Serial.write((uint8_t)SamcoPreferences::i2cPeriphs[type]), Serial.flush();
+                            }
+                            break;
+                        }
+                        case OF_Const::i2cOLED: // OLED currently has no settings
+                        default: break;
+                        }
+                    } else {
+                        while(Serial.available()) Serial.read();
+                        Serial.write(OF_Const::serialTerminator), Serial.flush();
                     }
                     break;
 

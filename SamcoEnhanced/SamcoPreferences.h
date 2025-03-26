@@ -110,6 +110,8 @@ public:
         0x0000FF
     };
 
+    static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = {false};
+
     typedef struct USBMap_s {
         char deviceName[16];
         uint16_t devicePID;
@@ -158,6 +160,14 @@ public:
     /// @brief Save current settings
     /// @return An error code from Errors_e
     static int SaveSettings();
+
+    /// @brief Load settings
+    /// @return An error code from Errors_e
+    static int LoadPeriphs();
+
+    /// @brief Save current settings
+    /// @return An error code from Errors_e
+    static int SavePeriphs();
 
     /// @brief Load USB identifier info
     /// @return An error code from Errors_e

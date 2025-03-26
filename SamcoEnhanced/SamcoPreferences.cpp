@@ -32,6 +32,8 @@ void SamcoPreferences::Load()
     LoadToggles();
     if(toggles[OF_Const::customPins])
         LoadPins();
+    if(pins[OF_Const::periphSDA])
+        LoadPeriphs();
     LoadSettings();
     LoadUSBID();
 }
@@ -193,8 +195,8 @@ int SamcoPreferences::LoadToggles()
     File togglesFile = LittleFS.open("toggles.conf", "r");
     if(togglesFile) {
         while(togglesFile.available()) {
-            uint8_t type = togglesFile.read();
-            if(type < OF_Const::boolTypesCount)
+            int type = togglesFile.read();
+            if(type > -1 && type < OF_Const::boolTypesCount)
                 toggles[type] = togglesFile.read();
             else togglesFile.seek(1, fs::SeekCur);
         }
@@ -221,8 +223,8 @@ int SamcoPreferences::LoadPins()
     File pinsFile = LittleFS.open("pins.conf", "r");
     if(pinsFile) {
         while(pinsFile.available()) {
-            uint8_t type = pinsFile.read();
-            if(type < OF_Const::boardInputsCount)
+            int type = pinsFile.read();
+            if(type > -1 && type < OF_Const::boardInputsCount)
                 pins[type] = pinsFile.read();
             else pinsFile.seek(1, fs::SeekCur);
         }
@@ -249,8 +251,8 @@ int SamcoPreferences::LoadSettings()
     File settingsFile = LittleFS.open("settings.conf", "r");
     if(settingsFile) {
         while(settingsFile.available()) {
-            uint8_t type = settingsFile.read();
-            if(type < OF_Const::settingsTypesCount) {
+            int type = settingsFile.read();
+            if(type > -1 && type < OF_Const::settingsTypesCount) {
                 char buf[sizeof(uint32_t)];
                 int bWritten = settingsFile.readBytes(buf, sizeof(uint32_t));
                 if(bWritten > 0) memcpy(&settings[type], buf, sizeof(uint32_t));
@@ -270,6 +272,44 @@ int SamcoPreferences::SaveSettings()
             settingsFile.write(i), settingsFile.write((uint8_t*)&settings[i], sizeof(uint32_t));
         
         settingsFile.close();
+        return Error_Success;
+    } else return Error_NoData;
+}
+
+int SamcoPreferences::LoadPeriphs()
+{
+    File periphsFile = LittleFS.open("i2cperiphs.conf", "r");
+    if(periphsFile) {
+        while(periphsFile.available()) {
+            switch(periphsFile.read()) {
+            case OF_Const::i2cDevicesEnabled:
+            {
+                int type = periphsFile.read();
+                if(type > -1 && type < OF_Const::i2cDevicesCount)
+                    i2cPeriphs[type] = periphsFile.read();
+                break;
+            }
+            case OF_Const::i2cOLED:
+            default:
+                periphsFile.seek(sizeof(uint16_t), fs::SeekCur);
+                break;
+            }
+        }
+
+        periphsFile.close();
+        return Error_Success;
+    } else return Error_NoData;
+}
+
+int SamcoPreferences::SavePeriphs()
+{
+    File periphsFile = LittleFS.open("i2cperiphs.conf", "w");
+    if(periphsFile) {
+        for(uint8_t i = 0; i < OF_Const::i2cDevicesCount; i++) {
+            periphsFile.write(OF_Const::i2cDevicesEnabled), periphsFile.write(i), periphsFile.write((uint8_t)i2cPeriphs[i]);
+        }
+        
+        periphsFile.close();
         return Error_Success;
     } else return Error_NoData;
 }

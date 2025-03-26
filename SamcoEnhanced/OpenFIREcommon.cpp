@@ -77,15 +77,17 @@ void FW_Common::FeedbackSet()
         OF_RGB::InitExternPixel(SamcoPreferences::pins[OF_Const::neoPixel]);
     #endif // CUSTOM_NEOPIXEL
 
-    #ifdef USES_DISPLAY
-    // wrapper will manage display validity
     if(SamcoPreferences::pins[OF_Const::periphSCL] >= 0 && SamcoPreferences::pins[OF_Const::periphSDA] >= 0 &&
-      // check it's not using the camera's I2C line
        bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) &&
-       bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1))
-        if(!OLED.Begin())
-            if(OLED.display != nullptr) delete OLED.display;
+       bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
+    #ifdef USES_DISPLAY
+        // wrapper will manage display validity
+        // check it's not using the camera's I2C line
+        if(SamcoPreferences::i2cPeriphs[OF_Const::i2cOLED]) {
+            if(!OLED.Begin()) { if(OLED.display != nullptr) delete OLED.display; }
+        }
     #endif // USES_DISPLAY
+    }
 }
 
 void FW_Common::PinsReset()
@@ -945,22 +947,20 @@ int FW_Common::SavePreferences()
                 OLED.ScreenModeChange(ExtDisplay::Screen_Saving);
         #endif // USES_DISPLAY
     }
-    
-    // use selected profile as the default
-    SamcoPreferences::currentProfile = (uint8_t)SamcoPreferences::currentProfile;
 
     if(SamcoPreferences::SaveProfiles() == SamcoPreferences::Error_Success) {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
         #endif // USES_DISPLAY
 
-        Serial.println("Settings saved to Flash");
+        Serial.println("Settings saved to Flash"), Serial.flush();
         SamcoPreferences::SaveToggles();
 
         if(SamcoPreferences::toggles[OF_Const::customPins])
             SamcoPreferences::SavePins();
 
         SamcoPreferences::SaveSettings();
+        SamcoPreferences::SavePeriphs();
         SamcoPreferences::SaveUSBID();
 
         #ifdef LED_ENABLE
