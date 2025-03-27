@@ -785,8 +785,10 @@ void FW_Common::PrintIrError()
     if(!camNotAvailable)
         camNotAvailable = true;
 
-    if(dockedSaving) Serial.write(OF_Const::sError);
-    else if(millis() - camWarningTimestamp > CAM_WARNING_INTERVAL) {
+    if(dockedSaving) {
+        char buf[2] = { OF_Const::sError, OF_Const::sErrCam };
+        Serial.write(buf, 2);
+    } else if(millis() - camWarningTimestamp > CAM_WARNING_INTERVAL) {
         Serial.println("CAMERROR: Not available");
         camWarningTimestamp = millis();
     }
