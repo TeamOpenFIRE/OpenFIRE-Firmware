@@ -1216,7 +1216,14 @@ void OF_Serial::SerialProcessingDocked()
                             }
                             break;
                         }
-                        case OF_Const::i2cOLED: // OLED currently has no settings
+                        case OF_Const::i2cOLED:
+                        {
+                            int type = Serial.read();
+                            if(type > -1 && type < OF_Const::oledSettingsTypes) {
+                                Serial.read((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t));
+                                Serial.write((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t)), Serial.flush();
+                            }
+                        }
                         default: break;
                         }
                     } else {

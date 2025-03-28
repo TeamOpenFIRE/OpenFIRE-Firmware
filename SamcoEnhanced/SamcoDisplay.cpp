@@ -47,7 +47,7 @@ bool ExtDisplay::Begin()
         } else return false;
     } else return false;
 
-    if(display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    if(display->begin(SSD1306_SWITCHCAPVCC, SamcoPreferences::oledPrefs[OF_Const::oledAltAddr] ? 0x3C : 0x3D)) {
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;
