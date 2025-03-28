@@ -956,7 +956,6 @@ void OF_Serial::SerialProcessingDocked()
                 }
             }
         }
-        Serial.write((uint8_t*)&SamcoPreferences::pins, OF_Const::boardInputsCount);
         break;
     }
     case OF_Const::sGetSettings:
@@ -989,22 +988,22 @@ void OF_Serial::SerialProcessingDocked()
         buf[pos++] = OF_Const::serialTerminator;
         // any settings for I2C devices goes here:
         for(int i = 0; i < OF_Const::i2cDevicesCount; i++) {
-            if(pos >= 60) {
+            if(pos >= 32) {
                 Serial.write(buf, pos);
                 Serial.flush();
                 pos = 0;
             }
 
             switch(i) {
-            case OF_Const::i2cOLED: // OLED currently has no settings
-            // for devices with settings, do:
-            /*
-            case OF_Const::i2cNewDeviceTypeHere:
+            case OF_Const::i2cOLED:
                 buf[pos++] = i;
-                // copy settings to buffer one at a time,
-                // incrementing pos by size of copied data after
+                for(uint8_t type = 0; type < OF_Const::oledSettingsTypes; type++) {
+                    buf[pos++] = type;
+                    memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t));
+                    pos += sizeof(uint32_t);
+                }
+                buf[pos++] = OF_Const::serialTerminator;
                 break;
-            */
             default: break;
             }
 
