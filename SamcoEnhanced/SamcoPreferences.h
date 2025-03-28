@@ -110,7 +110,9 @@ public:
         0x0000FF
     };
 
-    static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = {false};
+    static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
+
+    static inline uint32_t oledPrefs[OF_Const::oledSettingsTypes] = { false };
 
     typedef struct USBMap_s {
         char deviceName[16];

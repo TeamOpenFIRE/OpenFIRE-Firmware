@@ -43,6 +43,7 @@ int SamcoPreferences::LoadProfiles()
     File prefs = LittleFS.open("profiles.conf", "r");
     if(prefs) {
         int profileNum = 0;
+        char buf[sizeof(ProfileData_t::name)];
         while(prefs.available()) {
             switch(prefs.read()) {
             case Profile_ProfileNum:
@@ -51,91 +52,78 @@ int SamcoPreferences::LoadProfiles()
                 break;
             case Profile_TopOffset:
               {
-                char buf[sizeof(ProfileData_t::topOffset)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::topOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].topOffset, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].topOffset, &buf, sizeof(ProfileData_t::topOffset));
                 break;
               }
             case Profile_BottomOffset:
               {
-                char buf[sizeof(ProfileData_t::bottomOffset)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::bottomOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].bottomOffset, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].bottomOffset, &buf, sizeof(ProfileData_t::bottomOffset));
                 break;
               }
             case Profile_LeftOffset:
               {
-                char buf[sizeof(ProfileData_t::leftOffset)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::leftOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].leftOffset, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].leftOffset, &buf, sizeof(ProfileData_t::leftOffset));
                 break;
               }
             case Profile_RightOffset:
               {
-                char buf[sizeof(ProfileData_t::rightOffset)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::rightOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].rightOffset, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].rightOffset, &buf, sizeof(ProfileData_t::rightOffset));
                 break;
               }
             case Profile_TLled:
               {
-                char buf[sizeof(ProfileData_t::TLled)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::TLled));
-                if(bWritten > 0) memcpy(&profiles[profileNum].TLled, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].TLled, &buf, sizeof(ProfileData_t::TLled));
                 break;
               }
             case Profile_TRled:
               {
-                char buf[sizeof(ProfileData_t::TRled)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::TRled));
-                if(bWritten > 0) memcpy(&profiles[profileNum].TRled, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].TRled, &buf, sizeof(ProfileData_t::TRled));
                 break;
               }
             case Profile_AdjX:
               {
-                char buf[sizeof(ProfileData_t::adjX)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::adjX));
-                if(bWritten > 0) memcpy(&profiles[profileNum].adjX, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].adjX, &buf, sizeof(ProfileData_t::adjX));
                 break;
               }
             case Profile_AdjY:
               {
-                char buf[sizeof(ProfileData_t::adjY)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::adjY));
-                if(bWritten > 0) memcpy(&profiles[profileNum].adjY, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].adjY, &buf, sizeof(ProfileData_t::adjY));
                 break;
               }
             case Profile_IrSens:
               {
-                char buf[sizeof(ProfileData_t::irSens)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::irSens));
-                if(bWritten > 0) memcpy(&profiles[profileNum].irSens, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].irSens, &buf, sizeof(ProfileData_t::irSens));
                 break;
               }
             case Profile_RunMode:
               {
-                char buf[sizeof(ProfileData_t::runMode)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::runMode));
-                if(bWritten > 0) memcpy(&profiles[profileNum].runMode, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].runMode, &buf, sizeof(ProfileData_t::runMode));
                 break;
               }
             case Profile_IrLayout:
               {
-                char buf[sizeof(ProfileData_t::irLayout)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::irLayout));
-                if(bWritten > 0) memcpy(&profiles[profileNum].irLayout, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].irLayout, &buf, sizeof(ProfileData_t::irLayout));
                 break;
               }
             case Profile_Color:
               {
-                char buf[sizeof(ProfileData_t::color)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::color));
-                if(bWritten > 0) memcpy(&profiles[profileNum].color, &buf, sizeof(buf));
+                if(bWritten > 0) memcpy(&profiles[profileNum].color, &buf, sizeof(ProfileData_t::color));
                 break;
               }
             case Profile_Name:
               {
-                char buf[sizeof(ProfileData_t::name)];
                 int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::name));
                 if(bWritten > 0) {
                   memset(profiles[profileNum].name, '\0', sizeof(ProfileData_t::name));
@@ -250,10 +238,10 @@ int SamcoPreferences::LoadSettings()
 {
     File settingsFile = LittleFS.open("settings.conf", "r");
     if(settingsFile) {
+        char buf[sizeof(uint32_t)];
         while(settingsFile.available()) {
             int type = settingsFile.read();
             if(type > -1 && type < OF_Const::settingsTypesCount) {
-                char buf[sizeof(uint32_t)];
                 int bWritten = settingsFile.readBytes(buf, sizeof(uint32_t));
                 if(bWritten > 0) memcpy(&settings[type], buf, sizeof(uint32_t));
             } else settingsFile.seek(sizeof(uint32_t), fs::SeekCur);
@@ -280,18 +268,34 @@ int SamcoPreferences::LoadPeriphs()
 {
     File periphsFile = LittleFS.open("i2cperiphs.conf", "r");
     if(periphsFile) {
+        char buf[sizeof(uint32_t)];
         while(periphsFile.available()) {
             switch(periphsFile.read()) {
             case OF_Const::i2cDevicesEnabled:
             {
-                int type = periphsFile.read();
-                if(type > -1 && type < OF_Const::i2cDevicesCount)
-                    i2cPeriphs[type] = periphsFile.read();
+                while(periphsFile.available() && periphsFile.peek() != OF_Const::serialTerminator) {
+                    int type = periphsFile.read();
+                    if(type > -1 && type < OF_Const::i2cDevicesCount)
+                        i2cPeriphs[type] = periphsFile.read();
+                    else periphsFile.seek(sizeof(bool), fs::SeekCur);
+                }
+                if(periphsFile.peek() == OF_Const::serialTerminator) periphsFile.seek(1, fs::SeekCur);
                 break;
             }
             case OF_Const::i2cOLED:
+            {
+                while(periphsFile.available() && periphsFile.peek() != OF_Const::serialTerminator) {
+                    int type = periphsFile.read();
+                    if(type > -1 && type < OF_Const::oledSettingsTypes) {
+                        int bWritten = periphsFile.readBytes(buf, sizeof(uint32_t));
+                        if(bWritten > 0) memcpy(&oledPrefs[type], buf, sizeof(uint32_t));
+                    } else periphsFile.seek(sizeof(uint32_t), fs::SeekCur);
+                }
+                if(periphsFile.peek() == OF_Const::serialTerminator) periphsFile.seek(1, fs::SeekCur);
+                break;
+            }
             default:
-                periphsFile.seek(sizeof(uint16_t), fs::SeekCur);
+                periphsFile.seek(0, fs::SeekEnd);
                 break;
             }
         }
@@ -305,9 +309,19 @@ int SamcoPreferences::SavePeriphs()
 {
     File periphsFile = LittleFS.open("i2cperiphs.conf", "w");
     if(periphsFile) {
+        // Main "devices enabled" array
+        periphsFile.write(OF_Const::i2cDevicesEnabled);
         for(uint8_t i = 0; i < OF_Const::i2cDevicesCount; i++) {
-            periphsFile.write(OF_Const::i2cDevicesEnabled), periphsFile.write(i), periphsFile.write((uint8_t)i2cPeriphs[i]);
+            periphsFile.write(i), periphsFile.write((uint8_t)i2cPeriphs[i]);
         }
+        periphsFile.write(OF_Const::serialTerminator);
+
+        // OLED settings
+        periphsFile.write(OF_Const::i2cOLED);
+        for(uint8_t i = 0; i < OF_Const::oledSettingsTypes; i++) {
+            periphsFile.write(i), periphsFile.write((uint8_t*)&oledPrefs[i], sizeof(uint32_t));
+        }
+        periphsFile.write(OF_Const::serialTerminator);
         
         periphsFile.close();
         return Error_Success;
