@@ -1121,7 +1121,7 @@ void OF_Serial::SerialProcessingDocked()
                         if(type < OF_Const::boolTypesCount) {
                             SamcoPreferences::toggles[type] = Serial.read();
                             Serial.write(SamcoPreferences::toggles[type]);
-                        }
+                        } else Serial.write(Serial.read()), Serial.flush();
                     } else {
                         while(Serial.available()) Serial.read();
                         Serial.write(OF_Const::serialTerminator), Serial.flush();
@@ -1133,7 +1133,7 @@ void OF_Serial::SerialProcessingDocked()
                         if(type < OF_Const::boardInputsCount) {
                             SamcoPreferences::pins[type] = Serial.read();
                             Serial.write(SamcoPreferences::pins[type]);
-                        }
+                        } else Serial.write(Serial.read()), Serial.flush();
                     } else {
                         while(Serial.available()) Serial.read();
                         Serial.write(OF_Const::serialTerminator), Serial.flush();
@@ -1145,6 +1145,10 @@ void OF_Serial::SerialProcessingDocked()
                         if(type < OF_Const::settingsTypesCount) {
                             Serial.readBytes((uint8_t*)&SamcoPreferences::settings[type], sizeof(uint32_t));
                             Serial.write((uint8_t*)&SamcoPreferences::settings[type], sizeof(uint32_t)), Serial.flush();
+                        } else {
+                            char junkBuf[sizeof(uint32_t)];
+                            Serial.readBytes(junkBuf, sizeof(junkBuf));
+                            Serial.write(junkBuf, sizeof(junkBuf)), Serial.flush();
                         }
                     } else {
                         while(Serial.available()) Serial.read();
@@ -1171,6 +1175,10 @@ void OF_Serial::SerialProcessingDocked()
                                   if(type > OF_Const::profTRled && type < OF_Const::profDataTypes) {
                                       Serial.readBytes((uint8_t*)&SamcoPreferences::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t));
                                       Serial.write((uint8_t*)&SamcoPreferences::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t)), Serial.flush();
+                                  } else {
+                                      char junkBuf[sizeof(uint32_t)];
+                                      Serial.readBytes(junkBuf, sizeof(junkBuf));
+                                      Serial.write(junkBuf, sizeof(junkBuf)), Serial.flush();
                                   }
                                   break;
                             }
@@ -1197,6 +1205,11 @@ void OF_Serial::SerialProcessingDocked()
                                   Serial.write(OF_Const::serialTerminator), Serial.flush();
                               }
                               break;
+                          default:
+                              char junkBuf[Serial.available()];
+                              Serial.readBytes(junkBuf, sizeof(junkBuf));
+                              Serial.write(junkBuf, sizeof(junkBuf)), Serial.flush();
+                              break;
                         }
                     } else {
                         while(Serial.available()) Serial.read();
@@ -1212,7 +1225,7 @@ void OF_Serial::SerialProcessingDocked()
                             if(type > -1 && type < OF_Const::i2cDevicesCount) {
                                 SamcoPreferences::i2cPeriphs[type] = Serial.read();
                                 Serial.write((uint8_t)SamcoPreferences::i2cPeriphs[type]), Serial.flush();
-                            }
+                            } else Serial.write(Serial.read()), Serial.flush();
                             break;
                         }
                         case OF_Const::i2cOLED:
@@ -1221,9 +1234,17 @@ void OF_Serial::SerialProcessingDocked()
                             if(type > -1 && type < OF_Const::oledSettingsTypes) {
                                 Serial.read((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t));
                                 Serial.write((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t)), Serial.flush();
+                            } else {
+                                char junkBuf[sizeof(uint32_t)];
+                                Serial.readBytes(junkBuf, sizeof(junkBuf));
+                                Serial.write(junkBuf, sizeof(junkBuf)), Serial.flush();
                             }
                         }
-                        default: break;
+                        default:
+                            char junkBuf[Serial.available()];
+                            Serial.readBytes(junkBuf, sizeof(junkBuf));
+                            Serial.write(junkBuf, sizeof(junkBuf)), Serial.flush();
+                            break;
                         }
                     } else {
                         while(Serial.available()) Serial.read();
