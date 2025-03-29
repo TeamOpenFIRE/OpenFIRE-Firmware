@@ -914,7 +914,7 @@ void ExecGunModeDocked()
 
         if(!FW_Common::dockedSaving) {
             if(FW_Common::buttons.pressed) {
-                for(uint8_t i = 0; i < 32; i++)
+                for(uint8_t i = 0; i < ButtonCount; i++)
                     if(bitRead(FW_Common::buttons.pressed, i)) {
                         const char buf[] = {OF_Const::sBtnPressed, i};
                         Serial.write(buf, 2);
@@ -922,7 +922,7 @@ void ExecGunModeDocked()
             }
 
             if(FW_Common::buttons.released) {
-                for(uint8_t i = 0; i < 32; i++)
+                for(uint8_t i = 0; i < ButtonCount; i++)
                     if(bitRead(FW_Common::buttons.released, i)) {
                         const char buf[] = {OF_Const::sBtnReleased, i};
                         Serial.write(buf, 2);
