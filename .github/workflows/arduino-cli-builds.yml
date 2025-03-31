@@ -80,13 +80,15 @@ jobs:
         
       - name: Compile for ${{ matrix.name }}
         run: >
-          arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced
+          arduino-cli compile -e
+          --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}}
+          OpenFIREmain
           --libraries libraries
           --build-property 'build.extra_flags=
           -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"'
         
       - name: Rename build file
-        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
+        run: cp ${{github.workspace}}/OpenFIREmain/build/rp2040.rp2040.${{matrix.fqbn}}/OpenFIREmain.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
         
       - name: Upload artifact
         uses: actions/upload-artifact@v4
