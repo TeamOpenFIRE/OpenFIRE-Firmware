@@ -13,12 +13,12 @@ jobs:
           - name: Raspberry Pi Pico
             fqbn: rpipico
             pretty: rpipico
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
             
           - name: Raspberry Pi Pico W (USB)
             fqbn: rpipicow
             pretty: rpipicow-noBT
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
             
           #- name: Raspberry Pi Pico W (Bluetooth)
           #  fqbn: rpipicow
@@ -28,32 +28,32 @@ jobs:
           - name: Adafruit ItsyBitsy RP2040
             fqbn: adafruit_itsybitsy
             pretty: adafruitItsy
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=8388608_65536,opt=Optimize3
             
           - name: Adafruit KB2040
             fqbn: adafruit_kb2040
             pretty: adafruitKB2040
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=8388608_65536,opt=Optimize3
             
           - name: Arduino Nano RP2040 Connect
             fqbn: arduino_nano_connect
             pretty: arduinoNano
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=16777216_65536,opt=Optimize3
             
           - name: VCC-GND YD RP2040
             fqbn: vccgnd_yd_rp2040
             pretty: vccgndYD
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3
             
           - name: Waveshare RP2040 Zero
             fqbn: waveshare_rp2040_zero
             pretty: waveshareZero
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
             
           - name: Generic RP2040
             fqbn: generic
             pretty: generic
-            flags: freq=133,usbstack=tinyusb,opt=Optimize3
+            flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3
 
     steps:
       - name: Checkout OpenFIRE-Firmware
@@ -80,13 +80,15 @@ jobs:
         
       - name: Compile for ${{ matrix.name }}
         run: >
-          arduino-cli compile -e --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}} SamcoEnhanced
+          arduino-cli compile -e
+          --fqbn rp2040:rp2040:${{matrix.fqbn}}:${{matrix.flags}}
+          OpenFIREmain
           --libraries libraries
           --build-property 'build.extra_flags=
           -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"'
         
       - name: Rename build file
-        run: cp ${{github.workspace}}/SamcoEnhanced/build/rp2040.rp2040.${{matrix.fqbn}}/SamcoEnhanced.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
+        run: cp ${{github.workspace}}/OpenFIREmain/build/rp2040.rp2040.${{matrix.fqbn}}/OpenFIREmain.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
         
       - name: Upload artifact
         uses: actions/upload-artifact@v4

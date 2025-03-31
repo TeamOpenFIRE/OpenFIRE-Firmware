@@ -1,5 +1,5 @@
 /*!
- * @file SamcoColours.h
+ * @file OpenFIREcolors.h
  * @brief Collection of unique colours for RGB LEDs such as Dot Stars or Neopixels.
  *
  * @copyright Mike Lynch, 2021
@@ -10,8 +10,8 @@
  * @date 2021
  */
 
-#ifndef _SAMCOCOLOURS_H_
-#define _SAMCOCOLOURS_H_
+#ifndef _OPENFIRECOLORS_H_
+#define _OPENFIRECOLORS_H_
 
 #include <stdint.h>
 
@@ -48,4 +48,4 @@ namespace WikiColor {
     constexpr uint32_t Yellow = COLOR_BRI_ADJ_RGB(135, 0xFFFF00);
 };
 
-#endif // _SAMCOCOLOURS_H_
+#endif // _OPENFIRECOLORS_H_

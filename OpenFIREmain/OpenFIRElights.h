@@ -10,8 +10,9 @@
 #define _OPENFIRELIGHTS_H_
 
 #include <OpenFIREBoard.h>
+
 #include "OpenFIREDefines.h"
-#include "SamcoColours.h"
+#include "OpenFIREcolors.h"
 
 #ifdef DOTSTAR_ENABLE
     #define LED_ENABLE
@@ -46,9 +47,11 @@ public:
 
     static void LedOff();
 
-    static void LedUpdate(const byte &, const byte &, const byte &);
+    static void LedUpdate(const uint8_t &, const uint8_t &, const uint8_t &);
 
     static void SetLedColorFromMode();
+
+    static uint8_t Invert(const uint8_t &orig) { return ~orig; }
 
     #ifdef CUSTOM_NEOPIXEL
     static inline Adafruit_NeoPixel* externPixel = nullptr;

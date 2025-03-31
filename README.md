@@ -2,7 +2,7 @@
 
 ![BannerDark](of_bannerLoD.png#gh-dark-mode-only)![BannerLight](of_bannerDoL.png#gh-light-mode-only)
 # OpenFIRE - The Open *Four Infa-Red Emitter* Light Gun System
-###### Successor to [GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
+###### Successor to [IR-GUN4ALL](http://github.com/SeongGino/ir-light-gun-plus), which is based on the [Prow Enhanced fork](https://github.com/Prow7/ir-light-gun), which in itself is based on the 4IR Beta "Big Code Update" [SAMCO project](https://github.com/samuelballantyne/IR-Light-Gun)
 
 ## Features:
 - **Fully featured peripherals**, from Solenoid & Rumble Force Feedback, to TMP36 Temperature Monitoring, and others to come.
@@ -35,25 +35,16 @@
 Grab the latest *.UF2* binary for your respective board [from the releases page](https://github.com/TeamOpenFIRE/OpenFIRE-Firmware/releases/latest), and drag'n'drop the file to your microcontroller while booted into Bootloader mode; the RP2040 is automatically mounted like this when no program is loaded, but it can be forced into this mode by holding BOOTSEL while plugging it into the computer - it will appear as a removable storage device called **RPI-RP2**.
 
 ## Additional information
-[Check out the enclosed instruction book!](SamcoEnhanced/README.md) For developers, consult the README files in `libraries` for more information on library functionality.
+[Check out the enclosed instruction book!](OpenFIREmain/README.md) For developers, consult [the documentation on setting up and building the OpenFIRE Firmware](COMPILING.md) the README files in `libraries` for more information on library functionality.
 
 ## Known Issues:
 - With Pico W & Bluetooth enabled, TinyUSB/Serial fails to initialize properly when connected via USB, so the firmware is deadlocked either sending serial or USB report data.
 - Updating NeoPixels settings from the OF App might cause some Pixels to be locked or shut off after saving - this is only temporary and will resolve itself after unplugging the board.
-- Either force feedback test (when invoked from the app) will cause the board to stop responding if there is no working camera present.
 - There may be rare instances of SSD1306 displays shifting the display down a number of rows when the screen updates, which persist until the board is unplugged. The exact cause is still being investigated.
-- Some rare instances where a serial exit signal is received while sending an escape key signal in the Simple Pause Menu with (non-static) Pixels in use might cause the gun to freeze. The exact cause is being investiaged.
+- Some rare instances where a serial exit signal is received while sending an escape key signal in the Simple Pause Menu with (non-static) Pixels in use might cause the gun to freeze. The exact cause is being investigated.
 
 > [!NOTE]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
-
-## TODO:
-- Add temperature monitoring/tempering for serial solenoid activations (only perform every other solenoid-on op).
-- Add configurable temperature thresholds.
-- Experiment with more AR correction presets for non-16:9 screens (per cali profile?)
-- (Re-)expose button function remapping.
-- Use more appropriate RP2040-specific subsystems (i.e. hardware timers)?
-- Start librarifying more sections of the code for better readability/portability, i.e. pause mode and serial processing/handling in bespoke classes.
 
 ## Thanks:
 * Samuel Ballantyne, for his original SAMCO project, the gorgeous OpenFIRE branding, and perspective-based tracking system.

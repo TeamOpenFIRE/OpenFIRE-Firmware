@@ -7,8 +7,9 @@
  */ 
 
 #include <Arduino.h>
+
 #include "OpenFIRElights.h"
-#include "SamcoPreferences.h"
+#include "OpenFIREprefs.h"
 #include "OpenFIREcommon.h"
 #include "boards/OpenFIREshared.h"
 
@@ -48,21 +49,21 @@ void OF_RGB::LedInit()
 #ifdef CUSTOM_NEOPIXEL
 void OF_RGB::InitExternPixel(const int8_t &pin)
 {
-    externPixel = new Adafruit_NeoPixel(SamcoPreferences::settings[OF_Const::customLEDcount], pin, NEO_GRB + NEO_KHZ800);
+    externPixel = new Adafruit_NeoPixel(OF_Prefs::settings[OF_Const::customLEDcount], pin, NEO_GRB + NEO_KHZ800);
     externPixel->begin();
-    if(SamcoPreferences::settings[OF_Const::customLEDstatic] > 0 &&
-       SamcoPreferences::settings[OF_Const::customLEDstatic] <= SamcoPreferences::settings[OF_Const::customLEDcount]) {
-        for(byte i = 0; i < SamcoPreferences::settings[OF_Const::customLEDstatic]; i++) {
+    if(OF_Prefs::settings[OF_Const::customLEDstatic] > 0 &&
+       OF_Prefs::settings[OF_Const::customLEDstatic] <= OF_Prefs::settings[OF_Const::customLEDcount]) {
+        for(byte i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; i++) {
             uint32_t color;
             switch(i) {
               case 0:
-                color = SamcoPreferences::settings[OF_Const::customLEDcolor1];
+                color = OF_Prefs::settings[OF_Const::customLEDcolor1];
                 break;
               case 1:
-                color = SamcoPreferences::settings[OF_Const::customLEDcolor2];
+                color = OF_Prefs::settings[OF_Const::customLEDcolor2];
                 break;
               case 2:
-                color = SamcoPreferences::settings[OF_Const::customLEDcolor3];
+                color = OF_Prefs::settings[OF_Const::customLEDcolor3];
                 break;
             }
             externPixel->setPixelColor(i, color);
@@ -86,8 +87,8 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
 
 #ifdef CUSTOM_NEOPIXEL
     if(externPixel != nullptr) {
-        if(SamcoPreferences::settings[OF_Const::customLEDstatic] < SamcoPreferences::settings[OF_Const::customLEDcount]) {
-            externPixel->fill(color, SamcoPreferences::settings[OF_Const::customLEDstatic]);
+        if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
+            externPixel->fill(color, OF_Prefs::settings[OF_Const::customLEDstatic]);
             externPixel->show();
         }
     }
@@ -108,21 +109,21 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
 
 #ifdef FOURPIN_LED
     if(FW_Common::ledIsValid) {
-        if(SamcoPreferences::toggles[OF_Const::commonAnode]) {
+        if(OF_Prefs::toggles[OF_Const::commonAnode]) {
             r = ~r;
             g = ~g;
             b = ~b;
         }
-        analogWrite(SamcoPreferences::pins[OF_Const::ledR], r);
-        analogWrite(SamcoPreferences::pins[OF_Const::ledG], g);
-        analogWrite(SamcoPreferences::pins[OF_Const::ledB], b);
+        analogWrite(OF_Prefs::pins[OF_Const::ledR], r);
+        analogWrite(OF_Prefs::pins[OF_Const::ledG], g);
+        analogWrite(OF_Prefs::pins[OF_Const::ledB], b);
     }
 #endif // FOURPIN_LED
 
 /* Arduino Nano LED support disabled due to instability.
 #ifdef ARDUINO_NANO_RP2040_CONNECT
     // in case the color bytes were already flipped before, as Arduino Nano also uses power sink pins i.e. common anode
-    if(FW_Common::ledIsValid && !SamcoPreferences::toggles.commonAnode) {
+    if(FW_Common::ledIsValid && !OF_Prefs::toggles.commonAnode) {
         r = ~r;
         g = ~g;
         b = ~b;
@@ -139,7 +140,7 @@ void OF_RGB::LedOff()
 }
 
 // Generic R/G/B value update across all LED units
-void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
+void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
 {
     #ifdef DOTSTAR_ENABLE
         dotstar.setPixelColor(0, r, g, b);
@@ -152,8 +153,8 @@ void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
 
     #ifdef CUSTOM_NEOPIXEL
         if(externPixel != nullptr) {
-            if(SamcoPreferences::settings[OF_Const::customLEDstatic] < SamcoPreferences::settings[OF_Const::customLEDcount]) {
-                externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), SamcoPreferences::settings[OF_Const::customLEDstatic]);
+            if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
+                externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), OF_Prefs::settings[OF_Const::customLEDstatic]);
                 externPixel->show();
             }
         }
@@ -167,14 +168,14 @@ void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
 
     #ifdef FOURPIN_LED
         if(FW_Common::ledIsValid) {
-            if(SamcoPreferences::toggles[OF_Const::commonAnode]) {
-                analogWrite(SamcoPreferences::pins[OF_Const::ledR], ~r);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledG], ~g);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledB], ~b);
+            if(OF_Prefs::toggles[OF_Const::commonAnode]) {
+                analogWrite(OF_Prefs::pins[OF_Const::ledR], Invert(r));
+                analogWrite(OF_Prefs::pins[OF_Const::ledG], Invert(g));
+                analogWrite(OF_Prefs::pins[OF_Const::ledB], Invert(b));
             } else {
-                analogWrite(SamcoPreferences::pins[OF_Const::ledR], r);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledG], g);
-                analogWrite(SamcoPreferences::pins[OF_Const::ledB], b);
+                analogWrite(OF_Prefs::pins[OF_Const::ledR], r);
+                analogWrite(OF_Prefs::pins[OF_Const::ledG], g);
+                analogWrite(OF_Prefs::pins[OF_Const::ledB], b);
             }
         }
     #endif // FOURPIN_LED
@@ -184,7 +185,7 @@ void OF_RGB::LedUpdate(const byte &r, const byte &g, const byte &b)
         #ifdef FOURPIN_LED
         // Nano's builtin is a common anode, so we use that logic by default if it's enabled on the external 4-pin;
         // otherwise, invert the values.
-        if((FW_Common::ledIsValid && !SamcoPreferences::toggles.commonAnode) || !FW_Common::ledIsValid) {
+        if((FW_Common::ledIsValid && !OF_Prefs::toggles.commonAnode) || !FW_Common::ledIsValid) {
             r = ~r;
             g = ~g;
             b = ~b;

@@ -19,9 +19,6 @@
     // even with cheap clips and the full length IR cam cable 1MHz is fine
     #define DFROBOT_IR_IIC_CLOCK 1000000
 
-    // Earle Philhower Arduino RP2040 reserves 4KB of flash using the Arduino EEPROM object, neat!
-    #define SAMCO_EEPROM_ENABLE 1
-
     // software button anti-glitch
     #define BTN_AG_MASK 0xFFFFFFFF
     #define BTN_AG_MASK2 0xFFFFFFFF
