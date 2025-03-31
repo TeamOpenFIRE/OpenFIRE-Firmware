@@ -10,7 +10,7 @@
 #define _OPENFIREFEEDBACK_H_
 
 #include <stdint.h>
-#include "SamcoPreferences.h"
+#include "OpenFIREprefs.h"
 
 class OF_FFB {
 public:
@@ -73,7 +73,7 @@ private:
     static inline unsigned int temperatureGraph[4];          // Table of collected (converted) TMP36 readings, to be averaged into temperatureCurrent on the fourth value.
     static inline uint8_t temperatureIndex = 0;              // Current index of temperatureGraph to update; initiates temperatureCurrent update/averaging when = 3.
 
-    static inline const unsigned int solenoidWarningInterval = SamcoPreferences::settings[OF_Const::solenoidFastInterval] * 5; // for if solenoid is getting toasty.
+    static inline const unsigned int solenoidWarningInterval = OF_Prefs::settings[OF_Const::solenoidFastInterval] * 5; // for if solenoid is getting toasty.
 
     // For burst firing stuff:
     static inline byte burstFireCount = 0;                   // What shot are we on?

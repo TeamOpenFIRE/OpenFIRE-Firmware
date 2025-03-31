@@ -1,14 +1,13 @@
-#include "Wire.h"
 /*!
- * @file SamcoDisplay.h
+ * @file OpenFIREdisplay.h
  * @brief Macros for lightgun HUD display (primarily for SSD1306 OLED modules).
  *
  * @copyright That One Seong, 2024
  * @copyright GNU Lesser General Public License
  */
 
-#ifndef _SAMCODISPLAY_H_
-#define _SAMCODISPLAY_H_
+#ifndef _OPENFIREDISPLAY_H_
+#define _OPENFIREDISPLAY_H_
 
 #include <stdint.h>
 #include <Adafruit_SSD1306.h>
@@ -379,4 +378,4 @@ private:
     };
 };
 
-#endif // _SAMCODISPLAY_H_
+#endif // _OPENFIREDISPLAY_H_

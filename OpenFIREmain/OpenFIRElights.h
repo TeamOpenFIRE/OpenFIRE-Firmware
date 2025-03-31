@@ -10,8 +10,9 @@
 #define _OPENFIRELIGHTS_H_
 
 #include <OpenFIREBoard.h>
+
 #include "OpenFIREDefines.h"
-#include "SamcoColours.h"
+#include "OpenFIREcolors.h"
 
 #ifdef DOTSTAR_ENABLE
     #define LED_ENABLE

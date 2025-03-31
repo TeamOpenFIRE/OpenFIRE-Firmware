@@ -1,5 +1,5 @@
 /*!
- * @file SamcoEnhanced.ino
+ * @file OpenFIREmain.ino
  * @brief OpenFIRE - 4IR LED Lightgun sketch w/ support for force feedback and other features.
  * Forked from IR-GUN4ALL v4.2, which is based on Prow's Enhanced Fork from https://github.com/Prow7/ir-light-gun,
  * which in itself is based on the 4IR Beta "Big Code Update" SAMCO project from https://github.com/samuelballantyne/IR-Light-Gun
@@ -15,13 +15,13 @@
  * @date 2025
  */
 
-#include "SamcoEnhanced.h"
+#include "OpenFIREmain.h"
 #include "boards/OpenFIREshared.h"
-#include "SamcoColours.h"
+#include "OpenFIREcolors.h"
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
 #include "OpenFIREFeedback.h"
-#include "SamcoPreferences.h"
+#include "OpenFIREprefs.h"
 #include "OpenFIREconstant.h"
 
 // Sets up the environment
@@ -37,41 +37,41 @@ void setup() {
         digitalWrite(14, HIGH);
     #endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
 
-    SamcoPreferences::LoadPresets();
+    OF_Prefs::LoadPresets();
     
-    if(SamcoPreferences::InitFS() == SamcoPreferences::Error_Success) {
-        SamcoPreferences::LoadProfiles();
+    if(OF_Prefs::InitFS() == OF_Prefs::Error_Success) {
+        OF_Prefs::LoadProfiles();
     
         // Profile sanity checks
         // resets offsets that are wayyyyy too unreasonably high
         for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
-            if(SamcoPreferences::profiles[i].rightOffset >= 32768 || SamcoPreferences::profiles[i].bottomOffset >= 32768 ||
-               SamcoPreferences::profiles[i].topOffset >= 32768   || SamcoPreferences::profiles[i].leftOffset >= 32768) {
-                SamcoPreferences::profiles[i].topOffset = 0;
-                SamcoPreferences::profiles[i].bottomOffset = 0;
-                SamcoPreferences::profiles[i].leftOffset = 0;
-                SamcoPreferences::profiles[i].rightOffset = 0;
+            if(OF_Prefs::profiles[i].rightOffset >= 32768 || OF_Prefs::profiles[i].bottomOffset >= 32768 ||
+               OF_Prefs::profiles[i].topOffset >= 32768   || OF_Prefs::profiles[i].leftOffset >= 32768) {
+                OF_Prefs::profiles[i].topOffset = 0;
+                OF_Prefs::profiles[i].bottomOffset = 0;
+                OF_Prefs::profiles[i].leftOffset = 0;
+                OF_Prefs::profiles[i].rightOffset = 0;
             }
         
-            if(SamcoPreferences::profiles[i].irSens > DFRobotIRPositionEx::Sensitivity_Max)
-                SamcoPreferences::profiles[i].irSens = DFRobotIRPositionEx::Sensitivity_Default;
+            if(OF_Prefs::profiles[i].irSens > DFRobotIRPositionEx::Sensitivity_Max)
+                OF_Prefs::profiles[i].irSens = DFRobotIRPositionEx::Sensitivity_Default;
 
-            if(SamcoPreferences::profiles[i].runMode >= FW_Const::RunMode_Count)
-                SamcoPreferences::profiles[i].runMode = FW_Const::RunMode_Normal;
+            if(OF_Prefs::profiles[i].runMode >= FW_Const::RunMode_Count)
+                OF_Prefs::profiles[i].runMode = FW_Const::RunMode_Normal;
         }
 
         // if selected profile is out of range, fallback to a default instead.
-        if(SamcoPreferences::currentProfile >= PROFILE_COUNT)
-            SamcoPreferences::currentProfile = 0;
+        if(OF_Prefs::currentProfile >= PROFILE_COUNT)
+            OF_Prefs::currentProfile = 0;
 
         // set the current IR camera sensitivity
-        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
-            FW_Common::irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens;
+        if(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
+            FW_Common::irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)OF_Prefs::profiles[OF_Prefs::currentProfile].irSens;
         // set the run mode
-        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode < FW_Const::RunMode_Count)
-            FW_Common::runMode = (FW_Const::RunMode_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode;
+        if(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode < FW_Const::RunMode_Count)
+            FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
 
-        SamcoPreferences::Load();
+        OF_Prefs::Load();
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
@@ -80,11 +80,11 @@ void setup() {
         // Values are pulled from EEPROM values that were loaded earlier in setup()
         TinyUSBDevice.setManufacturerDescriptor(MANUFACTURER_NAME);
 
-        if(SamcoPreferences::usb.devicePID) {
-            TinyUSBDevice.setID(DEVICE_VID, SamcoPreferences::usb.devicePID);
-            if(SamcoPreferences::usb.deviceName[0] == '\0')
+        if(OF_Prefs::usb.devicePID) {
+            TinyUSBDevice.setID(DEVICE_VID, OF_Prefs::usb.devicePID);
+            if(OF_Prefs::usb.deviceName[0] == '\0')
                  TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
-            else TinyUSBDevice.setProductDescriptor(SamcoPreferences::usb.deviceName);
+            else TinyUSBDevice.setProductDescriptor(OF_Prefs::usb.deviceName);
         } else {
             TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
             TinyUSBDevice.setID(DEVICE_VID, PLAYER_NUMBER);
@@ -101,9 +101,9 @@ void setup() {
             Serial.setTimeout(0);
         } else {
             // Else, we're on batt, so init the Bluetooth chunks.
-            if(SamcoPreferences::usb.deviceName[0] == '\0')
+            if(OF_Prefs::usb.deviceName[0] == '\0')
                 TinyUSBDevices.beginBT(DEVICE_NAME, DEVICE_NAME);
-            else TinyUSBDevices.beginBT(SamcoPreferences::usb.deviceName, SamcoPreferences::usb.deviceName);
+            else TinyUSBDevices.beginBT(OF_Prefs::usb.deviceName, OF_Prefs::usb.deviceName);
         }
         #else
         // Initializing the USB devices chunk.
@@ -115,13 +115,13 @@ void setup() {
         #endif // ARDUINO_RASPBERRY_PI_PICO_W
     #endif // USE_TINYUSB
 
-    if(SamcoPreferences::usb.devicePID > 0 && SamcoPreferences::usb.devicePID < 5) {
-        playerStartBtn = SamcoPreferences::usb.devicePID + '0';
-        playerSelectBtn = SamcoPreferences::usb.devicePID + '4';
+    if(OF_Prefs::usb.devicePID > 0 && OF_Prefs::usb.devicePID < 5) {
+        playerStartBtn = OF_Prefs::usb.devicePID + '0';
+        playerSelectBtn = OF_Prefs::usb.devicePID + '4';
     }
 
     // this is needed for both customs and builtins, as defaults are all uninitialized
-    FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+    FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
 
     // Initialize DFRobot Camera Wires & Object
     FW_Common::CameraSet();
@@ -139,15 +139,15 @@ void setup() {
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(209);
 
-    FW_Common::OpenFIREper.source(SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX,
-                                  SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY);
+    FW_Common::OpenFIREper.source(OF_Prefs::profiles[OF_Prefs::currentProfile].adjX,
+                                  OF_Prefs::profiles[OF_Prefs::currentProfile].adjY);
     FW_Common::OpenFIREper.deinit(0);
 
     // First boot sanity checks; all zeroes are initial config
-    if((SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset    == 0 &&
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset == 0 && 
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset   == 0 &&
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset  == 0)) {
+    if((OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset    == 0 &&
+        OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset == 0 && 
+        OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset   == 0 &&
+        OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset  == 0)) {
 
         // This is a first boot! Prompt to start calibration.
         unsigned int timerIntervalShort = 600;
@@ -170,10 +170,10 @@ void setup() {
 
                 // Because the app offers cali options, exit straight to normal runmode
                 // if we exited from docking with a setup profile.
-                if(!(SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset == 0 &&
-                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset == 0 && 
-                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset == 0 &&
-                     SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset == 0)) {
+                if(!(OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset == 0 &&
+                     OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset == 0 && 
+                     OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset == 0 &&
+                     OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset == 0)) {
                       FW_Common::SetMode(FW_Const::GunMode_Run);
                       break;
                 #ifdef USES_DISPLAY
@@ -309,7 +309,7 @@ void loop1()
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
 
-        if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
+        if(OF_Prefs::toggles[OF_Const::holdToPause]) {
             if((FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
@@ -324,7 +324,7 @@ void loop1()
 
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
-                if(t - pauseHoldStartstamp > SamcoPreferences::settings[OF_Const::holdToPauseLength]) {
+                if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
                     FW_Common::offscreenBShot = false;
@@ -359,11 +359,11 @@ void loop()
     FW_Common::buttons.Poll(1);
     FW_Common::buttons.Repeat();
 
-    if(SamcoPreferences::toggles[OF_Const::holdToPause] && pauseHoldStarted) {
+    if(OF_Prefs::toggles[OF_Const::holdToPause] && pauseHoldStarted) {
         #ifdef USES_RUMBLE
-            analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+            analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
             delay(300);
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
         #endif // USES_RUMBLE
         while(FW_Common::buttons.debounced != 0) {
             // Should release the buttons to continue, pls.
@@ -379,7 +379,7 @@ void loop()
 
     switch(FW_Common::gunMode) {
         case FW_Const::GunMode_Pause:
-            if(SamcoPreferences::toggles[OF_Const::simplePause]) {
+            if(OF_Prefs::toggles[OF_Const::simplePause]) {
                 if(pauseModeSelectingProfile) {
                     if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
                         SetProfileSelection(false);
@@ -392,7 +392,7 @@ void loop()
 
                         if(!OF_Serial::serialMode) {
                             Serial.print("Switched to profile: ");
-                            Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+                            Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                             Serial.println("Going back to the main menu...");
                             Serial.println("Selecting: Calibrate current profile");
                         }
@@ -433,22 +433,22 @@ void loop()
                           FW_Common::SetMode(FW_Const::GunMode_Calibration);
                           if(!OF_Serial::serialMode) {
                               Serial.print("Calibrating for current profile: ");
-                              Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+                              Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                           }
                           break;
                         case PauseMode_ProfileSelect:
                           if(!OF_Serial::serialMode) {
                               Serial.println("Pick a profile!");
                               Serial.print("Current profile in use: ");
-                              Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+                              Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                           }
                           pauseModeSelectingProfile = true;
-                          profileModeSelection = SamcoPreferences::currentProfile;
+                          profileModeSelection = OF_Prefs::currentProfile;
                           #ifdef USES_DISPLAY
-                              FW_Common::OLED.PauseProfileUpdate(profileModeSelection, SamcoPreferences::profiles[0].name, SamcoPreferences::profiles[1].name, SamcoPreferences::profiles[2].name, SamcoPreferences::profiles[3].name);
+                              FW_Common::OLED.PauseProfileUpdate(profileModeSelection, OF_Prefs::profiles[0].name, OF_Prefs::profiles[1].name, OF_Prefs::profiles[2].name, OF_Prefs::profiles[3].name);
                           #endif // USES_DISPLAY
                           #ifdef LED_ENABLE
-                              OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
+                              OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
                           #endif // LED_ENABLE
                           break;
                         case PauseMode_Save:
@@ -495,13 +495,13 @@ void loop()
                           #endif // LED_ENABLE
 
                           #ifdef USES_DISPLAY
-                              FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+                              FW_Common::OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                           #endif // USES_DISPLAY
                           break;
                         /*case PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
                           if(FW_Common::runMode == FW_Const::RunMode_Processing) {
-                              switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].FW_Common::runMode) {
+                              switch(OF_Prefs::profiles[OF_Prefs::currentProfile].FW_Common::runMode) {
                                   case FW_Const::RunMode_Normal:
                                     FW_Common::SetFW_Const::RunMode(FW_Const::RunMode_Normal);
                                     break;
@@ -530,12 +530,12 @@ void loop()
                 if(pauseExitHoldStarted &&
                 (FW_Common::buttons.debounced & FW_Const::ExitPauseModeHoldBtnMask)) {
                     unsigned long t = millis();
-                    if(t - pauseHoldStartstamp > (SamcoPreferences::settings[OF_Const::holdToPauseLength] / 2)) {
+                    if(t - pauseHoldStartstamp > (OF_Prefs::settings[OF_Const::holdToPauseLength] / 2)) {
                         if(!OF_Serial::serialMode)
                             Serial.println("Exiting pause mode via hold...");
 
                         if(FW_Common::runMode == FW_Const::RunMode_Processing) {
-                            switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
+                            switch(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode) {
                                 case FW_Const::RunMode_Normal:
                                   FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                                   break;
@@ -552,9 +552,9 @@ void loop()
 
                         #ifdef USES_RUMBLE
                             for(byte i = 0; i < 3; i++) {
-                                analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                                analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
                                 delay(80);
-                                digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                                digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
                                 delay(50);
                             }
                         #endif // USES_RUMBLE
@@ -590,11 +590,11 @@ void loop()
             } else if(FW_Common::buttons.pressedReleased == FW_Const::AutofireSpeedToggleBtnMask) {
                 AutofireSpeedToggle();
             #ifdef USES_RUMBLE
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::SolenoidToggleBtnMask && SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::SolenoidToggleBtnMask && OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
             } else SelectCalProfileFromBtnMask(FW_Common::buttons.pressedReleased);
@@ -659,12 +659,12 @@ void ExecRunMode()
         // Only sets these values if the switches are mapped to valid pins.
         #ifdef USES_SWITCHES
             #ifdef USES_RUMBLE
-                if(SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0) {
-                    SamcoPreferences::toggles[OF_Const::rumble] = !digitalRead(SamcoPreferences::pins[OF_Const::rumbleSwitch]);
+                if(OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0) {
+                    OF_Prefs::toggles[OF_Const::rumble] = !digitalRead(OF_Prefs::pins[OF_Const::rumbleSwitch]);
                     #ifdef MAMEHOOKER
                     if(!OF_Serial::serialMode) {
                     #endif // MAMEHOOKER
-                        if(!SamcoPreferences::toggles[OF_Const::rumble] && OF_FFB::rumbleHappening)
+                        if(!OF_Prefs::toggles[OF_Const::rumble] && OF_FFB::rumbleHappening)
                             OF_FFB::FFBShutdown();
                     #ifdef MAMEHOOKER
                     }
@@ -672,12 +672,12 @@ void ExecRunMode()
                 }
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                if(SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0) {
-                    SamcoPreferences::toggles[OF_Const::solenoid] = !digitalRead(SamcoPreferences::pins[OF_Const::solenoidSwitch]);
+                if(OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0) {
+                    OF_Prefs::toggles[OF_Const::solenoid] = !digitalRead(OF_Prefs::pins[OF_Const::solenoidSwitch]);
                     #ifdef MAMEHOOKER
                     if(!OF_Serial::serialMode) {
                     #endif // MAMEHOOKER
-                        if(!SamcoPreferences::toggles[OF_Const::solenoid] && digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
+                        if(!OF_Prefs::toggles[OF_Const::solenoid] && digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {
                             OF_FFB::FFBShutdown();
                         }
                     #ifdef MAMEHOOKER
@@ -685,8 +685,8 @@ void ExecRunMode()
                     #endif // MAMEHOOKER
                 }
             #endif // USES_SOLENOID
-            if(SamcoPreferences::pins[OF_Const::autofireSwitch] >= 0)
-                SamcoPreferences::toggles[OF_Const::autofire] = !digitalRead(SamcoPreferences::pins[OF_Const::autofireSwitch]);
+            if(OF_Prefs::pins[OF_Const::autofireSwitch] >= 0)
+                OF_Prefs::toggles[OF_Const::autofire] = !digitalRead(OF_Prefs::pins[OF_Const::autofireSwitch]);
         #endif // USES_SWITCHES
 
         // If we're on RP2040, we offload the button polling to the second core.
@@ -771,7 +771,7 @@ void ExecRunMode()
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
 
-        if(SamcoPreferences::toggles[OF_Const::holdToPause]) {
+        if(OF_Prefs::toggles[OF_Const::holdToPause]) {
             if((FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask)
                 && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
@@ -786,7 +786,7 @@ void ExecRunMode()
 
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
-                if(t - pauseHoldStartstamp > SamcoPreferences::settings[OF_Const::holdToPauseLength]) {
+                if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
 		    Keyboard.releaseAll();
@@ -893,11 +893,11 @@ void ExecGunModeDocked()
         buf[pos++] = OF_Const::serialTerminator;
         pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
         buf[pos++] = OF_Const::serialTerminator;
-        buf[pos++] = SamcoPreferences::currentProfile;
+        buf[pos++] = OF_Prefs::currentProfile;
         buf[pos++] = OF_Const::serialTerminator;
-        memcpy(&buf[pos], &SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
+        memcpy(&buf[pos], &OF_Prefs::usb.devicePID, sizeof(OF_Prefs::USBMap_t::devicePID));
         pos += 2;
-        pos += sprintf(&buf[pos], "%s", SamcoPreferences::usb.deviceName);
+        pos += sprintf(&buf[pos], "%s", OF_Prefs::usb.deviceName);
         if(FW_Common::camNotAvailable) {
             buf[pos++] = OF_Const::serialTerminator;
             buf[pos++] = OF_Const::sError;
@@ -932,7 +932,7 @@ void ExecGunModeDocked()
             OF_FFB::TemperatureUpdate();
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
-                if(SamcoPreferences::pins[OF_Const::tempPin] >= 0) {
+                if(OF_Prefs::pins[OF_Const::tempPin] >= 0) {
                     const char buf[] = {OF_Const::sTemperatureUpd, OF_FFB::temperatureCurrent};
                     Serial.write(buf, 2);
                 }
@@ -945,8 +945,8 @@ void ExecGunModeDocked()
                     aStickChecked = currentMillis;
 
                     // TODO: replace with just sending coords normally instead of an approximated cardinal.
-                    uint16_t analogValueX = analogRead(SamcoPreferences::pins[OF_Const::analogX]);
-                    uint16_t analogValueY = analogRead(SamcoPreferences::pins[OF_Const::analogY]);
+                    uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
+                    uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
                     
                     char buf[5] = {OF_Const::sAnalogPosUpd};
                     memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
@@ -1037,8 +1037,8 @@ void TriggerNotFire()
 #ifdef USES_ANALOG
 void AnalogStickPoll()
 {
-    unsigned int analogValueX = analogRead(SamcoPreferences::pins[OF_Const::analogX]);
-    unsigned int analogValueY = analogRead(SamcoPreferences::pins[OF_Const::analogY]);
+    unsigned int analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
+    unsigned int analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
     
     // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.
     if((analogValueX < 1900 || analogValueX > 2200) ||
@@ -1114,26 +1114,26 @@ void SetPauseModeSelection(const bool &isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_RUMBLE
                     if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
-                    (SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0 || SamcoPreferences::pins[OF_Const::rumblePin] == -1)) {
+                    (OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0 || OF_Prefs::pins[OF_Const::rumblePin] == -1)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
-                    (SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0 || SamcoPreferences::pins[OF_Const::solenoidPin] == -1)) {
+                    (OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0 || OF_Prefs::pins[OF_Const::solenoidPin] == -1)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
             #else
                 #ifdef USES_RUMBLE
                     if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
-                    !(SamcoPreferences::pins[OF_Const::rumblePin] >= 0)) {
+                    !(OF_Prefs::pins[OF_Const::rumblePin] >= 0)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
                     if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
-                    !(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0)) {
+                    !(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
@@ -1147,26 +1147,26 @@ void SetPauseModeSelection(const bool &isIncrement)
             #ifdef USES_SWITCHES
                 #ifdef USES_SOLENOID
                     if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
-                    (SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0 || SamcoPreferences::pins[OF_Const::solenoidPin] == -1)) {
+                    (OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0 || OF_Prefs::pins[OF_Const::solenoidPin] == -1)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
-                    (SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0 || SamcoPreferences::pins[OF_Const::rumblePin] == -1)) {
+                    (OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0 || OF_Prefs::pins[OF_Const::rumblePin] == -1)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
             #else
                 #ifdef USES_SOLENOID
                     if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
-                    !(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0)) {
+                    !(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
                     if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
-                    !(SamcoPreferences::pins[OF_Const::rumblePin] >= 0)) {
+                    !(OF_Prefs::pins[OF_Const::rumblePin] >= 0)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
@@ -1253,15 +1253,15 @@ void SetProfileSelection(const bool &isIncrement)
     }
 
     #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[profileModeSelection].color);
+        OF_RGB::SetLedPackedColor(OF_Prefs::profiles[profileModeSelection].color);
     #endif // LED_ENABLE
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.PauseProfileUpdate(profileModeSelection, SamcoPreferences::profiles[0].name, SamcoPreferences::profiles[1].name, SamcoPreferences::profiles[2].name, SamcoPreferences::profiles[3].name);
+        FW_Common::OLED.PauseProfileUpdate(profileModeSelection, OF_Prefs::profiles[0].name, OF_Prefs::profiles[1].name, OF_Prefs::profiles[2].name, OF_Prefs::profiles[3].name);
     #endif // USES_DISPLAY
 
     Serial.print("Selecting profile: ");
-    Serial.println(SamcoPreferences::profiles[profileModeSelection].name);
+    Serial.println(OF_Prefs::profiles[profileModeSelection].name);
 
     return;
 }
@@ -1317,16 +1317,16 @@ bool SelectCalPrefs(unsigned int profile)
     }
 
     // if center values are set, assume profile is populated
-    if(SamcoPreferences::profiles[profile].xCenter && SamcoPreferences::profiles[profile].yCenter) {
-        xCenter = SamcoPreferences::profiles[profile].xCenter;
-        yCenter = SamcoPreferences::profiles[profile].yCenter;
+    if(OF_Prefs::profiles[profile].xCenter && OF_Prefs::profiles[profile].yCenter) {
+        xCenter = OF_Prefs::profiles[profile].xCenter;
+        yCenter = OF_Prefs::profiles[profile].yCenter;
         
         // 0 scale will be ignored
-        if(SamcoPreferences::profiles[profile].xScale) {
-            xScale = CalScalePrefToFloat(SamcoPreferences::profiles[profile].xScale);
+        if(OF_Prefs::profiles[profile].xScale) {
+            xScale = CalScalePrefToFloat(OF_Prefs::profiles[profile].xScale);
         }
-        if(SamcoPreferences::profiles[profile].yScale) {
-            yScale = CalScalePrefToFloat(SamcoPreferences::profiles[profile].yScale);
+        if(OF_Prefs::profiles[profile].yScale) {
+            yScale = CalScalePrefToFloat(OF_Prefs::profiles[profile].yScale);
         }
         return true;
     }
@@ -1347,19 +1347,19 @@ void OffscreenToggle()
         #endif // LED_ENABLE
 
         #ifdef USES_RUMBLE
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], HIGH);                        // Set rumble on
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], HIGH);                        // Set rumble on
             delay(125);                                           // For this long,
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);                         // Then flick it off,
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);                         // Then flick it off,
             delay(150);                                           // wait a little,
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], HIGH);                        // Flick it back on
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], HIGH);                        // Flick it back on
             delay(200);                                           // For a bit,
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);                         // and then turn it off,
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);                         // and then turn it off,
         #else
             delay(450);
         #endif // USES_RUMBLE
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
         return;
@@ -1375,7 +1375,7 @@ void OffscreenToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
         return;
@@ -1386,17 +1386,17 @@ void OffscreenToggle()
 // Does a test fire demonstrating the autofire speed being toggled
 void AutofireSpeedToggle()
 {
-    switch (SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
+    switch (OF_Prefs::settings[OF_Const::autofireWaitFactor]) {
         case 2:
-            SamcoPreferences::settings[OF_Const::autofireWaitFactor] = 3;
+            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 3;
             Serial.println("Autofire speed level 2.");
             break;
         case 3:
-            SamcoPreferences::settings[OF_Const::autofireWaitFactor] = 4;
+            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 4;
             Serial.println("Autofire speed level 3.");
             break;
         case 4:
-            SamcoPreferences::settings[OF_Const::autofireWaitFactor] = 2;
+            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 2;
             Serial.println("Autofire speed level 1.");
             break;
     }
@@ -1406,15 +1406,15 @@ void AutofireSpeedToggle()
 
     #ifdef USES_SOLENOID
         for(byte i = 0; i < 5; i++) {                             // And demonstrate the new autofire factor five times!
-            digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);
-            delay(SamcoPreferences::settings[OF_Const::solenoidFastInterval]);
-            digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
-            delay(SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]);
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
+            delay(OF_Prefs::settings[OF_Const::solenoidFastInterval]);
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+            delay(OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]);
         }
     #endif // USES_SOLENOID
 
     #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);    // And reset the LED back to pause mode color
+        OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);    // And reset the LED back to pause mode color
     #endif // LED_ENABLE
 }
 
@@ -1431,13 +1431,13 @@ void BurstFireToggle()
         #ifdef USES_SOLENOID
             for(byte i = 0; i < 4; i++) {
                 digitalWrite(solenoidPin, HIGH);                  // Demonstrate it by flicking the solenoid on/off three times!
-                delay(SamcoPreferences::settings[OF_Const::solenoidFastInterval]);                      // (at a fixed rate to distinguish it from autofire speed toggles)
+                delay(OF_Prefs::settings[OF_Const::solenoidFastInterval]);                      // (at a fixed rate to distinguish it from autofire speed toggles)
                 digitalWrite(solenoidPin, LOW);
-                delay(SamcoPreferences::settings[OF_Const::solenoidFastInterval] * 2);
+                delay(OF_Prefs::settings[OF_Const::solenoidFastInterval] * 2);
             }
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     } else {  // Or we flicked it off.
@@ -1451,7 +1451,7 @@ void BurstFireToggle()
             digitalWrite(solenoidPin, LOW);                       // Then off.
         #endif // USES_SOLENOID
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
         return;
     }
@@ -1463,8 +1463,8 @@ void BurstFireToggle()
 // Does a cute rumble pattern when on, or blinks LEDs (if any)
 void RumbleToggle()
 {
-    SamcoPreferences::toggles[OF_Const::rumble] = !SamcoPreferences::toggles[OF_Const::rumble];
-    if(SamcoPreferences::toggles[OF_Const::rumble]) {
+    OF_Prefs::toggles[OF_Const::rumble] = !OF_Prefs::toggles[OF_Const::rumble];
+    if(OF_Prefs::toggles[OF_Const::rumble]) {
         if(!OF_Serial::serialMode) 
             Serial.println("Rumble enabled!");
 
@@ -1476,12 +1476,12 @@ void RumbleToggle()
             OF_RGB::SetLedPackedColor(WikiColor::Salmon);
         #endif // LED_ENABLE
 
-        digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], HIGH);       // Pulse the motor on to notify the user,
+        digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], HIGH);       // Pulse the motor on to notify the user,
         delay(300);                                               // Hold that,
-        digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);        // Then turn off,
+        digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);        // Then turn off,
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     } else {                                                      // Or if we're turning it OFF,
         if(!OF_Serial::serialMode) 
@@ -1500,12 +1500,12 @@ void RumbleToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     }
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+        FW_Common::OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
     #endif // USES_DISPLAY
 }
 #endif // USES_RUMBLE
@@ -1515,8 +1515,8 @@ void RumbleToggle()
 // Does a cute solenoid engagement, or blinks LEDs (if any)
 void SolenoidToggle()
 {
-    SamcoPreferences::toggles[OF_Const::solenoid] = !SamcoPreferences::toggles[OF_Const::solenoid];                             // Toggle
-    if(SamcoPreferences::toggles[OF_Const::solenoid]) {                                          // If we turned ON this mode,
+    OF_Prefs::toggles[OF_Const::solenoid] = !OF_Prefs::toggles[OF_Const::solenoid];                             // Toggle
+    if(OF_Prefs::toggles[OF_Const::solenoid]) {                                          // If we turned ON this mode,
         if(!OF_Serial::serialMode)
             Serial.println("Solenoid enabled!");
 
@@ -1528,12 +1528,12 @@ void SolenoidToggle()
             OF_RGB::SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
         #endif // LED_ENABLE
 
-        digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);                          // Engage the solenoid on to notify the user,
+        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);                          // Engage the solenoid on to notify the user,
         delay(300);                                               // Hold it that way for a bit,
-        digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);                           // Release it,
+        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);                           // Release it,
 
         #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);    // And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);    // And reset the LED back to pause mode color
         #endif // LED_ENABLE
 
     } else {                                                      // Or if we're turning it OFF,
@@ -1553,12 +1553,12 @@ void SolenoidToggle()
             delay(150);                                           // for a bit,
             OF_RGB::LedOff();                                             // And turn it back off
             delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);// And reset the LED back to pause mode color
+            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
         #endif // LED_ENABLE
     }
 
     #ifdef USES_DISPLAY
-        FW_Common::OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+        FW_Common::OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
     #endif // USES_DISPLAY
 }
 #endif // USES_SOLENOID

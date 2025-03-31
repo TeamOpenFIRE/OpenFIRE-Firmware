@@ -1,5 +1,5 @@
 /*!
- * @file SamcoEnhanced.h
+ * @file OpenFIREmain.h
  * @brief OpenFIRE main control program.
  *
  * @copyright Samco, https://github.com/samuelballantyne, June 2020
@@ -13,11 +13,10 @@
  * @date 2025
  */
 
-#ifndef _SAMCOENHANCED_H_
-#define _SAMCOENHANCED_H_
+#ifndef _OPENFIREMAIN_H_
+#define _OPENFIREMAIN_H_
 
 #include <Arduino.h>
-#include <RP2040.h>
 #include <Wire.h>
 // include TinyUSB or HID depending on USB stack option
 #if defined(USE_TINYUSB)
@@ -27,6 +26,7 @@
 #endif
 
 #include <DFRobotIRPositionEx.h>
+
 #include <OpenFIREBoard.h>
 #include "OpenFIREDefines.h"
 #include "OpenFIREcommon.h"

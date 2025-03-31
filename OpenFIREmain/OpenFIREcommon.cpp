@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+
 #include "OpenFIREcommon.h"
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
@@ -18,42 +19,42 @@ LightgunButtons FW_Common::buttons(lgbData, ButtonCount);
 void FW_Common::FeedbackSet()
 {
     #ifdef USES_RUMBLE
-        if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::rumblePin], OUTPUT);
-        else SamcoPreferences::toggles[OF_Const::rumble] = false;
+        if(OF_Prefs::pins[OF_Const::rumblePin] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::rumblePin], OUTPUT);
+        else OF_Prefs::toggles[OF_Const::rumble] = false;
     #endif // USES_RUMBLE
 
     #ifdef USES_SOLENOID
-        if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::solenoidPin], OUTPUT);
-        else SamcoPreferences::toggles[OF_Const::solenoid] = false;
+        if(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::solenoidPin], OUTPUT);
+        else OF_Prefs::toggles[OF_Const::solenoid] = false;
     #endif // USES_SOLENOID
 
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0)
-                pinMode(SamcoPreferences::pins[OF_Const::rumbleSwitch], INPUT_PULLUP);
+            if(OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0)
+                pinMode(OF_Prefs::pins[OF_Const::rumbleSwitch], INPUT_PULLUP);
         #endif // USES_RUMBLE
 
         #ifdef USES_SOLENOID
-            if(SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0)
-                pinMode(SamcoPreferences::pins[OF_Const::solenoidSwitch], INPUT_PULLUP);
+            if(OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0)
+                pinMode(OF_Prefs::pins[OF_Const::solenoidSwitch], INPUT_PULLUP);
         #endif // USES_SOLENOID
 
-        if(SamcoPreferences::pins[OF_Const::autofireSwitch] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::autofireSwitch], INPUT_PULLUP);
+        if(OF_Prefs::pins[OF_Const::autofireSwitch] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::autofireSwitch], INPUT_PULLUP);
     #endif // USES_SWITCHES
 
     #ifdef USES_ANALOG
         analogReadResolution(12);
         #ifdef USES_TEMP
-        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 &&
-           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY] &&
-           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::tempPin] &&
-           SamcoPreferences::pins[OF_Const::analogY] != SamcoPreferences::pins[OF_Const::tempPin])
+        if(OF_Prefs::pins[OF_Const::analogX] >= 0 && OF_Prefs::pins[OF_Const::analogY] >= 0 &&
+           OF_Prefs::pins[OF_Const::analogX] != OF_Prefs::pins[OF_Const::analogY] &&
+           OF_Prefs::pins[OF_Const::analogX] != OF_Prefs::pins[OF_Const::tempPin] &&
+           OF_Prefs::pins[OF_Const::analogY] != OF_Prefs::pins[OF_Const::tempPin])
         #else
-        if(SamcoPreferences::pins[OF_Const::analogX] >= 0 && SamcoPreferences::pins[OF_Const::analogY] >= 0 &&
-           SamcoPreferences::pins[OF_Const::analogX] != SamcoPreferences::pins[OF_Const::analogY])
+        if(OF_Prefs::pins[OF_Const::analogX] >= 0 && OF_Prefs::pins[OF_Const::analogY] >= 0 &&
+           OF_Prefs::pins[OF_Const::analogX] != OF_Prefs::pins[OF_Const::analogY])
         #endif // USES_TEMP
             //pinMode(analogPinX, INPUT);
             //pinMode(analogPinY, INPUT);
@@ -62,28 +63,28 @@ void FW_Common::FeedbackSet()
     #endif // USES_ANALOG
 
     #if defined(LED_ENABLE) && defined(FOURPIN_LED)
-    if(SamcoPreferences::pins[OF_Const::ledR] < 0 || SamcoPreferences::pins[OF_Const::ledG] < 0 || SamcoPreferences::pins[OF_Const::ledB] < 0)
+    if(OF_Prefs::pins[OF_Const::ledR] < 0 || OF_Prefs::pins[OF_Const::ledG] < 0 || OF_Prefs::pins[OF_Const::ledB] < 0)
         ledIsValid = false;
     else {
-        pinMode(SamcoPreferences::pins[OF_Const::ledR], OUTPUT);
-        pinMode(SamcoPreferences::pins[OF_Const::ledG], OUTPUT);
-        pinMode(SamcoPreferences::pins[OF_Const::ledB], OUTPUT);
+        pinMode(OF_Prefs::pins[OF_Const::ledR], OUTPUT);
+        pinMode(OF_Prefs::pins[OF_Const::ledG], OUTPUT);
+        pinMode(OF_Prefs::pins[OF_Const::ledB], OUTPUT);
         ledIsValid = true;
     }
     #endif // FOURPIN_LED
 
     #ifdef CUSTOM_NEOPIXEL
-    if(SamcoPreferences::pins[OF_Const::neoPixel] >= 0)
-        OF_RGB::InitExternPixel(SamcoPreferences::pins[OF_Const::neoPixel]);
+    if(OF_Prefs::pins[OF_Const::neoPixel] >= 0)
+        OF_RGB::InitExternPixel(OF_Prefs::pins[OF_Const::neoPixel]);
     #endif // CUSTOM_NEOPIXEL
 
-    if(SamcoPreferences::pins[OF_Const::periphSCL] >= 0 && SamcoPreferences::pins[OF_Const::periphSDA] >= 0 &&
-       bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSCL], 1) &&
-       bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1) != bitRead(SamcoPreferences::pins[OF_Const::periphSDA], 1)) {
+    if(OF_Prefs::pins[OF_Const::periphSCL] >= 0 && OF_Prefs::pins[OF_Const::periphSDA] >= 0 &&
+       bitRead(OF_Prefs::pins[OF_Const::camSCL], 1) != bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) &&
+       bitRead(OF_Prefs::pins[OF_Const::camSDA], 1) != bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
     #ifdef USES_DISPLAY
         // wrapper will manage display validity
         // check it's not using the camera's I2C line
-        if(SamcoPreferences::i2cPeriphs[OF_Const::i2cOLED]) {
+        if(OF_Prefs::i2cPeriphs[OF_Const::i2cOLED]) {
             if(!OLED.Begin()) { if(OLED.display != nullptr) delete OLED.display; }
         }
     #endif // USES_DISPLAY
@@ -98,28 +99,28 @@ void FW_Common::PinsReset()
     }
 
     #ifdef USES_RUMBLE
-        if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::rumblePin], INPUT);
+        if(OF_Prefs::pins[OF_Const::rumblePin] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::rumblePin], INPUT);
     #endif // USES_RUMBLE
 
     #ifdef USES_SOLENOID
-        if(SamcoPreferences::pins[OF_Const::solenoidPin] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::solenoidPin], INPUT);
+        if(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::solenoidPin], INPUT);
     #endif // USES_SOLENOID
 
     #ifdef USES_SWITCHES
         #ifdef USES_RUMBLE
-            if(SamcoPreferences::pins[OF_Const::rumbleSwitch] >= 0)
-                pinMode(SamcoPreferences::pins[OF_Const::rumbleSwitch], INPUT);
+            if(OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0)
+                pinMode(OF_Prefs::pins[OF_Const::rumbleSwitch], INPUT);
         #endif // USES_RUMBLE
 
         #ifdef USES_SOLENOID
-            if(SamcoPreferences::pins[OF_Const::solenoidSwitch] >= 0)
-                pinMode(SamcoPreferences::pins[OF_Const::solenoidSwitch], INPUT);
+            if(OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0)
+                pinMode(OF_Prefs::pins[OF_Const::solenoidSwitch], INPUT);
         #endif // USES_SOLENOID
 
-        if(SamcoPreferences::pins[OF_Const::autofireSwitch] >= 0)
-            pinMode(SamcoPreferences::pins[OF_Const::autofireSwitch], INPUT);
+        if(OF_Prefs::pins[OF_Const::autofireSwitch] >= 0)
+            pinMode(OF_Prefs::pins[OF_Const::autofireSwitch], INPUT);
     #endif // USES_SWITCHES
 
     #ifdef LED_ENABLE
@@ -127,9 +128,9 @@ void FW_Common::PinsReset()
 
         #ifdef FOURPIN_LED
             if(ledIsValid) {
-                pinMode(SamcoPreferences::pins[OF_Const::ledR], INPUT);
-                pinMode(SamcoPreferences::pins[OF_Const::ledG], INPUT);
-                pinMode(SamcoPreferences::pins[OF_Const::ledB], INPUT);
+                pinMode(OF_Prefs::pins[OF_Const::ledR], INPUT);
+                pinMode(OF_Prefs::pins[OF_Const::ledG], INPUT);
+                pinMode(OF_Prefs::pins[OF_Const::ledB], INPUT);
             }
         #endif // FOURPIN_LED
 
@@ -151,21 +152,21 @@ void FW_Common::PinsReset()
 void FW_Common::CameraSet()
 {
     // Sanity check: which channel do these pins correlate to?
-    if(bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) && bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1)) {
+    if(bitRead(OF_Prefs::pins[OF_Const::camSCL], 1) && bitRead(OF_Prefs::pins[OF_Const::camSDA], 1)) {
         // I2C1
-        if(bitRead(SamcoPreferences::pins[OF_Const::camSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::camSDA], 0)) {
+        if(bitRead(OF_Prefs::pins[OF_Const::camSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::camSDA], 0)) {
             // SDA/SCL are indeed on verified correct pins
-            Wire1.setSDA(SamcoPreferences::pins[OF_Const::camSDA]);
-            Wire1.setSCL(SamcoPreferences::pins[OF_Const::camSCL]);
+            Wire1.setSDA(OF_Prefs::pins[OF_Const::camSDA]);
+            Wire1.setSCL(OF_Prefs::pins[OF_Const::camSCL]);
             dfrIRPos = new DFRobotIRPositionEx(Wire1);
         }
         
-    } else if(!bitRead(SamcoPreferences::pins[OF_Const::camSCL], 1) && !bitRead(SamcoPreferences::pins[OF_Const::camSDA], 1)) {
+    } else if(!bitRead(OF_Prefs::pins[OF_Const::camSCL], 1) && !bitRead(OF_Prefs::pins[OF_Const::camSDA], 1)) {
         // I2C0
-        if(bitRead(SamcoPreferences::pins[OF_Const::camSCL], 0) && !bitRead(SamcoPreferences::pins[OF_Const::camSDA], 0)) {
+        if(bitRead(OF_Prefs::pins[OF_Const::camSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::camSDA], 0)) {
             // SDA/SCL are indeed on verified correct pins
-            Wire.setSDA(SamcoPreferences::pins[OF_Const::camSDA]);
-            Wire.setSCL(SamcoPreferences::pins[OF_Const::camSCL]);
+            Wire.setSDA(OF_Prefs::pins[OF_Const::camSDA]);
+            Wire.setSCL(OF_Prefs::pins[OF_Const::camSCL]);
             dfrIRPos = new DFRobotIRPositionEx(Wire);
         }
     }
@@ -212,14 +213,14 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
                 OLED.ScreenModeChange(ExtDisplay::Screen_Mamehook_Single, buttons.analogOutput);
             else OLED.ScreenModeChange(ExtDisplay::Screen_Normal, buttons.analogOutput);
 
-            OLED.TopPanelUpdate("Prof: ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+            OLED.TopPanelUpdate("Prof: ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
         #endif // USES_DISPLAY
 
         break;
     case FW_Const::GunMode_Calibration:
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_Calibrating);
-            OLED.TopPanelUpdate("Cali: ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+            OLED.TopPanelUpdate("Cali: ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
         #endif // USES_DISPLAY
         break;
     case FW_Const::GunMode_Pause:
@@ -227,11 +228,11 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
 
         #ifdef USES_DISPLAY
           OLED.ScreenModeChange(ExtDisplay::Screen_Pause);
-          OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+          OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
 
-          if(SamcoPreferences::toggles[OF_Const::simplePause]) 
+          if(OF_Prefs::toggles[OF_Const::simplePause]) 
               OLED.PauseListUpdate(pauseModeSelection);
-          else OLED.PauseScreenShow(SamcoPreferences::currentProfile, SamcoPreferences::profiles[0].name, SamcoPreferences::profiles[1].name, SamcoPreferences::profiles[2].name, SamcoPreferences::profiles[3].name);
+          else OLED.PauseScreenShow(OF_Prefs::currentProfile, OF_Prefs::profiles[0].name, OF_Prefs::profiles[1].name, OF_Prefs::profiles[2].name, OF_Prefs::profiles[3].name);
         #endif // USES_DISPLAY
 
         break;
@@ -256,8 +257,8 @@ void FW_Common::SetRunMode(const FW_Const::RunMode_e &newMode)
         return;
 
     // block Processing/test modes being applied to a profile
-    if(newMode <= FW_Const::RunMode_ProfileMax && SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode != newMode) {
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode = newMode;
+    if(newMode <= FW_Const::RunMode_ProfileMax && OF_Prefs::profiles[OF_Prefs::currentProfile].runMode != newMode) {
+        OF_Prefs::profiles[OF_Prefs::currentProfile].runMode = newMode;
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
     
@@ -282,20 +283,20 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
     int rightOffset;
 
     // backup current values in case the user cancels
-    int _topOffset = SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset;
-    int _bottomOffset = SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset;
-    int _leftOffset = SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset;
-    int _rightOffset = SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset;
-    float _TLled = SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled;
-    float _TRled = SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled;
-    float _adjX = SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX;
-    float _adjY = SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY;
+    int _topOffset = OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset;
+    int _bottomOffset = OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset;
+    int _leftOffset = OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset;
+    int _rightOffset = OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset;
+    float _TLled = OF_Prefs::profiles[OF_Prefs::currentProfile].TLled;
+    float _TRled = OF_Prefs::profiles[OF_Prefs::currentProfile].TRled;
+    float _adjX = OF_Prefs::profiles[OF_Prefs::currentProfile].adjX;
+    float _adjY = OF_Prefs::profiles[OF_Prefs::currentProfile].adjY;
 
     // set current values to factory defaults
-    SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = 0;
-    SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset = 0;
-    SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset = 0;
-    SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset = 0;
+    OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = 0;
+    OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset = 0;
+    OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset = 0;
+    OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset = 0;
 
     // Force center mouse to center
     AbsMouse5.move(32768/2, 32768/2);
@@ -350,14 +351,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
             Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
 
             // Reapplying backed up data
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = _topOffset;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset = _bottomOffset;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset = _leftOffset;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset = _rightOffset;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled = _TLled;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled = _TRled;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = _adjX;
-            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = _adjY;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = _topOffset;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset = _bottomOffset;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset = _leftOffset;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset = _rightOffset;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].TLled = _TLled;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].TRled = _TRled;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = _adjX;
+            OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = _adjY;
 
             // Re-print the profile
             stateFlags |= FW_Const::StateFlag_PrintSelectedProfile;
@@ -388,23 +389,23 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                     rightOffset = 0;
 
                     // Set Cam center offsets
-                    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) -
+                    if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) -
                                                                      (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) +
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) +
                                                                      (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
                     } else {
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) -
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) -
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) +
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) +
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                         // Work out LED locations by assuming height is 100%
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled = (res_x / 2) - ((OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H())) / 2);
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled = (res_x / 2) + ((OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H())) / 2);
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].TLled = (res_x / 2) - ((OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H())) / 2);
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].TRled = (res_x / 2) + ((OpenFIREsquare.W() * (res_y  / OpenFIREsquare.H())) / 2);
                     }
 
                     // Update Cam centre in perspective library
-                    OpenFIREper.source(SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX, SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY);
+                    OpenFIREper.source(OF_Prefs::profiles[OF_Prefs::currentProfile].adjX, OF_Prefs::profiles[OF_Prefs::currentProfile].adjY);
                     OpenFIREper.deinit(0);
 
                     // Set mouse movement to top position
@@ -484,10 +485,10 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                     }
 
                     // Save Offset buffer to profile
-                    SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = topOffset;
-                    SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset = bottomOffset;
-                    SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset = leftOffset;
-                    SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset = rightOffset;
+                    OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = topOffset;
+                    OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset = bottomOffset;
+                    OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset = leftOffset;
+                    OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset = rightOffset;
 
                     // Move back to center calibration point
                     if(!fromDesktop) {
@@ -498,15 +499,15 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                     break;
                 case FW_Const::Cali_Verify:
                     // Apply new Cam center offsets with Offsets applied
-                    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) -
+                    if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = (OpenFIREdiamond.testMedianX() - (512 << 2)) * cos(OpenFIREdiamond.Ang()) -
                                                                      (OpenFIREdiamond.testMedianY() - (384 << 2)) * sin(OpenFIREdiamond.Ang()) + (512 << 2);
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) +
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = (OpenFIREdiamond.testMedianX() - (512 << 2)) * sin(OpenFIREdiamond.Ang()) +
                                                                      (OpenFIREdiamond.testMedianY() - (384 << 2)) * cos(OpenFIREdiamond.Ang()) + (384 << 2);
                     } else {
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) -
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = (OpenFIREsquare.testMedianX() - (512 << 2)) * cos(OpenFIREsquare.Ang()) -
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * sin(OpenFIREsquare.Ang()) + (512 << 2);
-                        SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) +
+                        OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = (OpenFIREsquare.testMedianX() - (512 << 2)) * sin(OpenFIREsquare.Ang()) +
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                     }
 
@@ -514,20 +515,20 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                       char buf[6];
                       buf[0] = OF_Const::sCaliInfoUpd;
                       buf[1] = 5;
-                      memcpy(&buf[2], &SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, sizeof(float));
+                      memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, sizeof(float));
                       Serial.write(buf, sizeof(buf));
                     }
                     {
                       char buf[6];
                       buf[0] = OF_Const::sCaliInfoUpd;
                       buf[1] = 6;
-                      memcpy(&buf[2], &SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, sizeof(float));
+                      memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, sizeof(float));
                       Serial.write(buf, sizeof(buf));
                     }
                     Serial.flush();
 
                     // Update Cam centre in perspective library
-                    OpenFIREper.source(SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX, SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY);
+                    OpenFIREper.source(OF_Prefs::profiles[OF_Prefs::currentProfile].adjX, OF_Prefs::profiles[OF_Prefs::currentProfile].adjY);
                     OpenFIREper.deinit(0);
 
                     // Let the user test.
@@ -552,12 +553,12 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                             Serial.flush();
 
                             // (Re)set current values to factory defaults
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = 0;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset = 0;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset = 0;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset = 0;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = 512 << 2;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = 384 << 2;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = 0;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset = 0;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset = 0;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset = 0;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = 512 << 2;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = 384 << 2;
                             SetMode(FW_Const::GunMode_Calibration);
                             AbsMouse5.move(32768/2, 32768/2);
                         // Press C/Home to exit without committing new calibration values
@@ -566,14 +567,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                             Serial.flush();
 
                             // Reapply backed-up data
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset = _topOffset;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset = _bottomOffset;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset = _leftOffset;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset = _rightOffset;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled = _TLled;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled = _TRled;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX = _adjX;
-                            SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY = _adjY;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = _topOffset;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset = _bottomOffset;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset = _leftOffset;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset = _rightOffset;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].TLled = _TLled;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].TRled = _TRled;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].adjX = _adjX;
+                            OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = _adjY;
 
                             // Re-print the profile
                             stateFlags |= FW_Const::StateFlag_PrintSelectedProfile;
@@ -604,14 +605,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
     } else SetMode(FW_Const::GunMode_Run);
 
     #ifdef USES_RUMBLE
-        if(SamcoPreferences::toggles[OF_Const::rumble]) {
-            analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+        if(OF_Prefs::toggles[OF_Const::rumble]) {
+            analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
             delay(80);
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
             delay(50);
-            analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+            analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
             delay(125);
-            digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
         }
     #endif // USES_RUMBLE
 
@@ -625,7 +626,7 @@ void FW_Common::GetPosition()
         int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
         if(error == DFRobotIRPositionEx::Error_Success) {
             // if diamond layout, or square
-            if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+            if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
                 OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
                 OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
                                 OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
@@ -640,15 +641,15 @@ void FW_Common::GetPosition()
                                 OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
                                 OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
                                 OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
-                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, 0,
-                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, 0,
-                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TLled, res_y,
-                                SamcoPreferences::profiles[SamcoPreferences::currentProfile].TRled, res_y);
+                                OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, 0,
+                                OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, 0,
+                                OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, res_y,
+                                OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, res_y);
             }
 
             // Output mapped to screen resolution because offsets are measured in pixels
-            mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].leftOffset), (res_x + SamcoPreferences::profiles[SamcoPreferences::currentProfile].rightOffset));                 
-            mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - SamcoPreferences::profiles[SamcoPreferences::currentProfile].topOffset), (res_y + SamcoPreferences::profiles[SamcoPreferences::currentProfile].bottomOffset));
+            mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset), (res_x + OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset));                 
+            mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset), (res_y + OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset));
 
             switch(runMode) {
                 case FW_Const::RunMode_Average:
@@ -717,7 +718,7 @@ void FW_Common::GetPosition()
                     int rawY[4];
                     // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
                     for (int i = 0; i < 4; i++) {
-                        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+                        if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
                             rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0);
                             rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);
                         } else {
@@ -730,7 +731,7 @@ void FW_Common::GetPosition()
                         int mouseXscaled = mouseX / 4;
                         int mouseYscaled = mouseY / 4;
 
-                        if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+                        if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
                             int testMedianX = map(OpenFIREdiamond.testMedianX(), 0, 1023 << 2, 1920, 0);
                             int testMedianY = map(OpenFIREdiamond.testMedianY(), 0, 768 << 2, 0, 1080);
                             char buf[49];
@@ -796,7 +797,7 @@ void FW_Common::PrintIrError()
 
 void FW_Common::UpdateLastSeen()
 {
-    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout) {
+    if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
         if(lastSeen != OpenFIREdiamond.seen()) {
             #ifdef MAMEHOOKER
             if(!OF_Serial::serialMode)
@@ -834,25 +835,25 @@ bool FW_Common::SelectCalProfile(const uint8_t &profile)
     if(profile >= PROFILE_COUNT)
         return false;
 
-    if(SamcoPreferences::currentProfile != profile) {
+    if(OF_Prefs::currentProfile != profile) {
         stateFlags |= FW_Const::StateFlag_PrintSelectedProfile;
-        SamcoPreferences::currentProfile = profile;
+        OF_Prefs::currentProfile = profile;
     }
 
-    OpenFIREper.source(SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjX, SamcoPreferences::profiles[SamcoPreferences::currentProfile].adjY);                                                          
+    OpenFIREper.source(OF_Prefs::profiles[OF_Prefs::currentProfile].adjX, OF_Prefs::profiles[OF_Prefs::currentProfile].adjY);                                                          
     OpenFIREper.deinit(0);
 
     // set IR sensitivity
-    if(SamcoPreferences::profiles[profile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
-        SetIrSensitivity(SamcoPreferences::profiles[profile].irSens);
+    if(OF_Prefs::profiles[profile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
+        SetIrSensitivity(OF_Prefs::profiles[profile].irSens);
 
     // set run mode
-    if(SamcoPreferences::profiles[profile].runMode < FW_Const::RunMode_Count)
-        SetRunMode((FW_Const::RunMode_e)SamcoPreferences::profiles[profile].runMode);
+    if(OF_Prefs::profiles[profile].runMode < FW_Const::RunMode_Count)
+        SetRunMode((FW_Const::RunMode_e)OF_Prefs::profiles[profile].runMode);
 
     #ifdef USES_DISPLAY
         if(gunMode != FW_Const::GunMode_Docked)
-            OLED.TopPanelUpdate("Using ", SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+            OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
     #endif // USES_DISPLAY
  
     #ifdef LED_ENABLE
@@ -872,7 +873,7 @@ void FW_Common::SetLedColorFromMode()
         OF_RGB::SetLedPackedColor(OF_RGB::CalModeColor);
         break;
     case FW_Const::GunMode_Pause:
-        OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
+        OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
         break;
     case FW_Const::GunMode_Run:
         if(lastSeen)
@@ -892,13 +893,13 @@ void FW_Common::RedrawDisplay()
         OLED.ScreenModeChange(ExtDisplay::Screen_Docked);
     else if(gunMode == FW_Const::GunMode_Pause) {
         OLED.ScreenModeChange(ExtDisplay::Screen_Pause);
-        if(SamcoPreferences::toggles[OF_Const::simplePause])
+        if(OF_Prefs::toggles[OF_Const::simplePause])
             OLED.PauseListUpdate(ExtDisplay::ScreenPause_Save);
-        else OLED.PauseScreenShow(SamcoPreferences::currentProfile,
-                                  SamcoPreferences::profiles[0].name,
-                                  SamcoPreferences::profiles[1].name,
-                                  SamcoPreferences::profiles[2].name,
-                                  SamcoPreferences::profiles[3].name);
+        else OLED.PauseScreenShow(OF_Prefs::currentProfile,
+                                  OF_Prefs::profiles[0].name,
+                                  OF_Prefs::profiles[1].name,
+                                  OF_Prefs::profiles[2].name,
+                                  OF_Prefs::profiles[3].name);
     }
 }
 #endif // USES_DISPLAY
@@ -908,8 +909,8 @@ void FW_Common::SetIrSensitivity(const uint8_t &sensitivity)
     if(sensitivity > DFRobotIRPositionEx::Sensitivity_Max)
         return;
 
-    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens != sensitivity) {
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens = sensitivity;
+    if(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens != sensitivity) {
+        OF_Prefs::profiles[OF_Prefs::currentProfile].irSens = sensitivity;
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
 
@@ -927,8 +928,8 @@ void FW_Common::SetIrLayout(const uint8_t &layout)
     if(layout > 1)
         return;
 
-    if(SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout != layout) {
-        SamcoPreferences::profiles[SamcoPreferences::currentProfile].irLayout = layout;
+    if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout != layout) {
+        OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout = layout;
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
 }
@@ -940,7 +941,7 @@ int FW_Common::SavePreferences()
     // Extra protection to ensure the same data can't write a bunch of times.
     if(gunMode != FW_Const::GunMode_Docked) {
         if(!(stateFlags & FW_Const::StateFlag_SavePreferencesEn))
-            return SamcoPreferences::Error_Success;
+            return OF_Prefs::Error_Success;
 
         stateFlags &= ~FW_Const::StateFlag_SavePreferencesEn;
 
@@ -950,20 +951,20 @@ int FW_Common::SavePreferences()
         #endif // USES_DISPLAY
     }
 
-    if(SamcoPreferences::SaveProfiles() == SamcoPreferences::Error_Success) {
+    if(OF_Prefs::SaveProfiles() == OF_Prefs::Error_Success) {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
         #endif // USES_DISPLAY
 
         Serial.println("Settings saved to Flash"), Serial.flush();
-        SamcoPreferences::SaveToggles();
+        OF_Prefs::SaveToggles();
 
-        if(SamcoPreferences::toggles[OF_Const::customPins])
-            SamcoPreferences::SavePins();
+        if(OF_Prefs::toggles[OF_Const::customPins])
+            OF_Prefs::SavePins();
 
-        SamcoPreferences::SaveSettings();
-        SamcoPreferences::SavePeriphs();
-        SamcoPreferences::SaveUSBID();
+        OF_Prefs::SaveSettings();
+        OF_Prefs::SavePeriphs();
+        OF_Prefs::SaveUSBID();
 
         #ifdef LED_ENABLE
             for(byte i = 0; i < 3; i++) {
@@ -978,7 +979,7 @@ int FW_Common::SavePreferences()
             RedrawDisplay();
         #endif // USES_DISPLAY
 
-        return SamcoPreferences::Error_Success;
+        return OF_Prefs::Error_Success;
     } else {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveError);
@@ -988,11 +989,11 @@ int FW_Common::SavePreferences()
         Serial.println("Error saving Preferences to Flash.");
 
         /*
-        if(nvPrefsError != SamcoPreferences::Error_Success) {
+        if(nvPrefsError != OF_Prefs::Error_Success) {
             Serial.print(NVRAMlabel);
             Serial.print(" error: ");
         #ifdef SAMCO_FLASH_ENABLE
-            Serial.println(SamcoPreferences::ErrorCodeToString(nvPrefsError));
+            Serial.println(OF_Prefs::ErrorCodeToString(nvPrefsError));
         #else
             Serial.println(nvPrefsError);
         #endif // SAMCO_FLASH_ENABLE
@@ -1011,27 +1012,27 @@ int FW_Common::SavePreferences()
             RedrawDisplay();
         #endif // USES_DISPLAY
 
-        return SamcoPreferences::Error_Write;
+        return OF_Prefs::Error_Write;
     }
 }
 
 void FW_Common::UpdateBindings(const bool &lowButtons)
 {
     // Updates pins
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].pin = SamcoPreferences::pins[OF_Const::btnTrigger];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].pin       = SamcoPreferences::pins[OF_Const::btnGunA];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].pin       = SamcoPreferences::pins[OF_Const::btnGunB];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Reload].pin  = SamcoPreferences::pins[OF_Const::btnGunC];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Start].pin   = SamcoPreferences::pins[OF_Const::btnStart];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Select].pin  = SamcoPreferences::pins[OF_Const::btnSelect];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Up].pin      = SamcoPreferences::pins[OF_Const::btnGunUp];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Down].pin    = SamcoPreferences::pins[OF_Const::btnGunDown];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Left].pin    = SamcoPreferences::pins[OF_Const::btnGunLeft];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Right].pin   = SamcoPreferences::pins[OF_Const::btnGunRight];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].pin   = SamcoPreferences::pins[OF_Const::btnPedal];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal2].pin  = SamcoPreferences::pins[OF_Const::btnPedal2];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pump].pin    = SamcoPreferences::pins[OF_Const::btnPump];
-    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Home].pin    = SamcoPreferences::pins[OF_Const::btnHome];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].pin = OF_Prefs::pins[OF_Const::btnTrigger];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].pin       = OF_Prefs::pins[OF_Const::btnGunA];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].pin       = OF_Prefs::pins[OF_Const::btnGunB];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Reload].pin  = OF_Prefs::pins[OF_Const::btnGunC];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Start].pin   = OF_Prefs::pins[OF_Const::btnStart];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Select].pin  = OF_Prefs::pins[OF_Const::btnSelect];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Up].pin      = OF_Prefs::pins[OF_Const::btnGunUp];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Down].pin    = OF_Prefs::pins[OF_Const::btnGunDown];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Left].pin    = OF_Prefs::pins[OF_Const::btnGunLeft];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Right].pin   = OF_Prefs::pins[OF_Const::btnGunRight];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].pin   = OF_Prefs::pins[OF_Const::btnPedal];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal2].pin  = OF_Prefs::pins[OF_Const::btnPedal2];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pump].pin    = OF_Prefs::pins[OF_Const::btnPump];
+    LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Home].pin    = OF_Prefs::pins[OF_Const::btnHome];
 
     // Updates button functions for low-button mode
     if(lowButtons) {

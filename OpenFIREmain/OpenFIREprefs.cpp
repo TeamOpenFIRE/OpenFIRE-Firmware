@@ -1,8 +1,5 @@
-#include <cstring>
-#include <sys/_stdint.h>
-#include "FS.h"
 /*!
- * @file SamcoPreferences.cpp
+ * @file OpenFIREprefs.cpp
  * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
  *
  * @copyright Mike Lynch, 2021
@@ -14,20 +11,18 @@
  * @date 2023
  */
 
-#include "SamcoPreferences.h"
-#include <Arduino.h>
-#include "OpenFIREcommon.h"
+#include <LittleFS.h>
 
-#include "LittleFS.h"
+#include "OpenFIREprefs.h"
 
-int SamcoPreferences::InitFS()
+int OF_Prefs::InitFS()
 {
     if(LittleFS.begin())
         return Error_Success;
     else return Error_NoData;
 }
 
-void SamcoPreferences::Load()
+void OF_Prefs::Load()
 {
     LoadToggles();
     if(toggles[OF_Const::customPins])
@@ -38,7 +33,7 @@ void SamcoPreferences::Load()
     LoadUSBID();
 }
 
-int SamcoPreferences::LoadProfiles()
+int OF_Prefs::LoadProfiles()
 {
     File prefs = LittleFS.open("profiles.conf", "r");
     if(prefs) {
@@ -145,7 +140,7 @@ int SamcoPreferences::LoadProfiles()
     } else return Error_Read;
 }
 
-int SamcoPreferences::SaveProfiles()
+int OF_Prefs::SaveProfiles()
 {
     File prefs = LittleFS.open("profiles.conf", "w");
     if(prefs) {
@@ -178,7 +173,7 @@ int SamcoPreferences::SaveProfiles()
     } else return Error_Write;
 }
 
-int SamcoPreferences::LoadToggles()
+int OF_Prefs::LoadToggles()
 {
     File togglesFile = LittleFS.open("toggles.conf", "r");
     if(togglesFile) {
@@ -194,7 +189,7 @@ int SamcoPreferences::LoadToggles()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::SaveToggles()
+int OF_Prefs::SaveToggles()
 {
     File togglesFile = LittleFS.open("toggles.conf", "w");
     if(togglesFile) {
@@ -206,7 +201,7 @@ int SamcoPreferences::SaveToggles()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::LoadPins()
+int OF_Prefs::LoadPins()
 {
     File pinsFile = LittleFS.open("pins.conf", "r");
     if(pinsFile) {
@@ -222,7 +217,7 @@ int SamcoPreferences::LoadPins()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::SavePins()
+int OF_Prefs::SavePins()
 {
     File pinsFile = LittleFS.open("pins.conf", "w");
     if(pinsFile) {
@@ -234,7 +229,7 @@ int SamcoPreferences::SavePins()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::LoadSettings()
+int OF_Prefs::LoadSettings()
 {
     File settingsFile = LittleFS.open("settings.conf", "r");
     if(settingsFile) {
@@ -252,7 +247,7 @@ int SamcoPreferences::LoadSettings()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::SaveSettings()
+int OF_Prefs::SaveSettings()
 {
     File settingsFile = LittleFS.open("settings.conf", "w");
     if(settingsFile) {
@@ -264,7 +259,7 @@ int SamcoPreferences::SaveSettings()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::LoadPeriphs()
+int OF_Prefs::LoadPeriphs()
 {
     File periphsFile = LittleFS.open("i2cperiphs.conf", "r");
     if(periphsFile) {
@@ -305,7 +300,7 @@ int SamcoPreferences::LoadPeriphs()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::SavePeriphs()
+int OF_Prefs::SavePeriphs()
 {
     File periphsFile = LittleFS.open("i2cperiphs.conf", "w");
     if(periphsFile) {
@@ -328,7 +323,7 @@ int SamcoPreferences::SavePeriphs()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::LoadUSBID()
+int OF_Prefs::LoadUSBID()
 {
     File idFile = LittleFS.open("USB.conf", "r");
     if(idFile) {
@@ -364,7 +359,7 @@ int SamcoPreferences::LoadUSBID()
     } else return Error_NoData;
 }
 
-int SamcoPreferences::SaveUSBID()
+int OF_Prefs::SaveUSBID()
 {
     File idFile = LittleFS.open("USB.conf", "w");
     if(idFile) {
@@ -376,12 +371,12 @@ int SamcoPreferences::SaveUSBID()
     } else return Error_NoData;
 }
 
-void SamcoPreferences::ResetPreferences()
+void OF_Prefs::ResetPreferences()
 {
     LittleFS.format();
 }
 
-void SamcoPreferences::LoadPresets()
+void OF_Prefs::LoadPresets()
 {
     for(int i = 0; i < OF_Const::boardInputsCount; i++)
         pins[i] = -1;

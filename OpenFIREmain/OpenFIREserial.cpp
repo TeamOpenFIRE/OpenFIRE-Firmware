@@ -1,5 +1,3 @@
-#include <cstring>
-#include <sys/_stdint.h>
  /*!
  * @file OpenFIREserial.cpp
  * @brief Serial RX buffer reading routines.
@@ -9,8 +7,9 @@
  */ 
 
 #include <Arduino.h>
+
 #include "OpenFIREserial.h"
-#include "SamcoPreferences.h"
+#include "OpenFIREprefs.h"
 #include "OpenFIREFeedback.h"
 #include "OpenFIRElights.h"
 #include "boards/OpenFIREshared.h"
@@ -123,7 +122,7 @@ void OF_Serial::SerialProcessing()
                           offscreenButtonSerial = false;
                       else FW_Common::offscreenButton = false;
                       // reset bindings for low button users if offscreen button was enabled earlier.
-                      if(SamcoPreferences::toggles[OF_Const::lowButtonsMode]) {
+                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
                           FW_Common::UpdateBindings();
                       }
                       break;
@@ -135,7 +134,7 @@ void OF_Serial::SerialProcessing()
                       else FW_Common::offscreenButton = true;
                       // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
                       // TODO: make this its own dedicated method in OpenFIREinput?
-                      if(SamcoPreferences::toggles[OF_Const::lowButtonsMode]) {
+                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode = MOUSE_BUTTON4;
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType = LightgunButtons::ReportType_Mouse;
@@ -151,7 +150,7 @@ void OF_Serial::SerialProcessing()
                 switch(serialInput) {
                     // separate button (default to original binds)
                     case '0':
-                      FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+                      FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                       break;
                     // make reload button (mouse right)
                     case '1':
@@ -199,14 +198,14 @@ void OF_Serial::SerialProcessing()
                 switch(serialInput) {
                     // disable
                     case '0':
-                      if(SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1 && SamcoPreferences::pins[OF_Const::solenoidPin] >= 0) { SamcoPreferences::toggles[OF_Const::solenoid] = true; }
-                      if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0) { SamcoPreferences::toggles[OF_Const::rumbleFF] = false; }
+                      if(OF_Prefs::pins[OF_Const::solenoidSwitch] == -1 && OF_Prefs::pins[OF_Const::solenoidPin] >= 0) { OF_Prefs::toggles[OF_Const::solenoid] = true; }
+                      if(OF_Prefs::pins[OF_Const::rumblePin] >= 0) { OF_Prefs::toggles[OF_Const::rumbleFF] = false; }
                       break;
                     // enable
                     case '1':
-                      if(SamcoPreferences::pins[OF_Const::rumbleSwitch] == -1 && SamcoPreferences::pins[OF_Const::rumblePin] >= 0) { SamcoPreferences::toggles[OF_Const::rumble] = true; }
-                      if(SamcoPreferences::pins[OF_Const::solenoidSwitch] == -1 && SamcoPreferences::pins[OF_Const::solenoidPin] >= 0) { SamcoPreferences::toggles[OF_Const::solenoid] = false; }
-                      if(SamcoPreferences::pins[OF_Const::rumblePin] >= 0) { SamcoPreferences::toggles[OF_Const::rumbleFF] = true; }
+                      if(OF_Prefs::pins[OF_Const::rumbleSwitch] == -1 && OF_Prefs::pins[OF_Const::rumblePin] >= 0) { OF_Prefs::toggles[OF_Const::rumble] = true; }
+                      if(OF_Prefs::pins[OF_Const::solenoidSwitch] == -1 && OF_Prefs::pins[OF_Const::solenoidPin] >= 0) { OF_Prefs::toggles[OF_Const::solenoid] = false; }
+                      if(OF_Prefs::pins[OF_Const::rumblePin] >= 0) { OF_Prefs::toggles[OF_Const::rumbleFF] = true; }
                       break;
                 }
                 OF_FFB::FFBShutdown();
@@ -218,12 +217,12 @@ void OF_Serial::SerialProcessing()
                 serialInput = Serial.read();                           // Read the next.
                 if(serialInput == '1') {
                     OF_FFB::burstFireActive = true;
-                    SamcoPreferences::toggles[OF_Const::autofire] = false;
+                    OF_Prefs::toggles[OF_Const::autofire] = false;
                 } else if(serialInput == '2') {
-                    SamcoPreferences::toggles[OF_Const::autofire] = true;
+                    OF_Prefs::toggles[OF_Const::autofire] = true;
                     OF_FFB::burstFireActive = false;
                 } else if(serialInput == '0') {
-                    SamcoPreferences::toggles[OF_Const::autofire] = false;
+                    OF_Prefs::toggles[OF_Const::autofire] = false;
                     OF_FFB::burstFireActive = false;
                 }
                 break;
@@ -293,7 +292,7 @@ void OF_Serial::SerialProcessing()
                       if(FW_Common::gunMode == FW_Const::GunMode_Run) OF_RGB::LedOff();           // Turn it off, and let lastSeen handle it from here.
                   #endif // LED_ENABLE
                   #ifdef USES_RUMBLE
-                      digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                      digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
                       serialRumbPulseStage = 0;
                       serialRumbPulses = 0;
                       serialRumbPulsesLast = 0;
@@ -301,7 +300,7 @@ void OF_Serial::SerialProcessing()
                       serialRumbCustomPauseLength = 0;
                   #endif // USES_RUMBLE
                   #ifdef USES_SOLENOID
-                      digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+                      digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
                       serialSolPulses = 0;
                       serialSolPulsesLast = 0;
                       serialSolCustomHoldLength = 0;
@@ -310,7 +309,7 @@ void OF_Serial::SerialProcessing()
                   AbsMouse5.releaseAll();
                   Keyboard.releaseAll();
                   // remap
-                  FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+                  FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                   Serial.println("Received end serial pulse, releasing FF override.");
               }
               break;
@@ -325,7 +324,7 @@ void OF_Serial::SerialProcessing()
                 serialInput = Serial.read();
                 if(serialInput >= '2' && serialInput <= '4') {
                     uint8_t afSetting = serialInput - '0';
-                    SamcoPreferences::settings[OF_Const::autofireWaitFactor] = afSetting;
+                    OF_Prefs::settings[OF_Const::autofireWaitFactor] = afSetting;
                     Serial.print("Autofire speed level ");
                     Serial.println(afSetting);
                 } else Serial.println("SERIALREAD: No valid interval set! (Expected 2 to 4)");
@@ -336,7 +335,7 @@ void OF_Serial::SerialProcessing()
                 if(serialInput >= '1' && serialInput <= '4') {
                     playerStartBtn = serialInput;
                     playerSelectBtn = serialInput + 4;
-                    FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+                    FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                 } else {
                     Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                 }
@@ -689,37 +688,37 @@ void OF_Serial::SerialHandling()
     // The display (if enabled) is handled in the normal Core 0 gunmode run method.
 
     #ifdef USES_SOLENOID
-      if(SamcoPreferences::toggles[OF_Const::solenoid]) {
+      if(OF_Prefs::toggles[OF_Const::solenoid]) {
           // Solenoid "on" command
           if(serialQueue[SerialQueue_Solenoid]) {
-              if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
+              if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {
                   if(millis() - serialSolTimestamp > SERIAL_SOLENOID_MAXSHUTOFF) {
-                      digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+                      digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
                       serialQueue[SerialQueue_Solenoid] = false;
                   }
               } else {
-                  digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);
+                  digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
                   serialSolTimestamp = millis();
               }
           // Solenoid "pulse" command
           } else if(serialQueue[SerialQueue_SolPulse]) {
               if(!serialSolPulsesLast) {                            // Have we started pulsing?
-                  digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);  // Start pulsing it on!
+                  digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);  // Start pulsing it on!
                   serialSolPulsesLast++;                                 // Start the sequence.
                   serialSolPulsesLastUpdate = millis();                  // timestamp
               } else if(serialSolPulsesLast <= serialSolPulses) {   // Have we met the pulses quota?
-                  if(digitalRead(SamcoPreferences::pins[OF_Const::solenoidPin])) {
+                  if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {
                       // custom hold length
                       if(serialSolCustomHoldLength) {
                           if(millis() - serialSolPulsesLastUpdate >= serialSolCustomHoldLength) {
-                              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
+                              digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
                               if(serialSolPulsesLast >= serialSolPulses)
                                   serialQueue[SerialQueue_SolPulse] = false;
                               else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                           }
                       // current settings hold length
-                      } else if(millis() - serialSolPulsesLastUpdate >= SamcoPreferences::settings[OF_Const::solenoidNormalInterval]) {
-                          digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
+                      } else if(millis() - serialSolPulsesLastUpdate >= OF_Prefs::settings[OF_Const::solenoidNormalInterval]) {
+                          digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
                           if(serialSolPulsesLast >= serialSolPulses)
                               serialQueue[SerialQueue_SolPulse] = false;
                           else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
@@ -728,35 +727,35 @@ void OF_Serial::SerialHandling()
                       // custom pause length
                       if(serialSolCustomPauseLength) {
                           if(millis() - serialSolPulsesLastUpdate >= serialSolCustomPauseLength) {
-                              digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
+                              digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                               serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                           }
                       // current settings pause length
                       } else if(millis() - serialSolPulsesLastUpdate >=
-                                SamcoPreferences::settings[OF_Const::solenoidFastInterval] * SamcoPreferences::settings[OF_Const::autofireWaitFactor]) {
-                          digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
+                                OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]) {
+                          digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
                   }
               }
           // Solenoid "off" command
-          } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+          } else digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
       // solenoid toggle not allowed, just force it off.
-      } else digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+      } else digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
   #endif // USES_SOLENOID
 
   #ifdef USES_RUMBLE
-      if(SamcoPreferences::toggles[OF_Const::rumble]) {
+      if(OF_Prefs::toggles[OF_Const::rumble]) {
           // Rumble "on" command
           if(serialQueue[SerialQueue_Rumble]) {
-              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]); // turn/keep it on.
+              analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]); // turn/keep it on.
           // Rumble "pulse" command
           } else if(serialQueue[SerialQueue_RumbPulse]) {
               // Pulses start
               if(!serialRumbPulsesLast) {
                   if(serialRumbCustomHoldLength && serialRumbCustomPauseLength)
-                       analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
-                  else analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3);
+                       analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
+                  else analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength] / 3);
                   serialRumbPulseStage = 0;                              // Set that we're at stage 0.
                   serialRumbPulsesLast++;
                   serialRumbPulsesLastUpdate = millis();
@@ -767,39 +766,39 @@ void OF_Serial::SerialHandling()
                       if(!serialRumbPulseStage) {
                           if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomHoldLength) {
                               serialRumbPulseStage = 0;
-                              digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                              digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
                               if(serialRumbPulsesLast >= serialRumbPulses)
                                   serialQueue[SerialQueue_RumbPulse] = false;
                           }
                       } else if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomPauseLength) {
                           serialRumbPulseStage++;
-                          analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                          analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
                       }
                   // OF-style analog ramping
                   } else if(millis() - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
                       switch(serialRumbPulseStage) {
                           // Rising to Sustain
                           case 0:
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
+                              analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
                               serialRumbPulseStage++;                    // Increments the stage of the pulse.
                               serialRumbPulsesLastUpdate = millis();     // and timestamps when we've had updated this last.
                               break;                                     // Then quits until next pulse stage
                           // Sustain to Falling
                           case 1:
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 2);
+                              analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength] / 2);
                               serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
                               break;
                           // Falloff
                           case 2:
-                              analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength] / 3);
+                              analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength] / 3);
                               serialRumbPulseStage++;
                               serialRumbPulsesLastUpdate = millis();
                               break;
                           // Check
                           case 3:
                               if(serialRumbPulsesLast >= serialRumbPulses) {
-                                  digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+                                  digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
                                   serialQueue[SerialQueue_RumbPulse] = false;
                               } else serialRumbPulsesLast++, serialRumbPulseStage = 0;
                               break;
@@ -807,9 +806,9 @@ void OF_Serial::SerialHandling()
                   }
               }
           // Rumble "off"
-          } else digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+          } else digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
       // Rumble disabled, not allowed to be on
-      } else digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+      } else digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
   #endif // USES_RUMBLE
 
   #ifdef LED_ENABLE
@@ -901,7 +900,7 @@ void OF_Serial::SerialProcessingDocked()
         if(!FW_Common::justBooted)
             FW_Common::SetMode(FW_Const::GunMode_Run);
         else FW_Common::SetMode(FW_Const::GunMode_Init);
-        FW_Common::SetRunMode((FW_Const::RunMode_e)SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode);
+        FW_Common::SetRunMode((FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode);
         break;
         
     //// Prefs senders
@@ -911,7 +910,7 @@ void OF_Serial::SerialProcessingDocked()
         char buf[64];
         uint8_t pos = 0;
         if(OF_Const::boolTypesCount <= 63) {
-            memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::toggles, OF_Const::boolTypesCount);
+            memcpy(&buf[pos], (uint8_t*)&OF_Prefs::toggles, OF_Const::boolTypesCount);
             pos += OF_Const::boolTypesCount;
             buf[pos++] = OF_Const::serialTerminator;
             Serial.write(buf, pos);
@@ -922,7 +921,7 @@ void OF_Serial::SerialProcessingDocked()
                     Serial.flush();
                     pos = 0;
                 }
-                memcpy(&buf[pos++], (uint8_t*)&SamcoPreferences::toggles[i], sizeof(bool));
+                memcpy(&buf[pos++], (uint8_t*)&OF_Prefs::toggles[i], sizeof(bool));
                 if(i == OF_Const::settingsTypesCount-1) {
                     buf[pos++] = OF_Const::serialTerminator;
                     Serial.write(buf, pos);
@@ -937,7 +936,7 @@ void OF_Serial::SerialProcessingDocked()
         char buf[64];
         uint8_t pos = 0;
         if(OF_Const::boardInputsCount <= 63) {
-            memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::pins, OF_Const::boardInputsCount);
+            memcpy(&buf[pos], (uint8_t*)&OF_Prefs::pins, OF_Const::boardInputsCount);
             pos += OF_Const::boardInputsCount;
             buf[pos++] = OF_Const::serialTerminator;
             Serial.write(buf, pos);
@@ -948,7 +947,7 @@ void OF_Serial::SerialProcessingDocked()
                     Serial.flush();
                     pos = 0;
                 }
-                memcpy(&buf[pos++], (uint8_t*)&SamcoPreferences::pins[i], sizeof(int8_t));
+                memcpy(&buf[pos++], (uint8_t*)&OF_Prefs::pins[i], sizeof(int8_t));
                 if(i == OF_Const::settingsTypesCount-1) {
                     buf[pos++] = OF_Const::serialTerminator;
                     Serial.write(buf, pos);
@@ -968,7 +967,7 @@ void OF_Serial::SerialProcessingDocked()
                 pos = 0;
             }
             buf[pos++] = i;
-            memcpy(&buf[pos], &SamcoPreferences::settings[i], sizeof(uint32_t));
+            memcpy(&buf[pos], &OF_Prefs::settings[i], sizeof(uint32_t));
             pos += sizeof(uint32_t);
             if(i == OF_Const::settingsTypesCount-1) {
                 buf[pos++] = OF_Const::serialTerminator;
@@ -983,7 +982,7 @@ void OF_Serial::SerialProcessingDocked()
         char buf[64];
         int pos = 0;
         buf[pos++] = OF_Const::i2cDevicesEnabled;
-        memcpy(&buf[pos], &SamcoPreferences::i2cPeriphs, OF_Const::i2cDevicesCount);
+        memcpy(&buf[pos], &OF_Prefs::i2cPeriphs, OF_Const::i2cDevicesCount);
         pos += OF_Const::i2cDevicesCount;
         buf[pos++] = OF_Const::serialTerminator;
         // any settings for I2C devices goes here:
@@ -999,7 +998,7 @@ void OF_Serial::SerialProcessingDocked()
                 buf[pos++] = i;
                 for(uint8_t type = 0; type < OF_Const::oledSettingsTypes; type++) {
                     buf[pos++] = type;
-                    memcpy(&buf[pos], (uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t));
+                    memcpy(&buf[pos], (uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t));
                     pos += sizeof(uint32_t);
                 }
                 buf[pos++] = OF_Const::serialTerminator;
@@ -1020,17 +1019,17 @@ void OF_Serial::SerialProcessingDocked()
         if(i > -1 && i < PROFILE_COUNT) {
             // appeasing the wireless folks by using a buffer instead of multiple sends:
             char buf[64];
-            buf[0]  = OF_Const::profTopOffset,    memcpy(&buf[1],  &SamcoPreferences::profiles[i].topOffset,    sizeof(uint32_t));
-            buf[5]  = OF_Const::profBottomOffset, memcpy(&buf[6],  &SamcoPreferences::profiles[i].bottomOffset, sizeof(uint32_t));
-            buf[10] = OF_Const::profLeftOffset,   memcpy(&buf[11], &SamcoPreferences::profiles[i].leftOffset,   sizeof(uint32_t));
-            buf[15] = OF_Const::profRightOffset,  memcpy(&buf[16], &SamcoPreferences::profiles[i].rightOffset,  sizeof(uint32_t));
-            buf[20] = OF_Const::profTLled,        memcpy(&buf[21], &SamcoPreferences::profiles[i].TLled,        sizeof(uint32_t));
-            buf[25] = OF_Const::profTRled,        memcpy(&buf[26], &SamcoPreferences::profiles[i].TRled,        sizeof(uint32_t));
-            buf[30] = OF_Const::profIrSens,       memcpy(&buf[31], &SamcoPreferences::profiles[i].irSens,       sizeof(uint8_t));
-            buf[32] = OF_Const::profRunMode,      memcpy(&buf[33], &SamcoPreferences::profiles[i].runMode,      sizeof(uint8_t));
-            buf[34] = OF_Const::profIrLayout,     memcpy(&buf[35], &SamcoPreferences::profiles[i].irLayout,     sizeof(uint8_t));
-            buf[36] = OF_Const::profColor,        memcpy(&buf[37], &SamcoPreferences::profiles[i].color,        sizeof(uint32_t));
-            buf[41] = OF_Const::profName,         memcpy(&buf[42], &SamcoPreferences::profiles[i].name,         sizeof(SamcoPreferences::ProfileData_t::name));
+            buf[0]  = OF_Const::profTopOffset,    memcpy(&buf[1],  &OF_Prefs::profiles[i].topOffset,    sizeof(uint32_t));
+            buf[5]  = OF_Const::profBottomOffset, memcpy(&buf[6],  &OF_Prefs::profiles[i].bottomOffset, sizeof(uint32_t));
+            buf[10] = OF_Const::profLeftOffset,   memcpy(&buf[11], &OF_Prefs::profiles[i].leftOffset,   sizeof(uint32_t));
+            buf[15] = OF_Const::profRightOffset,  memcpy(&buf[16], &OF_Prefs::profiles[i].rightOffset,  sizeof(uint32_t));
+            buf[20] = OF_Const::profTLled,        memcpy(&buf[21], &OF_Prefs::profiles[i].TLled,        sizeof(uint32_t));
+            buf[25] = OF_Const::profTRled,        memcpy(&buf[26], &OF_Prefs::profiles[i].TRled,        sizeof(uint32_t));
+            buf[30] = OF_Const::profIrSens,       memcpy(&buf[31], &OF_Prefs::profiles[i].irSens,       sizeof(uint8_t));
+            buf[32] = OF_Const::profRunMode,      memcpy(&buf[33], &OF_Prefs::profiles[i].runMode,      sizeof(uint8_t));
+            buf[34] = OF_Const::profIrLayout,     memcpy(&buf[35], &OF_Prefs::profiles[i].irLayout,     sizeof(uint8_t));
+            buf[36] = OF_Const::profColor,        memcpy(&buf[37], &OF_Prefs::profiles[i].color,        sizeof(uint32_t));
+            buf[41] = OF_Const::profName,         memcpy(&buf[42], &OF_Prefs::profiles[i].name,         sizeof(OF_Prefs::ProfileData_t::name));
             Serial.write(buf, 58);
         } else Serial.write(OF_Const::serialTerminator);
         break;
@@ -1043,7 +1042,7 @@ void OF_Serial::SerialProcessingDocked()
             Serial.write(OF_Const::sError);
         } else if(FW_Common::runMode == FW_Const::RunMode_Processing) {
             Serial.println("Exiting processing mode...");
-            switch(SamcoPreferences::profiles[SamcoPreferences::currentProfile].runMode) {
+            switch(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode) {
             case FW_Const::RunMode_Normal:
                 FW_Common::SetRunMode(FW_Const::RunMode_Normal);
                 break;
@@ -1063,7 +1062,7 @@ void OF_Serial::SerialProcessingDocked()
     {
         if(Serial.peek() < PROFILE_COUNT) {
             FW_Common::SelectCalProfile(Serial.read());
-            char buf[2] = {OF_Const::sCurrentProf, SamcoPreferences::currentProfile};
+            char buf[2] = {OF_Const::sCurrentProf, OF_Prefs::currentProfile};
             Serial.write(buf, 2);
             if(Serial.read() == OF_Const::sCaliStart) {
                 if(FW_Common::camNotAvailable) Serial.write(OF_Const::sError);
@@ -1083,16 +1082,16 @@ void OF_Serial::SerialProcessingDocked()
     }
     #ifdef USES_SOLENOID
     case OF_Const::sTestSolenoid:
-        digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], HIGH);
-        delay(SamcoPreferences::settings[OF_Const::solenoidNormalInterval]);
-        digitalWrite(SamcoPreferences::pins[OF_Const::solenoidPin], LOW);
+        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
+        delay(OF_Prefs::settings[OF_Const::solenoidNormalInterval]);
+        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
         break;
     #endif // USES_SOLENOID
     #ifdef USES_RUMBLE
     case OF_Const::sTestRumble:
-        analogWrite(SamcoPreferences::pins[OF_Const::rumblePin], SamcoPreferences::settings[OF_Const::rumbleStrength]);
-        delay(SamcoPreferences::settings[OF_Const::rumbleInterval]);
-        digitalWrite(SamcoPreferences::pins[OF_Const::rumblePin], LOW);
+        analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
+        delay(OF_Prefs::settings[OF_Const::rumbleInterval]);
+        digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
         break;
     #endif // USES_RUMBLE
     #ifdef LED_ENABLE // meant to be for 4pins, but will update all LED devices anyways.
@@ -1119,8 +1118,8 @@ void OF_Serial::SerialProcessingDocked()
                     if(Serial.available() >= 2) {
                         int type = Serial.read();
                         if(type < OF_Const::boolTypesCount) {
-                            SamcoPreferences::toggles[type] = Serial.read();
-                            Serial.write(SamcoPreferences::toggles[type]);
+                            OF_Prefs::toggles[type] = Serial.read();
+                            Serial.write(OF_Prefs::toggles[type]);
                         } else Serial.write(Serial.read()), Serial.flush();
                     } else {
                         while(Serial.available()) Serial.read();
@@ -1131,8 +1130,8 @@ void OF_Serial::SerialProcessingDocked()
                     if(Serial.available() >= 2) {
                         int type = Serial.read();
                         if(type < OF_Const::boardInputsCount) {
-                            SamcoPreferences::pins[type] = Serial.read();
-                            Serial.write(SamcoPreferences::pins[type]);
+                            OF_Prefs::pins[type] = Serial.read();
+                            Serial.write(OF_Prefs::pins[type]);
                         } else Serial.write(Serial.read()), Serial.flush();
                     } else {
                         while(Serial.available()) Serial.read();
@@ -1143,8 +1142,8 @@ void OF_Serial::SerialProcessingDocked()
                     if(Serial.available() >= 5) {
                         int type = Serial.read();
                         if(type < OF_Const::settingsTypesCount) {
-                            Serial.readBytes((uint8_t*)&SamcoPreferences::settings[type], sizeof(uint32_t));
-                            Serial.write((uint8_t*)&SamcoPreferences::settings[type], sizeof(uint32_t)), Serial.flush();
+                            Serial.readBytes((uint8_t*)&OF_Prefs::settings[type], sizeof(uint32_t));
+                            Serial.write((uint8_t*)&OF_Prefs::settings[type], sizeof(uint32_t)), Serial.flush();
                         } else {
                             char junkBuf[sizeof(uint32_t)];
                             Serial.readBytes(junkBuf, sizeof(junkBuf));
@@ -1163,9 +1162,9 @@ void OF_Serial::SerialProcessingDocked()
                             switch(type) {
                               case OF_Const::profName:
                                   if(Serial.available() > 0 && Serial.available() <= 16) {
-                                      memset(SamcoPreferences::profiles[profNum].name, '\0', sizeof(SamcoPreferences::ProfileData_t::name));
-                                      Serial.readBytes((uint8_t*)&SamcoPreferences::profiles[profNum].name, Serial.available());
-                                      Serial.write((uint8_t*)&SamcoPreferences::profiles[profNum].name, sizeof(SamcoPreferences::ProfileData_t::name)), Serial.flush();
+                                      memset(OF_Prefs::profiles[profNum].name, '\0', sizeof(OF_Prefs::ProfileData_t::name));
+                                      Serial.readBytes((uint8_t*)&OF_Prefs::profiles[profNum].name, Serial.available());
+                                      Serial.write((uint8_t*)&OF_Prefs::profiles[profNum].name, sizeof(OF_Prefs::ProfileData_t::name)), Serial.flush();
                                   } else {
                                       while(Serial.available()) Serial.read();
                                       Serial.write(OF_Const::serialTerminator), Serial.flush();
@@ -1173,8 +1172,8 @@ void OF_Serial::SerialProcessingDocked()
                                   break;
                               default:
                                   if(type > OF_Const::profTRled && type < OF_Const::profDataTypes) {
-                                      Serial.readBytes((uint8_t*)&SamcoPreferences::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t));
-                                      Serial.write((uint8_t*)&SamcoPreferences::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t)), Serial.flush();
+                                      Serial.readBytes((uint8_t*)&OF_Prefs::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t));
+                                      Serial.write((uint8_t*)&OF_Prefs::profiles[profNum]+(type*sizeof(uint32_t)), sizeof(uint32_t)), Serial.flush();
                                   } else {
                                       char junkBuf[sizeof(uint32_t)];
                                       Serial.readBytes(junkBuf, sizeof(junkBuf));
@@ -1192,14 +1191,14 @@ void OF_Serial::SerialProcessingDocked()
                     if(Serial.available() >= 3) {
                         switch(Serial.read()) {
                           case OF_Const::usbPID:
-                              Serial.readBytes((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID));
-                              Serial.write((uint8_t*)&SamcoPreferences::usb.devicePID, sizeof(SamcoPreferences::USBMap_t::devicePID)), Serial.flush();
+                              Serial.readBytes((uint8_t*)&OF_Prefs::usb.devicePID, sizeof(OF_Prefs::USBMap_t::devicePID));
+                              Serial.write((uint8_t*)&OF_Prefs::usb.devicePID, sizeof(OF_Prefs::USBMap_t::devicePID)), Serial.flush();
                               break;
                           case OF_Const::usbName:
                               if(Serial.available() > 0 && Serial.available() <= 16) {
-                                  memset(SamcoPreferences::usb.deviceName, '\0', sizeof(SamcoPreferences::USBMap_t::deviceName));
-                                  Serial.readBytes(SamcoPreferences::usb.deviceName, Serial.available());
-                                  Serial.write(SamcoPreferences::usb.deviceName), Serial.flush();
+                                  memset(OF_Prefs::usb.deviceName, '\0', sizeof(OF_Prefs::USBMap_t::deviceName));
+                                  Serial.readBytes(OF_Prefs::usb.deviceName, Serial.available());
+                                  Serial.write(OF_Prefs::usb.deviceName), Serial.flush();
                               } else {
                                   while(Serial.available()) Serial.read();
                                   Serial.write(OF_Const::serialTerminator), Serial.flush();
@@ -1223,8 +1222,8 @@ void OF_Serial::SerialProcessingDocked()
                         {
                             int type = Serial.read();
                             if(type > -1 && type < OF_Const::i2cDevicesCount) {
-                                SamcoPreferences::i2cPeriphs[type] = Serial.read();
-                                Serial.write((uint8_t)SamcoPreferences::i2cPeriphs[type]), Serial.flush();
+                                OF_Prefs::i2cPeriphs[type] = Serial.read();
+                                Serial.write((uint8_t)OF_Prefs::i2cPeriphs[type]), Serial.flush();
                             } else Serial.write(Serial.read()), Serial.flush();
                             break;
                         }
@@ -1232,8 +1231,8 @@ void OF_Serial::SerialProcessingDocked()
                         {
                             int type = Serial.read();
                             if(type > -1 && type < OF_Const::oledSettingsTypes) {
-                                Serial.read((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t));
-                                Serial.write((uint8_t*)&SamcoPreferences::oledPrefs[type], sizeof(uint32_t)), Serial.flush();
+                                Serial.read((uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t));
+                                Serial.write((uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t)), Serial.flush();
                             } else {
                                 char junkBuf[sizeof(uint32_t)];
                                 Serial.readBytes(junkBuf, sizeof(junkBuf));
@@ -1254,7 +1253,7 @@ void OF_Serial::SerialProcessingDocked()
 
                 //// Commands
                 case OF_Const::sSave:
-                    if(FW_Common::SavePreferences() == SamcoPreferences::Error_Success) {
+                    if(FW_Common::SavePreferences() == OF_Prefs::Error_Success) {
                         Serial.printf("%c%c", OF_Const::sSave, true), Serial.flush();
                         // For updating pin data for buttons, cams and periphs
                         FW_Common::PinsReset();
@@ -1262,30 +1261,30 @@ void OF_Serial::SerialProcessingDocked()
                         FW_Common::FeedbackSet();
                         
                         // Update bindings so LED/Pixel changes are reflected immediately
-                        if(SamcoPreferences::usb.devicePID >= 1 && SamcoPreferences::usb.devicePID <= 5) {
-                            playerStartBtn = SamcoPreferences::usb.devicePID + '0';
-                            playerSelectBtn = SamcoPreferences::usb.devicePID + '0' + 4;
+                        if(OF_Prefs::usb.devicePID >= 1 && OF_Prefs::usb.devicePID <= 5) {
+                            playerStartBtn = OF_Prefs::usb.devicePID + '0';
+                            playerSelectBtn = OF_Prefs::usb.devicePID + '0' + 4;
                         }
-                        FW_Common::UpdateBindings(SamcoPreferences::toggles[OF_Const::lowButtonsMode]);
+                        FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
 
                     #ifdef LED_ENABLE
                         // Save op above resets color, so re-set it back to docked idle color
                         if(FW_Common::gunMode == FW_Const::GunMode_Docked) {
                             OF_RGB::LedUpdate(127, 127, 255);
                         } else if(FW_Common::gunMode == FW_Const::GunMode_Pause) {
-                            OF_RGB::SetLedPackedColor(SamcoPreferences::profiles[SamcoPreferences::currentProfile].color);
+                            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
                         }
                     #endif // LED_ENABLE
                     } else {
                         Serial.printf("%c%c", OF_Const::sSave, false), Serial.flush();
-                        SamcoPreferences::Load();
+                        OF_Prefs::Load();
                     }
                     FW_Common::buttons.Begin();
                     exit = true;
                     break;
                 case OF_Const::serialTerminator:
                     // Assumed failed/aborting save, so roll back to what's in flash.
-                    SamcoPreferences::Load();
+                    OF_Prefs::Load();
                     exit = true;
                     break;
                 }
@@ -1295,7 +1294,7 @@ void OF_Serial::SerialProcessingDocked()
     }
 
     case OF_Const::sClearFlash:
-        SamcoPreferences::ResetPreferences();
+        OF_Prefs::ResetPreferences();
         Serial.println("Cleared! Please reset the board.");
         break;
     }
@@ -1320,7 +1319,7 @@ void OF_Serial::PrintResults()
             FW_Common::stateFlags &= ~FW_Const::StateFlag_PrintPreferencesStorage;
             
             #ifdef SAMCO_FLASH_ENABLE
-                unsigned int required = SamcoPreferences::Size();
+                unsigned int required = OF_Prefs::Size();
 
             #ifndef PRINT_VERBOSE
                 if(required < flash.size())
@@ -1334,9 +1333,9 @@ void OF_Serial::PrintResults()
 
             #ifdef PRINT_VERBOSE
                 Serial.print("Profile struct size: ");
-                Serial.print((unsigned int)sizeof(SamcoPreferences::profileData_t));
+                Serial.print((unsigned int)sizeof(OF_Prefs::profileData_t));
                 Serial.print(", Profile data array size: ");
-                Serial.println((unsigned int)sizeof(SamcoPreferences::profiles));
+                Serial.println((unsigned int)sizeof(OF_Prefs::profiles));
             #endif
 
             #endif // SAMCO_FLASH_ENABLE
@@ -1344,41 +1343,41 @@ void OF_Serial::PrintResults()
 
         // prints all stored preferences information in a table
         Serial.print("Default Profile: ");
-        Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+        Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
         
         Serial.println("Profiles:");
         for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
             // report if a profile has been cal'd
-            if(SamcoPreferences::profiles[i].topOffset && SamcoPreferences::profiles[i].bottomOffset &&
-              SamcoPreferences::profiles[i].leftOffset && SamcoPreferences::profiles[i].rightOffset) {
-                size_t len = strlen(SamcoPreferences::profiles[i].name);
-                Serial.print(SamcoPreferences::profiles[i].name);
+            if(OF_Prefs::profiles[i].topOffset && OF_Prefs::profiles[i].bottomOffset &&
+              OF_Prefs::profiles[i].leftOffset && OF_Prefs::profiles[i].rightOffset) {
+                size_t len = strlen(OF_Prefs::profiles[i].name);
+                Serial.print(OF_Prefs::profiles[i].name);
                 while(len < 18) {
                     Serial.print(' ');
                     ++len;
                 }
                 Serial.print("Top: ");
-                Serial.print(SamcoPreferences::profiles[i].topOffset);
+                Serial.print(OF_Prefs::profiles[i].topOffset);
                 Serial.print(", Bottom: ");
-                Serial.print(SamcoPreferences::profiles[i].bottomOffset);
+                Serial.print(OF_Prefs::profiles[i].bottomOffset);
                 Serial.print(", Left: ");
-                Serial.print(SamcoPreferences::profiles[i].leftOffset);
+                Serial.print(OF_Prefs::profiles[i].leftOffset);
                 Serial.print(", Right: ");
-                Serial.print(SamcoPreferences::profiles[i].rightOffset);
+                Serial.print(OF_Prefs::profiles[i].rightOffset);
                 Serial.print(", TLled: ");
-                Serial.print(SamcoPreferences::profiles[i].TLled);
+                Serial.print(OF_Prefs::profiles[i].TLled);
                 Serial.print(", TRled: ");
-                Serial.print(SamcoPreferences::profiles[i].TRled);
+                Serial.print(OF_Prefs::profiles[i].TRled);
                 //Serial.print(", AdjX: ");
-                //Serial.print(SamcoPreferences::profiles[i].adjX);
+                //Serial.print(OF_Prefs::profiles[i].adjX);
                 //Serial.print(", AdjY: ");
-                //Serial.print(SamcoPreferences::profiles[i].adjY);
+                //Serial.print(OF_Prefs::profiles[i].adjY);
                 Serial.print(" IR: ");
-                Serial.print((unsigned int)SamcoPreferences::profiles[i].irSens);
+                Serial.print((unsigned int)OF_Prefs::profiles[i].irSens);
                 Serial.print(" Mode: ");
-                Serial.print((unsigned int)SamcoPreferences::profiles[i].runMode);
+                Serial.print((unsigned int)OF_Prefs::profiles[i].runMode);
                 Serial.print(" Layout: ");
-                if(SamcoPreferences::profiles[i].irLayout)
+                if(OF_Prefs::profiles[i].irLayout)
                     Serial.println("Diamond");
                 else Serial.println("Square");
             }
@@ -1403,11 +1402,11 @@ void OF_Serial::PrintResults()
 
             // Print selected profile
             Serial.print("Profile: ");
-            Serial.println(SamcoPreferences::profiles[SamcoPreferences::currentProfile].name);
+            Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
 
             // Print current sensitivity
             Serial.print("IR Camera Sensitivity: ");
-            Serial.println((int)SamcoPreferences::profiles[SamcoPreferences::currentProfile].irSens);
+            Serial.println((int)OF_Prefs::profiles[OF_Prefs::currentProfile].irSens);
 
             // Subroutine that prints current runmode
             if(FW_Common::runMode < FW_Const::RunMode_Count) {
@@ -1423,17 +1422,17 @@ void OF_Serial::PrintResults()
 
             #ifdef USES_RUMBLE
                 Serial.print("Rumble enabled: ");
-                if(SamcoPreferences::toggles[OF_Const::rumble])
+                if(OF_Prefs::toggles[OF_Const::rumble])
                     Serial.println("True");
                 else Serial.println("False");
             #endif // USES_RUMBLE
 
             #ifdef USES_SOLENOID
                 Serial.print("Solenoid enabled: ");
-                if(SamcoPreferences::toggles[OF_Const::solenoid]) {
+                if(OF_Prefs::toggles[OF_Const::solenoid]) {
                     Serial.println("True");
                     Serial.print("Rapid fire enabled: ");
-                    if(SamcoPreferences::toggles[OF_Const::autofire])
+                    if(OF_Prefs::toggles[OF_Const::autofire])
                         Serial.println("True");
                     else Serial.println("False");
 

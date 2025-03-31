@@ -1,5 +1,5 @@
 /*!
- * @file SamcoPreferences.h
+ * @file OpenFIREprefs.h
  * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
  *
  * @copyright Mike Lynch, 2021
@@ -11,20 +11,21 @@
  * @date 2023
  */
 
-#ifndef _SAMCOPREFERENCES_H_
-#define _SAMCOPREFERENCES_H_
+#ifndef _OPENFIREPREFS_H_
+#define _OPENFIREPREFS_H_
 
 // number of profiles
 #define PROFILE_COUNT 4
 
 #include <stdint.h>
 #include <OpenFIREBoard.h>
-#include "boards/OpenFIREshared.h"
-#include "OpenFIREDefines.h"
 #include <DFRobotIRPositionEx.h>
 
+#include "boards/OpenFIREshared.h"
+#include "OpenFIREDefines.h"
+
 /// @brief Static instance of preferences to save in non-volatile memory
-class SamcoPreferences
+class OF_Prefs
 {
 public:
     /// @brief Error codes
@@ -186,4 +187,4 @@ public:
     static void LoadPresets();
 };
 
-#endif // _SAMCOPREFERENCES_H_
+#endif // _OPENFIREPREFS_H_
