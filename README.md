@@ -43,6 +43,9 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 - There may be rare instances of SSD1306 displays shifting the display down a number of rows when the screen updates, which persist until the board is unplugged. The exact cause is still being investigated.
 - Some rare instances where a serial exit signal is received while sending an escape key signal in the Simple Pause Menu with (non-static) Pixels in use might cause the gun to freeze. The exact cause is being investigated.
 
+## TODO:
+- Come up with better jokes.
+
 > [!NOTE]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
 
