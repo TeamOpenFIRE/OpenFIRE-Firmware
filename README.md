@@ -7,10 +7,9 @@
 ## Features:
 - **Fully featured peripherals**, from Solenoid & Rumble Force Feedback, to TMP36 Temperature Monitoring, and others to come.
 - **Multiple IR layouts support**, with *realtime perspective-adjusted tracking* for both double lightbar (recommended!) and Xwiigun-like diamond layouts (compatible with other systems).
-- **Flexible Input System**, with outputs to Keyboard, 5-button ABS Mouse, and dual-stick gamepad w/ d-pad support (in Wired mode).
+- **Flexible Input System**, with outputs to Keyboard, 5-button ABS(olute Positioning) Mouse, and dual-stick gamepad w/ d-pad support (in Wired mode).
 - **Easy installation** with simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
-- **Bluetooth Support (BETA)** with the *Raspberry Pi Pico W,* for untethered gameplay in battery-powered lightguns.
-- **Portable on-board settings** to store calibration profiles, toggles, settings, mappings (WIP), identifier and more to come.
+- **Portable on-board settings** to store calibration profiles, toggles, settings, USB identifier, and more.
 - **Integrates with the [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App)** for user-friendly, and cross-platform configuration.
 - **Optimized for the RP2040**, using its second core for input reading and serial handling, and the main core for camera and peripherals processing, whenever possible.
 - **Compatible with PC Force Feedback handlers** such as [Mame Hooker](https://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker) and [QMamehook](https://github.com/SeongGino/QMamehook).
@@ -35,7 +34,7 @@
 Grab the latest *.UF2* binary for your respective board [from the releases page](https://github.com/TeamOpenFIRE/OpenFIRE-Firmware/releases/latest), and drag'n'drop the file to your microcontroller while booted into Bootloader mode; the RP2040 is automatically mounted like this when no program is loaded, but it can be forced into this mode by holding BOOTSEL while plugging it into the computer - it will appear as a removable storage device called **RPI-RP2**.
 
 ## Additional information
-[Check out the enclosed instruction book!](OpenFIREmain/README.md) For developers, consult [the documentation on setting up and building the OpenFIRE Firmware](COMPILING.md) the README files in `libraries` for more information on library functionality.
+[Check out the enclosed instruction book!](OpenFIREmain/README.md) For developers, consult [the documentation on setting up and building the OpenFIRE Firmware.](COMPILING.md)
 
 ## Known Issues:
 - With Pico W & Bluetooth enabled, TinyUSB/Serial fails to initialize properly when connected via USB, so the firmware is deadlocked either sending serial or USB report data.
@@ -49,6 +48,21 @@ Grab the latest *.UF2* binary for your respective board [from the releases page]
 > [!NOTE]
 > Solenoid *may* cause EMI disconnects with too thin of wiring. Cables for this run specifically should be **22AWG** at its thinnest - or else the cables will become antennas under extended use, which will trip USB safety thresholds in your PC to protect the ports.
 
+___
+## Regarding Contributions, Ports & Forks:
+Being an open source project, OpenFIRE **invites anyone to contribute** new code or fixes, assuming the following guidelines are followed:
+ - To expedite review, PRs modifying existing code **must** describe the reasoning behind the changes (e.g. *"this resolves an issue regarding building on..."*). Default or *no* description text in the PR is likely to prompt for more details, or your request may be closed without merging.
+ - Any work that modifies more than a few lines or files at once **should be performed on a separate branch** on your local repository, so that PRs don't go out-of-scope from simultaneous ongoing development.
+
+OpenFIRE uses the Arduino format for the main source file `OpenFIREmain.ino` which should make it easier to develop for other architectures, however the `arduino-pico` core does use some of its own keywords/syntax (e.g. for establishing multi core workloads) so it won't directly run on other platforms without modification. While this repo is primarily focused on development for RP2040/RP235X ARM platforms, **we do encourage those with the know-how to port OpenFIRE to other architectures or microcontrollers.** Ideally, any ports should maintain compatibility with the existing Desktop App so the user doesn't need multiple executables. Those who are interested in maintaining these forks are encourage to write in a new thread in the *Discussions* tab of this repository.
+
+**Forks made for the purposes of rebranding are heavily DISCOURAGED.** All forks should maintain the OpenFIRE name as well as credits to its original authors (specifically *That One Seong,* *Samuel Ballantyne (Samco),* and *Mike Lynch (Prow7)*).
+
+Products that wish to integrate OpenFIRE by using its firmware on a supported microcontroller board - for example, inside of a prebuilt light gun - should make its usage of OpenFIRE clear, as well as give appropriate credit to its original creators. While it is Free (Libre) Software, we do ask that anyone incorporating our volunteer work into a product to please consider contributing back to the project via donations or sponsorships. Usage of OpenFIRE in commercial environments (such as public arcade settings) is also allowed, with the same note about contributing back applying as well. Any inquiries regarding third-party commercial sales of OpenFIRE-enabled products (such as prebuilt light guns using its Firmware) should be discussed in a thread in the *Discussions* tab of this repository, or emailing *That One Seong (SeongsSeongs@gmail.com)* and/or *Samuel Ballantyne (samuelballantyne@hotmail.com).*
+
+As written under the *GNU Lesser General Public License,* any entities that wish to incorporate part of or all of OpenFIRE's Firmware components **must make their modifications available to the public upon request.** OpenFIRE is ***Free Software,*** both as in *Libre* and as in *Coffee:* if you have been charged any amount to use OpenFIRE, **you have been scammed and should demand your money back!**
+
+___
 ## Thanks:
 * Samuel Ballantyne, for his original SAMCO project, the gorgeous OpenFIRE branding, and perspective-based tracking system.
 * Prow7, for his enhanced SAMCO fork which provided the basis of pause mode and saving subsystems.
