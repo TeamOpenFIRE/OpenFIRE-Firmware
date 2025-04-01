@@ -1231,7 +1231,7 @@ void OF_Serial::SerialProcessingDocked()
                         {
                             int type = Serial.read();
                             if(type > -1 && type < OF_Const::oledSettingsTypes) {
-                                Serial.read((uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t));
+                                Serial.readBytes((uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t));
                                 Serial.write((uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t)), Serial.flush();
                             } else {
                                 char junkBuf[sizeof(uint32_t)];

@@ -164,7 +164,7 @@ int OF_Prefs::SaveProfiles()
             prefs.write(Profile_IrLayout), prefs.write((uint8_t*)&profiles[i].irLayout, sizeof(ProfileData_t::irLayout));
             prefs.write(Profile_Color),    prefs.write((uint8_t*)&profiles[i].color,    sizeof(ProfileData_t::color));
             // Name
-            prefs.write(Profile_Name), prefs.write(profiles[i].name, sizeof(ProfileData_t::name));
+            prefs.write(Profile_Name), prefs.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
         }
         prefs.write(Profile_Selected), prefs.write(currentProfile);
 
@@ -364,7 +364,7 @@ int OF_Prefs::SaveUSBID()
     File idFile = LittleFS.open("USB.conf", "w");
     if(idFile) {
         idFile.write((uint8_t)0), idFile.write((uint8_t*)&usb.devicePID, sizeof(USBMap_t::devicePID));
-        idFile.write((uint8_t)1), idFile.write(usb.deviceName, sizeof(USBMap_t::deviceName));
+        idFile.write((uint8_t)1), idFile.write((uint8_t*)usb.deviceName, sizeof(USBMap_t::deviceName));
 
         idFile.close();
         return Error_Success;
