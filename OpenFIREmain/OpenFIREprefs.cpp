@@ -382,9 +382,9 @@ void OF_Prefs::LoadPresets()
         pins[i] = -1;
 
     if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
-        for(int i = 0; i < sizeof(OF_Const::boardMap_t); i++)
-            if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i] > -1)
-                pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).pin[i]] = i;
+        for(int i = 0; i < OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).size(); i++)
+            if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i) > -1)
+                pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i)] = i;
     } else for(int i = 0; i < OF_Const::boardInputsCount; i++)
         pins[i] = -1;
 }
