@@ -74,9 +74,7 @@ jobs:
 
       - name: Get short SHA
         id: get-short-sha
-        run: |
-          id=$(echo ${{github.sha}} | cut -c 1-7)
-          echo "id=$id" >> $GITHUB_OUTPUT
+        run: echo "id=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         
       - name: Compile for ${{ matrix.name }}
         run: >
