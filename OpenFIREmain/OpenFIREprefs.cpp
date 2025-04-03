@@ -35,7 +35,7 @@ void OF_Prefs::Load()
 
 int OF_Prefs::LoadProfiles()
 {
-    File prefs = LittleFS.open("profiles.conf", "r");
+    File prefs = LittleFS.open("/profiles.conf", "r");
     if(prefs) {
         int profileNum = 0;
         char buf[sizeof(ProfileData_t::name)];
@@ -142,7 +142,7 @@ int OF_Prefs::LoadProfiles()
 
 int OF_Prefs::SaveProfiles()
 {
-    File prefs = LittleFS.open("profiles.conf", "w");
+    File prefs = LittleFS.open("/profiles.conf", "w");
     if(prefs) {
         for(uint32_t i = 0; i < PROFILE_COUNT; ++i) {
             // profile number
@@ -175,7 +175,7 @@ int OF_Prefs::SaveProfiles()
 
 int OF_Prefs::LoadToggles()
 {
-    File togglesFile = LittleFS.open("toggles.conf", "r");
+    File togglesFile = LittleFS.open("/toggles.conf", "r");
     if(togglesFile) {
         while(togglesFile.available()) {
             int type = togglesFile.read();
@@ -191,7 +191,7 @@ int OF_Prefs::LoadToggles()
 
 int OF_Prefs::SaveToggles()
 {
-    File togglesFile = LittleFS.open("toggles.conf", "w");
+    File togglesFile = LittleFS.open("/toggles.conf", "w");
     if(togglesFile) {
         for(uint8_t i = 0; i < OF_Const::boolTypesCount; ++i)
             togglesFile.write(i), togglesFile.write((uint8_t)toggles[i]);
@@ -203,7 +203,7 @@ int OF_Prefs::SaveToggles()
 
 int OF_Prefs::LoadPins()
 {
-    File pinsFile = LittleFS.open("pins.conf", "r");
+    File pinsFile = LittleFS.open("/pins.conf", "r");
     if(pinsFile) {
         while(pinsFile.available()) {
             int type = pinsFile.read();
@@ -219,7 +219,7 @@ int OF_Prefs::LoadPins()
 
 int OF_Prefs::SavePins()
 {
-    File pinsFile = LittleFS.open("pins.conf", "w");
+    File pinsFile = LittleFS.open("/pins.conf", "w");
     if(pinsFile) {
         for(uint8_t i = 0; i < OF_Const::boardInputsCount; ++i)
             pinsFile.write(i), pinsFile.write((uint8_t*)&pins[i], sizeof(int8_t));
@@ -231,7 +231,7 @@ int OF_Prefs::SavePins()
 
 int OF_Prefs::LoadSettings()
 {
-    File settingsFile = LittleFS.open("settings.conf", "r");
+    File settingsFile = LittleFS.open("/settings.conf", "r");
     if(settingsFile) {
         char buf[sizeof(uint32_t)];
         while(settingsFile.available()) {
@@ -249,7 +249,7 @@ int OF_Prefs::LoadSettings()
 
 int OF_Prefs::SaveSettings()
 {
-    File settingsFile = LittleFS.open("settings.conf", "w");
+    File settingsFile = LittleFS.open("/settings.conf", "w");
     if(settingsFile) {
         for(uint8_t i = 0; i < OF_Const::settingsTypesCount; ++i)
             settingsFile.write(i), settingsFile.write((uint8_t*)&settings[i], sizeof(uint32_t));
@@ -261,7 +261,7 @@ int OF_Prefs::SaveSettings()
 
 int OF_Prefs::LoadPeriphs()
 {
-    File periphsFile = LittleFS.open("i2cperiphs.conf", "r");
+    File periphsFile = LittleFS.open("/i2cperiphs.conf", "r");
     if(periphsFile) {
         char buf[sizeof(uint32_t)];
         while(periphsFile.available()) {
@@ -302,7 +302,7 @@ int OF_Prefs::LoadPeriphs()
 
 int OF_Prefs::SavePeriphs()
 {
-    File periphsFile = LittleFS.open("i2cperiphs.conf", "w");
+    File periphsFile = LittleFS.open("/i2cperiphs.conf", "w");
     if(periphsFile) {
         // Main "devices enabled" array
         periphsFile.write(OF_Const::i2cDevicesEnabled);
@@ -325,7 +325,7 @@ int OF_Prefs::SavePeriphs()
 
 int OF_Prefs::LoadUSBID()
 {
-    File idFile = LittleFS.open("USB.conf", "r");
+    File idFile = LittleFS.open("/USB.conf", "r");
     if(idFile) {
         while(idFile.available()) {
             // TODO: maybe just shove this into settings instead?
@@ -361,7 +361,7 @@ int OF_Prefs::LoadUSBID()
 
 int OF_Prefs::SaveUSBID()
 {
-    File idFile = LittleFS.open("USB.conf", "w");
+    File idFile = LittleFS.open("/USB.conf", "w");
     if(idFile) {
         idFile.write((uint8_t)0), idFile.write((uint8_t*)&usb.devicePID, sizeof(USBMap_t::devicePID));
         idFile.write((uint8_t)1), idFile.write((uint8_t*)usb.deviceName, sizeof(USBMap_t::deviceName));
