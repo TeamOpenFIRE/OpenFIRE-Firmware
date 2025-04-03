@@ -378,7 +378,7 @@ void OF_Prefs::ResetPreferences()
 
 void OF_Prefs::LoadPresets()
 {
-    memset(pins, -1, OF_Const::boardInputsCount);
+    memset(pins, -1, sizeof(OF_Prefs::pins));
 
     if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
         for(int i = 0; i < OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).size(); i++)
