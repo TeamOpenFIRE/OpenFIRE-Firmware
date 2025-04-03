@@ -53,7 +53,7 @@ void OF_RGB::InitExternPixel(const int8_t &pin)
     externPixel->begin();
     if(OF_Prefs::settings[OF_Const::customLEDstatic] > 0 &&
        OF_Prefs::settings[OF_Const::customLEDstatic] <= OF_Prefs::settings[OF_Const::customLEDcount]) {
-        for(byte i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; i++) {
+        for(unsigned int i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; i++) {
             uint32_t color;
             switch(i) {
               case 0:
@@ -66,7 +66,10 @@ void OF_RGB::InitExternPixel(const int8_t &pin)
                 color = OF_Prefs::settings[OF_Const::customLEDcolor3];
                 break;
             }
-            externPixel->setPixelColor(i, color);
+
+            if(OF_Prefs::toggles[OF_Const::invertStaticPixels])
+                 externPixel->setPixelColor(OF_Prefs::settings[OF_Const::customLEDcount]-1 - i, color);
+            else externPixel->setPixelColor(i, color);
         }
         externPixel->show();
     }
@@ -88,7 +91,9 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
 #ifdef CUSTOM_NEOPIXEL
     if(externPixel != nullptr) {
         if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
-            externPixel->fill(color, OF_Prefs::settings[OF_Const::customLEDstatic]);
+            if(OF_Prefs::toggles[OF_Const::invertStaticPixels])
+                 externPixel->fill(color, 0, OF_Prefs::settings[OF_Const::customLEDcount] - OF_Prefs::settings[OF_Const::customLEDstatic]);
+            else externPixel->fill(color, OF_Prefs::settings[OF_Const::customLEDstatic]);
             externPixel->show();
         }
     }
@@ -154,7 +159,9 @@ void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
     #ifdef CUSTOM_NEOPIXEL
         if(externPixel != nullptr) {
             if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
-                externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), OF_Prefs::settings[OF_Const::customLEDstatic]);
+                if(OF_Prefs::toggles[OF_Const::invertStaticPixels])
+                     externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), 0, OF_Prefs::settings[OF_Const::customLEDcount] - OF_Prefs::settings[OF_Const::customLEDstatic]);
+                else externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), OF_Prefs::settings[OF_Const::customLEDstatic]);
                 externPixel->show();
             }
         }
