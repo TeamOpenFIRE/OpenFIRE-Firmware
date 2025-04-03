@@ -1055,7 +1055,7 @@ void OF_Serial::SerialProcessingDocked()
     {
         if(Serial.peek() < PROFILE_COUNT) {
             FW_Common::SelectCalProfile(Serial.read());
-            char buf[2] = {OF_Const::sCurrentProf, OF_Prefs::currentProfile};
+            char buf[2] = {OF_Const::sCurrentProf, (uint8_t)OF_Prefs::currentProfile};
             Serial.write(buf, 2);
             if(Serial.read() == OF_Const::sCaliStart) {
                 if(FW_Common::camNotAvailable) Serial.write(OF_Const::sError);
