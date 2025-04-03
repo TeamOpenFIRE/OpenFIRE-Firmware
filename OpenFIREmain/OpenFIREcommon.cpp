@@ -992,7 +992,7 @@ int FW_Common::SavePreferences()
         OF_Prefs::SaveUSBID();
 
         #ifdef LED_ENABLE
-            for(byte i = 0; i < 3; i++) {
+            for(uint i = 0; i < 3; ++i) {
                 OF_RGB::LedUpdate(25,25,255);
                 delay(55);
                 OF_RGB::LedOff();
@@ -1025,7 +1025,7 @@ int FW_Common::SavePreferences()
         }*/
 
         #ifdef LED_ENABLE
-            for(byte i = 0; i < 2; i++) {
+            for(uint i = 0; i < 2; ++i) {
                 OF_RGB::LedUpdate(255,10,5);
                 delay(145);
                 OF_RGB::LedOff();

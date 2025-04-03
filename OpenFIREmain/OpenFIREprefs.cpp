@@ -144,7 +144,7 @@ int OF_Prefs::SaveProfiles()
 {
     File prefs = LittleFS.open("profiles.conf", "w");
     if(prefs) {
-        for(uint32_t i = 0; i < PROFILE_COUNT; i++) {
+        for(uint32_t i = 0; i < PROFILE_COUNT; ++i) {
             // profile number
             prefs.write(Profile_ProfileNum), prefs.write((uint8_t*)&i, sizeof(uint32_t));
             // offsets
@@ -166,7 +166,7 @@ int OF_Prefs::SaveProfiles()
             // Name
             prefs.write(Profile_Name), prefs.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
         }
-        prefs.write(Profile_Selected), prefs.write(currentProfile);
+        prefs.write(Profile_Selected), prefs.write((uint8_t)currentProfile);
 
         prefs.close();
         return Error_Success;
@@ -193,7 +193,7 @@ int OF_Prefs::SaveToggles()
 {
     File togglesFile = LittleFS.open("toggles.conf", "w");
     if(togglesFile) {
-        for(uint8_t i = 0; i < OF_Const::boolTypesCount; i++)
+        for(uint8_t i = 0; i < OF_Const::boolTypesCount; ++i)
             togglesFile.write(i), togglesFile.write((uint8_t)toggles[i]);
 
         togglesFile.close();
@@ -221,7 +221,7 @@ int OF_Prefs::SavePins()
 {
     File pinsFile = LittleFS.open("pins.conf", "w");
     if(pinsFile) {
-        for(uint8_t i = 0; i < OF_Const::boardInputsCount; i++)
+        for(uint8_t i = 0; i < OF_Const::boardInputsCount; ++i)
             pinsFile.write(i), pinsFile.write((uint8_t*)&pins[i], sizeof(int8_t));
         
         pinsFile.close();
@@ -251,7 +251,7 @@ int OF_Prefs::SaveSettings()
 {
     File settingsFile = LittleFS.open("settings.conf", "w");
     if(settingsFile) {
-        for(uint8_t i = 0; i < OF_Const::settingsTypesCount; i++)
+        for(uint8_t i = 0; i < OF_Const::settingsTypesCount; ++i)
             settingsFile.write(i), settingsFile.write((uint8_t*)&settings[i], sizeof(uint32_t));
         
         settingsFile.close();
@@ -306,14 +306,14 @@ int OF_Prefs::SavePeriphs()
     if(periphsFile) {
         // Main "devices enabled" array
         periphsFile.write(OF_Const::i2cDevicesEnabled);
-        for(uint8_t i = 0; i < OF_Const::i2cDevicesCount; i++) {
+        for(uint8_t i = 0; i < OF_Const::i2cDevicesCount; ++i) {
             periphsFile.write(i), periphsFile.write((uint8_t)i2cPeriphs[i]);
         }
         periphsFile.write(OF_Const::serialTerminator);
 
         // OLED settings
         periphsFile.write(OF_Const::i2cOLED);
-        for(uint8_t i = 0; i < OF_Const::oledSettingsTypes; i++) {
+        for(uint8_t i = 0; i < OF_Const::oledSettingsTypes; ++i) {
             periphsFile.write(i), periphsFile.write((uint8_t*)&oledPrefs[i], sizeof(uint32_t));
         }
         periphsFile.write(OF_Const::serialTerminator);
@@ -381,7 +381,7 @@ void OF_Prefs::LoadPresets()
     memset(pins, -1, sizeof(OF_Prefs::pins));
 
     if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
-        for(int i = 0; i < OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).size(); i++)
+        for(int i = 0; i < OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).size(); ++i)
             if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i) > -1)
                 pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i)] = i;
     }
