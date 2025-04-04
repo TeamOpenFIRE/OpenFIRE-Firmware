@@ -371,7 +371,7 @@ void OF_Serial::SerialProcessing()
                     if(Serial.peek() >= '0' & Serial.peek() <= '9') {
                         serialQueue[SerialQueue_SolPulse] = true;
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                             if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
@@ -399,11 +399,10 @@ void OF_Serial::SerialProcessing()
                     if(Serial.peek() >= '0' && Serial.peek() <= '9') {
                         serialQueue[SerialQueue_RumbPulse] = true;
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialRumbPulses = atoi(serialInputS);
                         if(!serialRumbPulses) serialRumbPulses++;
@@ -425,11 +424,10 @@ void OF_Serial::SerialProcessing()
                         serialLEDChange = true;
                         serialQueue[SerialQueue_Red] = true;
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDR = atoi(serialInputS);                   // Set array as the strength of the red value that's requested!
                         serialQueue[SerialQueue_LEDPulse] = false;         // Static emitting overrides pulse bits
@@ -443,11 +441,10 @@ void OF_Serial::SerialProcessing()
                         serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
                         serialLEDPulseColorMap = 0b00000001;               // Set the R LED as the one pulsing only (overwrites the others).
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDPulses = atoi(serialInputS);
                         serialLEDPulsesLast = 0;
@@ -469,11 +466,10 @@ void OF_Serial::SerialProcessing()
                     if(Serial.peek() >= '0' & Serial.peek() <= '9') {
                         serialLEDChange = true, serialQueue[SerialQueue_Green] = true;
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDG = atoi(serialInputS);
                         serialQueue[SerialQueue_LEDPulse] = false, serialLEDPulseColorMap = 0;
@@ -486,11 +482,10 @@ void OF_Serial::SerialProcessing()
                         serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
                         serialLEDPulseColorMap = 0b00000010;               // Set the G LED as the one pulsing only (overwrites the others).
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDPulses = atoi(serialInputS);
                         serialLEDPulsesLast = 0;
@@ -512,11 +507,10 @@ void OF_Serial::SerialProcessing()
                     if(Serial.peek() >= '0' & Serial.peek() <= '9') {
                         serialLEDChange = true, serialQueue[SerialQueue_Blue] = true;
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDB = atoi(serialInputS);
                         serialQueue[SerialQueue_LEDPulse] = false;
@@ -530,11 +524,10 @@ void OF_Serial::SerialProcessing()
                         serialLEDChange = true, serialQueue[SerialQueue_LEDPulse] = true,
                         serialLEDPulseColorMap = 0b00000100;               // Set the B LED as the one pulsing only (overwrites the others).
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
-                            if(Serial.peek() < '0' || Serial.peek() > '9') {
+                            if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
-                            }
                         }
                         serialLEDPulses = atoi(serialInputS);
                         serialLEDPulsesLast = 0;
@@ -556,7 +549,7 @@ void OF_Serial::SerialProcessing()
                     Serial.read();                                     // nomf the padding
                     if(Serial.peek() >= '0' && Serial.peek() <= '9') {
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                             if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
@@ -572,7 +565,7 @@ void OF_Serial::SerialProcessing()
                     Serial.read();                                     // nomf the padding
                     if(Serial.peek() >= '0' && Serial.peek() <= '9') {
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {                      // For three runs,
+                        for(uint n = 0; n < 3; ++n) {                      // For three runs,
                             serialInputS[n] = Serial.read();               // Read the value and fill it into the char array...
                             if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
@@ -610,7 +603,7 @@ void OF_Serial::SerialProcessing()
                     Serial.read(); // nomf
                     if(Serial.peek() >= '0' && Serial.peek() <='9') {
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {
+                        for(uint n = 0; n < 3; ++n) {
                             serialInputS[n] = Serial.read();
                             if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
@@ -641,7 +634,7 @@ void OF_Serial::SerialProcessing()
                     Serial.read();
                     if(Serial.peek() >= '0' & Serial.peek() <= '9') {
                         char serialInputS[4];
-                        for(byte n = 0; n < 3; n++) {
+                        for(uint n = 0; n < 3; ++n) {
                             serialInputS[n] = Serial.read();
                             if(Serial.peek() < '0' || Serial.peek() > '9')
                                 break;
@@ -915,7 +908,7 @@ void OF_Serial::SerialProcessingDocked()
             buf[pos++] = OF_Const::serialTerminator;
             Serial.write(buf, pos);
         } else {
-            for(int i = 0; i < OF_Const::boolTypesCount; i++) {
+            for(uint i = 0; i < OF_Const::boolTypesCount; i++) {
                 if(pos >= 63) {
                     Serial.write(buf, pos);
                     Serial.flush();
@@ -941,7 +934,7 @@ void OF_Serial::SerialProcessingDocked()
             buf[pos++] = OF_Const::serialTerminator;
             Serial.write(buf, pos);
         } else {
-            for(int i = 0; i < OF_Const::boolTypesCount; i++) {
+            for(uint i = 0; i < OF_Const::boolTypesCount; i++) {
                 if(pos >= 63) {
                     Serial.write(buf, pos);
                     Serial.flush();
@@ -960,7 +953,7 @@ void OF_Serial::SerialProcessingDocked()
     case OF_Const::sGetSettings:
     {
         char buf[64];
-        for(int i = 0, pos = 0; i < OF_Const::settingsTypesCount; i++) {
+        for(uint i = 0, pos = 0; i < OF_Const::settingsTypesCount; i++) {
             if(pos >= 60) {
                 Serial.write(buf, pos);
                 Serial.flush();
@@ -986,7 +979,7 @@ void OF_Serial::SerialProcessingDocked()
         pos += OF_Const::i2cDevicesCount;
         buf[pos++] = OF_Const::serialTerminator;
         // any settings for I2C devices goes here:
-        for(int i = 0; i < OF_Const::i2cDevicesCount; i++) {
+        for(uint i = 0; i < OF_Const::i2cDevicesCount; i++) {
             if(pos >= 32) {
                 Serial.write(buf, pos);
                 Serial.flush();
@@ -996,7 +989,7 @@ void OF_Serial::SerialProcessingDocked()
             switch(i) {
             case OF_Const::i2cOLED:
                 buf[pos++] = i;
-                for(uint8_t type = 0; type < OF_Const::oledSettingsTypes; type++) {
+                for(uint type = 0; type < OF_Const::oledSettingsTypes; type++) {
                     buf[pos++] = type;
                     memcpy(&buf[pos], (uint8_t*)&OF_Prefs::oledPrefs[type], sizeof(uint32_t));
                     pos += sizeof(uint32_t);
@@ -1062,7 +1055,7 @@ void OF_Serial::SerialProcessingDocked()
     {
         if(Serial.peek() < PROFILE_COUNT) {
             FW_Common::SelectCalProfile(Serial.read());
-            char buf[2] = {OF_Const::sCurrentProf, OF_Prefs::currentProfile};
+            char buf[2] = {OF_Const::sCurrentProf, (uint8_t)OF_Prefs::currentProfile};
             Serial.write(buf, 2);
             if(Serial.read() == OF_Const::sCaliStart) {
                 if(FW_Common::camNotAvailable) Serial.write(OF_Const::sError);
@@ -1346,7 +1339,7 @@ void OF_Serial::PrintResults()
         Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
         
         Serial.println("Profiles:");
-        for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
+        for(uint i = 0; i < PROFILE_COUNT; ++i) {
             // report if a profile has been cal'd
             if(OF_Prefs::profiles[i].topOffset && OF_Prefs::profiles[i].bottomOffset &&
               OF_Prefs::profiles[i].leftOffset && OF_Prefs::profiles[i].rightOffset) {

@@ -47,13 +47,13 @@ void OF_RGB::LedInit()
 }
 
 #ifdef CUSTOM_NEOPIXEL
-void OF_RGB::InitExternPixel(const int8_t &pin)
+void OF_RGB::InitExternPixel(const int &pin)
 {
     externPixel = new Adafruit_NeoPixel(OF_Prefs::settings[OF_Const::customLEDcount], pin, NEO_GRB + NEO_KHZ800);
     externPixel->begin();
     if(OF_Prefs::settings[OF_Const::customLEDstatic] > 0 &&
        OF_Prefs::settings[OF_Const::customLEDstatic] <= OF_Prefs::settings[OF_Const::customLEDcount]) {
-        for(unsigned int i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; i++) {
+        for(uint i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; ++i) {
             uint32_t color;
             switch(i) {
               case 0:
