@@ -289,7 +289,7 @@ void loop1()
                 } else {   // Or if we haven't pressed the trigger,
                     TriggerNotFireSimple();                             // Release button inputs.
                 }
-                OF_Serial::SerialHandling();                                       // Process the force feedback.
+                OF_Serial::SerialHandling();                            // Process the force feedback.
             }
         #else
             if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
@@ -305,6 +305,11 @@ void loop1()
                 lastAnalogPoll = millis();
             }
         #endif // USES_ANALOG
+
+        #ifdef USES_TEMP
+            if(OF_Prefs::pins[OF_Const::tempPin] > -1)
+                OF_FFB::TemperatureUpdate();
+        #endif // USES_TEMP
         
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
@@ -733,30 +738,32 @@ void ExecRunMode()
             FW_Common::irPosUpdateTick = 0;
             FW_Common::GetPosition();
         }
+        #ifdef USES_DISPLAY
+            else {
+                FW_Common::OLED.IdleOps();
+                #ifdef MAMEHOOKER
+                    // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
+                    // so just do it here using the signal sent by it.
+                    if(OF_Serial::serialDisplayChange) {
+                        if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
+                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
+                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                        }
 
-        #ifdef MAMEHOOKER
-            #ifdef USES_DISPLAY
-                // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
-                // so just do it here using the signal sent by it.
-                if(OF_Serial::serialDisplayChange) {
-                    if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
-                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
-                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                        OF_Serial::serialDisplayChange = false;
                     }
-
-                    OF_Serial::serialDisplayChange = false;
-                }
-            #endif // USES_DISPLAY
-        #endif // MAMEHOOKER
+                #endif // MAMEHOOKER
+            }
+        #endif // USES_DISPLAY
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
@@ -767,6 +774,11 @@ void ExecRunMode()
                 lastAnalogPoll = millis();
             }
         #endif // USES_ANALOG
+
+        #ifdef USES_TEMP
+            if(OF_Prefs::pins[OF_Const::tempPin] > -1)
+                OF_FFB::TemperatureUpdate();
+        #endif // USES_TEMP
 
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
@@ -929,31 +941,37 @@ void ExecGunModeDocked()
                     }
             }
 
-            OF_FFB::TemperatureUpdate();
-            unsigned long currentMillis = millis();
-            if(currentMillis - tempChecked >= 1000) {
-                if(OF_Prefs::pins[OF_Const::tempPin] >= 0) {
-                    const char buf[] = {OF_Const::sTemperatureUpd, (uint8_t)OF_FFB::temperatureCurrent};
-                    Serial.write(buf, 2);
-                }
+            #ifdef USES_TEMP
+                if(OF_Prefs::pins[OF_Const::tempPin] > -1)
+                    OF_FFB::TemperatureUpdate();
 
-                tempChecked = currentMillis;
-            }
+                unsigned long currentMillis = millis();
+                if(currentMillis - tempChecked >= 1000) {
+                    if(OF_Prefs::pins[OF_Const::tempPin] >= 0) {
+                        const char buf[] = {OF_Const::sTemperatureUpd, (uint8_t)OF_FFB::temperatureCurrent};
+                        Serial.write(buf, 2);
+                    }
+
+                    tempChecked = currentMillis;
+                }
+            #endif // USES_TEMP
             
-            if(FW_Common::analogIsValid) {
-                if(currentMillis - aStickChecked >= 100) {
-                    aStickChecked = currentMillis;
+            #ifdef USES_ANALOG
+                if(FW_Common::analogIsValid) {
+                    if(currentMillis - aStickChecked >= 100) {
+                        aStickChecked = currentMillis;
 
-                    // TODO: replace with just sending coords normally instead of an approximated cardinal.
-                    uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
-                    uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
-                    
-                    char buf[5] = {OF_Const::sAnalogPosUpd};
-                    memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
-                    memcpy(&buf[3], (uint8_t*)&analogValueY, sizeof(uint16_t));
-                    Serial.write(buf, sizeof(buf));
+                        // TODO: replace with just sending coords normally instead of an approximated cardinal.
+                        uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
+                        uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
+                        
+                        char buf[5] = {OF_Const::sAnalogPosUpd};
+                        memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
+                        memcpy(&buf[3], (uint8_t*)&analogValueY, sizeof(uint16_t));
+                        Serial.write(buf, sizeof(buf));
+                    }
                 }
-            }
+            #endif // USES_ANALOG
         }
 
         if(FW_Common::gunMode != FW_Const::GunMode_Docked)

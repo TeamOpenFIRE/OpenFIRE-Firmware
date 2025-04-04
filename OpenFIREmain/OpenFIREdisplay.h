@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <Adafruit_SSD1306.h>
 
+#include "OpenFIREDefines.h"
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
@@ -108,14 +110,26 @@ private:
     bool ammoEmpty = false;
     bool lifeEmpty = false;
 
-    uint8_t currentAmmo;
-    uint8_t currentLife;
+    uint currentAmmo;
+    uint currentLife;
 
-    // timestamps, in case we need them for periodic tasks in IdleOps()
+    #define OLED_IDLEUPD_INTERVAL 5000
+    #define OLED_TEMPUPD_INTERVAL 750
+
+    // timestamps for periodic tasks in IdleOps()
     unsigned long ammoTimestamp = 0;
     unsigned long lifeTimestamp = 0;
     unsigned long idleTimeStamp = 0;
 
+    #ifdef USES_TEMP
+        void ShowTemp();
+
+        int currentTemp;
+        unsigned long idleTempStamp = 0;
+        bool showingTemp = false;
+        // storage of temperature string
+        char tempString[5];
+    #endif // USES_TEMP
 
     #define NUMBER_GLYPH_WIDTH 21
     #define NUMBER_GLYPH_HEIGHT 36

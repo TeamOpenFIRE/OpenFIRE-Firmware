@@ -25,7 +25,7 @@ public:
     static void SolenoidActivation(const int &);
 
     /// @brief Updates current temperature (averaged), if available
-    /// @details Only polls every 3ms, with updates committed to temperatureCurrent after four successful polling cycles
+    /// @details Only polls every 250ms, with updates committed to temperatureCurrent after four successful polling cycles
     static void TemperatureUpdate();
 
     /// @brief Subroutine managing rumble state
@@ -47,6 +47,8 @@ public:
     // Current temperature as read from TMP36, in (approximate) Celsius
     static inline uint temperatureCurrent;
 
+    #define TEMP_UPDATE_INTERVAL 250
+
 private:
     // For solenoid:
     static inline bool solenoidFirstShot = false;            // default to off, but set this on the first time we shoot.
@@ -62,18 +64,14 @@ private:
         Temp_Fatal
     };
 
-    static inline uint tempNormal = 35;                      // Solenoid: Anything below this value is "normal" operating temperature for the solenoid, in Celsius.
-    static inline uint tempWarning = 42;                     // Solenoid: Above normal temps, this is the value up to where we throttle solenoid activation, in Celsius.
-    static inline uint tempStatus = Temp_Safe;               // Current state of the solenoid,
+    static inline TempStatuses_e tempStatus = Temp_Safe;               // Current state of the solenoid,
 
     // timer stuff
     static inline unsigned long currentMillis = 0;           // Current millis() value, which is globally updated/read across all functions in this class
     static inline unsigned long previousMillisTemp = 0;      // Timestamp of last time TMP36 was read
 
-    static inline uint temperatureGraph[4];          // Table of collected (converted) TMP36 readings, to be averaged into temperatureCurrent on the fourth value.
-    static inline uint temperatureIndex = 0;                 // Current index of temperatureGraph to update; initiates temperatureCurrent update/averaging when = 3.
-
-    static inline uint solenoidWarningInterval = OF_Prefs::settings[OF_Const::solenoidFastInterval] * 5; // for if solenoid is getting toasty.
+    static inline int temperatureGraph[4];                  // Table of collected (converted) TMP36 readings, to be averaged into temperatureCurrent on the fourth value.
+    static inline uint tempGraphIndex = 0;                 // Current index of temperatureGraph to update; initiates temperatureCurrent update/averaging when = 3.
 
     // For burst firing stuff:
     static inline uint burstFireCount = 0;                   // What shot are we on?

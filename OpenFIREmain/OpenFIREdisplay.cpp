@@ -16,6 +16,8 @@
 
 #include "OpenFIREdisplay.h"
 #include "OpenFIREprefs.h"
+#include "OpenFIREFeedback.h"
+#include "OpenFIREDefines.h"
 
 bool ExtDisplay::Begin()
 {
@@ -81,6 +83,7 @@ void ExtDisplay::TopPanelUpdate(const char *textPrefix, const char *profText)
 void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 {
     if(display != nullptr) {
+        idleTimeStamp = millis();
         display->fillRect(0, 16, 128, 48, BLACK);
         if(screenState >= Screen_Mamehook_Single &&
            screenMode == Screen_Normal) {
@@ -172,23 +175,66 @@ void ExtDisplay::IdleOps()
 {
     if(display != nullptr) {
         switch(screenState) {
-          case Screen_Normal:
-            break;
-          case Screen_Pause:
-            break;
-          case Screen_Profile:
-            break;
-          case Screen_Saving:
-            break;
-          case Screen_Calibrating:
-            break;
-          case Screen_Mamehook_Single:
-            break;
-          case Screen_Mamehook_Dual:
-            break;
+        case Screen_Normal:
+        case Screen_Mamehook_Single:
+        case Screen_Mamehook_Dual:
+          #ifdef USES_TEMP
+          if(OF_Prefs::pins[OF_Const::tempPin] > -1) {
+              if(millis() - idleTimeStamp > OLED_IDLEUPD_INTERVAL) {
+                  idleTimeStamp = millis();
+                  if(showingTemp) {
+                      TopPanelUpdate("Prof: ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
+                      showingTemp = false;
+                  } else {
+                      idleTempStamp = idleTimeStamp;
+                      ShowTemp();
+                      showingTemp = true;
+                  }
+              } else if(showingTemp) {
+                  if(millis() - idleTempStamp > OLED_TEMPUPD_INTERVAL) {
+                      idleTempStamp = millis();
+                      if(currentTemp != OF_FFB::temperatureCurrent) {
+                          ShowTemp();
+                      }
+                  }
+              }
+          }
+          #endif // USES_TEMP
+          break;
+        case Screen_Pause:
+          break;
+        case Screen_Profile:
+          break;
+        case Screen_Saving:
+          break;
+        case Screen_Calibrating:
+          break;
         }
     }
 }
+
+#ifdef USES_TEMP
+void ExtDisplay::ShowTemp()
+{
+    if(OF_FFB::temperatureCurrent < 10) {
+        tempString[0] = OF_FFB::temperatureCurrent + '0';
+        tempString[1] = ' ';
+        tempString[2] = 'C';
+        tempString[3] = '\0';
+    } else {
+        int tempLeft = OF_FFB::temperatureCurrent / 10;
+        int tempRight = OF_FFB::temperatureCurrent - (tempLeft * 10);
+        tempString[0] = tempLeft + '0';
+        tempString[1] = tempRight + '0';
+        tempString[2] = ' ';
+        tempString[3] = 'C';
+        tempString[4] = '\0';
+    }
+
+    TopPanelUpdate("Current Temp: ", tempString);
+    currentTemp = OF_FFB::temperatureCurrent;
+}
+#endif // USES_TEMP
 
 // Warning: SLOOOOW, should only be used in cali/where the mouse isn't being updated.
 // Use at your own discression.
@@ -452,7 +498,7 @@ void ExtDisplay::PrintAmmo(uint8_t ammo)
 
         // use the rounding error to get the left & right digits
         uint ammoLeft = ammo / 10;
-        uint ammoRight = ammo - ammoLeft * 10;
+        uint ammoRight = ammo - (ammoLeft * 10);
 
         if(!ammo) { ammoEmpty = true; } else { ammoEmpty = false; }
 

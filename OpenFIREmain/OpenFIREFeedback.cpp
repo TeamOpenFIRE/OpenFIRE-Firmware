@@ -137,7 +137,7 @@ void OF_FFB::SolenoidActivation(const int &solenoidFinalInterval)
                             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], !digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])); // Flip, flop.
                         }
                     } else { // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
-                        if(currentMillis - previousMillisSol >= solenoidWarningInterval) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
+                        if(currentMillis - previousMillisSol >= (OF_Prefs::settings[OF_Const::solenoidFastInterval] << 2)) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
                             previousMillisSol = currentMillis;
                             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], !digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]));
                         }
@@ -167,34 +167,30 @@ void OF_FFB::SolenoidActivation(const int &solenoidFinalInterval)
 void OF_FFB::TemperatureUpdate()
 {
     currentMillis = millis();
-    if(currentMillis - previousMillisTemp > 2) {
+    if(currentMillis - previousMillisTemp > TEMP_UPDATE_INTERVAL) {
         previousMillisTemp = currentMillis;
-        temperatureGraph[temperatureIndex] = (((analogRead(OF_Prefs::pins[OF_Const::tempPin]) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
-        if(temperatureIndex < 3) {
-            temperatureIndex++;
+        temperatureGraph[tempGraphIndex] = (((analogRead(OF_Prefs::pins[OF_Const::tempPin]) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
+        if(tempGraphIndex < 3) {
+            tempGraphIndex++;
         } else {
             // average out temperature from four samples taken 3ms apart from each other
-            temperatureIndex = 0;
+            tempGraphIndex = 0;
             temperatureCurrent = (temperatureGraph[0] +
                                   temperatureGraph[1] +
                                   temperatureGraph[2] +
-                                  temperatureGraph[3]) / 4;
+                                  temperatureGraph[3]) >> 2;
+                                  
             if(tempStatus == Temp_Fatal) {
-                if(temperatureCurrent < tempWarning-5) {
+                if(temperatureCurrent < OF_Prefs::settings[OF_Const::tempShutdown]-5)
                     tempStatus = Temp_Warning;
-                }
             } else {
-                if(temperatureCurrent >= tempWarning) {
+                if(temperatureCurrent >= OF_Prefs::settings[OF_Const::tempShutdown])
                     tempStatus = Temp_Fatal;
-                } else if(tempStatus == Temp_Warning) {
-                    if(temperatureCurrent < tempNormal-5) {
+                else if(tempStatus == Temp_Warning) {
+                    if(temperatureCurrent < OF_Prefs::settings[OF_Const::tempWarning]-5)
                         tempStatus = Temp_Safe;
-                    }
-                } else {
-                    if(temperatureCurrent >= tempNormal) {
-                        tempStatus = Temp_Warning;
-                    }
-                }
+                } else if(temperatureCurrent >= OF_Prefs::settings[OF_Const::tempWarning])
+                    tempStatus = Temp_Warning;
             }
         }
     }
