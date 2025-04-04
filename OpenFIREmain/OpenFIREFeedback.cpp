@@ -167,7 +167,7 @@ void OF_FFB::SolenoidActivation(const int &solenoidFinalInterval)
 void OF_FFB::TemperatureUpdate()
 {
     currentMillis = millis();
-    if(currentMillis - previousMillisTemp > 2) {
+    if(currentMillis - previousMillisTemp > TEMP_UPDATE_INTERVAL) {
         previousMillisTemp = currentMillis;
         temperatureGraph[tempGraphIndex] = (((analogRead(OF_Prefs::pins[OF_Const::tempPin]) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
         if(tempGraphIndex < 3) {

@@ -25,7 +25,7 @@ public:
     static void SolenoidActivation(const int &);
 
     /// @brief Updates current temperature (averaged), if available
-    /// @details Only polls every 3ms, with updates committed to temperatureCurrent after four successful polling cycles
+    /// @details Only polls every 250ms, with updates committed to temperatureCurrent after four successful polling cycles
     static void TemperatureUpdate();
 
     /// @brief Subroutine managing rumble state
@@ -46,6 +46,8 @@ public:
 
     // Current temperature as read from TMP36, in (approximate) Celsius
     static inline uint temperatureCurrent;
+
+    #define TEMP_UPDATE_INTERVAL 250
 
 private:
     // For solenoid:
