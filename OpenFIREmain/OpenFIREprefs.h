@@ -83,33 +83,35 @@ public:
     static inline uint currentProfile = 0;
 
     static inline bool toggles[OF_Const::boolTypesCount] = {
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false
+        false,          // custom pins
+        true,           // rumble
+        true,           // solenoid
+        false,          // autofire
+        false,          // simple pause menu
+        false,          // hold to pause
+        true,           // 4pin common anode
+        false,          // low buttons mode
+        false,          // rumble force-feedback mode
+        false,          // invert static pixels
     };
 
     static inline int8_t pins[OF_Const::boardInputsCount] = { -1 };
 
     static inline uint32_t settings[OF_Const::settingsTypesCount] = {
-        255,
-        150,
-        45,
-        30,
-        500,
-        3,
-        2500,
-        1,
-        0,
-        0xFF0000,
-        0x00FF00,
-        0x0000FF
+        255,            // rumble strength
+        150,            // rumble length
+        45,             // solenoid norm interv
+        30,             // solenoid fast interv
+        500,            // solenoid hold length
+        3,              // autofire factor
+        2500,           // hold-to-pause length
+        1,              // custom NeoPixel strand length
+        0,              // custom NeoPixel static count
+        0xFF0000,       // custom pixel color 1
+        0x00FF00,       // custom pixel color 2
+        0x0000FF,       // custom pixel color 3
+        35,             // temp warning
+        42,             // temp shutoff
     };
 
     static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
