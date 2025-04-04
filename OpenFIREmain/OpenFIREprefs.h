@@ -80,7 +80,7 @@ public:
         {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0xFF00FF, "Profile Select"}
     };
 
-    static inline uint8_t currentProfile = 0;
+    static inline uint currentProfile = 0;
 
     static inline bool toggles[OF_Const::boolTypesCount] = {
         false,

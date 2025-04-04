@@ -40,7 +40,7 @@ public:
     static void LedInit();
 
     #ifdef CUSTOM_NEOPIXEL
-    static void InitExternPixel(const int8_t &);
+    static void InitExternPixel(const int &);
     #endif // CUSTOM_NEOPIXEL
 
     static void SetLedPackedColor(const uint32_t &);

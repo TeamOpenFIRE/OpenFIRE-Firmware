@@ -44,7 +44,7 @@ void setup() {
     
         // Profile sanity checks
         // resets offsets that are wayyyyy too unreasonably high
-        for(unsigned int i = 0; i < PROFILE_COUNT; ++i) {
+        for(uint i = 0; i < PROFILE_COUNT; ++i) {
             if(OF_Prefs::profiles[i].rightOffset >= 32768 || OF_Prefs::profiles[i].bottomOffset >= 32768 ||
                OF_Prefs::profiles[i].topOffset >= 32768   || OF_Prefs::profiles[i].leftOffset >= 32768) {
                 OF_Prefs::profiles[i].topOffset = 0;
@@ -408,7 +408,7 @@ void loop()
                         pauseModeSelectingProfile = false;
 
                         #ifdef LED_ENABLE
-                            for(byte i = 0; i < 2; i++) {
+                            for(uint i = 0; i < 2; ++i) {
                                 OF_RGB::LedUpdate(180,180,180);
                                 delay(125);
                                 OF_RGB::LedOff();
@@ -486,7 +486,7 @@ void loop()
                           #endif // USES_DISPLAY
 
                           #ifdef LED_ENABLE
-                              for(byte i = 0; i < 3; i++) {
+                              for(uint i = 0; i < 3; ++i) {
                                   OF_RGB::LedUpdate(150,0,150);
                                   delay(55);
                                   OF_RGB::LedOff();
@@ -551,7 +551,7 @@ void loop()
                         }
 
                         #ifdef USES_RUMBLE
-                            for(byte i = 0; i < 3; i++) {
+                            for(uint i = 0; i < 3; ++i) {
                                 analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
                                 delay(80);
                                 digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
@@ -914,17 +914,17 @@ void ExecGunModeDocked()
 
         if(!FW_Common::dockedSaving) {
             if(FW_Common::buttons.pressed) {
-                for(uint8_t i = 0; i < ButtonCount; i++)
+                for(uint i = 0; i < ButtonCount; ++i)
                     if(bitRead(FW_Common::buttons.pressed, i)) {
-                        const char buf[] = {OF_Const::sBtnPressed, i};
+                        const char buf[] = {OF_Const::sBtnPressed, (uint8_t)i};
                         Serial.write(buf, 2);
                     }
             }
 
             if(FW_Common::buttons.released) {
-                for(uint8_t i = 0; i < ButtonCount; i++)
+                for(uint i = 0; i < ButtonCount; ++i)
                     if(bitRead(FW_Common::buttons.released, i)) {
-                        const char buf[] = {OF_Const::sBtnReleased, i};
+                        const char buf[] = {OF_Const::sBtnReleased, (uint8_t)i};
                         Serial.write(buf, 2);
                     }
             }
@@ -933,7 +933,7 @@ void ExecGunModeDocked()
             unsigned long currentMillis = millis();
             if(currentMillis - tempChecked >= 1000) {
                 if(OF_Prefs::pins[OF_Const::tempPin] >= 0) {
-                    const char buf[] = {OF_Const::sTemperatureUpd, OF_FFB::temperatureCurrent};
+                    const char buf[] = {OF_Const::sTemperatureUpd, (uint8_t)OF_FFB::temperatureCurrent};
                     Serial.write(buf, 2);
                 }
 
@@ -1272,7 +1272,7 @@ void SelectCalProfileFromBtnMask(const uint32_t &mask)
     if(!mask)
         return;
 
-    for(uint8_t i = 0; i < PROFILE_COUNT; ++i) {
+    for(uint i = 0; i < PROFILE_COUNT; ++i) {
         if(bitRead(mask, i)) {
             FW_Common::SelectCalProfile(i);
             return;
@@ -1405,7 +1405,7 @@ void AutofireSpeedToggle()
     #endif // LED_ENABLE
 
     #ifdef USES_SOLENOID
-        for(byte i = 0; i < 5; i++) {                             // And demonstrate the new autofire factor five times!
+        for(uint i = 0; i < 5; ++i) {                             // And demonstrate the new autofire factor five times!
             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
             delay(OF_Prefs::settings[OF_Const::solenoidFastInterval]);
             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
@@ -1429,7 +1429,7 @@ void BurstFireToggle()
             OF_RGB::SetLedPackedColor(WikiColor::Orange);
         #endif
         #ifdef USES_SOLENOID
-            for(byte i = 0; i < 4; i++) {
+            for(byte i = 0; i < 4; ++i) {
                 digitalWrite(solenoidPin, HIGH);                  // Demonstrate it by flicking the solenoid on/off three times!
                 delay(OF_Prefs::settings[OF_Const::solenoidFastInterval]);                      // (at a fixed rate to distinguish it from autofire speed toggles)
                 digitalWrite(solenoidPin, LOW);
