@@ -202,12 +202,10 @@ void ExtDisplay::IdleOps()
           #endif // USES_TEMP
           break;
         case Screen_Pause:
-          break;
         case Screen_Profile:
-          break;
         case Screen_Saving:
-          break;
         case Screen_Calibrating:
+        default:
           break;
         }
     }
