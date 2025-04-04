@@ -16,6 +16,8 @@
 
 #include "OpenFIREdisplay.h"
 #include "OpenFIREprefs.h"
+#include "OpenFIREFeedback.h"
+#include "OpenFIREDefines.h"
 
 bool ExtDisplay::Begin()
 {
@@ -81,6 +83,7 @@ void ExtDisplay::TopPanelUpdate(const char *textPrefix, const char *profText)
 void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 {
     if(display != nullptr) {
+        idleTimeStamp = millis();
         display->fillRect(0, 16, 128, 48, BLACK);
         if(screenState >= Screen_Mamehook_Single &&
            screenMode == Screen_Normal) {
@@ -171,21 +174,48 @@ void ExtDisplay::ScreenModeChange(int8_t screenMode, bool isAnalog)
 void ExtDisplay::IdleOps()
 {
     if(display != nullptr) {
-        switch(screenState) {
-          case Screen_Normal:
-            break;
-          case Screen_Pause:
-            break;
-          case Screen_Profile:
-            break;
-          case Screen_Saving:
-            break;
-          case Screen_Calibrating:
-            break;
-          case Screen_Mamehook_Single:
-            break;
-          case Screen_Mamehook_Dual:
-            break;
+        if(millis() - idleTimeStamp > OLED_IDLEUPD_INTERVAL) {
+            idleTimeStamp = millis();
+            switch(screenState) {
+            case Screen_Normal:
+              #ifdef USES_TEMP
+              if(OF_Prefs::pins[OF_Const::tempPin] > -1) {
+                  if(showingTemp) {
+                      TopPanelUpdate("Prof: ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
+                  } else {
+                      if(OF_FFB::temperatureCurrent < 10) {
+                          tempString[0] = OF_FFB::temperatureCurrent + '0';
+                          tempString[1] = ' ';
+                          tempString[2] = 'C';
+                          tempString[3] = '\0';
+                      } else {
+                          int tempLeft = OF_FFB::temperatureCurrent / 10;
+                          int tempRight = OF_FFB::temperatureCurrent - (tempLeft * 10);
+                          tempString[0] = tempLeft + '0';
+                          tempString[1] = tempRight + '0';
+                          tempString[2] = ' ';
+                          tempString[3] = 'C';
+                          tempString[4] = '\0';
+                      }
+                      TopPanelUpdate("Current Temp: ", tempString);
+                  }
+                  showingTemp = !showingTemp;
+              }
+              #endif // USES_TEMP
+              break;
+            case Screen_Pause:
+              break;
+            case Screen_Profile:
+              break;
+            case Screen_Saving:
+              break;
+            case Screen_Calibrating:
+              break;
+            case Screen_Mamehook_Single:
+              break;
+            case Screen_Mamehook_Dual:
+              break;
+            }
         }
     }
 }
@@ -452,7 +482,7 @@ void ExtDisplay::PrintAmmo(uint8_t ammo)
 
         // use the rounding error to get the left & right digits
         uint ammoLeft = ammo / 10;
-        uint ammoRight = ammo - ammoLeft * 10;
+        uint ammoRight = ammo - (ammoLeft * 10);
 
         if(!ammo) { ammoEmpty = true; } else { ammoEmpty = false; }
 
