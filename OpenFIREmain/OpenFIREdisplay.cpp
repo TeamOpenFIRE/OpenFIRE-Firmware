@@ -176,6 +176,8 @@ void ExtDisplay::IdleOps()
     if(display != nullptr) {
         switch(screenState) {
         case Screen_Normal:
+        case Screen_Mamehook_Single:
+        case Screen_Mamehook_Dual:
           #ifdef USES_TEMP
           if(OF_Prefs::pins[OF_Const::tempPin] > -1) {
               if(millis() - idleTimeStamp > OLED_IDLEUPD_INTERVAL) {
@@ -206,10 +208,6 @@ void ExtDisplay::IdleOps()
         case Screen_Saving:
           break;
         case Screen_Calibrating:
-          break;
-        case Screen_Mamehook_Single:
-          break;
-        case Screen_Mamehook_Dual:
           break;
         }
     }
