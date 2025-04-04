@@ -738,33 +738,31 @@ void ExecRunMode()
             FW_Common::irPosUpdateTick = 0;
             FW_Common::GetPosition();
         }
-
-        #ifdef MAMEHOOKER
-            #ifdef USES_DISPLAY
-                // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
-                // so just do it here using the signal sent by it.
-                if(OF_Serial::serialDisplayChange) {
-                    if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
-                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
-                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
-                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
-                    }
-
-                    OF_Serial::serialDisplayChange = false;
-                }
-            #endif // USES_DISPLAY
-        #endif // MAMEHOOKER
-
         #ifdef USES_DISPLAY
-            FW_Common::OLED.IdleOps();
+            else {
+                FW_Common::OLED.IdleOps();
+                #ifdef MAMEHOOKER
+                    // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
+                    // so just do it here using the signal sent by it.
+                    if(OF_Serial::serialDisplayChange) {
+                        if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
+                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
+                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                        }
+
+                        OF_Serial::serialDisplayChange = false;
+                    }
+                #endif // MAMEHOOKER
+            }
         #endif // USES_DISPLAY
 
         // If using RP2040, we offload the button processing to the second core.

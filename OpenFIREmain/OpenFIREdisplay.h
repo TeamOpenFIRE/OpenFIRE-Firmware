@@ -110,10 +110,11 @@ private:
     bool ammoEmpty = false;
     bool lifeEmpty = false;
 
-    uint8_t currentAmmo;
-    uint8_t currentLife;
+    uint currentAmmo;
+    uint currentLife;
 
     #define OLED_IDLEUPD_INTERVAL 5000
+    #define OLED_TEMPUPD_INTERVAL 750
 
     // timestamps for periodic tasks in IdleOps()
     unsigned long ammoTimestamp = 0;
@@ -121,6 +122,10 @@ private:
     unsigned long idleTimeStamp = 0;
 
     #ifdef USES_TEMP
+        void ShowTemp();
+
+        int currentTemp;
+        unsigned long idleTempStamp = 0;
         bool showingTemp = false;
         // storage of temperature string
         char tempString[5];
