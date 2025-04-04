@@ -8,6 +8,12 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#ifdef ARDUINO_ARCH_RP2040
+  // for RP2040 Wii Clock Gen
+  #include <pico/stdlib.h>
+  #include <hardware/clocks.h>
+  #include <hardware/pwm.h>
+#endif // ARDUINO_ARCH_RP2040
 
 #include "OpenFIREcommon.h"
 #include "OpenFIRElights.h"
@@ -170,6 +176,25 @@ void FW_Common::CameraSet()
             dfrIRPos = new DFRobotIRPositionEx(Wire);
         }
     }
+
+    #ifdef ARDUINO_ARCH_RP2040
+    if(OF_Prefs::pins[OF_Const::wiiClockGen] > -1) {
+        set_sys_clock_khz(125000, true);
+        gpio_set_function(OF_Prefs::pins[OF_Const::wiiClockGen], GPIO_FUNC_PWM);
+        uint slice_num = pwm_gpio_to_slice_num(OF_Prefs::pins[OF_Const::wiiClockGen]);
+        pwm_set_clkdiv(slice_num, 1.0f);  // for sys_clock = 125MHz
+        //pwm_set_clkdiv(slice_num, 3.0f); // for sys_clock = 150MHz
+        pwm_set_wrap(slice_num, 4);
+        pwm_set_chan_level(slice_num, PWM_CHAN_A, 2);
+        pwm_set_enabled(slice_num, true);
+    } else {
+        set_sys_clock_khz(133000, true);
+        pwm_set_enabled(pwm_gpio_to_slice_num(OF_Prefs::pins[OF_Const::wiiClockGen]), false);
+        gpio_set_function(OF_Prefs::pins[OF_Const::wiiClockGen], GPIO_FUNC_SIO);
+        gpio_put(OF_Prefs::pins[OF_Const::wiiClockGen], 0);
+        gpio_set_dir(OF_Prefs::pins[OF_Const::wiiClockGen], GPIO_IN);
+    }
+    #endif // ARDUINO_ARCH_RP2040
 
     // Start IR Camera with basic data format
     if(dfrIRPos != nullptr) {
