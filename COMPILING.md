@@ -63,7 +63,7 @@ Compiling from the cli can be used to automate the build process, and is used by
                   2MB (Sketch: 1MB, FS: 1MB)                       flash=2097152_1048576
     ...
     ```
- 6. Build OpenFIRE Firmware (replacing `{BOARD}` with your desired microcontroller's FBQN name and `{FLASH}`with the flash value found above):
+ 6. Build OpenFIRE Firmware (replacing `{BOARD}` with your desired microcontroller's FBQN name and `{FLASH}` with the flash value found above):
     ```bash
     $ arduino-cli compile -e --fqbn rp2040:rp2040:{BOARD}:usbstack=tinyusb,opt=Optimize3,flash={FLASH} /path/to/OpenFIRE-Firmware/OpenFIREmain --libraries /path/to/repo/libraries
     ```
