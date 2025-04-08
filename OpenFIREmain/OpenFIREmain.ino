@@ -72,6 +72,8 @@ void setup() {
             FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
 
         OF_Prefs::Load();
+    } else {
+        Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
