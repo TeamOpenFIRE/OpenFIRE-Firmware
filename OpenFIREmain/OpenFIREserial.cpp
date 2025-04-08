@@ -1247,7 +1247,6 @@ void OF_Serial::SerialProcessingDocked()
                 //// Commands
                 case OF_Const::sSave:
                     if(FW_Common::SavePreferences() == OF_Prefs::Error_Success) {
-                        Serial.printf("%c%c", OF_Const::sSave, true), Serial.flush();
                         // For updating pin data for buttons, cams and periphs
                         FW_Common::PinsReset();
                         FW_Common::CameraSet();
@@ -1269,7 +1268,6 @@ void OF_Serial::SerialProcessingDocked()
                         }
                     #endif // LED_ENABLE
                     } else {
-                        Serial.printf("%c%c", OF_Const::sSave, false), Serial.flush();
                         OF_Prefs::Load();
                     }
                     FW_Common::buttons.Begin();
