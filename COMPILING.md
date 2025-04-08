@@ -17,14 +17,14 @@ For most people, you may prefer editing, testing and using the Arduino IDE. This
  3. Open the Boards Manager (second button from the top on the left sidebar), search and install "Raspberry Pi Pico/RP2040 (Fix)" version `3.9.2-fix`.
     - Using this fork is REQUIRED as it includes a fixed version of Adafruit's TinyUSB library. Until adafruit/Adafruit_TinyUSB_Arduino#293 is resolved, do not use the upstream *Arduino-Pico* core or install the separate Adafruit TinyUSB library.
  4. Clone/extract the contents of the source repository into your system's `Arduino` folder, so that the `OpenFIREmain` folder is next to `libraries`. Open the `OpenFIREmain` sketch.
- 5. From the app menu up top, set the current microcontroller to your current board under *Tools->Board:->Raspberry Pi Pico/RP2040 (Fix),* set CPU speed to *133 MHz,* set Optimize to *Optimize Even More (-O3),* and set USB Stack to *Adafruit TinyUSB* (not *Host*).
+ 5. From the app menu up top, set the current microcontroller to your current board under *Tools->Board:->Raspberry Pi Pico/RP2040 (Fix),* set CPU speed to *133 MHz,* set Optimize to *Optimize Even More (-O3),* set Flash Size to include a 64KB file system,* and set USB Stack to *Adafruit TinyUSB* (not *Host*).
  6. When you're ready to build, click Verify to check for compilation errors, Upload to directly upload the binary to the microcontroller (if connected), or go to *Sketch->Export Compiled Binary* to generate a .uf2 file under `OpenFIREmain/build/rp2040.rp2040.board_name` that you can drag and drop onto your microcontroller when it's in bootloader mode (either by holding BOOTSEL on poweron, or resetting to bootloader from the OpenFIRE App).
 
 ### Arduino (-cli) Setup
 Compiling from the cli can be used to automate the build process, and is used by the GitHub actions deployments for release builds.
  1. [Download the Arduino-cli tool for your system](https://github.com/arduino/arduino-cli/releases/latest) and install it to where it's most convenient (or for Linux users, install from your system's package manager).
     - These instructions are tailored to Linux, but Windows users can use `arduino-cli.exe` whenever the tool is referenced.
- 3. Install the patched RP2040 core for OpenFIRE:
+ 2. Install the patched RP2040 core for OpenFIRE:
     ```bash
     $ arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
     ```
@@ -32,14 +32,14 @@ Compiling from the cli can be used to automate the build process, and is used by
       ```bash
       $ arduino-cli lib install WiFiNINA
       ```
- 4. Clone the repository, making sure to also download its submodules:
+ 3. Clone the repository, making sure to also download its submodules:
     ```bash
     $ git clone --recursive https://github.com/TeamOpenFIRE/OpenFIRE-Firmware
     ```
- 5. Find the proto name of the board to build for:
+ 4. Find the proto name of the board to build for:
     ```bash
     $ arduino-cli board listall rp2040
-    
+
     Board Name                           FQBN
     0xCB Helios                          rp2040:rp2040:0xcb_helios
     Adafruit Feather RP2040              rp2040:rp2040:adafruit_feather
@@ -49,9 +49,23 @@ Compiling from the cli can be used to automate the build process, and is used by
     Adafruit Feather RP2040 RFM          rp2040:rp2040:adafruit_feather_rfm
     ...
     ```
- 6. Build OpenFIRE Firmware (replacing `{BOARD}` with your desired microcontroller's fqbn name:
+ 5. Find the flash value that allocates 64KB for the File System (replacing `{BOARD}` with your desired microcontroller's FQBN name). The example output below would be seen if `{BOARD}` was set to `rp2040:rp2040:rpipico`:
     ```bash
-    $ arduino-cli compile -e --fqbn rp2040:rp2040:{BOARD}:usbstack=tinyusb,opt=Optimize3 /path/to/OpenFIRE-Firmware/OpenFIREmain --libraries /path/to/repo/libraries
+    $ arduino-cli board details -b {BOARD}
+
+    ...
+    Option:       Flash Size                                       flash
+                  2MB (no FS)                                      flash=2097152_0
+                  2MB (Sketch: 1984KB, FS: 64KB)                   flash=2097152_65536
+                  2MB (Sketch: 1920KB, FS: 128KB)                  flash=2097152_131072
+                  2MB (Sketch: 1792KB, FS: 256KB)                  flash=2097152_262144
+                  2MB (Sketch: 1536KB, FS: 512KB)                  flash=2097152_524288
+                  2MB (Sketch: 1MB, FS: 1MB)                       flash=2097152_1048576
+    ...
+    ```
+ 6. Build OpenFIRE Firmware (replacing `{BOARD}` with your desired microcontroller's FBQN name and `{FLASH}`with the flash value found above):
+    ```bash
+    $ arduino-cli compile -e --fqbn rp2040:rp2040:{BOARD}:usbstack=tinyusb,opt=Optimize3,flash={FLASH} /path/to/OpenFIRE-Firmware/OpenFIREmain --libraries /path/to/repo/libraries
     ```
     *for custom builds, feel free to configure the above build flags to your needs to enable/disable certain OpenFIREfw features.*
     
