@@ -1103,6 +1103,7 @@ void OF_Serial::SerialProcessingDocked()
     {
         FW_Common::buttons.Unset();
         bool exit = false;
+        Serial.write(OF_Const::sCommitStart), Serial.flush();
         while(!exit) {
             if(Serial.available()) {
                 switch(Serial.read()) {
@@ -1286,7 +1287,7 @@ void OF_Serial::SerialProcessingDocked()
 
     case OF_Const::sClearFlash:
         OF_Prefs::ResetPreferences();
-        Serial.println("Cleared! Please reset the board.");
+        rp2040.reboot();
         break;
     }
 }
