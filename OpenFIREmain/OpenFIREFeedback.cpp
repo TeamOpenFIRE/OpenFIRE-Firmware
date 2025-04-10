@@ -27,21 +27,16 @@ void OF_FFB::FFBOnScreen()
                     solenoidFirstShot = false;
             }
         // Else, these below are all if we've been holding the trigger.
-        } else if(burstFiring) {  // If we're in a burst firing sequence,
-            BurstFire();                                // Process it.
-        } else if(OF_Prefs::toggles[OF_Const::autofire] &&  // Else, if we've been holding the trigger, is the autofire switch active?
-                  !burstFireActive) {                          // (WITHOUT burst firing enabled)
-            if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {              // Is the solenoid engaged?
-                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidFastInterval]); // If so, immediately pass the autofire faster interval to solenoid method
-            } else {                                    // Or if it's not,
-                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]); // We're holding it for longer.
-            }
+        } else if(burstFiring) { BurstFire();
+        } else if(OF_Prefs::toggles[OF_Const::autofire] && !burstFireActive) {
+            if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]))
+                 SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidFastInterval]);
+            else SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]);
         } else if(solenoidFirstShot) {                  // If we aren't in autofire mode, are we waiting for the initial shot timer still?
             if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {              // If so, are we still engaged? We need to let it go normally, but maintain the single shot flag.
                 currentMillis = millis();
-                if(currentMillis - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidNormalInterval]) { // If we finally surpassed the wait threshold...
-                    digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);     // Let it go.
-                }
+                if(currentMillis - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidNormalInterval])
+                    digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
             } else {                                    // We're waiting on the extended wait before repeating in single shot mode.
                 currentMillis = millis();
                 if(currentMillis - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidHoldLength]) { // If we finally surpassed the LONGER wait threshold...
@@ -50,38 +45,34 @@ void OF_FFB::FFBOnScreen()
                 }
             }
         } else if(!burstFireActive) {                   // if we don't have the single shot wait flag on (holding the trigger w/out autofire)
-            if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {              // Are we engaged right now?
-                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidNormalInterval]); // Turn it off with this timer.
-            } else {                                    // Or we're not engaged.
-                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidNormalInterval] * 2); // So hold it that way for twice the normal timer.
-            }
+            if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]))
+                 SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidNormalInterval]);
+            else SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidNormalInterval] < 1); // So hold it that way for twice the normal timer.
         }
     // only activate rumbleFF as a fallback if Solenoid is explicitly disabled
-    } else if(OF_Prefs::toggles[OF_Const::rumble] &&
-              OF_Prefs::toggles[OF_Const::rumbleFF] && !rumbleHappened && !triggerHeld) {
+    } else if(OF_Prefs::toggles[OF_Const::rumble] && OF_Prefs::toggles[OF_Const::rumbleFF] && !rumbleHappened && !triggerHeld)
         RumbleActivation();
-    }
-    if(OF_Prefs::toggles[OF_Const::rumble] &&  // Is rumble activated,
-       rumbleHappening && triggerHeld) {  // AND we're in a rumbling command WHILE the trigger's held?
+
+    if(OF_Prefs::toggles[OF_Const::rumble] && rumbleHappening && triggerHeld)
         RumbleActivation();                    // Continue processing the rumble command, to prevent infinite rumble while going from on-screen to off mid-command.
-    }
 }
 
 void OF_FFB::FFBOffScreen()
 {
-    if(OF_Prefs::toggles[OF_Const::rumble]) {  // Only activate if the rumble switch is enabled!
-        if(!OF_Prefs::toggles[OF_Const::rumbleFF] &&
-           !rumbleHappened && !triggerHeld) {  // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
+    if(OF_Prefs::toggles[OF_Const::rumble]) {
+        // Is this the first time we're rumbling AND only started pulling the trigger (to prevent starting a rumble w/ trigger hold)?
+        if(!OF_Prefs::toggles[OF_Const::rumbleFF] && !rumbleHappened && !triggerHeld) {
             RumbleActivation();                        // Start a rumble command.
         } else if(rumbleHappening) {  // We are currently processing a rumble command.
             RumbleActivation();                        // Keep processing that command then.
         }  // Else, we rumbled already, so don't do anything to prevent infinite rumbling.
     }
-    if(burstFiring) {                                  // If we're in a burst firing sequence,
-        BurstFire();
-    } else if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]) && !burstFireActive) { // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
+
+    if(burstFiring) BurstFire();
+    else if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]) && !burstFireActive) { // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
         currentMillis = millis();                      // Calibrate current time
-        if(currentMillis - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidFastInterval]) { // I guess if we're not firing, may as well use the fastest shutoff.
+        if(currentMillis - previousMillisSol >=
+           OF_Prefs::settings[OF_Const::solenoidFastInterval] > OF_Prefs::settings[OF_Const::solenoidNormalInterval] ? OF_Prefs::settings[OF_Const::solenoidFastInterval] : OF_Prefs::settings[OF_Const::solenoidNormalInterval]) {
             previousMillisSol = currentMillis;
             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
         }
@@ -91,9 +82,8 @@ void OF_FFB::FFBOffScreen()
 void OF_FFB::FFBRelease()
 {
     if(OF_Prefs::toggles[OF_Const::solenoid]) {  // Has the solenoid remain engaged this cycle?
-        if(burstFiring) {    // Are we in a burst fire command?
-            BurstFire();                                    // Continue processing it.
-        } else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
+        if(burstFiring) BurstFire();
+        else if(!burstFireActive) { // Else, we're just processing a normal/rapid fire shot.
             solenoidFirstShot = false;                      // Make sure this is unset to prevent "sticking" in single shot mode!
             currentMillis = millis();
             if(currentMillis - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidFastInterval]) { // I guess if we're not firing, may as well use the fastest shutoff.
