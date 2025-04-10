@@ -1045,7 +1045,7 @@ int FW_Common::SavePreferences()
 
 void FW_Common::UpdateBindings(const bool &lowButtons)
 {
-    if(gunMode == FW_Const::GunMode_Docked) {
+    if(gunMode != FW_Const::GunMode_Run) {
         // Updates pins
         LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].pin = OF_Prefs::pins[OF_Const::btnTrigger];
         LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].pin       = OF_Prefs::pins[OF_Const::btnGunA];
