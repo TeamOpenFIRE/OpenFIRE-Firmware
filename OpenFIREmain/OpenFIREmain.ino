@@ -274,31 +274,17 @@ void loop1()
         // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
         FW_Common::buttons.Poll(0);
 
-        #ifdef MAMEHOOKER
-            if(Serial.available())
-                OF_Serial::SerialProcessing();
+        if(Serial.available()) OF_Serial::SerialProcessing();
 
-            if(!OF_Serial::serialMode) {   // Have we released a serial signal pulse? If not,
-                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                      // Handle button events and feedback ourselves.
-                } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
-                }
-            } else {   // This is if we've received a serial signal pulse in the last n millis.
-                // For safety reasons, we're just using the second core for polling, and the main core for sending signals entirely. Too much a headache otherwise. =w='
-                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFireSimple();                                // Since serial is handling our devices, we're just handling button events.
-                } else {   // Or if we haven't pressed the trigger,
-                    TriggerNotFireSimple();                             // Release button inputs.
-                }
-                OF_Serial::SerialHandling();                            // Process the force feedback.
-            }
-        #else
-            if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                TriggerFire();                                          // Handle button events and feedback ourselves.
-            } else {   // Or we haven't pressed the trigger.
-                TriggerNotFire();                                       // Releasing button inputs and sending stop signals to feedback devices.
-            }
+        // For processing the trigger specifically.
+        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
+        // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        if(bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Trigger))   // Check if we pressed the Trigger this run.
+            TriggerFire();                                  // Handle button events and feedback ourselves.
+        else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
+
+        #ifdef MAMEHOOKER
+            if(OF_Serial::serialMode) OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
         #endif // MAMEHOOKER
 
         #ifdef USES_ANALOG
@@ -334,8 +320,6 @@ void loop1()
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-                    FW_Common::offscreenBShot = false;
-                    FW_Common::buttonPressed = false;
                     FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::buttons.ReportDisable();
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
@@ -346,8 +330,6 @@ void loop1()
                FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-                FW_Common::offscreenBShot = false;
-                FW_Common::buttonPressed = false;
                 FW_Common::buttons.ReportDisable();
                 FW_Common::SetMode(FW_Const::GunMode_Pause);
                 // at this point, the other core should be stopping us now.
@@ -592,8 +574,6 @@ void loop()
                 DecreaseIrSensitivity();
             } else if(FW_Common::buttons.pressedReleased == FW_Const::SaveBtnMask) {
                 FW_Common::SavePreferences();
-            } else if(FW_Common::buttons.pressedReleased == FW_Const::OffscreenButtonToggleBtnMask) {
-                OffscreenToggle();
             #ifdef USES_RUMBLE
                 } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0) {
                     RumbleToggle();
@@ -698,39 +678,19 @@ void ExecRunMode()
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
         FW_Common::buttons.Poll(0);
 
-        // The main FW_Common::gunMode loop: here it splits off to different paths,
-        // depending on if we're in serial handoff (MAMEHOOK) or normal mode.
-        #ifdef MAMEHOOKER
-            // Run through serial receive buffer once this run, if it has contents.
-            if(Serial.available())
-                OF_Serial::SerialProcessing();
+        // Run through serial receive buffer once this run, if it has contents.
+        if(Serial.available())
+            OF_Serial::SerialProcessing();
 
-            if(!OF_Serial::serialMode) {  // Normal (gun-handled) mode
-                // For processing the trigger specifically.
-                // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
-                // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFire();                                  // Handle button events and feedback ourselves.
-                } else {   // Or we haven't pressed the trigger.
-                    TriggerNotFire();                               // Releasing button inputs and sending stop signals to feedback devices.
-                }
-            } else {  // Serial handoff mode
-                if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                    TriggerFireSimple();                            // Since serial is handling our devices, we're just handling button events.
-                } else {   // Or if we haven't pressed the trigger,
-                    TriggerNotFireSimple();                         // Release button inputs.
-                }
-                OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
-            }
-        #else
-            // For processing the trigger specifically.
-            // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
-            // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-            if(bitRead(FW_Common::buttons.debounced, 0)) {   // Check if we pressed the Trigger this run.
-                TriggerFire();                                      // Handle button events and feedback ourselves.
-            } else {   // Or we haven't pressed the trigger.
-                TriggerNotFire();                                   // Releasing button inputs and sending stop signals to feedback devices.
-            }
+        // For processing the trigger specifically.
+        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
+        // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        if(bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Trigger))   // Check if we pressed the Trigger this run.
+            TriggerFire();                                  // Handle button events and feedback ourselves.
+        else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
+
+        #ifdef MAMEHOOKER
+            if(OF_Serial::serialMode) OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
         #endif // MAMEHOOKER
         #endif // DUAL_CORE
 
@@ -801,11 +761,11 @@ void ExecRunMode()
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-		    Keyboard.releaseAll();
+		            Keyboard.releaseAll();
                     AbsMouse5.releaseAll();
+                    Gamepad16.releaseAll();
                     FW_Common::offscreenBShot = false;
-                    FW_Common::buttonPressed = false;
-	    	    FW_Common::pauseModeSelection = PauseMode_Calibrate;
+	    	        FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
                     FW_Common::buttons.ReportDisable();
                     return;
@@ -815,11 +775,11 @@ void ExecRunMode()
             if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-		Keyboard.releaseAll();
+		        Keyboard.releaseAll();
                 AbsMouse5.releaseAll();
+                Gamepad16.releaseAll();
                 FW_Common::offscreenBShot = false;
-                FW_Common::buttonPressed = false;
-		FW_Common::SetMode(FW_Const::GunMode_Pause);
+		        FW_Common::SetMode(FW_Const::GunMode_Pause);
                 FW_Common::buttons.ReportDisable();
                 return;
             }
@@ -828,6 +788,7 @@ void ExecRunMode()
         if(FW_Common::gunMode != FW_Const::GunMode_Run) {
             Keyboard.releaseAll();
             AbsMouse5.releaseAll();
+            Gamepad16.releaseAll();
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -995,61 +956,70 @@ void SetModeWaitNoButtons(const FW_Const::GunMode_e &newMode, const unsigned lon
 // Handles events when trigger is pulled/held
 void TriggerFire()
 {
-    if(!FW_Common::buttons.offScreen &&                                     // Check if the X or Y axis is in the screen's boundaries, i.e. "off screen".
-    !FW_Common::offscreenBShot) {                                           // And only as long as we haven't fired an off-screen shot,
-        if(!FW_Common::buttonPressed) {
-            if(FW_Common::buttons.analogOutput)
-                Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3); // No reason to handle this ourselves here, but eh.
-            else AbsMouse5.press(MOUSE_LEFT);                     // We're handling the trigger button press ourselves for a reason.
-
-            FW_Common::buttonPressed = true;                                // Set this so we won't spam a repeat press event again.
+    if(!FW_Common::buttons.offScreen) {
+        if(!OF_FFB::triggerHeld) {
+            if(FW_Common::buttons.analogOutput) // this should only ever be gamepad outputs
+                Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
+            else switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType) {
+                case LightgunButtons::ReportType_Mouse:   AbsMouse5.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                case LightgunButtons::ReportType_Keyboard: Keyboard.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                case LightgunButtons::ReportType_Gamepad: Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                default: break;
+            }
         }
 
-        if(!bitRead(FW_Common::buttons.debounced, 3) &&                     // Is the trigger being pulled WITHOUT pressing Start & Select?
-        !bitRead(FW_Common::buttons.debounced, 4))
+        if(!OF_Serial::serialMode && 
+           !bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Start) &&
+           !bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Select))
             OF_FFB::FFBOnScreen();
-    } else {  // We're shooting outside of the screen boundaries!
-        if(!FW_Common::buttonPressed) {  // If we haven't pressed a trigger key yet,
-            if(!OF_FFB::triggerHeld && FW_Common::offscreenButton) {  // If we are in offscreen button mode (and aren't dragging a shot offscreen)
-                if(FW_Common::buttons.analogOutput)
-                    Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
-                else AbsMouse5.press(MOUSE_RIGHT);
-
-                FW_Common::offscreenBShot = true;                     // Mark we pressed the right button via offscreen shot mode,
-            } else {  // Or if we're not in offscreen button mode,
-                if(FW_Common::buttons.analogOutput)
-                    Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
-                else AbsMouse5.press(MOUSE_LEFT);
+    // We're shooting outside of the screen boundaries!
+    } else {  
+        // If we are in offscreen button mode (and aren't dragging a shot offscreen)
+        if(!OF_FFB::triggerHeld) {
+            if(FW_Common::buttons.analogOutput) // always uses the same button
+                Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
+            else switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2) {
+                case LightgunButtons::ReportType_Mouse:   AbsMouse5.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                case LightgunButtons::ReportType_Keyboard: Keyboard.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                case LightgunButtons::ReportType_Gamepad: Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                default: break;
             }
 
-            FW_Common::buttonPressed = true;                      // Mark so we're not spamming these press events.
+            FW_Common::triggerPressedOffscreen = true;
         }
-        OF_FFB::FFBOffScreen();
+
+        if(!OF_Serial::serialMode) OF_FFB::FFBOffScreen();
     }
-    OF_FFB::triggerHeld = true;                                   // Signal that we've started pulling the trigger this poll cycle.
+    OF_FFB::triggerHeld = true;
 }
 
 // Handles events when trigger is released
 void TriggerNotFire()
 {
-    OF_FFB::triggerHeld = false;                                    // Disable the holding function
-    if(FW_Common::buttonPressed) {
-        if(FW_Common::offscreenBShot) {                                // If we fired off screen with the FW_Common::offscreenButton set,
-            if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
-            else AbsMouse5.release(MOUSE_RIGHT);             // We were pressing the right mouse, so release that.
-
-            FW_Common::offscreenBShot = false;
-        } else {                                            // Or if not,
-            if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
-            else AbsMouse5.release(MOUSE_LEFT);              // We were pressing the left mouse, so release that instead.
+    if(OF_FFB::triggerHeld) {
+        if(FW_Common::buttons.analogOutput)
+            Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
+        else if(FW_Common::triggerPressedOffscreen) {
+            switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2) {
+                case LightgunButtons::ReportType_Mouse:   AbsMouse5.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                case LightgunButtons::ReportType_Keyboard: Keyboard.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                case LightgunButtons::ReportType_Gamepad: Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2); break;
+                default: break;
+            }
+            FW_Common::triggerPressedOffscreen = false;
+        } else {
+            switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType) {
+                case LightgunButtons::ReportType_Mouse:   AbsMouse5.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                case LightgunButtons::ReportType_Keyboard: Keyboard.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                case LightgunButtons::ReportType_Gamepad: Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
+                default: break;
+            }
         }
-        
-        FW_Common::buttonPressed = false;
     }
-    
-    OF_FFB::FFBRelease();
+
+    OF_FFB::triggerHeld = false;
+
+    if(!OF_Serial::serialMode) OF_FFB::FFBRelease();
 }
 
 #ifdef USES_ANALOG
@@ -1068,47 +1038,6 @@ void AnalogStickPoll()
     }
 }
 #endif // USES_ANALOG
-
-#ifdef MAMEHOOKER
-// Trigger execution path while in Serial handoff mode - pulled
-void TriggerFireSimple()
-{
-    if(!FW_Common::buttonPressed &&                             // Have we not fired the last cycle,
-    OF_Serial::offscreenButtonSerial && FW_Common::buttons.offScreen) {    // and are pointing the gun off screen WITH the offScreen button mode set?    
-        if(FW_Common::buttons.analogOutput)
-            Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
-	      else AbsMouse5.press(MOUSE_RIGHT);
-
-        FW_Common::offscreenBShot = true;                       // Mark we pressed the right button via offscreen shot mode,
-        FW_Common::buttonPressed = true;                        // Mark so we're not spamming these press events.
-    } else if(!FW_Common::buttonPressed) {                      // Else, have we simply not fired the last cycle?
-	      if(FW_Common::buttons.analogOutput) 
-            Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
-	      else AbsMouse5.press(MOUSE_LEFT);
-
-        FW_Common::buttonPressed = true;                        // Set this so we won't spam a repeat press event again.
-    }
-}
-
-// Trigger execution path while in Serial handoff mode - released
-void TriggerNotFireSimple()
-{
-    if(FW_Common::buttonPressed) {                              // Just to make sure we aren't spamming mouse button events.
-        if(FW_Common::offscreenBShot) {                         // if it was marked as an offscreen button shot,
-            if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode3);
-	          else AbsMouse5.release(MOUSE_RIGHT);
-            FW_Common::offscreenBShot = false;                  // And set it off.
-        } else {                                     // Else,
-            if(FW_Common::buttons.analogOutput)
-                Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
-	          else AbsMouse5.release(MOUSE_LEFT);
-        }
-        FW_Common::buttonPressed = false;                       // Unset the button pressed bit.
-    }
-}
-#endif // MAMEHOOKER
-
 
 void SendEscapeKey()
 {
@@ -1351,54 +1280,6 @@ bool SelectCalPrefs(unsigned int profile)
     return false;
 }
 */
-
-// Pause mode offscreen trigger mode toggle widget
-// Blinks LEDs (if any) according to enabling or disabling this obtuse setting for finnicky/old programs that need right click as an offscreen shot substitute.
-void OffscreenToggle()
-{
-    FW_Common::FW_Common::offscreenButton = !FW_Common::FW_Common::offscreenButton;
-    if(FW_Common::offscreenButton) {                                         // If we turned ON this mode,
-        Serial.println("Enabled Offscreen Button!");
-
-        #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(WikiColor::Ghost_white);            // Set a color,
-        #endif // LED_ENABLE
-
-        #ifdef USES_RUMBLE
-            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], HIGH);                        // Set rumble on
-            delay(125);                                           // For this long,
-            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);                         // Then flick it off,
-            delay(150);                                           // wait a little,
-            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], HIGH);                        // Flick it back on
-            delay(200);                                           // For a bit,
-            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);                         // and then turn it off,
-        #else
-            delay(450);
-        #endif // USES_RUMBLE
-
-        #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
-        #endif // LED_ENABLE
-
-        return;
-    } else {                                                      // Or we're turning this OFF,
-        Serial.println("Disabled Offscreen Button!");
-
-        #ifdef LED_ENABLE
-            OF_RGB::SetLedPackedColor(WikiColor::Ghost_white);            // Just set a color,
-            delay(150);                                           // Keep it on,
-            OF_RGB::LedOff();                                             // Flicker it off
-            delay(100);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(WikiColor::Ghost_white);            // Flicker it back on
-            delay(150);                                           // for a bit,
-            OF_RGB::LedOff();                                             // And turn it back off
-            delay(200);                                           // for a bit,
-            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);// And reset the LED back to pause mode color
-        #endif // LED_ENABLE
-
-        return;
-    }
-}
 
 /*
 // Unused since runtime burst fire toggle was removed from pause mode, and is accessed from the serial command M8x1

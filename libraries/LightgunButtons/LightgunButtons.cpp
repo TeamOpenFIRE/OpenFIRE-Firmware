@@ -170,8 +170,8 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                     if(!state) {
                         // state is low, button is pressed
 
-                        // if reporting is enabled for the button
-                        if(report & bitMask) {
+                        // if reporting is enabled for the button (no trigger reporting)
+                        if(i != 1 && report & bitMask) {
                             reportedPressed |= bitMask;
                             if(analogOutput) {
                                 if(btn.reportType3 == ReportType_Mouse) {

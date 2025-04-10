@@ -48,7 +48,6 @@ public:
     };
 
     static inline bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
-    static inline bool offscreenButtonSerial = false;              // Serial-only version of offscreenButton toggle.
     static inline bool serialQueue[SerialQueueBitsCount] = {false};// Array of events we've queued from the serial receipt.
     static inline bool serialARcorrection = false;                 // 4:3 AR correction mode flag
     // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.

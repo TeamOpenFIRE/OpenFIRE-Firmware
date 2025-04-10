@@ -19,6 +19,7 @@
 void OF_Serial::SerialProcessing()
 {
     // For more info about Serial commands, see the OpenFIRE repo wiki.
+    // TODO: needs cleanup
     char serialInput = Serial.read();                              // Read the serial input one byte at a time (we'll read more later)
 
     switch(serialInput) {
@@ -26,10 +27,10 @@ void OF_Serial::SerialProcessing()
         case 'S':
           if(serialMode)
               Serial.println("SERIALREAD: Detected Serial Start command while already in Serial handoff mode!");
+          // TODO: handle the other Start line bits? this assume equiv of `S6`
           else {
-              serialMode = true;                                         // Set it on, then!
+              serialMode = true;
               OF_FFB::FFBShutdown();
-              FW_Common::offscreenBShot = false;
 
               #ifdef USES_SOLENOID
               serialSolCustomHoldLength = 0;
@@ -118,27 +119,16 @@ void OF_Serial::SerialProcessing()
                     case '3':
                     // disabled
                     case '0':
-                      if(serialMode)
-                          offscreenButtonSerial = false;
-                      else FW_Common::offscreenButton = false;
-                      // reset bindings for low button users if offscreen button was enabled earlier.
-                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
-                          FW_Common::UpdateBindings();
-                      }
+                      FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                       break;
                     // offscreen button
                     case '2':
-                      // Applies to both serial and non, as it might be useful for Linux Supermodel users.
-                      if(serialMode) 
-                          offscreenButtonSerial = true;
-                      else FW_Common::offscreenButton = true;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode;
                       // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
-                      // TODO: make this its own dedicated method in OpenFIREinput?
                       if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode = MOUSE_BUTTON4;
-                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType = LightgunButtons::ReportType_Mouse;
-                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode = MOUSE_BUTTON5;
                       }
                       break;
                 }
@@ -152,19 +142,19 @@ void OF_Serial::SerialProcessing()
                     case '0':
                       FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                       break;
-                    // make reload button (mouse right)
+                    // make reload button (mapping of Button A)
                     case '1':
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = MOUSE_RIGHT;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = MOUSE_RIGHT;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType2;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode2;
                       break;
-                    // make middle mouse button (for VCop3 EZ mode)
+                    // make middle mouse button (mapping of Button B, useful for low buttons mode & e.g. using VCop3 EZ mode)
                     case '2':
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = MOUSE_MIDDLE;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ReportType_Mouse;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = MOUSE_MIDDLE;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType2;
+                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode2;
                       break;
                 }
                 break;
@@ -273,7 +263,6 @@ void OF_Serial::SerialProcessing()
               if(!serialMode) Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
               else {
                   serialMode = false;                                    // Turn off serial mode then.
-                  offscreenButtonSerial = false;                         // And clear the stale serial offscreen button mode flag.
                   serialQueue[SerialQueueBitsCount] = {false};
                   serialARcorrection = false;
                   #ifdef USES_DISPLAY
@@ -1399,12 +1388,6 @@ void OF_Serial::PrintResults()
                 Serial.print("Mode: ");
                 Serial.println(FW_Const::RunModeLabels[FW_Common::runMode]);
             }
-
-            // Extra settings to print to connected serial monitor when entering Pause Mode
-            Serial.print("Offscreen button mode enabled: ");
-            if(FW_Common::offscreenButton)
-                Serial.println("True");
-            else Serial.println("False");
 
             #ifdef USES_RUMBLE
                 Serial.print("Rumble enabled: ");
