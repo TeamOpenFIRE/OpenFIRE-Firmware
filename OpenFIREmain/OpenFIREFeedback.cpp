@@ -116,8 +116,8 @@ void OF_FFB::SolenoidActivation(const int &solenoidFinalInterval)
                             previousMillisSol = currentMillis;
                             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], !digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])); // Flip, flop.
                         }
-                    } else { // The solenoid's probably off, not on right now. So that means we should wait a bit longer to fire again.
-                        if(currentMillis - previousMillisSol >= (OF_Prefs::settings[OF_Const::solenoidOffLength] << autofireDoubleLengthWait ? 3 : 2)) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
+                    } else { // The solenoid's probably off right now, so that means we should wait a bit longer to fire again.
+                        if(currentMillis - previousMillisSol >= (OF_Prefs::settings[OF_Const::solenoidOffLength] << 2)) { // We're keeping it low for a bit longer, to keep temps stable. Try to give it a bit of time to cool down before we go again.
                             previousMillisSol = currentMillis;
                             digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], !digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]));
                         }
