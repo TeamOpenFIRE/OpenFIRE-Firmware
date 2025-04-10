@@ -594,8 +594,6 @@ void loop()
                 FW_Common::SavePreferences();
             } else if(FW_Common::buttons.pressedReleased == FW_Const::OffscreenButtonToggleBtnMask) {
                 OffscreenToggle();
-            } else if(FW_Common::buttons.pressedReleased == FW_Const::AutofireSpeedToggleBtnMask) {
-                AutofireSpeedToggle();
             #ifdef USES_RUMBLE
                 } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0) {
                     RumbleToggle();
@@ -1400,42 +1398,6 @@ void OffscreenToggle()
 
         return;
     }
-}
-
-// Pause mode autofire factor toggle widget
-// Does a test fire demonstrating the autofire speed being toggled
-void AutofireSpeedToggle()
-{
-    switch (OF_Prefs::settings[OF_Const::autofireWaitFactor]) {
-        case 2:
-            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 3;
-            Serial.println("Autofire speed level 2.");
-            break;
-        case 3:
-            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 4;
-            Serial.println("Autofire speed level 3.");
-            break;
-        case 4:
-            OF_Prefs::settings[OF_Const::autofireWaitFactor] = 2;
-            Serial.println("Autofire speed level 1.");
-            break;
-    }
-    #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(WikiColor::Magenta);                    // Set a color,
-    #endif // LED_ENABLE
-
-    #ifdef USES_SOLENOID
-        for(uint i = 0; i < 5; ++i) {                             // And demonstrate the new autofire factor five times!
-            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
-            delay(OF_Prefs::settings[OF_Const::solenoidFastInterval]);
-            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
-            delay(OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]);
-        }
-    #endif // USES_SOLENOID
-
-    #ifdef LED_ENABLE
-        OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);    // And reset the LED back to pause mode color
-    #endif // LED_ENABLE
 }
 
 /*

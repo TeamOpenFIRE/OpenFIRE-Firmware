@@ -43,6 +43,7 @@ public:
     // For autofire:
     static inline bool triggerHeld = false;                  // Trigger SHOULDN'T be being pulled by default, right?
     static inline bool burstFireActive = false;
+    static inline bool autofireDoubleLengthWait = false;
 
     // Current temperature as read from TMP36, in (approximate) Celsius
     static inline uint temperatureCurrent;
