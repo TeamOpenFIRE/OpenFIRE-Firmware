@@ -1286,7 +1286,7 @@ void OF_Serial::SerialProcessingDocked()
 
     case OF_Const::sClearFlash:
         OF_Prefs::ResetPreferences();
-        Serial.println("Cleared! Please reset the board.");
+        rp2040.reboot();
         break;
     }
 }
