@@ -321,13 +321,7 @@ void OF_Serial::SerialProcessing()
           switch(serialInput) {
               // Set Autofire Interval Length
               case 'I':
-                serialInput = Serial.read();
-                if(serialInput >= '2' && serialInput <= '4') {
-                    uint8_t afSetting = serialInput - '0';
-                    OF_Prefs::settings[OF_Const::autofireWaitFactor] = afSetting;
-                    Serial.print("Autofire speed level ");
-                    Serial.println(afSetting);
-                } else Serial.println("SERIALREAD: No valid interval set! (Expected 2 to 4)");
+                OF_FFB::autofireDoubleLengthWait = Serial.read();
                 break;
               // Remap player numbers
               case 'R':
@@ -710,7 +704,7 @@ void OF_Serial::SerialHandling()
                               else serialSolPulsesLast++, serialSolPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                           }
                       // current settings hold length
-                      } else if(millis() - serialSolPulsesLastUpdate >= OF_Prefs::settings[OF_Const::solenoidNormalInterval]) {
+                      } else if(millis() - serialSolPulsesLastUpdate >= OF_Prefs::settings[OF_Const::solenoidOnLength]) {
                           digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);  // Start pulsing it off.
                           if(serialSolPulsesLast >= serialSolPulses)
                               serialQueue[SerialQueue_SolPulse] = false;
@@ -725,7 +719,7 @@ void OF_Serial::SerialHandling()
                           }
                       // current settings pause length
                       } else if(millis() - serialSolPulsesLastUpdate >=
-                                OF_Prefs::settings[OF_Const::solenoidFastInterval] * OF_Prefs::settings[OF_Const::autofireWaitFactor]) {
+                                OF_Prefs::settings[OF_Const::solenoidOffLength] << OF_FFB::autofireDoubleLengthWait ? 1 : 0) {
                           digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH); // Start pulsing it on.
                           serialSolPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
@@ -1076,7 +1070,7 @@ void OF_Serial::SerialProcessingDocked()
     #ifdef USES_SOLENOID
     case OF_Const::sTestSolenoid:
         digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
-        delay(OF_Prefs::settings[OF_Const::solenoidNormalInterval]);
+        delay(OF_Prefs::settings[OF_Const::solenoidOnLength]);
         digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
         break;
     #endif // USES_SOLENOID

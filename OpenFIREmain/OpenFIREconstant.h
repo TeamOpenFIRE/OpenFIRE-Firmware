@@ -115,9 +115,6 @@ public:
     // button combination to toggle offscreen button mode in software:
     static inline constexpr uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
 
-    // button combination to toggle offscreen button mode in software:
-    static inline constexpr uint32_t AutofireSpeedToggleBtnMask = BtnMask_Reload | BtnMask_B;
-
     // button combination to toggle rumble in software:
     static inline constexpr uint32_t RumbleToggleBtnMask = BtnMask_Left;
 

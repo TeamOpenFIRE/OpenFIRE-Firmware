@@ -100,10 +100,9 @@ public:
     static inline uint32_t settings[OF_Const::settingsTypesCount] = {
         255,            // rumble strength
         150,            // rumble length
-        45,             // solenoid norm interv
-        30,             // solenoid fast interv
+        45,             // solenoid on length
+        30,             // solenoid off length
         500,            // solenoid hold length
-        3,              // autofire factor
         2500,           // hold-to-pause length
         1,              // custom NeoPixel strand length
         0,              // custom NeoPixel static count
