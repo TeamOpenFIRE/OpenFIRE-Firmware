@@ -163,9 +163,7 @@ public:
     static LightgunButtons buttons;
 
     // For offscreen button stuff:
-    static inline bool offscreenButton = false;                    // Does shooting offscreen also send a button input (for buggy games that don't recognize off-screen shots)? Default to off.
-    static inline bool offscreenBShot = false;                     // For offscreenButton functionality, to track if we shot off the screen.
-    static inline bool buttonPressed = false;                      // Sanity check.
+    static inline bool triggerPressedOffscreen = false;            // Set if shot offscreen; determines whether we release trigger btn code 1 or 2
 
     #ifdef USES_ANALOG
         static inline bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
@@ -210,7 +208,7 @@ public:
 // see LightgunButtons::Desc_t, format is: 
 // {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
 inline LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {OF_Prefs::pins[OF_Const::btnTrigger],  LightgunButtons::ReportType_Internal, MOUSE_LEFT,      LightgunButtons::ReportType_Internal, MOUSE_LEFT,      LightgunButtons::ReportType_Internal, PAD_RT,     15, BTN_AG_MASK}, // Barry says: "I'll handle this."
+    {OF_Prefs::pins[OF_Const::btnTrigger],  LightgunButtons::ReportType_Mouse,    MOUSE_LEFT,      LightgunButtons::ReportType_Mouse,    MOUSE_LEFT,      LightgunButtons::ReportType_Gamepad,  PAD_RT,     15, BTN_AG_MASK}, // Barry says: "I'll handle this."
     {OF_Prefs::pins[OF_Const::btnGunA],     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Gamepad,  PAD_LT,     15, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunB],     LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Gamepad,  PAD_Y,      15, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunC],     LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Gamepad,  PAD_A,      15, BTN_AG_MASK2},

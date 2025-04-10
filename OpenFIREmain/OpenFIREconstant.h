@@ -112,9 +112,6 @@ public:
     static inline constexpr uint32_t RunModeNormalBtnMask = BtnMask_Start | BtnMask_A;
     static inline constexpr uint32_t RunModeAverageBtnMask = BtnMask_Start | BtnMask_B;
 
-    // button combination to toggle offscreen button mode in software:
-    static inline constexpr uint32_t OffscreenButtonToggleBtnMask = BtnMask_Reload | BtnMask_A;
-
     // button combination to toggle rumble in software:
     static inline constexpr uint32_t RumbleToggleBtnMask = BtnMask_Left;
 
