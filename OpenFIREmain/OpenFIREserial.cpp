@@ -1103,6 +1103,7 @@ void OF_Serial::SerialProcessingDocked()
     {
         FW_Common::buttons.Unset();
         bool exit = false;
+        Serial.write(OF_Const::sCommitStart), Serial.flush();
         while(!exit) {
             if(Serial.available()) {
                 switch(Serial.read()) {
