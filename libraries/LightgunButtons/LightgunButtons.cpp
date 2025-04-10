@@ -230,7 +230,7 @@ uint32_t LightgunButtons::Poll(unsigned long minTicks)
                         // if the button press was reported then report the release
                         // note that the report flag is ignored here to avoid stuck buttons
                         // in case the reporting is disabled while button(s) are pressed
-                        if(reportedPressed & bitMask) {
+                        if(i != 1 && reportedPressed & bitMask) {
                             reportedPressed &= ~bitMask;
                             if(analogOutput) {
                                 if(btn.reportType3 == ReportType_Mouse) {
