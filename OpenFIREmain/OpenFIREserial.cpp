@@ -1286,8 +1286,10 @@ void OF_Serial::SerialProcessingDocked()
     }
 
     case OF_Const::sClearFlash:
-        OF_Prefs::ResetPreferences();
-        rp2040.reboot();
+        if(Serial.available() == 1 && Serial.read() == OF_Const::sClearFlash) {
+            OF_Prefs::ResetPreferences();
+            rp2040.reboot();
+        } else while(Serial.available()) Serial.read();
         break;
     }
 }
