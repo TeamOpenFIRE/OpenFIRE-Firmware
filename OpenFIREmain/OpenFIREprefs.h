@@ -101,7 +101,7 @@ public:
         255,            // rumble strength
         150,            // rumble length
         45,             // solenoid on length
-        30,             // solenoid off length
+        80,             // solenoid off length
         500,            // solenoid hold length
         2500,           // hold-to-pause length
         1,              // custom NeoPixel strand length
@@ -109,8 +109,8 @@ public:
         0xFF0000,       // custom pixel color 1
         0x00FF00,       // custom pixel color 2
         0x0000FF,       // custom pixel color 3
-        35,             // temp warning
-        42,             // temp shutoff
+        38,             // temp warning
+        45,             // temp shutoff
     };
 
     static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
