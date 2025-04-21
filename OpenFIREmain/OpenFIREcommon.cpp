@@ -250,6 +250,7 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
         break;
     case FW_Const::GunMode_Pause:
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn | FW_Const::StateFlag_PrintSelectedProfile;
+        pauseModeSelection = FW_Const::PauseMode_Calibrate;
 
         #ifdef USES_DISPLAY
           OLED.ScreenModeChange(ExtDisplay::Screen_Pause);

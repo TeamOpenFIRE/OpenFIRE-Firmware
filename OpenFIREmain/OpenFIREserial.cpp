@@ -332,7 +332,15 @@ void OF_Serial::SerialProcessing()
           break;
         // Enter Docked Mode
         case OF_Const::sDock1:
-          if(Serial.read() == OF_Const::sDock2) FW_Common::SetMode(FW_Const::GunMode_Docked);
+          if(Serial.read() == OF_Const::sDock2) {
+            #ifdef DUAL_CORE // This may be being run from Core 1, so signal if running in main Run Mode.
+            if(FW_Common::gunMode == FW_Const::GunMode_Run)
+                rp2040.fifo.push(FW_Const::GunMode_Docked);
+            else FW_Common::SetMode(FW_Const::GunMode_Docked);
+            #else
+            FW_Common::SetMode(FW_Const::GunMode_Docked);
+            #endif // DUAL_CORE
+          }
           break;
         // Force Feedback
         case 'F':
@@ -881,6 +889,7 @@ void OF_Serial::SerialHandling()
 }
 #endif // MAMEHOOKER
 
+// Serial Buffer in Docked Mode should always be being read by the main core on multicore systems
 void OF_Serial::SerialProcessingDocked()
 {
     switch(Serial.read()) {

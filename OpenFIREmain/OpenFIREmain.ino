@@ -275,8 +275,7 @@ void loop1()
     #endif // USES_ANALOG
 
     while(FW_Common::gunMode == FW_Const::GunMode_Run) {
-        // For processing the trigger specifically.
-        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time, with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        // All buttons' outputs except for the trigger are processed here.
         FW_Common::buttons.Poll(0);
 
         if(Serial.available()) OF_Serial::SerialProcessing();
@@ -293,7 +292,7 @@ void loop1()
         #endif // MAMEHOOKER
 
         #ifdef USES_ANALOG
-            if(FW_Common::analogIsValid && (millis() - lastAnalogPoll > 1)) {
+            if(FW_Common::analogIsValid && millis() - lastAnalogPoll > 1) {
                 AnalogStickPoll();
                 lastAnalogPoll = millis();
             }
@@ -308,8 +307,8 @@ void loop1()
             SendEscapeKey();
 
         if(OF_Prefs::toggles[OF_Const::holdToPause]) {
-            if((FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask)
-                && !FW_Common::lastSeen && !pauseHoldStarted) {
+            if(FW_Common::buttons.debounced == FW_Const::EnterPauseModeHoldBtnMask
+               && !FW_Common::lastSeen && !pauseHoldStarted) {
                 pauseHoldStarted = true;
                 pauseHoldStartstamp = millis();
                 if(!OF_Serial::serialMode)
@@ -325,9 +324,11 @@ void loop1()
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-                    FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::buttons.ReportDisable();
-                    FW_Common::SetMode(FW_Const::GunMode_Pause);
+                    // Signal the main core to set mode, since it's more stable there.
+                    // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
+                    rp2040.fifo.push(FW_Const::GunMode_Pause);
+                    rp2040.fifo.pop();
                 }
             }
         } else {
@@ -336,8 +337,10 @@ void loop1()
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
                 FW_Common::buttons.ReportDisable();
-                FW_Common::SetMode(FW_Const::GunMode_Pause);
-                // at this point, the other core should be stopping us now.
+                // Signal the main core to set mode, since it's more stable there.
+                // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
+                rp2040.fifo.push(FW_Const::GunMode_Pause);
+                rp2040.fifo.pop();
             }
         }
     }
@@ -355,14 +358,17 @@ void loop()
 
     if(OF_Prefs::toggles[OF_Const::holdToPause] && pauseHoldStarted) {
         #ifdef USES_RUMBLE
-            analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
-            delay(300);
-            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+            if(OF_Prefs::toggles[OF_Const::rumble]) {
+                analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
+                delay(300);
+                digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+            }
         #endif // USES_RUMBLE
-        while(FW_Common::buttons.debounced != 0) {
-            // Should release the buttons to continue, pls.
+
+        // if any buttons are still held, keep polling until all buttons are debounced
+        while(FW_Common::buttons.debounced)
             FW_Common::buttons.Poll(1);
-        }
+
         pauseHoldStarted = false;
         pauseModeSelectingProfile = false;
     }
@@ -382,7 +388,7 @@ void loop()
                     } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                         FW_Common::SelectCalProfile(profileModeSelection);
                         pauseModeSelectingProfile = false;
-                        FW_Common::pauseModeSelection = PauseMode_Calibrate;
+                        FW_Common::pauseModeSelection = FW_Const::PauseMode_Calibrate;
 
                         if(!OF_Serial::serialMode) {
                             Serial.print("Switched to profile: ");
@@ -411,7 +417,7 @@ void loop()
                             OF_RGB::LedUpdate(255,0,0);
                         #endif // LED_ENABLE
 
-                        FW_Common::pauseModeSelection = PauseMode_Calibrate;
+                        FW_Common::pauseModeSelection = FW_Const::PauseMode_Calibrate;
 
                         #ifdef USES_DISPLAY
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
@@ -423,14 +429,14 @@ void loop()
                     SetPauseModeSelection(true);
                 } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                     switch(FW_Common::pauseModeSelection) {
-                        case PauseMode_Calibrate:
+                        case FW_Const::PauseMode_Calibrate:
                           FW_Common::SetMode(FW_Const::GunMode_Calibration);
                           if(!OF_Serial::serialMode) {
                               Serial.print("Calibrating for current profile: ");
                               Serial.println(OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                           }
                           break;
-                        case PauseMode_ProfileSelect:
+                        case FW_Const::PauseMode_ProfileSelect:
                           if(!OF_Serial::serialMode) {
                               Serial.println("Pick a profile!");
                               Serial.print("Current profile in use: ");
@@ -445,20 +451,20 @@ void loop()
                               OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
                           #endif // LED_ENABLE
                           break;
-                        case PauseMode_Save:
+                        case FW_Const::PauseMode_Save:
                           if(!OF_Serial::serialMode)
                               Serial.println("Saving...");
                           FW_Common::SavePreferences();
                           break;
                         #ifdef USES_RUMBLE
-                        case PauseMode_RumbleToggle:
+                        case FW_Const::PauseMode_RumbleToggle:
                           if(!OF_Serial::serialMode)
                               Serial.println("Toggling rumble!");
                           RumbleToggle();
                           break;
                         #endif // USES_RUMBLE
                         #ifdef USES_SOLENOID
-                        case PauseMode_SolenoidToggle:
+                        case FW_Const::PauseMode_SolenoidToggle:
                           if(!OF_Serial::serialMode)
                               Serial.println("Toggling solenoid!");
                           SolenoidToggle();
@@ -466,13 +472,13 @@ void loop()
                         #endif // USES_SOLENOID
                         /*
                         #ifdef USES_SOLENOID
-                        case PauseMode_BurstFireToggle:
+                        case FW_Const::PauseMode_BurstFireToggle:
                           Serial.println("Toggling solenoid burst firing!");
                           BurstFireToggle();
                           break;
                         #endif // USES_SOLENOID
                         */
-                        case PauseMode_EscapeSignal:
+                        case FW_Const::PauseMode_EscapeSignal:
                           SendEscapeKey();
 
                           #ifdef USES_DISPLAY
@@ -492,7 +498,7 @@ void loop()
                               FW_Common::OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
                           #endif // USES_DISPLAY
                           break;
-                        /*case PauseMode_Exit:
+                        /*case FW_Const::PauseMode_Exit:
                           Serial.println("Exiting pause mode...");
                           if(FW_Common::runMode == FW_Const::RunMode_Processing) {
                               switch(OF_Prefs::profiles[OF_Prefs::currentProfile].FW_Common::runMode) {
@@ -521,8 +527,8 @@ void loop()
                         Serial.println("Exiting pause mode...");
                     FW_Common::SetMode(FW_Const::GunMode_Run);
                 }
-                if(pauseExitHoldStarted &&
-                (FW_Common::buttons.debounced & FW_Const::ExitPauseModeHoldBtnMask)) {
+
+                if(pauseExitHoldStarted && FW_Common::buttons.debounced & FW_Const::ExitPauseModeHoldBtnMask) {
                     unsigned long t = millis();
                     if(t - pauseHoldStartstamp > (OF_Prefs::settings[OF_Const::holdToPauseLength] / 2)) {
                         if(!OF_Serial::serialMode)
@@ -545,7 +551,7 @@ void loop()
                         }
 
                         #ifdef USES_RUMBLE
-                            for(uint i = 0; i < 3; ++i) {
+                            if(OF_Prefs::toggles[OF_Const::rumble]) for(uint i = 0; i < 3; ++i) {
                                 analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
                                 delay(80);
                                 digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
@@ -553,8 +559,8 @@ void loop()
                             }
                         #endif // USES_RUMBLE
 
-                        while(FW_Common::buttons.debounced != 0)
-                            // keep polling until all buttons are debounced
+                        // if any buttons are still held, keep polling until all buttons are debounced
+                        while(FW_Common::buttons.debounced)
                             FW_Common::buttons.Poll(1);
 
                         FW_Common::SetMode(FW_Const::GunMode_Run);
@@ -565,6 +571,7 @@ void loop()
                     pauseHoldStartstamp = millis();
                 } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeHoldBtnMask)
                     pauseExitHoldStarted = false;
+
             } else if(FW_Common::buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask) {
                 FW_Common::SetMode(FW_Const::GunMode_Run);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
@@ -707,7 +714,7 @@ void ExecRunMode()
             else {
                 FW_Common::OLED.IdleOps();
                 #ifdef MAMEHOOKER
-                    // For some reason, solenoid feedback is hella wonky when ammo updates are performed on the second core,
+                    // Solenoid feedback on the second core is hella wonky when ammo updates are performed there likely due to blocking I2C transactions,
                     // so just do it here using the signal sent by it.
                     if(OF_Serial::serialDisplayChange) {
                         if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
@@ -770,7 +777,6 @@ void ExecRunMode()
                     AbsMouse5.releaseAll();
                     Gamepad16.releaseAll();
                     FW_Common::offscreenBShot = false;
-	    	        FW_Common::pauseModeSelection = PauseMode_Calibrate;
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
                     FW_Common::buttons.ReportDisable();
                     return;
@@ -789,11 +795,14 @@ void ExecRunMode()
                 return;
             }
         }
-        #else  // if we're using dual cores, we just check if the gunmode has been changed by the other thread.
-        if(FW_Common::gunMode != FW_Const::GunMode_Run) {
+        #else  // if we're using dual cores, check the fifo.
+        if(rp2040.fifo.pop_nb(&fifoData)) {
+            FW_Common::SetMode((FW_Const::GunMode_e)fifoData);
             Keyboard.releaseAll();
             AbsMouse5.releaseAll();
             Gamepad16.releaseAll();
+            // the value doesn't matter; all core1 is doing is waiting for any signal from the FIFO.
+            rp2040.fifo.push(true);
             return;
         }
         #endif // ARDUINO_ARCH_RP2040 || DUAL_CORE
@@ -1057,34 +1066,34 @@ void SendEscapeKey()
 void SetPauseModeSelection(const bool &isIncrement)
 {
     if(isIncrement) {
-        if(FW_Common::pauseModeSelection == PauseMode_EscapeSignal) {
-            FW_Common::pauseModeSelection = PauseMode_Calibrate;
+        if(FW_Common::pauseModeSelection == FW_Const::PauseMode_EscapeSignal) {
+            FW_Common::pauseModeSelection = FW_Const::PauseMode_Calibrate;
         } else {
             FW_Common::pauseModeSelection++;
             // If we use switches, and they ARE mapped to valid pins,
             // then skip over the manual toggle options.
             #ifdef USES_SWITCHES
                 #ifdef USES_RUMBLE
-                    if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_RumbleToggle &&
                     (OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0 || OF_Prefs::pins[OF_Const::rumblePin] == -1)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
-                    if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_SolenoidToggle &&
                     (OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0 || OF_Prefs::pins[OF_Const::solenoidPin] == -1)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_SOLENOID
             #else
                 #ifdef USES_RUMBLE
-                    if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_RumbleToggle &&
                     !(OF_Prefs::pins[OF_Const::rumblePin] >= 0)) {
                         FW_Common::pauseModeSelection++;
                     }
                 #endif // USES_RUMBLE
                 #ifdef USES_SOLENOID
-                    if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_SolenoidToggle &&
                     !(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)) {
                         FW_Common::pauseModeSelection++;
                     }
@@ -1092,32 +1101,32 @@ void SetPauseModeSelection(const bool &isIncrement)
             #endif // USES_SWITCHES
         }
     } else {
-        if(FW_Common::pauseModeSelection == PauseMode_Calibrate) {
-            FW_Common::pauseModeSelection = PauseMode_EscapeSignal;
+        if(FW_Common::pauseModeSelection == FW_Const::PauseMode_Calibrate) {
+            FW_Common::pauseModeSelection = FW_Const::PauseMode_EscapeSignal;
         } else {
             FW_Common::pauseModeSelection--;
             #ifdef USES_SWITCHES
                 #ifdef USES_SOLENOID
-                    if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_SolenoidToggle &&
                     (OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0 || OF_Prefs::pins[OF_Const::solenoidPin] == -1)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_RumbleToggle &&
                     (OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0 || OF_Prefs::pins[OF_Const::rumblePin] == -1)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_RUMBLE
             #else
                 #ifdef USES_SOLENOID
-                    if(FW_Common::pauseModeSelection == PauseMode_SolenoidToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_SolenoidToggle &&
                     !(OF_Prefs::pins[OF_Const::solenoidPin] >= 0)) {
                         FW_Common::pauseModeSelection--;
                     }
                 #endif // USES_SOLENOID
                 #ifdef USES_RUMBLE
-                    if(FW_Common::pauseModeSelection == PauseMode_RumbleToggle &&
+                    if(FW_Common::pauseModeSelection == FW_Const::PauseMode_RumbleToggle &&
                     !(OF_Prefs::pins[OF_Const::rumblePin] >= 0)) {
                         FW_Common::pauseModeSelection--;
                     }
@@ -1127,26 +1136,26 @@ void SetPauseModeSelection(const bool &isIncrement)
     }
 
     switch(FW_Common::pauseModeSelection) {
-        case PauseMode_Calibrate:
+        case FW_Const::PauseMode_Calibrate:
           Serial.println("Selecting: Calibrate current profile");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(255,0,0);
           #endif // LED_ENABLE
           break;
-        case PauseMode_ProfileSelect:
+        case FW_Const::PauseMode_ProfileSelect:
           Serial.println("Selecting: Switch profile");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(200,50,0);
           #endif // LED_ENABLE
           break;
-        case PauseMode_Save:
+        case FW_Const::PauseMode_Save:
           Serial.println("Selecting: Save Settings");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(155,100,0);
           #endif // LED_ENABLE
           break;
         #ifdef USES_RUMBLE
-        case PauseMode_RumbleToggle:
+        case FW_Const::PauseMode_RumbleToggle:
           Serial.println("Selecting: Toggle rumble On/Off");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(100,155,0);
@@ -1154,7 +1163,7 @@ void SetPauseModeSelection(const bool &isIncrement)
           break;
         #endif // USES_RUMBLE
         #ifdef USES_SOLENOID
-        case PauseMode_SolenoidToggle:
+        case FW_Const::PauseMode_SolenoidToggle:
           Serial.println("Selecting: Toggle solenoid On/Off");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(55,200,0);
@@ -1162,7 +1171,7 @@ void SetPauseModeSelection(const bool &isIncrement)
           break;
         #endif // USES_SOLENOID
         /*#ifdef USES_SOLENOID
-        case PauseMode_BurstFireToggle:
+        case FW_Const::PauseMode_BurstFireToggle:
           Serial.println("Selecting: Toggle burst-firing mode");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(0,255,0);
@@ -1170,13 +1179,13 @@ void SetPauseModeSelection(const bool &isIncrement)
           break;
         #endif // USES_SOLENOID
         */
-        case PauseMode_EscapeSignal:
+        case FW_Const::PauseMode_EscapeSignal:
           Serial.println("Selecting: Send Escape key signal");
           #ifdef LED_ENABLE
               OF_RGB::LedUpdate(150,0,150);
           #endif // LED_ENABLE
           break;
-        /*case PauseMode_Exit:
+        /*case FW_Const::PauseMode_Exit:
           Serial.println("Selecting: Exit pause mode");
           break;
         */

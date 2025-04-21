@@ -69,7 +69,6 @@ public:
         BtnMask_Home = 1 << BtnIdx_Home
     };
 
-
     enum CaliStage_e {
         Cali_Init = 0,
         Cali_Top,
@@ -78,6 +77,20 @@ public:
         Cali_Right,
         Cali_Center,
         Cali_Verify
+    };
+
+    enum PauseModeSelection_e {
+        PauseMode_Calibrate = 0,
+        PauseMode_ProfileSelect,
+        PauseMode_Save,
+        #ifdef USES_RUMBLE
+        PauseMode_RumbleToggle,
+        #endif // USES_RUMBLE
+        #ifdef USES_SOLENOID
+        PauseMode_SolenoidToggle,
+        //PauseMode_BurstFireToggle,
+        #endif // USES_SOLENOID
+        PauseMode_EscapeSignal
     };
 
     //// Button Masks
