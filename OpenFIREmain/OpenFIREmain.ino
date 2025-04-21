@@ -36,6 +36,11 @@ void setup() {
         pinMode(14, OUTPUT);
         digitalWrite(14, HIGH);
     #endif // ARDUINO_ADAFRUIT_ITSYBITSY_RP2040
+    #ifdef ARDUINO_RASPBERRY_PI_PICO
+        // Pull switching regulator pin high to stabilize reads from ADC (analog pins)
+        pinMode(23, OUTPUT);
+        digitalWrite(23, HIGH);
+    #endif
 
     OF_Prefs::LoadPresets();
     
