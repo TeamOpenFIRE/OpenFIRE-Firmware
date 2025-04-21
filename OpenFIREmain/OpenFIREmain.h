@@ -38,20 +38,6 @@
   void rp2040pwmIrq(void);
 #endif
 
-enum PauseModeSelection_e {
-    PauseMode_Calibrate = 0,
-    PauseMode_ProfileSelect,
-    PauseMode_Save,
-    #ifdef USES_RUMBLE
-    PauseMode_RumbleToggle,
-    #endif // USES_RUMBLE
-    #ifdef USES_SOLENOID
-    PauseMode_SolenoidToggle,
-    //PauseMode_BurstFireToggle,
-    #endif // USES_SOLENOID
-    PauseMode_EscapeSignal
-};
-
 // TinyUSB devices interface object that's initialized in MainCoreSetup
 TinyUSBDevices_ TUSBDeviceSetup;
 
@@ -64,5 +50,7 @@ bool pauseModeSelectingProfile = false;
 unsigned long pauseHoldStartstamp;
 bool pauseHoldStarted = false;
 bool pauseExitHoldStarted = false;
+
+uint32_t fifoData = 0;
 
 #endif // _SAMCOENHANCED_H_
