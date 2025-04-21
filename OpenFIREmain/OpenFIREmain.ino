@@ -798,6 +798,7 @@ void ExecRunMode()
         #else  // if we're using dual cores, check the fifo.
         if(rp2040.fifo.pop_nb(&fifoData)) {
             FW_Common::SetMode((FW_Const::GunMode_e)fifoData);
+            fifoData = 0;
             Keyboard.releaseAll();
             AbsMouse5.releaseAll();
             Gamepad16.releaseAll();
@@ -896,9 +897,6 @@ void ExecGunModeDocked()
     for(;;) {
         FW_Common::buttons.Poll(1);
 
-        if(Serial.available())
-            OF_Serial::SerialProcessingDocked();
-
         if(!FW_Common::dockedSaving) {
             if(FW_Common::buttons.pressed) {
                 for(uint i = 0; i < ButtonCount; ++i)
@@ -932,22 +930,21 @@ void ExecGunModeDocked()
             #endif // USES_TEMP
             
             #ifdef USES_ANALOG
-                if(FW_Common::analogIsValid) {
-                    if(currentMillis - aStickChecked >= 100) {
-                        aStickChecked = currentMillis;
+                if(FW_Common::analogIsValid && currentMillis - aStickChecked >= 100) {
+                    aStickChecked = currentMillis;
 
-                        // TODO: replace with just sending coords normally instead of an approximated cardinal.
-                        uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
-                        uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
-                        
-                        char buf[5] = {OF_Const::sAnalogPosUpd};
-                        memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
-                        memcpy(&buf[3], (uint8_t*)&analogValueY, sizeof(uint16_t));
-                        Serial.write(buf, sizeof(buf));
-                    }
+                    uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
+                    uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
+
+                    char buf[5] = {OF_Const::sAnalogPosUpd};
+                    memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
+                    memcpy(&buf[3], (uint8_t*)&analogValueY, sizeof(uint16_t));
+                    Serial.write(buf, sizeof(buf));
                 }
             #endif // USES_ANALOG
         }
+
+        if(Serial.available()) OF_Serial::SerialProcessingDocked();
 
         if(FW_Common::gunMode != FW_Const::GunMode_Docked)
             return;
