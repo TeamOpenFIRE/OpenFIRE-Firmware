@@ -108,7 +108,7 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 };
 #endif // _USING_HID
 
-AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0)
+AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId)
 {
 #if defined(_USING_HID)
 	static HIDSubDescriptor descriptorNode(HID_REPORT_DESCRIPTOR5, sizeof(HID_REPORT_DESCRIPTOR5));
@@ -118,28 +118,20 @@ AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(
 
 void AbsMouse5_::report(void)
 {
-	uint8_t buffer[5];
-	buffer[0] = _buttons;
-    // TODO: wouldn't two memcpys be faster here?
-	buffer[1] = _x & 0xFF;
-	buffer[2] = (_x >> 8) & 0xFF;
-	buffer[3] = _y & 0xFF;
-	buffer[4] = (_y >> 8) & 0xFF;
-
 #if defined(_USING_HID)
-	HID().SendReport(_reportId, buffer, sizeof(buffer));
+	HID().SendReport(_reportId, &mouse, sizeof(mouse));
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
     #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
     if(TinyUSBDevices.onBattery)
-      PicoBluetoothHID.send(HID_BT_MOUSE, buffer, sizeof(buffer));
+      PicoBluetoothHID.send(HID_BT_MOUSE, &mouse, sizeof(mouse));
     else {
       while(!usbHid.ready()) yield();
-      usbHid.sendReport(HID_RID_MOUSE, buffer, sizeof(buffer));
+      usbHid.sendReport(HID_RID_MOUSE, &mouse, sizeof(mouse));
     }
     #else
     while(!usbHid.ready()) yield();
-    usbHid.sendReport(HID_RID_MOUSE, buffer, sizeof(buffer));
+    usbHid.sendReport(HID_RID_MOUSE, &mouse, sizeof(mouse));
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #endif // USE_TINYUSB
     TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = false;
@@ -147,23 +139,27 @@ void AbsMouse5_::report(void)
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
 {
-	if(x != _x || y != _y) {
-		_x = x;
-		_y = y;
+	if(x != mouse._x || y != mouse._y) {
+		mouse._x = x;
+		mouse._y = y;
         TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
 	}
 }
 
 void AbsMouse5_::press(uint8_t button)
 {
-	_buttons |= button;
-	TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
+    if(!(mouse._buttons & button)) {
+        mouse._buttons |= button;
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
+    }
 }
 
 void AbsMouse5_::release(uint8_t button)
 {
-	_buttons &= ~button;
-	TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
+    if(mouse._buttons & button) {
+        mouse._buttons &= ~button;
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
+    }
 }
   
  /*****************************
@@ -459,19 +455,25 @@ void AbsMouse5_::release(uint8_t button)
     }
   }
 
-  void Gamepad16_::press(uint8_t buttonNum) {
-    bitSet(gamepad16Report.buttons, buttonNum);
-    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+  void Gamepad16_::press(int buttonNum) {
+    if(!(gamepad16Report.buttons & (1 << buttonNum))) {
+        gamepad16Report.buttons |= (1 << buttonNum);
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+    }
   }
 
-  void Gamepad16_::release(uint8_t buttonNum) {
-    bitClear(gamepad16Report.buttons, buttonNum);
-    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+  void Gamepad16_::release(int buttonNum) {
+    if(gamepad16Report.buttons & (1 << buttonNum)) {
+        gamepad16Report.buttons &= ~(1 << buttonNum);
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+    }
   }
 
   void Gamepad16_::padUpdate(uint8_t padMask) {
-    gamepad16Report.hat = padMask;
-    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+    if(gamepad16Report.hat != padMask) {
+        gamepad16Report.hat = padMask;
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
+    }
   }
 
   void Gamepad16_::report() {
@@ -491,12 +493,8 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::releaseAll() {
-    gamepad16Report.buttons = 0;
-    gamepad16Report.hat = 0;
-    gamepad16Report.X = 0;
-    gamepad16Report.Y = 0;
-    gamepad16Report.Rx = 0;
-    gamepad16Report.Ry = 0;
+    memset(&gamepad16Report, 0, sizeof(gamepad16Report));
+    _x = 2048, _y = 2048;
     TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 

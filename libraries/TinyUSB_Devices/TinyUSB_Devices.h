@@ -127,9 +127,12 @@ class AbsMouse5_
 {
 private:
 	const uint8_t _reportId;
-	uint8_t _buttons;
-	uint16_t _x;
-	uint16_t _y;
+    typedef struct {
+      uint8_t  _buttons = 0;
+      uint16_t _x       = 0;
+      uint16_t _y       = 0;
+    } __attribute__ ((packed)) MouseReport_t;
+    MouseReport_t mouse;
 
 public:
 	AbsMouse5_(uint8_t reportId = 1);
@@ -294,12 +297,12 @@ extern Keyboard_ Keyboard;
 #define PAD_RIGHT  18
 
 typedef struct {
-        int16_t X = 0;
-        int16_t Y = 0;
-        int16_t Rx = 0;
-        int16_t Ry = 0;
-        uint8_t hat;
-        uint16_t buttons;     // button bitmask
+        int16_t  X       = 0;
+        int16_t  Y       = 0;
+        int16_t  Rx      = 0;
+        int16_t  Ry      = 0;
+        uint8_t  hat     = 0;
+        uint16_t buttons = 0;     // button bitmask
 } __attribute__ ((packed)) gamepad16Report_s;
 
 class Gamepad16_ {
@@ -311,11 +314,12 @@ public:
   Gamepad16_(void);
   void moveCam(uint16_t origX, uint16_t origY);
   void moveStick(uint16_t origX, uint16_t origY);
-  void press(uint8_t buttonNum);
-  void release(uint8_t buttonNum);
+  void press(int buttonNum);
+  void release(int buttonNum);
   void padUpdate(uint8_t padMask);
-  void report(void);
-  void releaseAll(void);
+  void report();
+  void releaseAll();
+
   bool stickRight;
 };
 extern Gamepad16_ Gamepad16;
