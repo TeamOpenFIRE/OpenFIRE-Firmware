@@ -1035,8 +1035,11 @@ void AnalogStickPoll()
 void SendEscapeKey()
 {
     Keyboard.press(KEY_ESC);
+    Keyboard.report();
     delay(20);  // wait a bit so it registers on the PC.
     Keyboard.release(KEY_ESC);
+    Keyboard.report();
+    lastUSBpoll = millis();
 }
 
 // Simple Pause Menu scrolling function
