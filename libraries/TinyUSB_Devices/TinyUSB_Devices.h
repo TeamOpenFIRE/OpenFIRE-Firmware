@@ -52,10 +52,26 @@
 
 class TinyUSBDevices_ {
 public:
-  TinyUSBDevices_(void);
-  void begin(byte polRate);
+  /// @brief Constructor
+  TinyUSBDevices_() {};
+
+  /// @brief Sends and initializes the array of USB devices to the connected host
+  void begin(int polRate);
+
+  /// @brief Sends and initializes the array of BT devices for paired devices
   void beginBT(const char *localName, const char *hidName);
+
+  /// @brief Whether the device is running in USB mode (false) or Bluetooth (true)
   bool onBattery = false;
+
+  enum reportChannels_e {
+      reportMouse = 0,
+      reportKeyboard,
+      reportGamepad
+  };
+
+  /// @brief Array of which of the three devices have new data that should be reported.
+  bool newReport[3] = { false, false, false };
 };
 extern TinyUSBDevices_ TinyUSBDevices;
 
@@ -114,12 +130,10 @@ private:
 	uint8_t _buttons;
 	uint16_t _x;
 	uint16_t _y;
-	bool _autoReport;
 
 public:
 	AbsMouse5_(uint8_t reportId = 1);
-	void init(bool autoReport = true);
-	void report(void);
+	void report();
 	void move(uint16_t x, uint16_t y);
 	void press(uint8_t b = MOUSE_LEFT);
 	void release(uint8_t b = MOUSE_LEFT);
@@ -203,13 +217,13 @@ extern AbsMouse5_ AbsMouse5;
   {
   private:
     KeyReport _keyReport;
-    void sendReport(KeyReport* keys);
   public:
     Keyboard_(void);
+    void report();
     size_t write(uint8_t k);
     size_t write(const uint8_t *buffer, size_t size);
-    size_t press(uint8_t k);
-    size_t release(uint8_t k);
+    bool press(uint8_t k);
+    bool release(uint8_t k);
     void releaseAll(void);
   };
 extern Keyboard_ Keyboard;
@@ -293,7 +307,6 @@ private:
   gamepad16Report_s gamepad16Report;
   uint16_t _x = 2048;
   uint16_t _y = 2048;
-  bool _autoReport = true;
 public:
   Gamepad16_(void);
   void moveCam(uint16_t origX, uint16_t origY);
@@ -303,7 +316,6 @@ public:
   void padUpdate(uint8_t padMask);
   void report(void);
   void releaseAll(void);
-  void setAutoreport(bool state) { _autoReport = state; }
   bool stickRight;
 };
 extern Gamepad16_ Gamepad16;

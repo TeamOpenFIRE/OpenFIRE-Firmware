@@ -38,6 +38,8 @@
   void rp2040pwmIrq(void);
 #endif
 
+#define POLL_RATE 1
+
 // TinyUSB devices interface object that's initialized in MainCoreSetup
 TinyUSBDevices_ TUSBDeviceSetup;
 
@@ -50,6 +52,9 @@ bool pauseModeSelectingProfile = false;
 unsigned long pauseHoldStartstamp;
 bool pauseHoldStarted = false;
 bool pauseExitHoldStarted = false;
+
+// Timestamp of last USB packet update.
+unsigned long lastUSBpoll = 0;
 
 uint32_t fifoData = 0;
 

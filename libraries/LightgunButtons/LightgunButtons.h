@@ -34,9 +34,9 @@ public:
     /// @brief Report type.
     enum ReportType_e {
         ReportType_Mouse = 0,
-        ReportType_Keyboard = 1,
-        ReportType_Internal = 2,
-        ReportType_Gamepad = 3
+        ReportType_Keyboard,
+        ReportType_Gamepad,
+        ReportType_Internal
     };
 
     /// @brief Descriptor.
@@ -73,6 +73,16 @@ public:
     /// @param[in] minTicks Minimum number of ticks for poll to update.
     /// @return The pressed value.
     uint32_t Poll(unsigned long minTicks = 0);
+
+    /// @brief Send reports queued up from Poll (and separate analog updates)
+    /// @param bool
+    ///        Whether to report on every channel sequentially
+    ///        Default behavior returns after the first flagged report channel
+    void SendReports(const bool &forceReportAll = false);
+
+    /// @brief Macro that signals all releaseAlls for each input device,
+    ///        and then force-sends each report sequentially.
+    void ReleaseAll();
 
     /// @brief Update the internal repeat value.
     /// @details Call after Poll() if the repeat value is required.
@@ -163,15 +173,12 @@ private:
 
     /// @brief Internal bit mask of directional buttons pressed.
     /// @details Only the four rightmost bits are used to track state of gamepad directional buttons pressed.
-    uint8_t padMask = 0x00000000;
-
-    /// @brief Bit mask of directional buttons pressed after conversion.
-    /// @details Converted from padMask before being passed over to TinyUSB_Devices' due to how HID POV works.
-    uint8_t padMaskConv = 0x00000000;
+    uint32_t padMask = 0;
 
     /// @brief Converts directional buttons bit mask from internal to HID format.
     /// @details Because the HID POV hat format makes no effing sense whatsoever.
-    void PadMaskConvert();
+    /// @returns Converted D-Pad mask
+    uint32_t PadMaskConvert();
 
     /// @brief Tracked buttons that are offscreen.
     uint32_t internalOffscreenMask;

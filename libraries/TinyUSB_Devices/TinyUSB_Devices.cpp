@@ -3,6 +3,7 @@
  * Chris Young's TinyUSB Mouse and Keyboard library (the Keyboard half, anyways),
  * which in itself uses pieces of Arduino's basic Keyboard library.
  */
+
 #ifdef USE_TINYUSB
   #include <Adafruit_TinyUSB.h>
 #elifdef CFG_TUSB_MCU
@@ -49,10 +50,7 @@ uint8_t desc_bt_report[] = {
 };
 #endif // ARDUINO_RASPBERRY_PI_PICO_W
 
-TinyUSBDevices_::TinyUSBDevices_(void) {
-}
-
-void TinyUSBDevices_::begin(byte polRate) {
+void TinyUSBDevices_::begin(int polRate) {
     usbHid.setPollInterval(polRate);
     usbHid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     usbHid.begin();
@@ -110,7 +108,7 @@ static const uint8_t HID_REPORT_DESCRIPTOR5[] PROGMEM = {
 };
 #endif // _USING_HID
 
-AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0), _autoReport(true)
+AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(0), _y(0)
 {
 #if defined(_USING_HID)
 	static HIDSubDescriptor descriptorNode(HID_REPORT_DESCRIPTOR5, sizeof(HID_REPORT_DESCRIPTOR5));
@@ -118,36 +116,33 @@ AbsMouse5_::AbsMouse5_(uint8_t reportId) : _reportId(reportId), _buttons(0), _x(
 #endif // _USING_HID
 }
 
-void AbsMouse5_::init(bool autoReport)
-{
-	_autoReport = autoReport;
-}
-
 void AbsMouse5_::report(void)
 {
 	uint8_t buffer[5];
 	buffer[0] = _buttons;
+    // TODO: wouldn't two memcpys be faster here?
 	buffer[1] = _x & 0xFF;
 	buffer[2] = (_x >> 8) & 0xFF;
 	buffer[3] = _y & 0xFF;
 	buffer[4] = (_y >> 8) & 0xFF;
 
 #if defined(_USING_HID)
-	HID().SendReport(_reportId, buffer, 5);
+	HID().SendReport(_reportId, buffer, sizeof(buffer));
 #endif // _USING_HID
 #if defined(USE_TINYUSB)
     #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
-    if(TinyUSBDevices.onBattery) {
-      PicoBluetoothHID.send(HID_BT_MOUSE, buffer, 5);
-    } else {
+    if(TinyUSBDevices.onBattery)
+      PicoBluetoothHID.send(HID_BT_MOUSE, buffer, sizeof(buffer));
+    else {
       while(!usbHid.ready()) yield();
-      usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
+      usbHid.sendReport(HID_RID_MOUSE, buffer, sizeof(buffer));
     }
     #else
     while(!usbHid.ready()) yield();
-    usbHid.sendReport(HID_RID_MOUSE, buffer, 5);
+    usbHid.sendReport(HID_RID_MOUSE, buffer, sizeof(buffer));
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
 #endif // USE_TINYUSB
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = false;
 }
 
 void AbsMouse5_::move(uint16_t x, uint16_t y)
@@ -155,28 +150,20 @@ void AbsMouse5_::move(uint16_t x, uint16_t y)
 	if(x != _x || y != _y) {
 		_x = x;
 		_y = y;
-		if(_autoReport) {
-			report();
-		}
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
 	}
 }
 
 void AbsMouse5_::press(uint8_t button)
 {
 	_buttons |= button;
-
-	if(_autoReport) {
-		report();
-	}
+	TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
 }
 
 void AbsMouse5_::release(uint8_t button)
 {
 	_buttons &= ~button;
-
-	if(_autoReport) {
-		report();
-	}
+	TinyUSBDevices.newReport[TinyUSBDevices_::reportMouse] = true;
 }
   
  /*****************************
@@ -186,25 +173,21 @@ void AbsMouse5_::release(uint8_t button)
   Keyboard_::Keyboard_(void) {
   }
   
-  void Keyboard_::sendReport(KeyReport* keys)
+  void Keyboard_::report()
   {
     #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
-    if(TinyUSBDevices.onBattery) {
-      PicoBluetoothHID.send(HID_BT_KEYBOARD, keys, sizeof(keys));
-    } else {
-      if ( USBDevice.suspended() )  {
-        USBDevice.remoteWakeup();
-      }
+    // not actually sure if this is how kb reports should work in BT...
+    if(TinyUSBDevices.onBattery)
+      PicoBluetoothHID.send(HID_BT_KEYBOARD, _keyReport, sizeof(_keyReport));
+    else {
       while(!usbHid.ready()) yield();
-      usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
+      usbHid.keyboardReport(HID_RID_KEYBOARD, _keyReport.modifiers, _keyReport.keys);
     }
     #else
-    if ( USBDevice.suspended() )  {
-      USBDevice.remoteWakeup();
-    }
     while(!usbHid.ready()) yield();
-    usbHid.keyboardReport(HID_RID_KEYBOARD, keys->modifiers, keys->keys);
+    usbHid.keyboardReport(HID_RID_KEYBOARD, _keyReport.modifiers, _keyReport.keys);
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportKeyboard] = false;
   }
   
   #define SHIFT 0x80
@@ -345,7 +328,7 @@ void AbsMouse5_::release(uint8_t button)
   // to the persistent key report and sends the report.  Because of the way 
   // USB HID works, the host acts like the key remains pressed until we 
   // call release(), releaseAll(), or otherwise clear the report and resend.
-  size_t Keyboard_::press(uint8_t k)
+  bool Keyboard_::press(uint8_t k)
   {
     uint8_t i;
     if (k >= 136) {     // it's a non-printing key (not a modifier)
@@ -357,7 +340,7 @@ void AbsMouse5_::release(uint8_t button)
       k = pgm_read_byte(_asciimap + k);
       if (!k) {
         setWriteError();
-        return 0;
+        return false;
       }
       if (k & 0x80) {           // it's a capital letter or other character reached with shift
         _keyReport.modifiers |= 0x02; // the left shift modifier
@@ -371,7 +354,7 @@ void AbsMouse5_::release(uint8_t button)
       _keyReport.keys[2] != k && _keyReport.keys[3] != k &&
       _keyReport.keys[4] != k && _keyReport.keys[5] != k) {
       
-      for (i=0; i<6; i++) {
+      for (i=0; i<6; ++i) {
         if (_keyReport.keys[i] == 0x00) {
           _keyReport.keys[i] = k;
           break;
@@ -379,17 +362,17 @@ void AbsMouse5_::release(uint8_t button)
       }
       if (i == 6) {
         setWriteError();
-        return 0;
+        return false;
       } 
     }
-    sendReport(&_keyReport);
-    return 1;
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportKeyboard] = true;
+    return true;
   }
   
   // release() takes the specified key out of the persistent key report and
   // sends the report.  This tells the OS the key is no longer pressed and that
   // it shouldn't be repeated any more.
-  size_t Keyboard_::release(uint8_t k)
+  bool Keyboard_::release(uint8_t k)
   {
     uint8_t i;
     if (k >= 136) {     // it's a non-printing key (not a modifier)
@@ -400,7 +383,7 @@ void AbsMouse5_::release(uint8_t button)
     } else {        // it's a printing key
       k = pgm_read_byte(_asciimap + k);
       if (!k) {
-        return 0;
+        return false;
       }
       if (k & 0x80) {             // it's a capital letter or other character reached with shift
         _keyReport.modifiers &= ~(0x02);  // the left shift modifier
@@ -410,13 +393,13 @@ void AbsMouse5_::release(uint8_t button)
     
     // Test the key report to see if k is present.  Clear it if it exists.
     // Check all positions in case the key is present more than once (which it shouldn't be)
-    for (i=0; i<6; i++) {
+    for (i=0; i<6; ++i) {
       if (0 != k && _keyReport.keys[i] == k) {
         _keyReport.keys[i] = 0x00;
       }
     }
-    sendReport(&_keyReport);
-    return 1;
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportKeyboard] = true;
+    return true;
   }
   
   void Keyboard_::releaseAll(void)
@@ -428,30 +411,20 @@ void AbsMouse5_::release(uint8_t button)
     _keyReport.keys[4] = 0;
     _keyReport.keys[5] = 0; 
     _keyReport.modifiers = 0;
-    sendReport(&_keyReport);
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportKeyboard] = true;
   }
-  
+
   size_t Keyboard_::write(uint8_t c)
   {
-    uint8_t p = press(c);  // Keydown
-    release(c);            // Keyup
-    return p;              // just return the result of press() since release() almost always returns 1
+    // stub
+    return 1;
+  }
+
+  size_t Keyboard_::write(const uint8_t *buffer, size_t size) {
+    // stub
+    return 1;
   }
   
-  size_t Keyboard_::write(const uint8_t *buffer, size_t size) {
-    size_t n = 0;
-    while (size--) {
-      if (*buffer != '\r') {
-        if (write(*buffer)) {
-          n++;
-        } else {
-          break;
-        }
-      }
-      buffer++;
-    }
-    return n;
-  }
   Keyboard_ Keyboard;//create an instance of the Keyboard object
 
 /*****************************
@@ -468,9 +441,7 @@ void AbsMouse5_::release(uint8_t button)
         gamepad16Report.Rx = map(origX, 0, 32767, -32767, 32767);
         gamepad16Report.Ry = map(origY, 0, 32767, -32767, 32767);
     }
-    if(_autoReport) {
-        report();
-    }
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 
   void Gamepad16_::moveStick(uint16_t origX, uint16_t origY) {
@@ -484,31 +455,23 @@ void AbsMouse5_::release(uint8_t button)
             gamepad16Report.X = map(_x, 0, 4095, 32767, -32767);
             gamepad16Report.Y = map(_y, 0, 4095, 32767, -32767);
         }
-        if(_autoReport) {
-            report();
-        }
+        TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
     }
   }
 
   void Gamepad16_::press(uint8_t buttonNum) {
     bitSet(gamepad16Report.buttons, buttonNum);
-    if(_autoReport) {
-        report();
-    }
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 
   void Gamepad16_::release(uint8_t buttonNum) {
     bitClear(gamepad16Report.buttons, buttonNum);
-    if(_autoReport) {
-        report();
-    }
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 
   void Gamepad16_::padUpdate(uint8_t padMask) {
     gamepad16Report.hat = padMask;
-    if(_autoReport) {
-        report();
-    }
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 
   void Gamepad16_::report() {
@@ -517,19 +480,14 @@ void AbsMouse5_::release(uint8_t button)
       // this doesn't work for some reason :(
       //PicoBluetoothHID.send(2, &gamepad16Report, sizeof(gamepad16Report));
     } else {
-      if ( USBDevice.suspended() )  {
-        USBDevice.remoteWakeup();
-      }
       while(!usbHid.ready()) yield();
       usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
     }
     #else
-    if ( USBDevice.suspended() )  {
-      USBDevice.remoteWakeup();
-    }
     while(!usbHid.ready()) yield();
     usbHid.sendReport(HID_RID_GAMEPAD, &gamepad16Report, sizeof(gamepad16Report));
     #endif // ARDUINO_RASPBERRY_PI_PICO_W
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = false;
   }
 
   void Gamepad16_::releaseAll() {
@@ -539,7 +497,7 @@ void AbsMouse5_::release(uint8_t button)
     gamepad16Report.Y = 0;
     gamepad16Report.Rx = 0;
     gamepad16Report.Ry = 0;
-    report();
+    TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
   }
 
 
