@@ -463,7 +463,7 @@ void AbsMouse5_::release(uint8_t button)
   }
 
   void Gamepad16_::release(int buttonNum) {
-    if(!(gamepad16Report.buttons & (1 << buttonNum))) {
+    if(gamepad16Report.buttons & (1 << buttonNum)) {
         gamepad16Report.buttons &= ~(1 << buttonNum);
         TinyUSBDevices.newReport[TinyUSBDevices_::reportGamepad] = true;
     }
