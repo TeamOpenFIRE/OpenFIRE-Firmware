@@ -761,7 +761,6 @@ void ExecRunMode()
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-                    FW_Common::offscreenBShot = false;
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
                     FW_Common::buttons.ReleaseAll();
                     FW_Common::buttons.ReportDisable();
@@ -772,8 +771,7 @@ void ExecRunMode()
             if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-                FW_Common::offscreenBShot = false;
-		        FW_Common::SetMode(FW_Const::GunMode_Pause);
+		FW_Common::SetMode(FW_Const::GunMode_Pause);
                 FW_Common::buttons.ReleaseAll();
                 FW_Common::buttons.ReportDisable();
                 return;
