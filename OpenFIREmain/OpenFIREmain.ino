@@ -284,7 +284,7 @@ void loop1()
             TriggerFire();                                  // Handle button events and feedback ourselves.
         else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
 
-        if(millis() - lastUSBpoll > POLL_RATE) {
+        if(millis() - lastUSBpoll >= POLL_RATE) {
             #ifdef USES_ANALOG
                 if(FW_Common::analogIsValid) AnalogStickPoll();
             #endif // USES_ANALOG
@@ -725,7 +725,7 @@ void ExecRunMode()
             TriggerFire();                                  // Handle button events and feedback ourselves.
         else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
 
-        if(millis() - lastUSBpoll > POLL_RATE) {
+        if(millis() - lastUSBpoll >= POLL_RATE) {
             #ifdef USES_ANALOG
                 if(FW_Common::analogIsValid) AnalogStickPoll();
             #endif // USES_ANALOG
