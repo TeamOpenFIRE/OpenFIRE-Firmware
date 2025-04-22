@@ -91,9 +91,7 @@ void OF_Serial::SerialProcessing()
                       #endif // USES_DISPLAY
                       break;
                 }
-                AbsMouse5.releaseAll();
-                Keyboard.releaseAll();
-                Gamepad16.releaseAll();
+                FW_Common::buttons.ReleaseAll();
                 #ifdef USES_DISPLAY
                     if(!serialMode && FW_Common::gunMode == FW_Const::GunMode_Run)
                         FW_Common::OLED.ScreenModeChange(ExtDisplay::Screen_Normal, FW_Common::buttons.analogOutput);
@@ -295,8 +293,7 @@ void OF_Serial::SerialProcessing()
                       serialSolCustomHoldLength = 0;
                       serialSolCustomPauseLength = 0;
                   #endif // USES_SOLENOID
-                  AbsMouse5.releaseAll();
-                  Keyboard.releaseAll();
+                  FW_Common::buttons.ReleaseAll();
                   // remap back to defaults, in case they were changed
                   FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
                   Serial.println("Received end serial pulse, releasing FF override.");

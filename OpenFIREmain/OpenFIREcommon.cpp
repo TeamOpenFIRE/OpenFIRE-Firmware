@@ -326,6 +326,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
 
     // Force center mouse to center
     AbsMouse5.move(32768/2, 32768/2);
+    AbsMouse5.report();
 
     // Initialize current mouse positions (local variables)
     int32_t mouseCurrentX = 32768 / 2;
@@ -365,6 +366,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 mouseCurrentY += (deltaY > 0) ? stepY : -stepY;
 
             AbsMouse5.move(mouseCurrentX, mouseCurrentY);
+            AbsMouse5.report();
 
             if (mouseCurrentX == mouseTargetX && mouseCurrentY == mouseTargetY) {
                 mouseMoving = false;
@@ -404,8 +406,10 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
             switch(calStage) {
                 case FW_Const::Cali_Init:
                     // Initial state, nothing to do (but center cursor for desktop use)
-                    if(fromDesktop)
+                    if(fromDesktop) {
                         AbsMouse5.move(32768/2, 32768/2);
+                        AbsMouse5.report();
+                    }
                     break;
                 case FW_Const::Cali_Top:
                     // Reset Offsets
@@ -587,6 +591,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                             OF_Prefs::profiles[OF_Prefs::currentProfile].adjY = 384 << 2;
                             SetMode(FW_Const::GunMode_Calibration);
                             AbsMouse5.move(32768/2, 32768/2);
+                            AbsMouse5.report();
                         // Press C/Home to exit without committing new calibration values
                         } else if(buttons.pressedReleased & FW_Const::ExitPauseModeBtnMask && !justBooted) {
                             Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
@@ -736,6 +741,7 @@ void FW_Common::GetPosition()
 
             } else if(gunMode == FW_Const::GunMode_Verification) {
                 AbsMouse5.move(conMoveX, conMoveY);
+                AbsMouse5.report();
             } else {
                 if(millis() - testLastStamp > 50) {
                     testLastStamp = millis();

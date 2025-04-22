@@ -101,7 +101,7 @@ void setup() {
         // is VBUS (USB voltage) detected?
         if(digitalRead(34)) {
             // If so, we're connected via USB, so initializing the USB devices chunk.
-            TUSBDeviceSetup.begin(1);
+            TUSBDeviceSetup.begin(POLL_RATE);
             // wait until device mounted
             while(!USBDevice.mounted()) { yield(); }
             Serial.begin(9600);
@@ -114,7 +114,7 @@ void setup() {
         }
         #else
         // Initializing the USB devices chunk.
-        TUSBDeviceSetup.begin(1);
+        TUSBDeviceSetup.begin(POLL_RATE);
         // wait until device mounted
         while(!USBDevice.mounted()) { yield(); }
         Serial.begin(9600);   // 9600 = 1ms data transfer rates, default for MAMEHOOKER COM devices.
@@ -140,8 +140,6 @@ void setup() {
     #ifdef LED_ENABLE
         OF_RGB::LedInit();
     #endif // LED_ENABLE
-    
-    AbsMouse5.init(true);
 
     // IR camera maxes out motion detection at ~300Hz, and millis() isn't good enough
     startIrCamTimer(209);
@@ -270,15 +268,14 @@ void setup1()
 // currently handles all button & serial processing when Core 0 is in ExecRunMode()
 void loop1()
 {
-    #ifdef USES_ANALOG
-        unsigned long lastAnalogPoll = millis();
-    #endif // USES_ANALOG
-
     while(FW_Common::gunMode == FW_Const::GunMode_Run) {
         // All buttons' outputs except for the trigger are processed here.
         FW_Common::buttons.Poll(0);
 
-        if(Serial.available()) OF_Serial::SerialProcessing();
+        #ifdef USES_TEMP
+            if(OF_Prefs::pins[OF_Const::tempPin] > -1)
+                OF_FFB::TemperatureUpdate();
+        #endif // USES_TEMP
 
         // For processing the trigger specifically.
         // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
@@ -287,21 +284,19 @@ void loop1()
             TriggerFire();                                  // Handle button events and feedback ourselves.
         else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
 
+        if(millis() - lastUSBpoll >= POLL_RATE) {
+            #ifdef USES_ANALOG
+                if(FW_Common::analogIsValid) AnalogStickPoll();
+            #endif // USES_ANALOG
+            lastUSBpoll = millis();
+            FW_Common::buttons.SendReports();
+        }
+
+        if(Serial.available()) OF_Serial::SerialProcessing();
+
         #ifdef MAMEHOOKER
             if(OF_Serial::serialMode) OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
         #endif // MAMEHOOKER
-
-        #ifdef USES_ANALOG
-            if(FW_Common::analogIsValid && millis() - lastAnalogPoll > 1) {
-                AnalogStickPoll();
-                lastAnalogPoll = millis();
-            }
-        #endif // USES_ANALOG
-
-        #ifdef USES_TEMP
-            if(OF_Prefs::pins[OF_Const::tempPin] > -1)
-                OF_FFB::TemperatureUpdate();
-        #endif // USES_TEMP
         
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
@@ -647,10 +642,6 @@ void ExecRunMode()
         FW_Common::justBooted = false;
     }
 
-    #ifdef USES_ANALOG
-        unsigned long lastAnalogPoll = millis();
-    #endif // USES_ANALOG
-
     for(;;) {
         // Setting the state of our toggles, if used.
         // Only sets these values if the switches are mapped to valid pins.
@@ -686,26 +677,6 @@ void ExecRunMode()
                 OF_Prefs::toggles[OF_Const::autofire] = !digitalRead(OF_Prefs::pins[OF_Const::autofireSwitch]);
         #endif // USES_SWITCHES
 
-        // If we're on RP2040, we offload the button polling to the second core.
-        #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
-        FW_Common::buttons.Poll(0);
-
-        // Run through serial receive buffer once this run, if it has contents.
-        if(Serial.available())
-            OF_Serial::SerialProcessing();
-
-        // For processing the trigger specifically.
-        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
-        // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
-        if(bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Trigger))   // Check if we pressed the Trigger this run.
-            TriggerFire();                                  // Handle button events and feedback ourselves.
-        else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
-
-        #ifdef MAMEHOOKER
-            if(OF_Serial::serialMode) OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
-        #endif // MAMEHOOKER
-        #endif // DUAL_CORE
-
         if(FW_Common::irPosUpdateTick) {
             FW_Common::irPosUpdateTick = 0;
             FW_Common::GetPosition();
@@ -740,17 +711,34 @@ void ExecRunMode()
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
 
-        #ifdef USES_ANALOG
-            if(FW_Common::analogIsValid && (millis() - lastAnalogPoll > 1)) {
-                AnalogStickPoll();
-                lastAnalogPoll = millis();
-            }
-        #endif // USES_ANALOG
-
         #ifdef USES_TEMP
             if(OF_Prefs::pins[OF_Const::tempPin] > -1)
                 OF_FFB::TemperatureUpdate();
         #endif // USES_TEMP
+
+        FW_Common::buttons.Poll(0);
+
+        // For processing the trigger specifically.
+        // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
+        // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
+        if(bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Trigger))   // Check if we pressed the Trigger this run.
+            TriggerFire();                                  // Handle button events and feedback ourselves.
+        else TriggerNotFire();                              // Releasing button inputs and sending stop signals to feedback devices.
+
+        if(millis() - lastUSBpoll >= POLL_RATE) {
+            #ifdef USES_ANALOG
+                if(FW_Common::analogIsValid) AnalogStickPoll();
+            #endif // USES_ANALOG
+            lastUSBpoll = millis();
+            FW_Common::buttons.SendReports();
+        }
+
+        // Run through serial receive buffer once this run, if it has contents.
+        if(Serial.available()) OF_Serial::SerialProcessing();
+
+        #ifdef MAMEHOOKER
+            if(OF_Serial::serialMode) OF_Serial::SerialHandling();                                   // Process the force feedback from the current queue.
+        #endif // MAMEHOOKER
 
         if(FW_Common::buttons.pressedReleased == FW_Const::EscapeKeyBtnMask)
             SendEscapeKey();
@@ -773,11 +761,9 @@ void ExecRunMode()
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
-		            Keyboard.releaseAll();
-                    AbsMouse5.releaseAll();
-                    Gamepad16.releaseAll();
                     FW_Common::offscreenBShot = false;
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
+                    FW_Common::buttons.ReleaseAll();
                     FW_Common::buttons.ReportDisable();
                     return;
                 }
@@ -786,11 +772,9 @@ void ExecRunMode()
             if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-		        Keyboard.releaseAll();
-                AbsMouse5.releaseAll();
-                Gamepad16.releaseAll();
                 FW_Common::offscreenBShot = false;
 		        FW_Common::SetMode(FW_Const::GunMode_Pause);
+                FW_Common::buttons.ReleaseAll();
                 FW_Common::buttons.ReportDisable();
                 return;
             }
@@ -799,9 +783,7 @@ void ExecRunMode()
         if(rp2040.fifo.pop_nb(&fifoData)) {
             FW_Common::SetMode((FW_Const::GunMode_e)fifoData);
             fifoData = 0;
-            Keyboard.releaseAll();
-            AbsMouse5.releaseAll();
-            Gamepad16.releaseAll();
+            FW_Common::buttons.ReleaseAll();
             // the value doesn't matter; all core1 is doing is waiting for any signal from the FIFO.
             rp2040.fifo.push(true);
             return;
@@ -1053,8 +1035,11 @@ void AnalogStickPoll()
 void SendEscapeKey()
 {
     Keyboard.press(KEY_ESC);
+    Keyboard.report();
     delay(20);  // wait a bit so it registers on the PC.
     Keyboard.release(KEY_ESC);
+    Keyboard.report();
+    lastUSBpoll = millis();
 }
 
 // Simple Pause Menu scrolling function
