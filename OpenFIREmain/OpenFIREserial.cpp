@@ -349,6 +349,23 @@ void OF_Serial::SerialProcessing()
                 switch(Serial.read()) {
                 // Solenoid "on" command
                 case '1':
+                    #ifdef USES_TEMP
+                    // block every other signal if temp is at warning threshold
+                    if(OF_Prefs::pins[OF_Const::tempPin] > -1) {
+                        switch(OF_FFB::tempStatus) {
+                        case OF_FFB::Temp_Safe:
+                            serialQueue[SerialQueue_Solenoid] = true;
+                            break;
+                        case OF_FFB::Temp_Warning:
+                            if(serialSolTempBuffer) serialQueue[SerialQueue_Solenoid] = true;
+                            serialSolTempBuffer = !serialSolTempBuffer;
+                            break;
+                        case OF_FFB::Temp_Fatal:
+                        default:
+                            break;
+                        }
+                    } else 
+                    #endif // USES_TEMP
                     serialQueue[SerialQueue_Solenoid] = true;
                     break;
                 // Solenoid "pulse" command (only if not already pulsing)
