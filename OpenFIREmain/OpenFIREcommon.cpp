@@ -983,6 +983,8 @@ int FW_Common::SavePreferences()
         #endif // USES_DISPLAY
     }
 
+    if(OF_Prefs::OFPresets == nullptr) OF_Prefs::OFPresets = new OF_Const();
+
     if(OF_Prefs::SaveProfiles() == OF_Prefs::Error_Success) {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
@@ -1011,6 +1013,9 @@ int FW_Common::SavePreferences()
         #ifdef USES_DISPLAY
             RedrawDisplay();
         #endif // USES_DISPLAY
+
+        if(OF_Prefs::OFPresets != nullptr)
+            delete OF_Prefs::OFPresets, OF_Prefs::OFPresets = nullptr;
 
         return OF_Prefs::Error_Success;
     } else {
@@ -1045,6 +1050,9 @@ int FW_Common::SavePreferences()
         #ifdef USES_DISPLAY
             RedrawDisplay();
         #endif // USES_DISPLAY
+
+        if(OF_Prefs::OFPresets != nullptr)
+            delete OF_Prefs::OFPresets, OF_Prefs::OFPresets = nullptr;
 
         return OF_Prefs::Error_Write;
     }

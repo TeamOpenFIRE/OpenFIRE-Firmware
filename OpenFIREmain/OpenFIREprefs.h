@@ -38,24 +38,6 @@ public:
         Error_Erase = -5
     };
 
-    enum ProfileDataTypes_e {
-        Profile_ProfileNum = 0,
-        Profile_TopOffset,
-        Profile_BottomOffset,
-        Profile_LeftOffset,
-        Profile_RightOffset,
-        Profile_TLled,
-        Profile_TRled,
-        Profile_AdjX,
-        Profile_AdjY,
-        Profile_IrSens,
-        Profile_RunMode,
-        Profile_IrLayout,
-        Profile_Color,
-        Profile_Name,
-        Profile_Selected = 254
-    };
-
     /// @brief Profile data
     typedef struct ProfileData_s {
         int topOffset;              // Perspective: Offsets
@@ -66,10 +48,10 @@ public:
         float TRled;
         float adjX;                 // Perspective: adjusted axis
         float adjY;
-        uint32_t irSens;            // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
-        uint32_t runMode;           // Averaging mode (padded upto 32-bit for consistent spacing)
-        uint32_t irLayout;          // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
-        uint32_t color;             // packed color blob per profile (uses least sig 24-bits out of 32 bits)
+        uint irSens;                // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
+        uint runMode;               // Averaging mode (padded upto 32-bit for consistent spacing)
+        uint irLayout;              // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
+        uint color;                 // packed color blob per profile (uses least sig 24-bits out of 32 bits)
         char name[16];              // Profile display name
     } ProfileData_t;
 
@@ -126,6 +108,9 @@ public:
         { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' },
         PLAYER_NUMBER
     };
+
+    // Instance of OpenFIREshared's presets and I/O table data
+    static inline OF_Const *OFPresets = nullptr;
 
     /// @brief Initialize filesystem
     /// @return An error code from Errors_e

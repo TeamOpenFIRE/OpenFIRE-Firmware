@@ -42,6 +42,7 @@ void setup() {
         digitalWrite(23, HIGH);
     #endif
 
+    // Init pins array, and OFPresets for later load ops
     OF_Prefs::LoadPresets();
     
     if(OF_Prefs::InitFS() == OF_Prefs::Error_Success) {
@@ -79,6 +80,10 @@ void setup() {
         OF_Prefs::Load();
     } else {
         Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
+        if(OF_Prefs::OFPresets != nullptr) {
+            delete OF_Prefs::OFPresets;
+            OF_Prefs::OFPresets = nullptr;
+        }
     }
  
     // We're setting our custom USB identifiers, as defined in the configuration area!

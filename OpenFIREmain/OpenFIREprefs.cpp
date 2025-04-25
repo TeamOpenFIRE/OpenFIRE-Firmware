@@ -1,3 +1,4 @@
+#include "FS.h"
 /*!
  * @file OpenFIREprefs.cpp
  * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
@@ -24,6 +25,7 @@ int OF_Prefs::InitFS()
 
 void OF_Prefs::Load()
 {
+    if(OFPresets == nullptr) OFPresets = new OF_Const();
     LoadToggles();
     if(toggles[OF_Const::customPins])
         LoadPins();
@@ -31,144 +33,92 @@ void OF_Prefs::Load()
         LoadPeriphs();
     LoadSettings();
     LoadUSBID();
+    if(OFPresets != nullptr) {
+        delete OFPresets;
+        OFPresets = nullptr;
+    }
 }
 
 int OF_Prefs::LoadProfiles()
 {
-    File prefs = LittleFS.open("/profiles.conf", "r");
-    if(prefs) {
+    File prefsFile = LittleFS.open("/profiles.conf", "r");
+    if(prefsFile) {
         int profileNum = 0;
-        char buf[sizeof(ProfileData_t::name)];
-        while(prefs.available()) {
-            switch(prefs.read()) {
-            case Profile_ProfileNum:
-                profileNum = prefs.read();
-                prefs.seek(3, fs::SeekCur);
-                break;
-            case Profile_TopOffset:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::topOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].topOffset, &buf, sizeof(ProfileData_t::topOffset));
-                break;
-              }
-            case Profile_BottomOffset:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::bottomOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].bottomOffset, &buf, sizeof(ProfileData_t::bottomOffset));
-                break;
-              }
-            case Profile_LeftOffset:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::leftOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].leftOffset, &buf, sizeof(ProfileData_t::leftOffset));
-                break;
-              }
-            case Profile_RightOffset:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::rightOffset));
-                if(bWritten > 0) memcpy(&profiles[profileNum].rightOffset, &buf, sizeof(ProfileData_t::rightOffset));
-                break;
-              }
-            case Profile_TLled:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::TLled));
-                if(bWritten > 0) memcpy(&profiles[profileNum].TLled, &buf, sizeof(ProfileData_t::TLled));
-                break;
-              }
-            case Profile_TRled:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::TRled));
-                if(bWritten > 0) memcpy(&profiles[profileNum].TRled, &buf, sizeof(ProfileData_t::TRled));
-                break;
-              }
-            case Profile_AdjX:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::adjX));
-                if(bWritten > 0) memcpy(&profiles[profileNum].adjX, &buf, sizeof(ProfileData_t::adjX));
-                break;
-              }
-            case Profile_AdjY:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::adjY));
-                if(bWritten > 0) memcpy(&profiles[profileNum].adjY, &buf, sizeof(ProfileData_t::adjY));
-                break;
-              }
-            case Profile_IrSens:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::irSens));
-                if(bWritten > 0) memcpy(&profiles[profileNum].irSens, &buf, sizeof(ProfileData_t::irSens));
-                break;
-              }
-            case Profile_RunMode:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::runMode));
-                if(bWritten > 0) memcpy(&profiles[profileNum].runMode, &buf, sizeof(ProfileData_t::runMode));
-                break;
-              }
-            case Profile_IrLayout:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::irLayout));
-                if(bWritten > 0) memcpy(&profiles[profileNum].irLayout, &buf, sizeof(ProfileData_t::irLayout));
-                break;
-              }
-            case Profile_Color:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::color));
-                if(bWritten > 0) memcpy(&profiles[profileNum].color, &buf, sizeof(ProfileData_t::color));
-                break;
-              }
-            case Profile_Name:
-              {
-                int bWritten = prefs.readBytes(buf, sizeof(ProfileData_t::name));
-                if(bWritten > 0) {
-                  memset(profiles[profileNum].name, '\0', sizeof(ProfileData_t::name));
-                  sprintf(profiles[profileNum].name, buf);
+        char buf[32];
+        size_t bWritten = 0;
+        size_t readSize = 0;
+        if(OFPresets == nullptr) OFPresets = new OF_Const();
+        while(prefsFile.available()) {
+            bWritten = prefsFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            if(bWritten && OFPresets->profSettingTypes_Strings.count(buf)) {
+                switch(OFPresets->profSettingTypes_Strings.at(buf)) {
+                  case OF_Const::profCurrent:
+                      currentProfile = prefsFile.read();
+                      if(currentProfile >= PROFILE_COUNT) currentProfile = 0;
+                      break;
+                  case OF_Const::profName:
+                      profileNum = prefsFile.read();
+                      readSize = prefsFile.read();
+                      profileNum < PROFILE_COUNT ? prefsFile.readBytes(profiles[profileNum].name, readSize) : prefsFile.seek(readSize, fs::SeekCur);
+                      break;
+                  default:
+                      profileNum = prefsFile.read();
+                      readSize = prefsFile.read();
+                      profileNum < PROFILE_COUNT ? prefsFile.readBytes((char*)&profiles[profileNum] + (sizeof(int)*OFPresets->profSettingTypes_Strings.at(buf)), readSize) : prefsFile.seek(readSize, fs::SeekCur);
+                      break;
                 }
-                break;
-              }
-            case Profile_Selected:
-              currentProfile = prefs.read();
-              break;
-            default:
-              prefs.seek(sizeof(uint32_t), fs::SeekCur);
-              break;
+            } else {
+                prefsFile.seek(1, fs::SeekCur);
+                readSize = prefsFile.read();
+                prefsFile.seek(readSize, fs::SeekCur);
             }
         }
 
-        prefs.close();
+        prefsFile.close();
         return Error_Success;
     } else return Error_Read;
 }
 
 int OF_Prefs::SaveProfiles()
 {
-    File prefs = LittleFS.open("/profiles.conf", "w");
-    if(prefs) {
-        for(uint32_t i = 0; i < PROFILE_COUNT; ++i) {
-            // profile number
-            prefs.write(Profile_ProfileNum), prefs.write((uint8_t*)&i, sizeof(uint32_t));
-            // offsets
-            prefs.write(Profile_TopOffset),    prefs.write((uint8_t*)&profiles[i].topOffset,    sizeof(ProfileData_t::topOffset));
-            prefs.write(Profile_BottomOffset), prefs.write((uint8_t*)&profiles[i].bottomOffset, sizeof(ProfileData_t::bottomOffset));
-            prefs.write(Profile_LeftOffset),   prefs.write((uint8_t*)&profiles[i].leftOffset,   sizeof(ProfileData_t::leftOffset));
-            prefs.write(Profile_RightOffset),  prefs.write((uint8_t*)&profiles[i].rightOffset,  sizeof(ProfileData_t::rightOffset));
-            // LED relatives
-            prefs.write(Profile_TLled), prefs.write((uint8_t*)&profiles[i].TLled, sizeof(ProfileData_t::TLled));
-            prefs.write(Profile_TRled), prefs.write((uint8_t*)&profiles[i].TRled, sizeof(ProfileData_t::TRled));
-            // Adjustments
-            prefs.write(Profile_AdjX), prefs.write((uint8_t*)&profiles[i].adjX, sizeof(ProfileData_t::adjX));
-            prefs.write(Profile_AdjY), prefs.write((uint8_t*)&profiles[i].adjY, sizeof(ProfileData_t::adjY));
-            // Other settings
-            prefs.write(Profile_IrSens),   prefs.write((uint8_t*)&profiles[i].irSens,   sizeof(ProfileData_t::irSens));
-            prefs.write(Profile_RunMode),  prefs.write((uint8_t*)&profiles[i].runMode,  sizeof(ProfileData_t::runMode));
-            prefs.write(Profile_IrLayout), prefs.write((uint8_t*)&profiles[i].irLayout, sizeof(ProfileData_t::irLayout));
-            prefs.write(Profile_Color),    prefs.write((uint8_t*)&profiles[i].color,    sizeof(ProfileData_t::color));
-            // Name
-            prefs.write(Profile_Name), prefs.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
-        }
-        prefs.write(Profile_Selected), prefs.write((uint8_t)currentProfile);
+    File prefsFile = LittleFS.open("/profiles.conf", "w");
+    if(prefsFile) {
+        for(int i = 0; i < PROFILE_COUNT; ++i) {
+            for(auto &pair : OFPresets->profSettingTypes_Strings) {
+                if(pair.second == OF_Const::profCurrent) continue;
 
-        prefs.close();
+                // write data type:
+                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                // Append profile number:
+                prefsFile.write((uint8_t*)&i, 1);
+
+                // data type:
+                switch(pair.second) {
+                case OF_Const::profName:
+                    prefsFile.write(sizeof(ProfileData_t::name));
+                    prefsFile.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
+                    break;
+                // everything else is generic 32-bit data
+                default:
+                    prefsFile.write(sizeof(int));
+                    prefsFile.write((uint8_t*)&profiles[i] + (sizeof(int)*pair.second), sizeof(int));
+                    break;
+                }
+            }
+        }
+
+        // totally not efficient way of reusing currentProf string from the shared map 
+        for(auto &pair : OFPresets->profSettingTypes_Strings) {
+            if(pair.second == OF_Const::profCurrent) {
+                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                prefsFile.write((uint8_t)currentProfile);
+                break;
+            }
+        }
+
+        prefsFile.close();
         return Error_Success;
     } else return Error_Write;
 }
@@ -177,10 +127,14 @@ int OF_Prefs::LoadToggles()
 {
     File togglesFile = LittleFS.open("/toggles.conf", "r");
     if(togglesFile) {
+        char buf[32];
+        size_t bWritten = 0;
         while(togglesFile.available()) {
-            int type = togglesFile.read();
-            if(type > -1 && type < OF_Const::boolTypesCount)
-                toggles[type] = togglesFile.read();
+            bWritten = togglesFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            if(bWritten && OFPresets->boolTypes_Strings.count(buf))
+                toggles[OFPresets->boolTypes_Strings.at(buf)] = togglesFile.read();
             else togglesFile.seek(1, fs::SeekCur);
         }
         
@@ -193,8 +147,10 @@ int OF_Prefs::SaveToggles()
 {
     File togglesFile = LittleFS.open("/toggles.conf", "w");
     if(togglesFile) {
-        for(uint8_t i = 0; i < OF_Const::boolTypesCount; ++i)
-            togglesFile.write(i), togglesFile.write((uint8_t)toggles[i]);
+        for(auto &pair : OFPresets->boolTypes_Strings) {
+            togglesFile.write(pair.first.c_str(), pair.first.length()+1);
+            togglesFile.write((uint8_t*)&toggles[pair.second], 1);
+        }
 
         togglesFile.close();
         return Error_Success;
@@ -205,10 +161,14 @@ int OF_Prefs::LoadPins()
 {
     File pinsFile = LittleFS.open("/pins.conf", "r");
     if(pinsFile) {
+        char buf[32];
+        size_t bWritten = 0;
         while(pinsFile.available()) {
-            int type = pinsFile.read();
-            if(type > -1 && type < OF_Const::boardInputsCount)
-                pins[type] = pinsFile.read();
+            bWritten = pinsFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            if(bWritten && OFPresets->boardInputs_Strings.count(buf))
+                pins[OFPresets->boardInputs_Strings.at(buf)] = pinsFile.read();
             else pinsFile.seek(1, fs::SeekCur);
         }
         
@@ -221,8 +181,11 @@ int OF_Prefs::SavePins()
 {
     File pinsFile = LittleFS.open("/pins.conf", "w");
     if(pinsFile) {
-        for(uint8_t i = 0; i < OF_Const::boardInputsCount; ++i)
-            pinsFile.write(i), pinsFile.write((uint8_t*)&pins[i], sizeof(int8_t));
+        for(auto &pair : OFPresets->boardInputs_Strings) {
+            if(pair.second < 0) continue;
+            pinsFile.write(pair.first.c_str(), pair.first.length()+1);
+            pinsFile.write((uint8_t*)&pins[pair.second], 1);
+        }
         
         pinsFile.close();
         return Error_Success;
@@ -233,13 +196,15 @@ int OF_Prefs::LoadSettings()
 {
     File settingsFile = LittleFS.open("/settings.conf", "r");
     if(settingsFile) {
-        char buf[sizeof(uint32_t)];
+        char buf[32];
+        size_t bWritten = 0;
         while(settingsFile.available()) {
-            int type = settingsFile.read();
-            if(type > -1 && type < OF_Const::settingsTypesCount) {
-                int bWritten = settingsFile.readBytes(buf, sizeof(uint32_t));
-                if(bWritten > 0) memcpy(&settings[type], buf, sizeof(uint32_t));
-            } else settingsFile.seek(sizeof(uint32_t), fs::SeekCur);
+            bWritten = settingsFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            if(bWritten && OFPresets->settingsTypes_Strings.count(buf))
+                settingsFile.readBytes((char*)&settings[OFPresets->settingsTypes_Strings.at(buf)], sizeof(uint32_t));
+            else settingsFile.seek(sizeof(uint32_t), fs::SeekCur);
         }
 
         settingsFile.close();
@@ -251,8 +216,10 @@ int OF_Prefs::SaveSettings()
 {
     File settingsFile = LittleFS.open("/settings.conf", "w");
     if(settingsFile) {
-        for(uint8_t i = 0; i < OF_Const::settingsTypesCount; ++i)
-            settingsFile.write(i), settingsFile.write((uint8_t*)&settings[i], sizeof(uint32_t));
+        for(auto &pair : OFPresets->settingsTypes_Strings) {
+            settingsFile.write(pair.first.c_str(), pair.first.length()+1);
+            settingsFile.write((uint8_t*)&settings[pair.second], sizeof(uint32_t));
+        }
         
         settingsFile.close();
         return Error_Success;
@@ -263,35 +230,41 @@ int OF_Prefs::LoadPeriphs()
 {
     File periphsFile = LittleFS.open("/i2cperiphs.conf", "r");
     if(periphsFile) {
-        char buf[sizeof(uint32_t)];
+        char buf[32];
+        size_t bWritten = 0;
+        size_t readSize = 0;
         while(periphsFile.available()) {
-            switch(periphsFile.read()) {
-            case OF_Const::i2cDevicesEnabled:
-            {
-                while(periphsFile.available() && periphsFile.peek() != OF_Const::serialTerminator) {
-                    int type = periphsFile.read();
-                    if(type > -1 && type < OF_Const::i2cDevicesCount)
-                        i2cPeriphs[type] = periphsFile.read();
-                    else periphsFile.seek(sizeof(bool), fs::SeekCur);
+            bWritten = periphsFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            
+            if(bWritten && OFPresets->i2cDevicesTypes_Strings.count(buf)) {
+                switch(OFPresets->i2cDevicesTypes_Strings.at(buf)) {
+                case OF_Const::i2cDevicesEnabled:
+                    while(periphsFile.peek() != OF_Const::serialTerminator) {
+                        bWritten = periphsFile.readBytesUntil('\0', buf, 32);
+                        buf[bWritten++] = '\0';
+                        if(bWritten && OFPresets->i2cDevicesTypes_Strings.count(buf))
+                            i2cPeriphs[OFPresets->i2cDevicesTypes_Strings.at(buf)] = periphsFile.read();
+                        else periphsFile.seek(1, fs::SeekCur);
+                    }
+                    periphsFile.seek(1, fs::SeekCur);
+                    break;
+                case OF_Const::i2cOLED:
+                    bWritten = periphsFile.readBytesUntil('\0', buf, 32);
+                    buf[bWritten++] = '\0';
+                    readSize = periphsFile.read();
+                    if(bWritten && OFPresets->i2cOledTypes_Strings.count(buf))
+                        periphsFile.readBytes((char*)&oledPrefs[OFPresets->i2cOledTypes_Strings.at(buf)], readSize);
+                    else periphsFile.seek(readSize, fs::SeekCur);
+                    break;
                 }
-                if(periphsFile.peek() == OF_Const::serialTerminator) periphsFile.seek(1, fs::SeekCur);
-                break;
-            }
-            case OF_Const::i2cOLED:
-            {
-                while(periphsFile.available() && periphsFile.peek() != OF_Const::serialTerminator) {
-                    int type = periphsFile.read();
-                    if(type > -1 && type < OF_Const::oledSettingsTypes) {
-                        int bWritten = periphsFile.readBytes(buf, sizeof(uint32_t));
-                        if(bWritten > 0) memcpy(&oledPrefs[type], buf, sizeof(uint32_t));
-                    } else periphsFile.seek(sizeof(uint32_t), fs::SeekCur);
-                }
-                if(periphsFile.peek() == OF_Const::serialTerminator) periphsFile.seek(1, fs::SeekCur);
-                break;
-            }
-            default:
-                periphsFile.seek(0, fs::SeekEnd);
-                break;
+            } else {
+                // Note: technically this could be an issue with the devices types stream (due to its contiguous layout and not having a read length byte),
+                // but since that section's a basic requirement anyways (and handled in the looping switch case above), it's unlikely to be a reproducible issue.
+                periphsFile.readBytesUntil('\0', buf, 32);
+                readSize = periphsFile.read();
+                periphsFile.seek(readSize, fs::SeekCur);
             }
         }
 
@@ -304,19 +277,34 @@ int OF_Prefs::SavePeriphs()
 {
     File periphsFile = LittleFS.open("/i2cperiphs.conf", "w");
     if(periphsFile) {
-        // Main "devices enabled" array
-        periphsFile.write(OF_Const::i2cDevicesEnabled);
-        for(uint8_t i = 0; i < OF_Const::i2cDevicesCount; ++i) {
-            periphsFile.write(i), periphsFile.write((uint8_t)i2cPeriphs[i]);
+        for(auto &pair : OFPresets->i2cDevicesTypes_Strings) {
+            // Devices enabled array - this should always be recognized
+            if(pair.second == OF_Const::i2cDevicesEnabled) {
+                periphsFile.write(pair.first.c_str(), pair.first.length()+1);
+                for(auto &subPair : OFPresets->i2cDevicesTypes_Strings)
+                    if(subPair.second != OF_Const::i2cDevicesEnabled) {
+                        periphsFile.write(subPair.first.c_str(), subPair.first.length()+1);
+                        periphsFile.write((uint8_t)i2cPeriphs[subPair.second]);
+                    }
+                periphsFile.write(OF_Const::serialTerminator);
+            } else {
+                switch(pair.second) {
+                // OLED prefs
+                case OF_Const::i2cOLED:
+                    for(auto &oledPair : OFPresets->i2cOledTypes_Strings) {
+                        // peripheral data always starts with device category->device setting name
+                        periphsFile.write(pair.first.c_str(), pair.first.length()+1);
+                        periphsFile.write(oledPair.first.c_str(), oledPair.first.length()+1);
+                        // size of data to read
+                        periphsFile.write(sizeof(uint32_t));
+                        // pref data
+                        periphsFile.write((uint8_t*)&oledPrefs[oledPair.second], sizeof(uint32_t));
+                    }
+                    break;
+                default: break;
+                }
+            }
         }
-        periphsFile.write(OF_Const::serialTerminator);
-
-        // OLED settings
-        periphsFile.write(OF_Const::i2cOLED);
-        for(uint8_t i = 0; i < OF_Const::oledSettingsTypes; ++i) {
-            periphsFile.write(i), periphsFile.write((uint8_t*)&oledPrefs[i], sizeof(uint32_t));
-        }
-        periphsFile.write(OF_Const::serialTerminator);
         
         periphsFile.close();
         return Error_Success;
@@ -327,26 +315,22 @@ int OF_Prefs::LoadUSBID()
 {
     File idFile = LittleFS.open("/USB.conf", "r");
     if(idFile) {
+        char buf[sizeof(USBMap_t::deviceName)];
+        size_t bWritten = 0;
         while(idFile.available()) {
             // TODO: maybe just shove this into settings instead?
             switch(idFile.read()) {
             case 0:
-            {
-              char buf[sizeof(USBMap_t::devicePID)];
-              int bWritten = idFile.readBytes(buf, sizeof(USBMap_t::devicePID));
+              bWritten = idFile.readBytes(buf, sizeof(USBMap_t::devicePID));
               if(bWritten > 0) memcpy(&usb.devicePID, buf, sizeof(USBMap_t::devicePID));
               break;
-            }
             case 1:
-            {
-              char buf[sizeof(USBMap_t::deviceName)];
-              int bWritten = idFile.readBytes(buf, sizeof(USBMap_t::deviceName));
+              bWritten = idFile.readBytes(buf, sizeof(USBMap_t::deviceName));
               if(bWritten > 0) {
                   memset(usb.deviceName, '\0', sizeof(USBMap_t::deviceName));
                   strcpy(usb.deviceName, buf);
               }
               break;
-            }
             case 2:
             default:
               idFile.seek(sizeof(uint32_t));
@@ -380,9 +364,11 @@ void OF_Prefs::LoadPresets()
 {
     memset(pins, -1, sizeof(OF_Prefs::pins));
 
-    if(OF_Const::boardsPresetsMap.count(OPENFIRE_BOARD)) {
-        for(int i = 0; i < OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).size(); ++i)
-            if(OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i) > -1)
-                pins[OF_Const::boardsPresetsMap.at(OPENFIRE_BOARD).at(i)] = i;
+    if(OFPresets == nullptr) OFPresets = new OF_Const();
+
+    if(OFPresets->boardsPresetsMap.count(OPENFIRE_BOARD)) {
+        for(int i = 0; i < OFPresets->boardsPresetsMap.at(OPENFIRE_BOARD).size(); ++i)
+            if(OFPresets->boardsPresetsMap.at(OPENFIRE_BOARD).at(i) > -1)
+                pins[OFPresets->boardsPresetsMap.at(OPENFIRE_BOARD).at(i)] = i;
     }
 }
