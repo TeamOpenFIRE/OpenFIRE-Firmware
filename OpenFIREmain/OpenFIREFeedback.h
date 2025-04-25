@@ -48,6 +48,14 @@ public:
     // Current temperature as read from TMP36, in (approximate) Celsius
     static inline uint temperatureCurrent;
 
+    enum TempStatuses_e {
+        Temp_Safe = 0,
+        Temp_Warning,
+        Temp_Fatal
+    };
+
+    static inline TempStatuses_e tempStatus = Temp_Safe;     // Relative current state of the solenoid, according to TempStatuses_e
+
     #define TEMP_UPDATE_INTERVAL 250
 
 private:
@@ -58,14 +66,6 @@ private:
     static inline bool rumbleHappened = false;               // If we're holding, this marks we sent a rumble command already; is cleared when trigger is released
     
     static inline unsigned long previousMillisSol = 0;       // Timestamp of last time since unique solenoid state change
-
-    enum TempStatuses_e {
-        Temp_Safe = 0,
-        Temp_Warning,
-        Temp_Fatal
-    };
-
-    static inline TempStatuses_e tempStatus = Temp_Safe;               // Current state of the solenoid,
 
     // timer stuff
     static inline unsigned long currentMillis = 0;           // Current millis() value, which is globally updated/read across all functions in this class
