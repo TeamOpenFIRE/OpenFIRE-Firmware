@@ -87,34 +87,30 @@ int OF_Prefs::SaveProfiles()
     if(prefsFile) {
         for(int i = 0; i < PROFILE_COUNT; ++i) {
             for(auto &pair : OFPresets->profSettingTypes_Strings) {
-                if(pair.second == OF_Const::profCurrent) continue;
+                if(pair.second == OF_Const::profCurrent) {
+                    // only write string and profile num
+                    prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                    prefsFile.write((uint8_t)currentProfile);
+                } else {
+                    // write data type:
+                    prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                    // Append profile number:
+                    prefsFile.write((uint8_t*)&i, 1);
 
-                // write data type:
-                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
-                // Append profile number:
-                prefsFile.write((uint8_t*)&i, 1);
-
-                // data type:
-                switch(pair.second) {
-                case OF_Const::profName:
-                    prefsFile.write(sizeof(ProfileData_t::name));
-                    prefsFile.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
-                    break;
-                // everything else is generic 32-bit data
-                default:
-                    prefsFile.write(sizeof(int));
-                    prefsFile.write((uint8_t*)&profiles[i] + (sizeof(int)*pair.second), sizeof(int));
-                    break;
+                    // data type:
+                    switch(pair.second) {
+                    // 16-bytes profile name
+                    case OF_Const::profName:
+                        prefsFile.write(sizeof(ProfileData_t::name));
+                        prefsFile.write((uint8_t*)profiles[i].name, sizeof(ProfileData_t::name));
+                        break;
+                    // everything else is generic 32-bit data
+                    default:
+                        prefsFile.write(sizeof(int));
+                        prefsFile.write((uint8_t*)&profiles[i] + (sizeof(int)*pair.second), sizeof(int));
+                        break;
+                    }
                 }
-            }
-        }
-
-        // totally not efficient way of reusing currentProf string from the shared map 
-        for(auto &pair : OFPresets->profSettingTypes_Strings) {
-            if(pair.second == OF_Const::profCurrent) {
-                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
-                prefsFile.write((uint8_t)currentProfile);
-                break;
             }
         }
 

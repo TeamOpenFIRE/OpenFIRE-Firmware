@@ -39,6 +39,7 @@ public:
     };
 
     /// @brief Profile data
+    /// @details
     typedef struct ProfileData_s {
         int topOffset;              // Perspective: Offsets
         int bottomOffset;
@@ -55,6 +56,7 @@ public:
         char name[16];              // Profile display name
     } ProfileData_t;
 
+    /// @brief Instance of profile data 
     static inline ProfileData_t profiles[PROFILE_COUNT] = {
         {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0xFF0000, "Profile A"},
         {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0x00FF00, "Profile B"},
@@ -64,6 +66,7 @@ public:
 
     static inline uint currentProfile = 0;
 
+    /// @brief System toggles array
     static inline bool toggles[OF_Const::boolTypesCount] = {
         false,          // custom pins
         true,           // rumble
@@ -77,8 +80,10 @@ public:
         false,          // invert static pixels
     };
 
+    /// @brief Pin functions array
     static inline int8_t pins[OF_Const::boardInputsCount] = { -1 };
 
+    /// @brief System variables array
     static inline uint32_t settings[OF_Const::settingsTypesCount] = {
         255,            // rumble strength
         150,            // rumble length
@@ -95,8 +100,10 @@ public:
         45,             // temp shutoff
     };
 
+    /// @brief Map of enabled I2C peripherals (when periphSDA/periphSCL are active)
     static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
 
+    /// @brief I2C OLED preferences array
     static inline uint32_t oledPrefs[OF_Const::oledSettingsTypes] = { false };
 
     typedef struct USBMap_s {
@@ -104,12 +111,13 @@ public:
         uint16_t devicePID;
     } USBMap_t;
 
+    /// @brief Instance of TinyUSB identifier data
     static inline USBMap_t usb = {
         { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' },
         PLAYER_NUMBER
     };
 
-    // Instance of OpenFIREshared's presets and I/O table data
+    /// @brief Instance of OpenFIREshared's presets and I/O table data
     static inline OF_Const *OFPresets = nullptr;
 
     /// @brief Initialize filesystem
