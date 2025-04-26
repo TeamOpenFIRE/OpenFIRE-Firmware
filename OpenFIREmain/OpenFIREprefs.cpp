@@ -85,12 +85,16 @@ int OF_Prefs::SaveProfiles()
 {
     File prefsFile = LittleFS.open("/profiles.conf", "w");
     if(prefsFile) {
+        bool currentProfLogged = false;
         for(int i = 0; i < PROFILE_COUNT; ++i) {
             for(auto &pair : OFPresets->profSettingTypes_Strings) {
                 if(pair.second == OF_Const::profCurrent) {
-                    // only write string and profile num
-                    prefsFile.write(pair.first.c_str(), pair.first.length()+1);
-                    prefsFile.write((uint8_t)currentProfile);
+                    if(!currentProfLogged) {
+                        // only write string and profile num
+                        prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                        prefsFile.write((uint8_t)currentProfile);
+                        currentProfLogged = true;
+                    }
                 } else {
                     // write data type:
                     prefsFile.write(pair.first.c_str(), pair.first.length()+1);

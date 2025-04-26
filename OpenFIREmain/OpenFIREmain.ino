@@ -850,6 +850,8 @@ void ExecGunModeDocked()
     unsigned long aStickChecked = millis();
     uint8_t aStickDirPrev;
 
+    if(OF_Prefs::OFPresets == nullptr) OF_Prefs::OFPresets = new OF_Const();
+
     {
         char buf[64];
         int pos = sprintf(&buf[0], "%.1f"
@@ -931,8 +933,13 @@ void ExecGunModeDocked()
 
         if(Serial.available()) OF_Serial::SerialProcessingDocked();
 
-        if(FW_Common::gunMode != FW_Const::GunMode_Docked)
+        if(FW_Common::gunMode != FW_Const::GunMode_Docked) {
+            if(OF_Prefs::OFPresets != nullptr) {
+                delete OF_Prefs::OFPresets;
+                OF_Prefs::OFPresets = nullptr;
+            }
             return;
+        }
 
         if(FW_Common::runMode == FW_Const::RunMode_Processing)
             ExecRunModeProcessing();
