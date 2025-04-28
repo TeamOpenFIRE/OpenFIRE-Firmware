@@ -1,14 +1,13 @@
 /*!
  * @file OpenFIREprefs.h
- * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
+ * @brief OpenFIRE file system loading/saving and presets access.
  *
- * @copyright Mike Lynch, 2021
+ * @copyright Mike Lynch & That One Seong, 2021
  * @copyright GNU Lesser General Public License
  *
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V1.1
- * @date 2023
+ * @date 2025
  */
 
 #ifndef _OPENFIREPREFS_H_
@@ -18,6 +17,9 @@
 #define PROFILE_COUNT 4
 
 #include <stdint.h>
+#include <unordered_map>
+#include <FS.h>
+#include <LittleFS.h>
 #include <OpenFIREBoard.h>
 #include <DFRobotIRPositionEx.h>
 
@@ -127,6 +129,14 @@ public:
     /// @brief Macro for loading all non-cali profile settings
     static void Load();
 
+    /// @brief Generic saving method using provided pointers to a block of data and its associated string map for lookups
+    /// @return An error code from Errors_e
+    static int SaveToPtr(File, void*, const std::unordered_map<std::string, int>&, const size_t&);
+
+    /// @brief Generic loading method using provided pointers to a block of data and its associated string map for lookups
+    /// @return An error code from Errors_e
+    static int LoadToPtr(File, void*, const std::unordered_map<std::string, int>&);
+
     /// @brief Load preferences
     /// @return An error code from Errors_e
     static int LoadProfiles();
@@ -135,29 +145,29 @@ public:
     /// @return An error code from Errors_e
     static int SaveProfiles();
 
-    /// @brief Load toggles
+    /// @brief Load toggles (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadToggles();
+    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets->boolTypes_Strings); }
 
     /// @brief Save current toggles states
     /// @return An error code from Errors_e
-    static int SaveToggles();
+    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets->boolTypes_Strings, sizeof(toggles)/OF_Const::boolTypesCount); }
 
     /// @brief Load pin mapping
     /// @return An error code from Errors_e
-    static int LoadPins();
+    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets->boardInputs_Strings); }
 
     /// @brief Save current pin mapping
     /// @return An error code from Errors_e
-    static int SavePins();
+    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets->boardInputs_Strings, sizeof(pins)/OF_Const::boardInputsCount); }
 
     /// @brief Load settings
     /// @return An error code from Errors_e
-    static int LoadSettings();
+    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets->settingsTypes_Strings); }
 
     /// @brief Save current settings
     /// @return An error code from Errors_e
-    static int SaveSettings();
+    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets->settingsTypes_Strings, sizeof(settings)/OF_Const::settingsTypesCount); }
 
     /// @brief Load settings
     /// @return An error code from Errors_e

@@ -1,18 +1,14 @@
-#include "FS.h"
 /*!
  * @file OpenFIREprefs.cpp
- * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
+ * @brief OpenFIRE file system loading/saving and presets access.
  *
- * @copyright Mike Lynch, 2021
+ * @copyright Mike Lynch & That One Seong, 2021
  * @copyright GNU Lesser General Public License
  *
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V1.1
- * @date 2023
+ * @date 2025
  */
-
-#include <LittleFS.h>
 
 #include "OpenFIREprefs.h"
 
@@ -27,10 +23,8 @@ void OF_Prefs::Load()
 {
     if(OFPresets == nullptr) OFPresets = new OF_Const();
     LoadToggles();
-    if(toggles[OF_Const::customPins])
-        LoadPins();
-    if(pins[OF_Const::periphSDA])
-        LoadPeriphs();
+    if(toggles[OF_Const::customPins]) LoadPins();
+    if(pins[OF_Const::periphSDA] >= 0 && pins[OF_Const::periphSCL] >= 0) LoadPeriphs();
     LoadSettings();
     LoadUSBID();
     if(OFPresets != nullptr) {
@@ -123,109 +117,6 @@ int OF_Prefs::SaveProfiles()
     } else return Error_Write;
 }
 
-int OF_Prefs::LoadToggles()
-{
-    File togglesFile = LittleFS.open("/toggles.conf", "r");
-    if(togglesFile) {
-        char buf[32];
-        size_t bWritten = 0;
-        while(togglesFile.available()) {
-            bWritten = togglesFile.readBytesUntil('\0', buf, 32);
-            // readBytesUntil discards the terminator, so plop one at the end
-            buf[bWritten++] = '\0';
-            if(bWritten && OFPresets->boolTypes_Strings.count(buf))
-                toggles[OFPresets->boolTypes_Strings.at(buf)] = togglesFile.read();
-            else togglesFile.seek(1, fs::SeekCur);
-        }
-        
-        togglesFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
-int OF_Prefs::SaveToggles()
-{
-    File togglesFile = LittleFS.open("/toggles.conf", "w");
-    if(togglesFile) {
-        for(auto &pair : OFPresets->boolTypes_Strings) {
-            togglesFile.write(pair.first.c_str(), pair.first.length()+1);
-            togglesFile.write((uint8_t*)&toggles[pair.second], 1);
-        }
-
-        togglesFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
-int OF_Prefs::LoadPins()
-{
-    File pinsFile = LittleFS.open("/pins.conf", "r");
-    if(pinsFile) {
-        char buf[32];
-        size_t bWritten = 0;
-        while(pinsFile.available()) {
-            bWritten = pinsFile.readBytesUntil('\0', buf, 32);
-            // readBytesUntil discards the terminator, so plop one at the end
-            buf[bWritten++] = '\0';
-            if(bWritten && OFPresets->boardInputs_Strings.count(buf))
-                pins[OFPresets->boardInputs_Strings.at(buf)] = pinsFile.read();
-            else pinsFile.seek(1, fs::SeekCur);
-        }
-        
-        pinsFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
-int OF_Prefs::SavePins()
-{
-    File pinsFile = LittleFS.open("/pins.conf", "w");
-    if(pinsFile) {
-        for(auto &pair : OFPresets->boardInputs_Strings) {
-            if(pair.second < 0) continue;
-            pinsFile.write(pair.first.c_str(), pair.first.length()+1);
-            pinsFile.write((uint8_t*)&pins[pair.second], 1);
-        }
-        
-        pinsFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
-int OF_Prefs::LoadSettings()
-{
-    File settingsFile = LittleFS.open("/settings.conf", "r");
-    if(settingsFile) {
-        char buf[32];
-        size_t bWritten = 0;
-        while(settingsFile.available()) {
-            bWritten = settingsFile.readBytesUntil('\0', buf, 32);
-            // readBytesUntil discards the terminator, so plop one at the end
-            buf[bWritten++] = '\0';
-            if(bWritten && OFPresets->settingsTypes_Strings.count(buf))
-                settingsFile.readBytes((char*)&settings[OFPresets->settingsTypes_Strings.at(buf)], sizeof(uint32_t));
-            else settingsFile.seek(sizeof(uint32_t), fs::SeekCur);
-        }
-
-        settingsFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
-int OF_Prefs::SaveSettings()
-{
-    File settingsFile = LittleFS.open("/settings.conf", "w");
-    if(settingsFile) {
-        for(auto &pair : OFPresets->settingsTypes_Strings) {
-            settingsFile.write(pair.first.c_str(), pair.first.length()+1);
-            settingsFile.write((uint8_t*)&settings[pair.second], sizeof(uint32_t));
-        }
-        
-        settingsFile.close();
-        return Error_Success;
-    } else return Error_NoData;
-}
-
 int OF_Prefs::LoadPeriphs()
 {
     File periphsFile = LittleFS.open("/i2cperiphs.conf", "r");
@@ -307,6 +198,43 @@ int OF_Prefs::SavePeriphs()
         }
         
         periphsFile.close();
+        return Error_Success;
+    } else return Error_NoData;
+}
+
+int OF_Prefs::SaveToPtr(File prefsFile, void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize)
+{
+    if(prefsFile) {
+        for(auto &pair : mapPtr) {
+            if(pair.second >= 0) {
+                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                prefsFile.write((uint8_t)dataSize);
+                prefsFile.write((uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
+            }
+        }
+        
+        prefsFile.close();
+        return Error_Success;
+    } else return Error_NoData;
+}
+
+int OF_Prefs::LoadToPtr(File prefsFile, void *dataPtr, const std::unordered_map<std::string, int> &mapPtr)
+{
+    if(prefsFile) {
+        char buf[32];
+        size_t bWritten = 0;
+        size_t dataSize = 0;
+        while(prefsFile.available()) {
+            bWritten = prefsFile.readBytesUntil('\0', buf, 32);
+            // readBytesUntil discards the terminator, so plop one at the end
+            buf[bWritten++] = '\0';
+            dataSize = prefsFile.read();
+            if(bWritten && mapPtr.count(buf))
+                prefsFile.readBytes((char*)dataPtr + (dataSize * mapPtr.at(buf)), dataSize);
+            else prefsFile.seek(dataSize, fs::SeekCur);
+        }
+
+        prefsFile.close();
         return Error_Success;
     } else return Error_NoData;
 }
