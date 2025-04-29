@@ -149,23 +149,23 @@ public:
     /// @return An error code from Errors_e
     static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets->boolTypes_Strings); }
 
-    /// @brief Save current toggles states
+    /// @brief Save current toggles states (macro for SaveToPtr)
     /// @return An error code from Errors_e
     static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets->boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
 
-    /// @brief Load pin mapping
+    /// @brief Load pin mapping (macro for LoadToPtr)
     /// @return An error code from Errors_e
     static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets->boardInputs_Strings); }
 
-    /// @brief Save current pin mapping
+    /// @brief Save current pin mapping (macro for SaveToPtr)
     /// @return An error code from Errors_e
     static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets->boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
 
-    /// @brief Load settings
+    /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
     static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets->settingsTypes_Strings); }
 
-    /// @brief Save current settings
+    /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
     static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets->settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
 
