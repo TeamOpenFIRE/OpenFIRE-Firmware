@@ -90,7 +90,7 @@ void FW_Common::FeedbackSet()
     #ifdef USES_DISPLAY
         // wrapper will manage display validity
         // check it's not using the camera's I2C line
-        if(OF_Prefs::i2cPeriphs[OF_Const::i2cOLED]) {
+        if(OF_Prefs::toggles[OF_Const::i2cOLED]) {
             if(!OLED.Begin()) { if(OLED.display != nullptr) delete OLED.display; }
         }
     #endif // USES_DISPLAY
@@ -983,8 +983,6 @@ int FW_Common::SavePreferences()
         #endif // USES_DISPLAY
     }
 
-    if(OF_Prefs::OFPresets == nullptr) OF_Prefs::OFPresets = new OF_Const();
-
     if(OF_Prefs::SaveProfiles() == OF_Prefs::Error_Success) {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
@@ -998,7 +996,6 @@ int FW_Common::SavePreferences()
             OF_Prefs::SavePins();
 
         OF_Prefs::SaveSettings();
-        OF_Prefs::SavePeriphs();
         OF_Prefs::SaveUSBID();
 
         #ifdef LED_ENABLE
@@ -1013,9 +1010,6 @@ int FW_Common::SavePreferences()
         #ifdef USES_DISPLAY
             RedrawDisplay();
         #endif // USES_DISPLAY
-
-        if(OF_Prefs::OFPresets != nullptr)
-            delete OF_Prefs::OFPresets, OF_Prefs::OFPresets = nullptr;
 
         return OF_Prefs::Error_Success;
     } else {
@@ -1050,9 +1044,6 @@ int FW_Common::SavePreferences()
         #ifdef USES_DISPLAY
             RedrawDisplay();
         #endif // USES_DISPLAY
-
-        if(OF_Prefs::OFPresets != nullptr)
-            delete OF_Prefs::OFPresets, OF_Prefs::OFPresets = nullptr;
 
         return OF_Prefs::Error_Write;
     }

@@ -80,6 +80,8 @@ public:
         false,          // low buttons mode
         false,          // rumble force-feedback mode
         false,          // invert static pixels
+        false,          // i2c OLED enabled
+        false,          // i2c OLED alt address
     };
 
     /// @brief Pin functions array
@@ -102,25 +104,19 @@ public:
         45,             // temp shutoff
     };
 
-    /// @brief Map of enabled I2C peripherals (when periphSDA/periphSCL are active)
-    static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
-
-    /// @brief I2C OLED preferences array
-    static inline uint32_t oledPrefs[OF_Const::oledSettingsTypes] = { false };
-
     typedef struct USBMap_s {
-        char deviceName[16];
         uint16_t devicePID;
+        char deviceName[16];
     } USBMap_t;
 
     /// @brief Instance of TinyUSB identifier data
     static inline USBMap_t usb = {
-        { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' },
-        PLAYER_NUMBER
+        PLAYER_NUMBER,
+        { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' }
     };
 
     /// @brief Instance of OpenFIREshared's presets and I/O table data
-    static inline OF_Const *OFPresets = nullptr;
+    static inline OF_Const OFPresets;
 
     /// @brief Initialize filesystem
     /// @return An error code from Errors_e
@@ -147,35 +143,27 @@ public:
 
     /// @brief Load toggles (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets->boolTypes_Strings); }
+    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets.boolTypes_Strings); }
 
     /// @brief Save current toggles states (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets->boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
+    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets.boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
 
     /// @brief Load pin mapping (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets->boardInputs_Strings); }
+    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets.boardInputs_Strings); }
 
     /// @brief Save current pin mapping (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets->boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
+    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets.boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
 
     /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets->settingsTypes_Strings); }
+    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets.settingsTypes_Strings); }
 
     /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets->settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
-
-    /// @brief Load settings
-    /// @return An error code from Errors_e
-    static int LoadPeriphs();
-
-    /// @brief Save current settings
-    /// @return An error code from Errors_e
-    static int SavePeriphs();
+    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets.settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
 
     /// @brief Load USB identifier info
     /// @return An error code from Errors_e

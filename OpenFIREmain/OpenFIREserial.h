@@ -10,6 +10,8 @@
 #define _OPENFIRESERIAL_H_
 
 #include <Arduino.h>
+#include <unordered_map>
+#include <string>
 #include "OpenFIREDefines.h"
 
 class OF_Serial
@@ -19,6 +21,12 @@ public:
     /// @brief    Method for processing the Serial buffer when docked to the Desktop App
     /// @details  Only method that allows for reading/writing to system settings.
     static void SerialProcessingDocked();
+
+    /// @brief    Generic method for sending data over Serial to connected host
+    static void SerialBatchSend(void*, const std::unordered_map<std::string, int> &, const size_t&);
+
+    /// @brief    Generic method for reading commit data over Serial from connected host
+    static void SerialBatchRecv(const char*, void*, const std::unordered_map<std::string, int> &, const size_t&, const size_t&, const size_t&);
 
     // Main routine that prints information to connected serial monitor when the gun enters Pause Mode.
     static void PrintResults();
@@ -46,6 +54,9 @@ public:
         SerialQueue_LEDPulse,
         SerialQueueBitsCount
     };
+
+    static inline char TXbuf[64];
+    static inline char RXbuf[64];
 
     static inline bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
     static inline bool serialQueue[SerialQueueBitsCount] = {false};// Array of events we've queued from the serial receipt.

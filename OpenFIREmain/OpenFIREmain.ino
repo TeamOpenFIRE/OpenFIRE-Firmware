@@ -78,13 +78,7 @@ void setup() {
             FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
 
         OF_Prefs::Load();
-    } else {
-        Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
-        if(OF_Prefs::OFPresets != nullptr) {
-            delete OF_Prefs::OFPresets;
-            OF_Prefs::OFPresets = nullptr;
-        }
-    }
+    } else Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
@@ -850,8 +844,6 @@ void ExecGunModeDocked()
     unsigned long aStickChecked = millis();
     uint8_t aStickDirPrev;
 
-    if(OF_Prefs::OFPresets == nullptr) OF_Prefs::OFPresets = new OF_Const();
-
     {
         char buf[64];
         int pos = sprintf(&buf[0], "%.1f"
@@ -860,19 +852,14 @@ void ExecGunModeDocked()
                                     #endif // GIT_HASH
                                     , OPENFIRE_VERSION
                                     #ifdef GIT_HASH
-                                    ,GIT_HASH
+                                    , GIT_HASH
                                     #endif // GIT_HASH
                           );
         buf[pos++] = OF_Const::serialTerminator;
-        pos += sprintf(&buf[pos], "%s", OPENFIRE_CODENAME);
-        buf[pos++] = OF_Const::serialTerminator;
         pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
         buf[pos++] = OF_Const::serialTerminator;
-        buf[pos++] = OF_Prefs::currentProfile;
-        buf[pos++] = OF_Const::serialTerminator;
-        memcpy(&buf[pos], &OF_Prefs::usb.devicePID, sizeof(OF_Prefs::USBMap_t::devicePID));
-        pos += 2;
-        pos += sprintf(&buf[pos], "%s", OF_Prefs::usb.deviceName);
+        memcpy(&buf[pos], &OF_Prefs::usb, sizeof(OF_Prefs::USBMap_t));
+        pos += sizeof(OF_Prefs::USBMap_t);
         if(FW_Common::camNotAvailable) {
             buf[pos++] = OF_Const::serialTerminator;
             buf[pos++] = OF_Const::sError;
@@ -933,13 +920,8 @@ void ExecGunModeDocked()
 
         if(Serial.available()) OF_Serial::SerialProcessingDocked();
 
-        if(FW_Common::gunMode != FW_Const::GunMode_Docked) {
-            if(OF_Prefs::OFPresets != nullptr) {
-                delete OF_Prefs::OFPresets;
-                OF_Prefs::OFPresets = nullptr;
-            }
+        if(FW_Common::gunMode != FW_Const::GunMode_Docked)
             return;
-        }
 
         if(FW_Common::runMode == FW_Const::RunMode_Processing)
             ExecRunModeProcessing();

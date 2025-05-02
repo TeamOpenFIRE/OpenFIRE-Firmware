@@ -50,7 +50,7 @@ bool ExtDisplay::Begin()
         } else return false;
     } else return false;
 
-    if(display->begin(SSD1306_SWITCHCAPVCC, OF_Prefs::oledPrefs[OF_Const::oledAltAddr] ? 0x3D : 0x3C)) {
+    if(display->begin(SSD1306_SWITCHCAPVCC, OF_Prefs::toggles[OF_Const::i2cOLEDaltAddr] ? 0x3D : 0x3C)) {
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;
