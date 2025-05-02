@@ -1,14 +1,13 @@
 /*!
  * @file OpenFIREprefs.h
- * @brief Samco Prow Enhanced light gun preferences to save in non-volatile memory.
+ * @brief OpenFIRE file system loading/saving and presets access.
  *
- * @copyright Mike Lynch, 2021
+ * @copyright Mike Lynch & That One Seong, 2021
  * @copyright GNU Lesser General Public License
  *
  * @author Mike Lynch
  * @author [That One Seong](SeongsSeongs@gmail.com)
- * @version V1.1
- * @date 2023
+ * @date 2025
  */
 
 #ifndef _OPENFIREPREFS_H_
@@ -18,6 +17,9 @@
 #define PROFILE_COUNT 4
 
 #include <stdint.h>
+#include <unordered_map>
+#include <FS.h>
+#include <LittleFS.h>
 #include <OpenFIREBoard.h>
 #include <DFRobotIRPositionEx.h>
 
@@ -38,25 +40,8 @@ public:
         Error_Erase = -5
     };
 
-    enum ProfileDataTypes_e {
-        Profile_ProfileNum = 0,
-        Profile_TopOffset,
-        Profile_BottomOffset,
-        Profile_LeftOffset,
-        Profile_RightOffset,
-        Profile_TLled,
-        Profile_TRled,
-        Profile_AdjX,
-        Profile_AdjY,
-        Profile_IrSens,
-        Profile_RunMode,
-        Profile_IrLayout,
-        Profile_Color,
-        Profile_Name,
-        Profile_Selected = 254
-    };
-
     /// @brief Profile data
+    /// @details
     typedef struct ProfileData_s {
         int topOffset;              // Perspective: Offsets
         int bottomOffset;
@@ -66,13 +51,14 @@ public:
         float TRled;
         float adjX;                 // Perspective: adjusted axis
         float adjY;
-        uint32_t irSens;            // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
-        uint32_t runMode;           // Averaging mode (padded upto 32-bit for consistent spacing)
-        uint32_t irLayout;          // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
-        uint32_t color;             // packed color blob per profile (uses least sig 24-bits out of 32 bits)
+        uint irSens;                // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
+        uint runMode;               // Averaging mode (padded upto 32-bit for consistent spacing)
+        uint irLayout;              // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
+        uint color;                 // packed color blob per profile (uses least sig 24-bits out of 32 bits)
         char name[16];              // Profile display name
     } ProfileData_t;
 
+    /// @brief Instance of profile data 
     static inline ProfileData_t profiles[PROFILE_COUNT] = {
         {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0xFF0000, "Profile A"},
         {0, 0, 0, 0, 500 << 2, 1420 << 2, 512 << 2, 384 << 2, DFRobotIRPositionEx::Sensitivity_Default, 1, false, 0x00FF00, "Profile B"},
@@ -82,6 +68,7 @@ public:
 
     static inline uint currentProfile = 0;
 
+    /// @brief System toggles array
     static inline bool toggles[OF_Const::boolTypesCount] = {
         false,          // custom pins
         true,           // rumble
@@ -93,10 +80,14 @@ public:
         false,          // low buttons mode
         false,          // rumble force-feedback mode
         false,          // invert static pixels
+        false,          // i2c OLED enabled
+        false,          // i2c OLED alt address
     };
 
+    /// @brief Pin functions array
     static inline int8_t pins[OF_Const::boardInputsCount] = { -1 };
 
+    /// @brief System variables array
     static inline uint32_t settings[OF_Const::settingsTypesCount] = {
         255,            // rumble strength
         150,            // rumble length
@@ -113,19 +104,19 @@ public:
         45,             // temp shutoff
     };
 
-    static inline bool i2cPeriphs[OF_Const::i2cDevicesCount] = { false };
-
-    static inline uint32_t oledPrefs[OF_Const::oledSettingsTypes] = { false };
-
     typedef struct USBMap_s {
-        char deviceName[16];
         uint16_t devicePID;
+        char deviceName[16];
     } USBMap_t;
 
+    /// @brief Instance of TinyUSB identifier data
     static inline USBMap_t usb = {
-        { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' },
-        PLAYER_NUMBER
+        PLAYER_NUMBER,
+        { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' }
     };
+
+    /// @brief Instance of OpenFIREshared's presets and I/O table data
+    static inline OF_Const OFPresets;
 
     /// @brief Initialize filesystem
     /// @return An error code from Errors_e
@@ -133,6 +124,14 @@ public:
 
     /// @brief Macro for loading all non-cali profile settings
     static void Load();
+
+    /// @brief Generic saving method using provided pointers to a block of data and its associated string map for lookups
+    /// @return An error code from Errors_e
+    static int SaveToPtr(File, void*, const std::unordered_map<std::string, int>&, const size_t&);
+
+    /// @brief Generic loading method using provided pointers to a block of data and its associated string map for lookups
+    /// @return An error code from Errors_e
+    static int LoadToPtr(File, void*, const std::unordered_map<std::string, int>&);
 
     /// @brief Load preferences
     /// @return An error code from Errors_e
@@ -142,37 +141,29 @@ public:
     /// @return An error code from Errors_e
     static int SaveProfiles();
 
-    /// @brief Load toggles
+    /// @brief Load toggles (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadToggles();
+    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets.boolTypes_Strings); }
 
-    /// @brief Save current toggles states
+    /// @brief Save current toggles states (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveToggles();
+    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets.boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
 
-    /// @brief Load pin mapping
+    /// @brief Load pin mapping (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadPins();
+    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets.boardInputs_Strings); }
 
-    /// @brief Save current pin mapping
+    /// @brief Save current pin mapping (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SavePins();
+    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets.boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
 
-    /// @brief Load settings
+    /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadSettings();
+    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets.settingsTypes_Strings); }
 
-    /// @brief Save current settings
+    /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveSettings();
-
-    /// @brief Load settings
-    /// @return An error code from Errors_e
-    static int LoadPeriphs();
-
-    /// @brief Save current settings
-    /// @return An error code from Errors_e
-    static int SavePeriphs();
+    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets.settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
 
     /// @brief Load USB identifier info
     /// @return An error code from Errors_e

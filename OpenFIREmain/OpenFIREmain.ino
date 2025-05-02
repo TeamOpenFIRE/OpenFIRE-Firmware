@@ -42,6 +42,7 @@ void setup() {
         digitalWrite(23, HIGH);
     #endif
 
+    // Init pins array, and OFPresets for later load ops
     OF_Prefs::LoadPresets();
     
     if(OF_Prefs::InitFS() == OF_Prefs::Error_Success) {
@@ -77,9 +78,7 @@ void setup() {
             FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
 
         OF_Prefs::Load();
-    } else {
-        Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
-    }
+    } else Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
  
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
@@ -853,19 +852,14 @@ void ExecGunModeDocked()
                                     #endif // GIT_HASH
                                     , OPENFIRE_VERSION
                                     #ifdef GIT_HASH
-                                    ,GIT_HASH
+                                    , GIT_HASH
                                     #endif // GIT_HASH
                           );
         buf[pos++] = OF_Const::serialTerminator;
-        pos += sprintf(&buf[pos], "%s", OPENFIRE_CODENAME);
-        buf[pos++] = OF_Const::serialTerminator;
         pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
         buf[pos++] = OF_Const::serialTerminator;
-        buf[pos++] = OF_Prefs::currentProfile;
-        buf[pos++] = OF_Const::serialTerminator;
-        memcpy(&buf[pos], &OF_Prefs::usb.devicePID, sizeof(OF_Prefs::USBMap_t::devicePID));
-        pos += 2;
-        pos += sprintf(&buf[pos], "%s", OF_Prefs::usb.deviceName);
+        memcpy(&buf[pos], &OF_Prefs::usb, sizeof(OF_Prefs::USBMap_t));
+        pos += sizeof(OF_Prefs::USBMap_t);
         if(FW_Common::camNotAvailable) {
             buf[pos++] = OF_Const::serialTerminator;
             buf[pos++] = OF_Const::sError;
