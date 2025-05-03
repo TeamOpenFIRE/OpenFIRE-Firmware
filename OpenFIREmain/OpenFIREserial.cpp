@@ -983,6 +983,7 @@ void OF_Serial::SerialProcessingDocked()
     //
     case OF_Const::sIRTest:
         if(FW_Common::camNotAvailable) {
+            Serial.read(); // nomf
             Serial.write(OF_Const::sError);
         } else if(FW_Common::runMode == FW_Const::RunMode_Processing && Serial.read() == false) {
             Serial.println("Exiting processing mode...");
@@ -998,7 +999,8 @@ void OF_Serial::SerialProcessingDocked()
                 break;
             }
         } else if(Serial.read() == true) {
-            Serial.write(OF_Const::sIRTest);
+            char message[2] = { OF_Const::sIRTest, true };
+            Serial.write(message, sizeof(message));
             FW_Common::SetRunMode(FW_Const::RunMode_Processing);
         }
         break;
