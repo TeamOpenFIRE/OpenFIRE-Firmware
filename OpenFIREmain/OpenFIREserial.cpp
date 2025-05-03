@@ -986,7 +986,6 @@ void OF_Serial::SerialProcessingDocked()
             Serial.read(); // nomf
             Serial.write(OF_Const::sError);
         } else if(FW_Common::runMode == FW_Const::RunMode_Processing && Serial.read() == false) {
-            Serial.println("Exiting processing mode...");
             switch(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode) {
             case FW_Const::RunMode_Normal:
                 FW_Common::SetRunMode(FW_Const::RunMode_Normal);
@@ -998,11 +997,8 @@ void OF_Serial::SerialProcessingDocked()
                 FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                 break;
             }
-        } else if(Serial.read() == true) {
-            char message[2] = { OF_Const::sIRTest, true };
-            Serial.write(message, sizeof(message));
+        } else if(Serial.read() == true)
             FW_Common::SetRunMode(FW_Const::RunMode_Processing);
-        }
         break;
     case OF_Const::sCaliProfile:
     {
