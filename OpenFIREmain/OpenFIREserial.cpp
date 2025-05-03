@@ -983,8 +983,9 @@ void OF_Serial::SerialProcessingDocked()
     //
     case OF_Const::sIRTest:
         if(FW_Common::camNotAvailable) {
+            Serial.read(); // nomf
             Serial.write(OF_Const::sError);
-        } else if(FW_Common::runMode == FW_Const::RunMode_Processing) {
+        } else if(FW_Common::runMode == FW_Const::RunMode_Processing && Serial.read() == false) {
             Serial.println("Exiting processing mode...");
             switch(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode) {
             case FW_Const::RunMode_Normal:
@@ -997,8 +998,9 @@ void OF_Serial::SerialProcessingDocked()
                 FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                 break;
             }
-        } else {
-            Serial.write(OF_Const::sIRTest);
+        } else if(Serial.read() == true) {
+            char message[2] = { OF_Const::sIRTest, true };
+            Serial.write(message, sizeof(message));
             FW_Common::SetRunMode(FW_Const::RunMode_Processing);
         }
         break;
@@ -1026,109 +1028,115 @@ void OF_Serial::SerialProcessingDocked()
     }
     #ifdef USES_SOLENOID
     case OF_Const::sTestSolenoid:
-        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
-        delay(OF_Prefs::settings[OF_Const::solenoidOnLength]);
-        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+        if(Serial.read() == true) {
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);
+            delay(OF_Prefs::settings[OF_Const::solenoidOnLength]);
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+        }
         break;
     #endif // USES_SOLENOID
     #ifdef USES_RUMBLE
     case OF_Const::sTestRumble:
-        analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
-        delay(OF_Prefs::settings[OF_Const::rumbleInterval]);
-        digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+        if(Serial.read() == true) {
+            analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
+            delay(OF_Prefs::settings[OF_Const::rumbleInterval]);
+            digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+        }
         break;
     #endif // USES_RUMBLE
     #ifdef LED_ENABLE // meant to be for 4pins, but will update all LED devices anyways.
     case OF_Const::sTestLEDR:
-        OF_RGB::LedUpdate(255, 0, 0);
+        if(Serial.read() == true) OF_RGB::LedUpdate(255, 0, 0);
         break;
     case OF_Const::sTestLEDG:
-        OF_RGB::LedUpdate(0, 255, 0);
+        if(Serial.read() == true) OF_RGB::LedUpdate(0, 255, 0);
         break;
     case OF_Const::sTestLEDB:
-        OF_RGB::LedUpdate(0, 0, 255);
+        if(Serial.read() == true) OF_RGB::LedUpdate(0, 0, 255);
         break;
     #endif // LED_ENABLE
 
     case OF_Const::sCommitStart:
     {
-        FW_Common::buttons.Unset();
-        bool exit = false;
-        size_t type, rxLen, datSize, profNum;
-        Serial.write(OF_Const::sCommitStart), Serial.flush();
-        while(!exit) {
-            if(Serial.available()) {
-                rxLen = 0;
-                type = Serial.read();
-                switch(type) {
-                //// Commands
-                case OF_Const::sSave:
-                    if(FW_Common::SavePreferences() == OF_Prefs::Error_Success) {
-                        // For updating pin data for buttons, cams and periphs
-                        FW_Common::PinsReset();
-                        FW_Common::CameraSet();
-                        FW_Common::FeedbackSet();
-                        
-                        // Update bindings so LED/Pixel changes are reflected immediately
-                        if(OF_Prefs::usb.devicePID >= 1 && OF_Prefs::usb.devicePID <= 4) {
-                            playerStartBtn = OF_Prefs::usb.devicePID + '0';
-                            playerSelectBtn = OF_Prefs::usb.devicePID + '0' + 4;
-                        }
-                        FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
-
-                    #ifdef LED_ENABLE
-                        // Save op above resets color, so re-set it back to docked idle color
-                        if(FW_Common::gunMode == FW_Const::GunMode_Docked)
-                            OF_RGB::LedUpdate(127, 127, 255);
-                        else if(FW_Common::gunMode == FW_Const::GunMode_Pause)
-                            OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
-                    #endif // LED_ENABLE
-                    // unlikely, but attempt to reload settings if save failed
-                    // though this might just load corrupt data instead. :shrug:
-                    } else OF_Prefs::Load();
-                    FW_Common::buttons.Begin();
-                    exit = true;
-                    break;
-                case OF_Const::serialTerminator:
-                    // Assumed failed/aborting save, so roll back to what's in flash.
-                    OF_Prefs::Load();
-                    exit = true;
-                    break;
-
-                //// Saving ops
-                case OF_Const::sCommitID:
-                    rxLen = Serial.readBytes(RXbuf, Serial.available());
-                    if(rxLen == 18) memcpy(&OF_Prefs::usb, RXbuf, rxLen);
-                    break;
-                default:
-                    rxLen = Serial.readBytesUntil('\0', RXbuf, 32);
-                    RXbuf[rxLen++] = '\0';
-                    datSize = Serial.read();
-                    RXbuf[rxLen++] = datSize;
-                    if(type == OF_Const::sCommitProfile && OF_Prefs::OFPresets.profSettingTypes_Strings.at(RXbuf) != OF_Const::profCurrent) {
-                        profNum = Serial.read();
-                        RXbuf[rxLen++] = profNum;
-                    }
-                    rxLen += Serial.readBytes(&RXbuf[rxLen], datSize);
+        if(Serial.available() == 1 && Serial.read() == true) {
+            FW_Common::buttons.Unset();
+            bool exit = false;
+            size_t type, rxLen, datSize, profNum;
+            Serial.write(OF_Const::sCommitStart), Serial.flush();
+            while(!exit) {
+                if(Serial.available()) {
+                    rxLen = 0;
+                    type = Serial.read();
                     switch(type) {
-                        case OF_Const::sCommitToggles:  SerialBatchRecv(RXbuf, OF_Prefs::toggles,  OF_Prefs::OFPresets.boolTypes_Strings,     sizeof(OF_Prefs::toggles)  / OF_Const::boolTypesCount,     datSize, rxLen); break;
-                        case OF_Const::sCommitPins:     SerialBatchRecv(RXbuf, OF_Prefs::pins,     OF_Prefs::OFPresets.boardInputs_Strings,   sizeof(OF_Prefs::pins)     / OF_Const::boardInputsCount,   datSize, rxLen); break;
-                        case OF_Const::sCommitSettings: SerialBatchRecv(RXbuf, OF_Prefs::settings, OF_Prefs::OFPresets.settingsTypes_Strings, sizeof(OF_Prefs::settings) / OF_Const::settingsTypesCount, datSize, rxLen); break;
-                        case OF_Const::sCommitProfile:
-                            if(profNum < PROFILE_COUNT) SerialBatchRecv(RXbuf,
-                                                                        &OF_Prefs::profiles[profNum],
-                                                                        OF_Prefs::OFPresets.profSettingTypes_Strings,
-                                                                        sizeof(uint32_t),
-                                                                        datSize,
-                                                                        rxLen);
-                            break;
-                        default:
-                            break;
+                    //// Commands
+                    case OF_Const::sSave:
+                        if(FW_Common::SavePreferences() == OF_Prefs::Error_Success) {
+                            // For updating pin data for buttons, cams and periphs
+                            FW_Common::PinsReset();
+                            FW_Common::CameraSet();
+                            FW_Common::FeedbackSet();
+                            
+                            // Update bindings so LED/Pixel changes are reflected immediately
+                            if(OF_Prefs::usb.devicePID >= 1 && OF_Prefs::usb.devicePID <= 4) {
+                                playerStartBtn = OF_Prefs::usb.devicePID + '0';
+                                playerSelectBtn = OF_Prefs::usb.devicePID + '0' + 4;
+                            }
+                            FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
+
+                        #ifdef LED_ENABLE
+                            // Save op above resets color, so re-set it back to docked idle color
+                            if(FW_Common::gunMode == FW_Const::GunMode_Docked)
+                                OF_RGB::LedUpdate(127, 127, 255);
+                            else if(FW_Common::gunMode == FW_Const::GunMode_Pause)
+                                OF_RGB::SetLedPackedColor(OF_Prefs::profiles[OF_Prefs::currentProfile].color);
+                        #endif // LED_ENABLE
+                        // unlikely, but attempt to reload settings if save failed
+                        // though this might just load corrupt data instead. :shrug:
+                        } else OF_Prefs::Load();
+                        FW_Common::buttons.Begin();
+                        exit = true;
+                        break;
+                    case OF_Const::serialTerminator:
+                        // Assumed failed/aborting save, so roll back to what's in flash.
+                        OF_Prefs::Load();
+                        exit = true;
+                        break;
+
+                    //// Saving ops
+                    case OF_Const::sCommitID:
+                        rxLen = Serial.readBytes(RXbuf, Serial.available());
+                        if(rxLen == 18) memcpy(&OF_Prefs::usb, RXbuf, rxLen);
+                        break;
+                    default:
+                        rxLen = Serial.readBytesUntil('\0', RXbuf, 32);
+                        RXbuf[rxLen++] = '\0';
+                        datSize = Serial.read();
+                        RXbuf[rxLen++] = datSize;
+                        if(type == OF_Const::sCommitProfile && OF_Prefs::OFPresets.profSettingTypes_Strings.at(RXbuf) != OF_Const::profCurrent) {
+                            profNum = Serial.read();
+                            RXbuf[rxLen++] = profNum;
+                        }
+                        rxLen += Serial.readBytes(&RXbuf[rxLen], datSize);
+                        switch(type) {
+                            case OF_Const::sCommitToggles:  SerialBatchRecv(RXbuf, OF_Prefs::toggles,  OF_Prefs::OFPresets.boolTypes_Strings,     sizeof(OF_Prefs::toggles)  / OF_Const::boolTypesCount,     datSize, rxLen); break;
+                            case OF_Const::sCommitPins:     SerialBatchRecv(RXbuf, OF_Prefs::pins,     OF_Prefs::OFPresets.boardInputs_Strings,   sizeof(OF_Prefs::pins)     / OF_Const::boardInputsCount,   datSize, rxLen); break;
+                            case OF_Const::sCommitSettings: SerialBatchRecv(RXbuf, OF_Prefs::settings, OF_Prefs::OFPresets.settingsTypes_Strings, sizeof(OF_Prefs::settings) / OF_Const::settingsTypesCount, datSize, rxLen); break;
+                            case OF_Const::sCommitProfile:
+                                if(profNum < PROFILE_COUNT) SerialBatchRecv(RXbuf,
+                                                                            &OF_Prefs::profiles[profNum],
+                                                                            OF_Prefs::OFPresets.profSettingTypes_Strings,
+                                                                            sizeof(uint32_t),
+                                                                            datSize,
+                                                                            rxLen);
+                                break;
+                            default:
+                                break;
+                        }
+                        break;
                     }
-                    break;
+                    
+                    if(rxLen > 0) { Serial.write(RXbuf, rxLen); Serial.flush(); }
                 }
-                
-                if(rxLen > 0) { Serial.write(RXbuf, rxLen); Serial.flush(); }
             }
         }
         break;
