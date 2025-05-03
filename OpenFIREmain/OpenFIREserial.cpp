@@ -984,7 +984,8 @@ void OF_Serial::SerialProcessingDocked()
     case OF_Const::sIRTest:
         if(FW_Common::camNotAvailable) {
             Serial.read(); // nomf
-            Serial.write(OF_Const::sError);
+            char message[2] = { OF_Const::sError, OF_Const::sErrCam };
+            Serial.write(message, sizeof(message));
         } else if(FW_Common::runMode == FW_Const::RunMode_Processing && Serial.read() == false) {
             switch(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode) {
             case FW_Const::RunMode_Normal:
