@@ -864,7 +864,7 @@ void ExecGunModeDocked()
             buf[pos++] = OF_Const::serialTerminator;
             buf[pos++] = OF_Const::sError;
         }
-        Serial.write(buf, pos+1);
+        Serial.write(buf, pos);
         Serial.flush();
     }
 
