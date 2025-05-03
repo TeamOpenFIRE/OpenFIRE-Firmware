@@ -73,13 +73,13 @@ int OF_Prefs::SaveProfiles()
                 if(pair.second == OF_Const::profCurrent) {
                     if(!currentProfLogged) {
                         // only write string and profile num
-                        prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                        prefsFile.write((const uint8_t *)pair.first.c_str(), pair.first.length()+1);
                         prefsFile.write((uint8_t)currentProfile);
                         currentProfLogged = true;
                     }
                 } else {
                     // write data type:
-                    prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                    prefsFile.write((const uint8_t *)pair.first.c_str(), pair.first.length()+1);
                     // Append profile number:
                     prefsFile.write((uint8_t*)&i, 1);
 
@@ -110,7 +110,7 @@ int OF_Prefs::SaveToPtr(File prefsFile, void *dataPtr, const std::unordered_map<
     if(prefsFile) {
         for(auto &pair : mapPtr) {
             if(pair.second >= 0) {
-                prefsFile.write(pair.first.c_str(), pair.first.length()+1);
+                prefsFile.write((const uint8_t *)pair.first.c_str(), pair.first.length()+1);
                 prefsFile.write((uint8_t)dataSize);
                 prefsFile.write((uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
             }
