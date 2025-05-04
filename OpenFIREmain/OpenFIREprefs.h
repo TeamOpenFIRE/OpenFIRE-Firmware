@@ -54,9 +54,9 @@ public:
         float TRled;
         float adjX;                 // Perspective: adjusted axis
         float adjY;
-        uint irSens;                // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
-        uint runMode;               // Averaging mode (padded upto 32-bit for consistent spacing)
-        uint irLayout;              // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
+        int irSens;                 // IR Sensitivity from 0-2 (padded upto 32-bit for consistency)
+        int runMode;                // Averaging mode (padded upto 32-bit for consistent spacing)
+        int irLayout;               // square or diamond IR for this display? (padded upto 32-bit for consistent spacing)
         uint color;                 // packed color blob per profile (uses least sig 24-bits out of 32 bits)
         char name[16];              // Profile display name
     } ProfileData_t;
