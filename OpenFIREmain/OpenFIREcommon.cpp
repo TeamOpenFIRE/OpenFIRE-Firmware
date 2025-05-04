@@ -19,7 +19,7 @@
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
 
-// button object instance (defined in OpenFIREcommon.h)
+// button object instance (defined in OpenFIREcommon.h/OpenFIREprefs.h)
 LightgunButtons FW_Common::buttons(lgbData, ButtonCount);
 
 void FW_Common::FeedbackSet()

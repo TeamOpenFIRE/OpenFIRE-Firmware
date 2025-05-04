@@ -185,4 +185,7 @@ public:
     #endif // USES_DISPLAY
 };
 
+// button runtime data arrays
+static inline LightgunButtonsStatic<ButtonCount> lgbData;
+
 #endif // _OPENFIRECOMMON_H_

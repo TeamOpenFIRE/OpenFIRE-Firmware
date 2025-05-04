@@ -230,7 +230,4 @@ static inline constexpr unsigned int ButtonCount = sizeof(LightgunButtons::Butto
 
 inline uint8_t OF_Prefs::backupButtonDesc[ButtonCount][6];
 
-// button runtime data arrays
-static inline LightgunButtonsStatic<ButtonCount> lgbData;
-
 #endif // _OPENFIREPREFS_H_
