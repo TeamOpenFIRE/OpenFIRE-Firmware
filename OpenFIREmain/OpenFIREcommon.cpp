@@ -198,7 +198,7 @@ void FW_Common::CameraSet()
 
     // Start IR Camera with basic data format
     if(dfrIRPos != nullptr) {
-        if(!dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, irSensitivity)) {
+        if(!dfrIRPos->begin(DFROBOT_IR_IIC_CLOCK, DFRobotIRPositionEx::DataFormat_Basic, (DFRobotIRPositionEx::Sensitivity_e)OF_Prefs::profiles[OF_Prefs::currentProfile].irSens)) {
             delete dfrIRPos;
             dfrIRPos = nullptr;
             PrintIrError();
@@ -862,7 +862,7 @@ void FW_Common::UpdateLastSeen()
     }
 }
 
-bool FW_Common::SelectCalProfile(const uint8_t &profile)
+bool FW_Common::SelectCalProfile(const int &profile)
 {
     if(profile >= PROFILE_COUNT)
         return false;
@@ -877,7 +877,7 @@ bool FW_Common::SelectCalProfile(const uint8_t &profile)
 
     // set IR sensitivity
     if(OF_Prefs::profiles[profile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
-        SetIrSensitivity(OF_Prefs::profiles[profile].irSens);
+        SetIrSensitivity((DFRobotIRPositionEx::Sensitivity_e)OF_Prefs::profiles[profile].irSens);
 
     // set run mode
     if(OF_Prefs::profiles[profile].runMode < FW_Const::RunMode_Count)
@@ -936,7 +936,7 @@ void FW_Common::RedrawDisplay()
 }
 #endif // USES_DISPLAY
 
-void FW_Common::SetIrSensitivity(const uint8_t &sensitivity)
+void FW_Common::SetIrSensitivity(const int &sensitivity)
 {
     if(sensitivity > DFRobotIRPositionEx::Sensitivity_Max)
         return;
@@ -946,18 +946,15 @@ void FW_Common::SetIrSensitivity(const uint8_t &sensitivity)
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
 
-    if(irSensitivity != (DFRobotIRPositionEx::Sensitivity_e)sensitivity) {
-        irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)sensitivity;
-        dfrIRPos->sensitivityLevel(irSensitivity);
-        //if(!(stateFlags & FW_Const::StateFlag_PrintSelectedProfile))
-            //PrintIrSensitivity();
-    }
+    dfrIRPos->sensitivityLevel((DFRobotIRPositionEx::Sensitivity_e)sensitivity);
+    //if(!(stateFlags & FW_Const::StateFlag_PrintSelectedProfile))
+        //PrintIrSensitivity();
 }
 
-void FW_Common::SetIrLayout(const uint8_t &layout)
+void FW_Common::SetIrLayout(const int &layout)
 {
     // TODO: we need an enum for layout types available
-    if(layout > 1)
+    if(layout >= OF_Const::layoutTypes)
         return;
 
     if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout != layout) {

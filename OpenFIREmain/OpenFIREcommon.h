@@ -88,17 +88,17 @@ public:
     /// @brief    Applies loaded gun profile settings from profileData[PROFILE_COUNT]
     /// @param    profile
     ///           Profile slot number to load settings from.
-    static bool SelectCalProfile(const uint8_t &profile);
+    static bool SelectCalProfile(const int &profile);
 
     /// @brief    Set a new IR camera sensitivity, and apply to the currently selected calibration profile
     /// @param    sensitivity
     ///           New sensitivity to set for current cali profile.
-    static void SetIrSensitivity(const uint8_t &sensitivity);
+    static void SetIrSensitivity(const int &sensitivity);
 
     /// @brief    Set a new IR layout type, and apply to the currently selected calibration profile
     /// @param    layout
     ///           New layout type to set for current cali profile.
-    static void SetIrLayout(const uint8_t &layout);
+    static void SetIrLayout(const int &layout);
 
     /// @brief    Saves profile settings to EEPROM
     /// @note     Blinks LEDs (if any) on success or failure.
@@ -125,9 +125,6 @@ public:
     //// Camera
     // IR positioning camera
     static inline DFRobotIRPositionEx *dfrIRPos = nullptr;
-
-    // IR camera sensitivity
-    static inline DFRobotIRPositionEx::Sensitivity_e irSensitivity = DFRobotIRPositionEx::Sensitivity_Default;
 
     // flag to warn docked server if camera is not working currently
     static inline bool camNotAvailable = false;

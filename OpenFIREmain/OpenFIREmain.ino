@@ -50,7 +50,7 @@ void setup() {
     
         // Profile sanity checks
         // resets offsets that are wayyyyy too unreasonably high
-        for(uint i = 0; i < PROFILE_COUNT; ++i) {
+        for(int i = 0; i < PROFILE_COUNT; ++i) {
             if(OF_Prefs::profiles[i].rightOffset >= 32768 || OF_Prefs::profiles[i].bottomOffset >= 32768 ||
                OF_Prefs::profiles[i].topOffset >= 32768   || OF_Prefs::profiles[i].leftOffset >= 32768) {
                 OF_Prefs::profiles[i].topOffset = 0;
@@ -70,9 +70,6 @@ void setup() {
         if(OF_Prefs::currentProfile >= PROFILE_COUNT)
             OF_Prefs::currentProfile = 0;
 
-        // set the current IR camera sensitivity
-        if(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens <= DFRobotIRPositionEx::Sensitivity_Max)
-            FW_Common::irSensitivity = (DFRobotIRPositionEx::Sensitivity_e)OF_Prefs::profiles[OF_Prefs::currentProfile].irSens;
         // set the run mode
         if(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode < FW_Const::RunMode_Count)
             FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
@@ -575,9 +572,9 @@ void loop()
             } else if(FW_Common::buttons.pressedReleased == FW_Const::RunModeAverageBtnMask) {
                 FW_Common::SetRunMode(FW_Common::runMode == FW_Const::RunMode_Average ? FW_Const::RunMode_Average2 : FW_Const::RunMode_Average);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityUpBtnMask) {
-                IncreaseIrSensitivity();
+                IncreaseIrSensitivity(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityDownBtnMask) {
-                DecreaseIrSensitivity();
+                DecreaseIrSensitivity(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::SaveBtnMask) {
                 FW_Common::SavePreferences();
             #ifdef USES_RUMBLE
@@ -1215,32 +1212,16 @@ void SelectCalProfileFromBtnMask(const uint32_t &mask)
     }
 }
 
-void CycleIrSensitivity()
+void IncreaseIrSensitivity(const uint32_t &sens)
 {
-    uint8_t sens = FW_Common::irSensitivity;
-    if(FW_Common::irSensitivity < DFRobotIRPositionEx::Sensitivity_Max)
-        sens++;
-    else sens = DFRobotIRPositionEx::Sensitivity_Min;
-
-    FW_Common::SetIrSensitivity(sens);
+    if(sens < DFRobotIRPositionEx::Sensitivity_Max)
+        FW_Common::SetIrSensitivity(sens-1);
 }
 
-void IncreaseIrSensitivity()
+void DecreaseIrSensitivity(const uint32_t &sens)
 {
-    uint8_t sens = FW_Common::irSensitivity;
-    if(FW_Common::irSensitivity < DFRobotIRPositionEx::Sensitivity_Max) {
-        sens++;
-        FW_Common::SetIrSensitivity(sens);
-    }
-}
-
-void DecreaseIrSensitivity()
-{
-    uint8_t sens = FW_Common::irSensitivity;
-    if(FW_Common::irSensitivity > DFRobotIRPositionEx::Sensitivity_Min) {
-        sens--;
-        FW_Common::SetIrSensitivity(sens);
-    }
+    if(sens > DFRobotIRPositionEx::Sensitivity_Min)
+        FW_Common::SetIrSensitivity(sens-1);
 }
 
 /*
