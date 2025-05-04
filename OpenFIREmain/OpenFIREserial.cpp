@@ -116,8 +116,9 @@ void OF_Serial::SerialProcessing()
                       break;
                     // offscreen button
                     case '2':
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode;
+                      memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2,
+                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                             sizeof(LightgunButtons::Desc_s::reportType)*2);
                       // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
                       if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
                           LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
@@ -136,17 +137,15 @@ void OF_Serial::SerialProcessing()
                       break;
                     // make reload button (mapping of Button A)
                     case '1':
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType2;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode2;
+                      memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
+                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                             sizeof(LightgunButtons::Desc_s::reportType)*4);
                       break;
-                    // make middle mouse button (mapping of Button B, useful for low buttons mode & e.g. using VCop3 EZ mode)
+                    // make middle mouse button (mapping of Button B, useful for low buttons mode & e.g. using VCop3 ES mode)
                     case '2':
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType2;
-                      LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportCode2 = LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportCode2;
+                      memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
+                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType,
+                             sizeof(LightgunButtons::Desc_s::reportType)*4);
                       break;
                 }
                 break;
