@@ -185,49 +185,7 @@ public:
     #endif // USES_DISPLAY
 };
 
-// Sanity checks and assignments for player number -> common keyboard assignments
-    #if PLAYER_NUMBER == 1
-        static inline char playerStartBtn = '1';
-        static inline char playerSelectBtn = '5';
-    #elif PLAYER_NUMBER == 2
-        static inline char playerStartBtn = '2';
-        static inline char playerSelectBtn = '6';
-    #elif PLAYER_NUMBER == 3
-        static inline char playerStartBtn = '3';
-        static inline char playerSelectBtn = '7';
-    #elif PLAYER_NUMBER == 4
-        static inline char playerStartBtn = '4';
-        static inline char playerSelectBtn = '8';
-    #else
-        #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
-    #endif // PLAYER_NUMBER
-
-// Button descriptor
-// The order of the buttons is the order of the button bitmask
-// must match ButtonIndex_e order, and the named bitmask values for each button
-// see LightgunButtons::Desc_t, format is: 
-// {pin, report type, report code (ignored for internal), offscreen report type, offscreen report code, gamepad output report type, gamepad output report code, debounce time, debounce mask, label}
-inline LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
-    {OF_Prefs::pins[OF_Const::btnTrigger],  LightgunButtons::ReportType_Mouse,    MOUSE_LEFT,      LightgunButtons::ReportType_Mouse,    MOUSE_LEFT,      LightgunButtons::ReportType_Gamepad,  PAD_RT,     15, BTN_AG_MASK}, // Barry says: "I'll handle this."
-    {OF_Prefs::pins[OF_Const::btnGunA],     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Gamepad,  PAD_LT,     15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunB],     LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Gamepad,  PAD_Y,      15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunC],     LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Gamepad,  PAD_A,      15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnStart],    LightgunButtons::ReportType_Keyboard, playerStartBtn,  LightgunButtons::ReportType_Keyboard, playerStartBtn,  LightgunButtons::ReportType_Gamepad,  PAD_START,  20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnSelect],   LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad,  PAD_SELECT, 20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunUp],    LightgunButtons::ReportType_Gamepad,  PAD_UP,          LightgunButtons::ReportType_Gamepad,  PAD_UP,          LightgunButtons::ReportType_Gamepad,  PAD_UP,     20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunDown],  LightgunButtons::ReportType_Gamepad,  PAD_DOWN,        LightgunButtons::ReportType_Gamepad,  PAD_DOWN,        LightgunButtons::ReportType_Gamepad,  PAD_DOWN,   20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunLeft],  LightgunButtons::ReportType_Gamepad,  PAD_LEFT,        LightgunButtons::ReportType_Gamepad,  PAD_LEFT,        LightgunButtons::ReportType_Gamepad,  PAD_LEFT,   20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnGunRight], LightgunButtons::ReportType_Gamepad,  PAD_RIGHT,       LightgunButtons::ReportType_Gamepad,  PAD_RIGHT,       LightgunButtons::ReportType_Gamepad,  PAD_RIGHT,  20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnPedal],    LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Gamepad,  PAD_X,      15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnPedal2],   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON5,   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON5,   LightgunButtons::ReportType_Gamepad,  PAD_B,      15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnPump],     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Gamepad,  PAD_LT,     15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnHome],     LightgunButtons::ReportType_Internal, 0,               LightgunButtons::ReportType_Internal, 0,               LightgunButtons::ReportType_Internal, 0,          15, BTN_AG_MASK2}
-};
-
-    // button count constant
-    static inline constexpr unsigned int ButtonCount = sizeof(LightgunButtons::ButtonDesc) / sizeof(LightgunButtons::ButtonDesc[0]);
-
-    // button runtime data arrays
-    static inline LightgunButtonsStatic<ButtonCount> lgbData;
+// button runtime data arrays
+static inline LightgunButtonsStatic<ButtonCount> lgbData;
 
 #endif // _OPENFIRECOMMON_H_

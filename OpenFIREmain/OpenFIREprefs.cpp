@@ -25,6 +25,9 @@ void OF_Prefs::Load()
     if(toggles[OF_Const::customPins]) LoadPins();
     LoadSettings();
     LoadUSBID();
+
+    for(int i = 0; i < ButtonCount; ++i)
+        memcpy(OF_Prefs::backupButtonDesc[i], &LightgunButtons::ButtonDesc[i].reportType, sizeof(OF_Prefs::backupButtonDesc[i]));
 }
 
 int OF_Prefs::LoadProfiles()
