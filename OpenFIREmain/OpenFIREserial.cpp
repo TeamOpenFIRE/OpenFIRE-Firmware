@@ -117,13 +117,13 @@ void OF_Serial::SerialProcessing()
                     // offscreen button
                     case '2':
                       memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2,
-                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                             OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_A],
                              sizeof(LightgunButtons::Desc_s::reportType)*2);
                       // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
-                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
-                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType = LightgunButtons::ReportType_Mouse;
-                          LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportCode = MOUSE_BUTTON4;
-                      }
+                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode])
+                          memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                                 OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Reload],
+                                 sizeof(LightgunButtons::Desc_s::reportType)*2);
                       break;
                 }
                 break;
@@ -138,14 +138,14 @@ void OF_Serial::SerialProcessing()
                     // make reload button (mapping of Button A)
                     case '1':
                       memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
-                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
-                             sizeof(LightgunButtons::Desc_s::reportType)*4);
+                             OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_A],
+                             sizeof(OF_Prefs::backupButtonDesc[0]));
                       break;
                     // make middle mouse button (mapping of Button B, useful for low buttons mode & e.g. using VCop3 ES mode)
                     case '2':
                       memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
-                             &LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType,
-                             sizeof(LightgunButtons::Desc_s::reportType)*4);
+                             OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_B],
+                             sizeof(OF_Prefs::backupButtonDesc[0]));
                       break;
                 }
                 break;
