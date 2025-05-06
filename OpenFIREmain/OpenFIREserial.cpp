@@ -1140,6 +1140,11 @@ void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::str
                 Serial.readBytes(RXbuf, Serial.available());
 
                 if(!memcmp(RXbuf, TXbuf, pos)) break;
+                if(sendTry >= 2) {
+                    Serial.write(OF_Const::sError);
+                    Serial.flush();
+                    return;
+                }
             }
         }
     }
