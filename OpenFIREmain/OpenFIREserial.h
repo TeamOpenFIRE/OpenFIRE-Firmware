@@ -23,7 +23,7 @@ public:
     static void SerialProcessingDocked();
 
     /// @brief    Generic method for sending data over Serial to connected host
-    static void SerialBatchSend(void*, const std::unordered_map<std::string, int> &, const size_t&);
+    static void SerialBatchSend(void*, const std::unordered_map<std::string, int> &, const size_t&, const int& = -1);
 
     /// @brief    Generic method for reading commit data over Serial from connected host
     static void SerialBatchRecv(const char*, void*, const std::unordered_map<std::string, int> &, const size_t&, const size_t&, const size_t&);
