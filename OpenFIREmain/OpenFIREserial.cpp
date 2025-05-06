@@ -924,59 +924,9 @@ void OF_Serial::SerialProcessingDocked()
     case OF_Const::sGetPins:     SerialBatchSend(&OF_Prefs::pins,     OF_Prefs::OFPresets.boardInputs_Strings,   sizeof(OF_Prefs::pins)     / OF_Const::boardInputsCount  ); break;
     case OF_Const::sGetSettings: SerialBatchSend(&OF_Prefs::settings, OF_Prefs::OFPresets.settingsTypes_Strings, sizeof(OF_Prefs::settings) / OF_Const::settingsTypesCount); break;
     case OF_Const::sGetProfile:
-    {
-        char buf[64];
-        size_t pos = 0;
-        bool currentProfLogged = false;
-        for(size_t prof = 0; prof < PROFILE_COUNT; ++prof) {
-            for(auto &pair : OF_Prefs::OFPresets.profSettingTypes_Strings) {
-                switch(pair.second) {
-                case OF_Const::profName:
-                    if(pos > 63 - pair.first.length()-1 - sizeof(uint8_t) - sizeof(uint8_t) - sizeof(OF_Prefs::ProfileData_s::name)) {
-                        Serial.write(buf, pos);
-                        Serial.flush();
-                        pos = 0;
-                    }
-                    strcpy(&buf[pos], pair.first.c_str());
-                    pos += pair.first.length()+1;
-                    buf[pos++] = sizeof(OF_Prefs::ProfileData_s::name);
-                    buf[pos++] = prof;
-                    memcpy(&buf[pos], OF_Prefs::profiles[prof].name, sizeof(OF_Prefs::ProfileData_s::name));
-                    pos += sizeof(OF_Prefs::ProfileData_s::name);
-                    break;
-                case OF_Const::profCurrent:
-                    if(!currentProfLogged && pos > 63 - pair.first.length()-1 - sizeof(uint8_t) - sizeof(uint8_t)) {
-                        Serial.write(buf, pos);
-                        Serial.flush();
-                        pos = 0;
-                    }
-                    strcpy(&buf[pos], pair.first.c_str());
-                    pos += pair.first.length()+1;
-                    buf[pos++] = sizeof(uint8_t);
-                    buf[pos++] = OF_Prefs::currentProfile;
-                    currentProfLogged = true;
-                    break;
-                default:
-                    if(pos > 63 - pair.first.length()-1 - sizeof(uint8_t) - sizeof(uint8_t) - sizeof(uint32_t)) {
-                        Serial.write(buf, pos);
-                        Serial.flush();
-                        pos = 0;
-                    }
-                    strcpy(&buf[pos], pair.first.c_str());
-                    pos += pair.first.length()+1;
-                    buf[pos++] = sizeof(uint32_t);
-                    buf[pos++] = prof;
-                    memcpy(&buf[pos], (uint8_t*)&OF_Prefs::profiles[prof]+(sizeof(uint32_t)*pair.second), sizeof(uint32_t));
-                    pos+= sizeof(uint32_t);
-                    break;
-                }
-            }
-        }
-        buf[pos++] = OF_Const::serialTerminator;
-        Serial.write(buf, pos);
-        Serial.flush();
+        for(int prof = 0; prof < PROFILE_COUNT; ++prof)
+            SerialBatchSend(&OF_Prefs::profiles[prof], OF_Prefs::OFPresets.profSettingTypes_Strings, sizeof(uint32_t), prof);
         break;
-    }
 
     //// State changes/direct control methods
     //
@@ -1147,29 +1097,57 @@ void OF_Serial::SerialProcessingDocked()
     }
 }
 
-void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize)
+void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize, const int &profNum)
 {
-    size_t pos = 0;
+    size_t pos;
+    bool profNumSent = false;
     for(auto &pair : mapPtr) {
         if(pair.second >= 0) {
-            // string lengths don't account for null terminator, which we do need to send
-            // plus the size of the incoming message
-            if(pos > 63 - pair.first.length()-1 - 1 - dataSize) {
-                Serial.write(TXbuf, pos);
-                Serial.flush();
-                pos = 0;
-            }
-
+            pos = 0;
             strcpy(&TXbuf[pos], pair.first.c_str());
             pos += pair.first.length()+1;
-            TXbuf[pos++] = dataSize;
-            memcpy(&TXbuf[pos], (uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
-            pos += dataSize;
+            if(&mapPtr == &OF_Prefs::OFPresets.profSettingTypes_Strings) {
+                if(pair.second == OF_Const::profCurrent) {
+                    if(profNumSent) continue;
+                    else {
+                        TXbuf[pos++] = 1;
+                        TXbuf[pos++] = OF_Prefs::currentProfile;
+                        profNumSent = true;
+                    }
+                } else {
+                    if(pair.second == OF_Const::profName) {
+                        TXbuf[pos++] = sizeof(OF_Prefs::ProfileData_s::name);
+                        TXbuf[pos++] = profNum;
+                        memcpy(&TXbuf[pos], (uint8_t*)dataPtr + (dataSize * pair.second), sizeof(OF_Prefs::ProfileData_s::name));
+                        pos += sizeof(OF_Prefs::ProfileData_s::name);
+                    } else {
+                        TXbuf[pos++] = dataSize;
+                        TXbuf[pos++] = profNum;
+                        memcpy(&TXbuf[pos], (uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
+                        pos += dataSize;
+                    }
+                }
+            } else {
+                TXbuf[pos++] = dataSize;
+                memcpy(&TXbuf[pos], (uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
+                pos += dataSize;
+            }
+            
+            for(int sendTry = 0; sendTry < 3; ++sendTry) {
+                Serial.write(TXbuf, pos);
+                Serial.flush();
+                while(Serial.available() < pos) {}
+                Serial.readBytes(RXbuf, Serial.available());
+
+                if(!memcmp(RXbuf, TXbuf, pos)) break;
+            }
         }
     }
-    TXbuf[pos++] = OF_Const::serialTerminator;
-    Serial.write(TXbuf, pos);
-    Serial.flush();
+
+    if(profNum == -1 || profNum >= PROFILE_COUNT-1) {
+        Serial.write(OF_Const::serialTerminator);
+        Serial.flush();
+    }
 }
 
 void OF_Serial::SerialBatchRecv(const char *bufPtr, void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize, const size_t &rxDatSize, const size_t &rxBufSize)
