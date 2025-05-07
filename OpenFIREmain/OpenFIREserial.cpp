@@ -1136,7 +1136,7 @@ void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::str
             for(int sendTry = 0; sendTry < 3; ++sendTry) {
                 Serial.write(TXbuf, pos);
                 Serial.flush();
-                while(Serial.available() < pos) {}
+                while(Serial.available() < pos) yield();
                 Serial.readBytes(RXbuf, Serial.available());
 
                 if(!memcmp(RXbuf, TXbuf, pos)) break;
