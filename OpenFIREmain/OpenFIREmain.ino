@@ -1024,15 +1024,16 @@ void AnalogStickPoll()
         uint32_t newPos = 0;
 
         // TODO: need to consider inverted axis toggle, currently assumes axises are inverted by default
-        if(analogValueY < 1900)
+        // would this also benefit from custom Analog->Digital deadzone?
+        if(analogValueY < 1200)
             newPos = 2; // down
-        else if(analogValueY > 2200)
+        else if(analogValueY > 2900)
             newPos = 1; // up
 
-        if(analogValueX < 1900)
-            newPos |= 8; // right?
-        else if(analogValueX > 2200)
-            newPos |= 4; // left?
+        if(analogValueX < 1200)
+            newPos |= 8; // right
+        else if(analogValueX > 2900)
+            newPos |= 4; // left
 
         switch(OF_Prefs::settings[OF_Const::analogMode]) {
         case OF_Const::analogModeDpad: Gamepad16.padUpdate(FW_Common::buttons.PadMaskConvert(newPos)); break;
