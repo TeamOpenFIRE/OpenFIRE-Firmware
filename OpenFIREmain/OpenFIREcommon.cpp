@@ -717,9 +717,14 @@ void FW_Common::GetPosition()
             if(gunMode == FW_Const::GunMode_Run) {
                 UpdateLastSeen();
 
-                if(OF_Serial::serialARcorrection) {
-                    conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
-                    conMoveX = constrain(conMoveX, 0, 32767);
+                if(OF_Serial::serialARcorrection) switch(OF_Prefs::profiles[OF_Prefs::currentProfile].aspectRatio) {
+                    case OF_Const::ar16_9:
+                        conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
+                        conMoveX = constrain(conMoveX, 0, 32767);
+                        break;
+                    case OF_Const::ar16_10:
+                    case OF_Const::ar4_3:
+                        break;
                 }
 
                 bool offXAxis = false;
@@ -732,11 +737,11 @@ void FW_Common::GetPosition()
                     offYAxis = true;
 
                 if(offXAxis || offYAxis)
-                    buttons.offScreen = true;
+                     buttons.offScreen = true;
                 else buttons.offScreen = false;
 
                 if(buttons.analogOutput)
-                    Gamepad16.moveCam(conMoveX, conMoveY);
+                     Gamepad16.moveCam(conMoveX, conMoveY);
                 else AbsMouse5.move(conMoveX, conMoveY);
 
             } else if(gunMode == FW_Const::GunMode_Verification) {
