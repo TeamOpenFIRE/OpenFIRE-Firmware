@@ -1054,7 +1054,9 @@ void OF_Serial::SerialProcessingDocked()
                         RXbuf[rxLen++] = '\0';
                         datSize = Serial.read();
                         RXbuf[rxLen++] = datSize;
-                        if(type == OF_Const::sCommitProfile && OF_Prefs::OFPresets.profSettingTypes_Strings.at(RXbuf) != OF_Const::profCurrent) {
+                        if(type == OF_Const::sCommitProfile && (OF_Prefs::OFPresets.profSettingTypes_Strings.count(RXbuf) == 0 ||
+                                                               (OF_Prefs::OFPresets.profSettingTypes_Strings.count(RXbuf) && OF_Prefs::OFPresets.profSettingTypes_Strings.at(RXbuf) != OF_Const::profCurrent)))
+                        {
                             profNum = Serial.read();
                             RXbuf[rxLen++] = profNum;
                         }
