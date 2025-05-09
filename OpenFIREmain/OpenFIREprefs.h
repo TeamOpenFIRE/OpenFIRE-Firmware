@@ -92,19 +92,20 @@ public:
 
     /// @brief System variables array
     static inline uint32_t settings[OF_Const::settingsTypesCount] = {
-        255,            // rumble strength
-        150,            // rumble length
-        45,             // solenoid on length
-        80,             // solenoid off length
-        500,            // solenoid hold length
-        2500,           // hold-to-pause length
-        1,              // custom NeoPixel strand length
-        0,              // custom NeoPixel static count
-        0xFF0000,       // custom pixel color 1
-        0x00FF00,       // custom pixel color 2
-        0x0000FF,       // custom pixel color 3
-        38,             // temp warning
-        45,             // temp shutoff
+        255,                        // rumble strength
+        150,                        // rumble length
+        45,                         // solenoid on length
+        80,                         // solenoid off length
+        500,                        // solenoid hold length
+        2500,                       // hold-to-pause length
+        1,                          // custom NeoPixel strand length
+        0,                          // custom NeoPixel static count
+        0xFF0000,                   // custom pixel color 1
+        0x00FF00,                   // custom pixel color 2
+        0x0000FF,                   // custom pixel color 3
+        38,                         // temp warning
+        45,                         // temp shutoff
+        OF_Const::analogModeStick,  // analog stick mode
     };
 
     typedef struct USBMap_s {
@@ -114,8 +115,13 @@ public:
 
     /// @brief Instance of TinyUSB identifier data
     static inline USBMap_t usb = {
+        #ifdef PLAYER_NUMBER
         PLAYER_NUMBER,
         { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', PLAYER_NUMBER+'0' }
+        #else
+        1,
+        { 'F', 'I', 'R', 'E', 'C', 'o', 'n', ' ', 'P', '1' }
+        #endif // PLAYER_NUMBER
     };
 
     // Backup instance of the buttons descriptor
@@ -149,27 +155,35 @@ public:
 
     /// @brief Load toggles (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), &toggles, OFPresets.boolTypes_Strings); }
+    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), toggles, OFPresets.boolTypes_Strings); }
 
     /// @brief Save current toggles states (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), &toggles, OFPresets.boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
+    static int SaveToggles() { return SaveToPtr(LittleFS.open("/toggles.conf", "w"), toggles, OFPresets.boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount); }
 
     /// @brief Load pin mapping (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), &pins, OFPresets.boardInputs_Strings); }
+    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), pins, OFPresets.boardInputs_Strings); }
 
     /// @brief Save current pin mapping (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), &pins, OFPresets.boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
+    static int SavePins() { return SaveToPtr(LittleFS.open("/pins.conf", "w"), pins, OFPresets.boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount); }
 
     /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), &settings, OFPresets.settingsTypes_Strings); }
+    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), settings, OFPresets.settingsTypes_Strings); }
 
     /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
-    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), &settings, OFPresets.settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
+    static int SaveSettings() { return SaveToPtr(LittleFS.open("/settings.conf", "w"), settings, OFPresets.settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount); }
+
+    /// @brief Load settings (macro for LoadToPtr)
+    /// @return An error code from Errors_e
+    static int LoadButtons() { return LoadToPtr(LittleFS.open("/btns.conf", "r"), backupButtonDesc, OFPresets.boardInputs_Strings); }
+
+    /// @brief Save current settings (macro for SaveToPtr)
+    /// @return An error code from Errors_e
+    static int SaveButtons();
 
     /// @brief Load USB identifier info
     /// @return An error code from Errors_e
@@ -186,23 +200,6 @@ public:
     static void LoadPresets();
 };
 
-// Sanity checks and assignments for player number -> common keyboard assignments
-    #if PLAYER_NUMBER == 1
-        static inline char playerStartBtn = '1';
-        static inline char playerSelectBtn = '5';
-    #elif PLAYER_NUMBER == 2
-        static inline char playerStartBtn = '2';
-        static inline char playerSelectBtn = '6';
-    #elif PLAYER_NUMBER == 3
-        static inline char playerStartBtn = '3';
-        static inline char playerSelectBtn = '7';
-    #elif PLAYER_NUMBER == 4
-        static inline char playerStartBtn = '4';
-        static inline char playerSelectBtn = '8';
-    #else
-        #error Undefined or out-of-range player number! Please set PLAYER_NUMBER to 1, 2, 3, or 4.
-    #endif // PLAYER_NUMBER
-
 // Button descriptor
 // The order of the buttons is the order of the button bitmask
 // must match ButtonIndex_e order, and the named bitmask values for each button
@@ -213,8 +210,8 @@ inline LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
     {OF_Prefs::pins[OF_Const::btnGunA],     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Mouse,    MOUSE_RIGHT,     LightgunButtons::ReportType_Gamepad,  PAD_LT,     15, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunB],     LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Mouse,    MOUSE_MIDDLE,    LightgunButtons::ReportType_Gamepad,  PAD_Y,      15, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunC],     LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Mouse,    MOUSE_BUTTON4,   LightgunButtons::ReportType_Gamepad,  PAD_A,      15, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnStart],    LightgunButtons::ReportType_Keyboard, playerStartBtn,  LightgunButtons::ReportType_Keyboard, playerStartBtn,  LightgunButtons::ReportType_Gamepad,  PAD_START,  20, BTN_AG_MASK2},
-    {OF_Prefs::pins[OF_Const::btnSelect],   LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Keyboard, playerSelectBtn, LightgunButtons::ReportType_Gamepad,  PAD_SELECT, 20, BTN_AG_MASK2},
+    {OF_Prefs::pins[OF_Const::btnStart],    LightgunButtons::ReportType_Keyboard, 0xFF,            LightgunButtons::ReportType_Keyboard, 0xFF,            LightgunButtons::ReportType_Gamepad,  PAD_START,  20, BTN_AG_MASK2},
+    {OF_Prefs::pins[OF_Const::btnSelect],   LightgunButtons::ReportType_Keyboard, 0xFE,            LightgunButtons::ReportType_Keyboard, 0xFE,            LightgunButtons::ReportType_Gamepad,  PAD_SELECT, 20, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunUp],    LightgunButtons::ReportType_Gamepad,  PAD_UP,          LightgunButtons::ReportType_Gamepad,  PAD_UP,          LightgunButtons::ReportType_Gamepad,  PAD_UP,     20, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunDown],  LightgunButtons::ReportType_Gamepad,  PAD_DOWN,        LightgunButtons::ReportType_Gamepad,  PAD_DOWN,        LightgunButtons::ReportType_Gamepad,  PAD_DOWN,   20, BTN_AG_MASK2},
     {OF_Prefs::pins[OF_Const::btnGunLeft],  LightgunButtons::ReportType_Gamepad,  PAD_LEFT,        LightgunButtons::ReportType_Gamepad,  PAD_LEFT,        LightgunButtons::ReportType_Gamepad,  PAD_LEFT,   20, BTN_AG_MASK2},
@@ -229,5 +226,7 @@ inline LightgunButtons::Desc_t LightgunButtons::ButtonDesc[] = {
 static inline constexpr unsigned int ButtonCount = sizeof(LightgunButtons::ButtonDesc) / sizeof(LightgunButtons::ButtonDesc[0]);
 
 inline uint8_t OF_Prefs::backupButtonDesc[ButtonCount][6];
+
+inline int OF_Prefs::SaveButtons() { return SaveToPtr(LittleFS.open("/btns.conf", "w"), backupButtonDesc, OFPresets.boardInputs_Strings, sizeof(backupButtonDesc) / ButtonCount); }
 
 #endif // _OPENFIREPREFS_H_
