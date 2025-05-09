@@ -718,12 +718,12 @@ void FW_Common::GetPosition()
                 UpdateLastSeen();
 
                 if(OF_Serial::serialARcorrection) switch(OF_Prefs::profiles[OF_Prefs::currentProfile].aspectRatio) {
-                    case OF_Prefs::ar16_9:
+                    case OF_Const::ar16_9:
                         conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
                         conMoveX = constrain(conMoveX, 0, 32767);
                         break;
-                    case OF_Prefs::ar16_10:
-                    case OF_Prefs::ar4_3:
+                    case OF_Const::ar16_10:
+                    case OF_Const::ar4_3:
                         break;
                 }
 
