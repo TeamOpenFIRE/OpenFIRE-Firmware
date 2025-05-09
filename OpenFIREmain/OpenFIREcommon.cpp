@@ -951,7 +951,7 @@ void FW_Common::SetIrSensitivity(const int &sensitivity)
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
 
-    dfrIRPos->sensitivityLevel((DFRobotIRPositionEx::Sensitivity_e)sensitivity);
+    if(dfrIRPos != nullptr) dfrIRPos->sensitivityLevel((DFRobotIRPositionEx::Sensitivity_e)sensitivity);
     //if(!(stateFlags & FW_Const::StateFlag_PrintSelectedProfile))
         //PrintIrSensitivity();
 }
