@@ -827,12 +827,7 @@ void ExecRunModeProcessing()
 void ExecGunModeDocked()
 {
     FW_Common::buttons.ReportDisable();
-
-    if(FW_Common::justBooted) {
-        // center the joystick so RetroArch/Windows doesn't throw a hissy fit about uncentered joysticks
-        delay(250);  // Exact time needed to wait seems to vary, so make a safe assumption here.
-        Gamepad16.releaseAll();
-    }
+    FW_Common::buttons.ReleaseAll();
 
     #ifdef LED_ENABLE
         OF_RGB::LedUpdate(127, 127, 255);
