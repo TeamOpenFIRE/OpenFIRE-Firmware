@@ -877,7 +877,7 @@ bool FW_Common::SelectCalProfile(const int &profile)
         OF_Prefs::currentProfile = profile;
     }
 
-    OpenFIREper.source(OF_Prefs::profiles[OF_Prefs::currentProfile].adjX, OF_Prefs::profiles[OF_Prefs::currentProfile].adjY);                                                          
+    OpenFIREper.source(OF_Prefs::profiles[profile].adjX, OF_Prefs::profiles[profile].adjY);                                                          
     OpenFIREper.deinit(0);
 
     // set IR sensitivity
@@ -890,7 +890,7 @@ bool FW_Common::SelectCalProfile(const int &profile)
 
     #ifdef USES_DISPLAY
         if(gunMode != FW_Const::GunMode_Docked)
-            OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[OF_Prefs::currentProfile].name);
+            OLED.TopPanelUpdate("Using ", OF_Prefs::profiles[profile].name);
     #endif // USES_DISPLAY
  
     #ifdef LED_ENABLE

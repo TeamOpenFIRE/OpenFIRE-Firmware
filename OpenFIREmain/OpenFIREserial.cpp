@@ -970,6 +970,11 @@ void OF_Serial::SerialProcessingDocked()
                   FW_Common::ExecCalMode(true);
                 }
             }
+        } else {
+            Serial.read();
+            if(Serial.read() == OF_Const::sCaliStart) {
+                if(Serial.read() != -1) Serial.read();
+            }
         }
         break;
     }
