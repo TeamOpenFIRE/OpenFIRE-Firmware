@@ -1158,7 +1158,7 @@ void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::str
 void OF_Serial::SerialBatchRecv(const char *bufPtr, void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize, const size_t &rxDatSize, const size_t &rxBufSize)
 {
     if(mapPtr.count(bufPtr)) {
-        if(&mapPtr == &OF_Prefs::OFPresets.profSettingTypes_Strings && mapPtr.count(bufPtr) == OF_Const::profCurrent) {
+        if(&mapPtr == &OF_Prefs::OFPresets.profSettingTypes_Strings && mapPtr.at(bufPtr) == OF_Const::profCurrent) {
             memcpy(&OF_Prefs::currentProfile, &bufPtr[rxBufSize-rxDatSize], rxDatSize);
         } else memcpy((uint8_t*)dataPtr + (dataSize * mapPtr.at(bufPtr)), &bufPtr[rxBufSize-rxDatSize], rxDatSize);
     }
