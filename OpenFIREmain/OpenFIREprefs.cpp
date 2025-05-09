@@ -25,9 +25,9 @@ void OF_Prefs::Load()
     if(toggles[OF_Const::customPins]) LoadPins();
     LoadSettings();
     LoadUSBID();
-
+    LoadButtons();
     for(int i = 0; i < ButtonCount; ++i)
-        memcpy(OF_Prefs::backupButtonDesc[i], &LightgunButtons::ButtonDesc[i].reportType, sizeof(OF_Prefs::backupButtonDesc[i]));
+        memcpy(&LightgunButtons::ButtonDesc[i].reportType, OF_Prefs::backupButtonDesc[i], sizeof(OF_Prefs::backupButtonDesc[i]));
 }
 
 int OF_Prefs::LoadProfiles()
@@ -112,7 +112,7 @@ int OF_Prefs::SaveToPtr(File prefsFile, void *dataPtr, const std::unordered_map<
 {
     if(prefsFile) {
         for(auto &pair : mapPtr) {
-            if(pair.second >= 0) {
+            if((pair.second >= 0 && dataPtr != backupButtonDesc) || dataPtr == backupButtonDesc && pair.second >= 0 && pair.second < ButtonCount) {
                 prefsFile.write((const uint8_t*)pair.first.c_str(), pair.first.length()+1);
                 prefsFile.write((uint8_t)dataSize);
                 prefsFile.write((uint8_t*)dataPtr + (dataSize * pair.second), dataSize);
@@ -181,4 +181,9 @@ void OF_Prefs::LoadPresets()
             if(OFPresets.boardsPresetsMap.at(OPENFIRE_BOARD).at(i) > -1)
                 pins[OFPresets.boardsPresetsMap.at(OPENFIRE_BOARD).at(i)] = i;
     }
+
+    // save buttons map to backup descriptor (important for initializing backupDesc for saving)
+    // couldn't find a better place for this tbh lol
+    for(int i = 0; i < ButtonCount; ++i)
+        memcpy(OF_Prefs::backupButtonDesc[i], &LightgunButtons::ButtonDesc[i].reportType, sizeof(OF_Prefs::backupButtonDesc[i]));
 }

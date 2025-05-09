@@ -90,7 +90,13 @@ void setup() {
             else TinyUSBDevice.setProductDescriptor(OF_Prefs::usb.deviceName);
         } else {
             TinyUSBDevice.setProductDescriptor(DEVICE_NAME);
-            TinyUSBDevice.setID(DEVICE_VID, PLAYER_NUMBER);
+            TinyUSBDevice.setID(DEVICE_VID,
+            #ifdef PLAYER_NUMBER
+            PLAYER_NUMBER
+            #else
+            1
+            #endif // PLAYER_NUMBER
+            );
         }
 
         #if defined(ARDUINO_RASPBERRY_PI_PICO_W) && defined(ENABLE_CLASSIC)
@@ -117,11 +123,6 @@ void setup() {
         Serial.setTimeout(0);
         #endif // ARDUINO_RASPBERRY_PI_PICO_W
     #endif // USE_TINYUSB
-
-    if(OF_Prefs::usb.devicePID > 0 && OF_Prefs::usb.devicePID < 5) {
-        playerStartBtn = OF_Prefs::usb.devicePID + '0';
-        playerSelectBtn = OF_Prefs::usb.devicePID + '4';
-    }
 
     // this is needed for both customs and builtins, as defaults are all uninitialized
     FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
@@ -1007,17 +1008,51 @@ void TriggerNotFire()
 #ifdef USES_ANALOG
 void AnalogStickPoll()
 {
-    unsigned int analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
-    unsigned int analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
+    int analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
+    int analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
     
-    // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.
-    if((analogValueX < 1900 || analogValueX > 2200) ||
-       (analogValueY < 1900 || analogValueY > 2200)) {
-          Gamepad16.moveStick(analogValueX, analogValueY);
+    if(OF_Prefs::settings[OF_Const::analogMode] == OF_Const::analogModeStick) {
+        // Analog stick deadzone should help mitigate overwriting USB commands for the other input channels.
+        if((analogValueX < 1900 || analogValueX > 2200) ||
+        (analogValueY < 1900 || analogValueY > 2200)) {
+            Gamepad16.moveStick(analogValueX, analogValueY);
+        } else {
+            // Duplicate coords won't be reported, so no worries.
+            Gamepad16.moveStick(2048, 2048);
+        }
     } else {
-        // Duplicate coords won't be reported, so no worries.
-        Gamepad16.moveStick(2048, 2048);
+        uint32_t newPos = 0;
+
+        // TODO: need to consider inverted axis toggle, currently assumes axises are inverted by default
+        // would this also benefit from custom Analog->Digital deadzone?
+        if(analogValueY < 1200)
+            newPos = 2; // down
+        else if(analogValueY > 2900)
+            newPos = 1; // up
+
+        if(analogValueX < 1200)
+            newPos |= 8; // right
+        else if(analogValueX > 2900)
+            newPos |= 4; // left
+
+        switch(OF_Prefs::settings[OF_Const::analogMode]) {
+        case OF_Const::analogModeDpad: Gamepad16.padUpdate(FW_Common::buttons.PadMaskConvert(newPos)); break;
+        case OF_Const::analogModeKeys:
+            if(FW_Common::aStickADCLastPos ^ newPos) {
+                for(int i = 0; i < 4; ++i) {
+                    if(FW_Common::aStickADCLastPos ^ newPos & 1 << i)
+                        Keyboard.release(KEY_UP_ARROW-i);
+                }
+            }
+            for(int i = 0; i < 4; ++i) {
+                if(newPos & 1 << i)
+                    Keyboard.press(KEY_UP_ARROW-i);
+            }
+            break;
+        }
+        FW_Common::aStickADCLastPos = newPos;
     }
+        
 }
 #endif // USES_ANALOG
 

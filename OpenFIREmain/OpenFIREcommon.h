@@ -164,6 +164,7 @@ public:
 
     #ifdef USES_ANALOG
         static inline bool analogIsValid;                          // Flag set true if analog stick is mapped to valid nums
+        static inline uint32_t aStickADCLastPos = 0;               // Analog-to-digital direction mask for digital outputs when settings[OF_Const::analogMode] is > 0
     #endif // USES_ANALOG
 
     #ifdef FOURPIN_LED
@@ -181,6 +182,9 @@ public:
     #endif // MAMEHOOKER
     #endif // USES_DISPLAY
 };
+
+static inline char playerStartBtn = '1';
+static inline char playerSelectBtn = '5';
 
 // button runtime data arrays
 static inline LightgunButtonsStatic<ButtonCount> lgbData;

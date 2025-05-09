@@ -31,13 +31,32 @@
   // Here we define the Manufacturer Name, Device Name, and Vendor ID of the gun as will be displayed by the operating system.
   // For multiplayer, different guns need different IDs!
   // If unsure, just leave these at their defaults, as Product ID is determined by what's saved in local storage, or Player Number as a fallback.
+  // For compatibility with some whitelists' support for OpenFIRE, Manufacturer Name and Device VID must be kept at the default values "OpenFIRE"/OxF143
 #define MANUFACTURER_NAME "OpenFIRE"
 #define DEVICE_NAME "FIRECon"
 #define DEVICE_VID 0xF143
 
-  // Set what player this board is mapped to by default (1-4). This will change keyboard mappings appropriate for the respective player.
-  // If unsure, just leave this at 1 - the mapping can be changed at runtime by sending an 'XR#' command over Serial, where # = player number
-#define PLAYER_NUMBER 1
+  // Set what player this board is hardcoded to.
+  // This will change the function of playerStartBtn/playerSelectBtn appropriate for the respective player, regardless of Product ID.
+  // If unsure, just leave commented out - the mapping is adjusted dynamically based on Product ID,
+  // and can be changed at runtime by sending an 'XR#' command over Serial, where # = player number.
+//#define PLAYER_NUMBER 1
+
+#ifdef PLAYER_NUMBER
+#if PLAYER_NUMBER == 1
+#define PLAYER_START '1'
+#define PLAYER_SELECT '5'
+#elif PLAYER_NUMBER == 2
+#define PLAYER_START '2'
+#define PLAYER_SELECT '6'
+#elif PLAYER_NUMBER == 3
+#define PLAYER_START '3'
+#define PLAYER_SELECT '7'
+#elif PLAYER_NUMBER == 4
+#define PLAYER_START '4'
+#define PLAYER_SELECT '8'
+#endif // PLAYER_NUMBER
+#endif // PLAYER_NUMBER
 
   // Leave this uncommented to enable MAMEHOOKER support, or comment out (//) to disable references to serial reading and only use it for debugging.
   // WARNING: Has a chance of making the board lock up if TinyUSB hasn't been patched to fix serial-related lockups.
