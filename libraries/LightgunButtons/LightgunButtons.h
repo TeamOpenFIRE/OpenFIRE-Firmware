@@ -149,6 +149,11 @@ public:
     /// @brief Get the button index from a mask or -1 if a single button is not matched
     static int MaskToIndex(uint32_t mask);
 
+    /// @brief Converts directional buttons bit mask from internal to HID format.
+    /// @details Because the HID POV hat format makes no effing sense whatsoever.
+    /// @returns Converted D-Pad mask
+    uint32_t PadMaskConvert(const uint32_t &);
+
 private:
     /// @brief millis() value from last Poll
     unsigned long lastMillis;
@@ -174,11 +179,6 @@ private:
     /// @brief Internal bit mask of directional buttons pressed.
     /// @details Only the four rightmost bits are used to track state of gamepad directional buttons pressed.
     uint32_t padMask = 0;
-
-    /// @brief Converts directional buttons bit mask from internal to HID format.
-    /// @details Because the HID POV hat format makes no effing sense whatsoever.
-    /// @returns Converted D-Pad mask
-    uint32_t PadMaskConvert();
 
     /// @brief Tracked buttons that are offscreen.
     uint32_t internalOffscreenMask;

@@ -1035,7 +1035,7 @@ void AnalogStickPoll()
             newPos |= 4; // left?
 
         switch(OF_Prefs::settings[OF_Const::analogMode]) {
-        case OF_Const::analogModeDpad: Gamepad16.padUpdate(LightgunButtons::MaskToIndex(newPos)); break;
+        case OF_Const::analogModeDpad: Gamepad16.padUpdate(FW_Common::buttons.PadMaskConvert(newPos)); break;
         case OF_Const::analogModeKeys:
             if(FW_Common::aStickADCLastPos & newPos) {
                 for(int i = 0; i < 4; ++i) {
