@@ -740,6 +740,10 @@ void FW_Common::GetPosition()
                         conMoveX = map(conMoveX, 0, res_x, 0, 32767);
                         conMoveY = map(conMoveY, 0, res_y, 0, 32767);
                         break;
+                } else {
+                    // Output mapped to Mouse resolution
+                    conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+                    conMoveY = map(conMoveY, 0, res_y, 0, 32767);
                 }
 
                 bool offXAxis = false;
