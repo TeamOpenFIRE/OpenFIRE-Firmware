@@ -710,20 +710,35 @@ void FW_Common::GetPosition()
             int32_t conMoveX = constrain(mouseX, 0, res_x);
             int32_t conMoveY = constrain(mouseY, 0, res_y);
 
-            // Output mapped to Mouse resolution
-            conMoveX = map(conMoveX, 0, res_x, 0, 32767);
-            conMoveY = map(conMoveY, 0, res_y, 0, 32767);
-
             if(gunMode == FW_Const::GunMode_Run) {
                 UpdateLastSeen();
 
                 if(OF_Serial::serialARcorrection) switch(OF_Prefs::profiles[OF_Prefs::currentProfile].aspectRatio) {
                     case OF_Const::ar16_9:
-                        conMoveX = map(conMoveX, 4147, 28697, 0, 32767);
+                        conMoveX = map(conMoveX, 966, 6720, 0, 32767);
                         conMoveX = constrain(conMoveX, 0, 32767);
+                        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
                         break;
                     case OF_Const::ar16_10:
+                        conMoveX = map(conMoveX, 655, 7048, 0, 32767);
+                        conMoveX = constrain(conMoveX, 0, 32767);
+                        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+                        break;
+                    case OF_Const::ar3_2:
+                        conMoveX = map(conMoveX, 438, 7264, 0, 32767);
+                        conMoveX = constrain(conMoveX, 0, 32767);
+                        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+                        break;
+                    case OF_Const::ar5_4:
+                        conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+                        conMoveY = map(conMoveY, 148, 4182, 0, 32767);
+                        conMoveY = constrain(conMoveY, 0, 32767);
+                        break;
                     case OF_Const::ar4_3:
+                    default:
+                        // Output mapped to Mouse resolution
+                        conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+                        conMoveY = map(conMoveY, 0, res_y, 0, 32767);
                         break;
                 }
 
@@ -745,6 +760,10 @@ void FW_Common::GetPosition()
                 else AbsMouse5.move(conMoveX, conMoveY);
 
             } else if(gunMode == FW_Const::GunMode_Verification) {
+                // Output mapped to Mouse resolution
+                conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+                conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+
                 AbsMouse5.move(conMoveX, conMoveY);
                 AbsMouse5.report();
             } else {
