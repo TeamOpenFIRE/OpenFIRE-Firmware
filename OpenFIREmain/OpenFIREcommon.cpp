@@ -185,7 +185,7 @@ void FW_Common::CameraSet()
         pwm_set_clkdiv(slice_num, 1.0f);  // for sys_clock = 125MHz
         //pwm_set_clkdiv(slice_num, 3.0f); // for sys_clock = 150MHz
         pwm_set_wrap(slice_num, 4);
-        pwm_set_chan_level(slice_num, PWM_CHAN_A, 2);
+        pwm_set_chan_level(slice_num, pwm_gpio_to_channel(OF_Prefs::pins[OF_Const::wiiClockGen]), 2);
         pwm_set_enabled(slice_num, true);
     } else {
         set_sys_clock_khz(133000, true);
