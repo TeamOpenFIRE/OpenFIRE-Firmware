@@ -113,6 +113,9 @@ public:
     ///           but these are handled directly in firing modes currently.
     static void UpdateBindings(const bool &lowButtons = false);
 
+    /// @brief    Checks Button Descriptor and replaces instances of 0xFF/0xFE with player-relative Start/Select
+    static void UpdateStartSelect();
+
     // initial gunmode
     static inline FW_Const::GunMode_e gunMode = FW_Const::GunMode_Init;
 

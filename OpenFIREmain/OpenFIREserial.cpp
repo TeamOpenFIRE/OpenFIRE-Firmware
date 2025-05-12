@@ -112,7 +112,14 @@ void OF_Serial::SerialProcessing()
                     case '3':
                     // disabled
                     case '0':
-                      FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
+                      memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2,
+                             &OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Trigger][2],
+                             sizeof(LightgunButtons::Desc_s::reportType)*2);
+                      // reset remapping for low button users if M1x2 was previously called
+                      if(OF_Prefs::toggles[OF_Const::lowButtonsMode])
+                          memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                                 OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_A],
+                                 sizeof(LightgunButtons::Desc_s::reportType)*2);
                       break;
                     // offscreen button
                     case '2':
@@ -126,6 +133,7 @@ void OF_Serial::SerialProcessing()
                                  sizeof(LightgunButtons::Desc_s::reportType)*2);
                       break;
                 }
+                FW_Common::UpdateStartSelect();
                 break;
               // pedal functionality
               case '2':
@@ -133,7 +141,9 @@ void OF_Serial::SerialProcessing()
                 switch(Serial.read()) {
                     // separate button (default to original binds)
                     case '0':
-                      FW_Common::UpdateBindings(OF_Prefs::toggles[OF_Const::lowButtonsMode]);
+                      memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
+                             OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Pedal],
+                             sizeof(OF_Prefs::backupButtonDesc[0]));
                       break;
                     // make reload button (mapping of Button A)
                     case '1':
@@ -148,6 +158,7 @@ void OF_Serial::SerialProcessing()
                              sizeof(OF_Prefs::backupButtonDesc[0]));
                       break;
                 }
+                FW_Common::UpdateStartSelect();
                 break;
               // aspect ratio correction
               case '3':
