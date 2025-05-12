@@ -835,40 +835,39 @@ void ExecGunModeDocked()
 
     unsigned long tempChecked = millis();
     unsigned long aStickChecked = millis();
-    uint8_t aStickDirPrev;
+    unsigned long currentMillis = millis();
 
-    {
-        char buf[64];
-        int pos = sprintf(&buf[0], "%.1f"
-                                    #ifdef GIT_HASH
-                                    "-%s"
-                                    #endif // GIT_HASH
-                                    , OPENFIRE_VERSION
-                                    #ifdef GIT_HASH
-                                    , GIT_HASH
-                                    #endif // GIT_HASH
-                          );
+    char buf[64];
+    int pos = sprintf(&buf[0], "%.1f"
+                                #ifdef GIT_HASH
+                                "-%s"
+                                #endif // GIT_HASH
+                                , OPENFIRE_VERSION
+                                #ifdef GIT_HASH
+                                , GIT_HASH
+                                #endif // GIT_HASH
+                      );
+    buf[pos++] = OF_Const::serialTerminator;
+    pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
+    buf[pos++] = OF_Const::serialTerminator;
+    memcpy(&buf[pos], &OF_Prefs::usb, sizeof(OF_Prefs::USBMap_t));
+    pos += sizeof(OF_Prefs::USBMap_t);
+    if(FW_Common::camNotAvailable) {
         buf[pos++] = OF_Const::serialTerminator;
-        pos += sprintf(&buf[pos], "%s", OPENFIRE_BOARD);
-        buf[pos++] = OF_Const::serialTerminator;
-        memcpy(&buf[pos], &OF_Prefs::usb, sizeof(OF_Prefs::USBMap_t));
-        pos += sizeof(OF_Prefs::USBMap_t);
-        if(FW_Common::camNotAvailable) {
-            buf[pos++] = OF_Const::serialTerminator;
-            buf[pos++] = OF_Const::sError;
-        }
-        Serial.write(buf, pos);
-        Serial.flush();
+        buf[pos++] = OF_Const::sError;
     }
+    Serial.write(buf, pos);
+    Serial.flush();
 
     for(;;) {
         FW_Common::buttons.Poll(1);
+        currentMillis = millis();
 
         if(!FW_Common::dockedSaving) {
             if(FW_Common::buttons.pressed) {
                 for(uint i = 0; i < ButtonCount; ++i)
                     if(bitRead(FW_Common::buttons.pressed, i)) {
-                        const char buf[] = {OF_Const::sBtnPressed, (uint8_t)i};
+                        buf[0] = OF_Const::sBtnPressed, buf[1] = i;
                         Serial.write(buf, 2);
                     }
             }
@@ -876,23 +875,21 @@ void ExecGunModeDocked()
             if(FW_Common::buttons.released) {
                 for(uint i = 0; i < ButtonCount; ++i)
                     if(bitRead(FW_Common::buttons.released, i)) {
-                        const char buf[] = {OF_Const::sBtnReleased, (uint8_t)i};
+                        buf[0] = OF_Const::sBtnReleased, buf[1] = i;
                         Serial.write(buf, 2);
                     }
             }
 
             #ifdef USES_TEMP
-                if(OF_Prefs::pins[OF_Const::tempPin] > -1)
+                if(OF_Prefs::pins[OF_Const::tempPin] > -1) {
                     OF_FFB::TemperatureUpdate();
 
-                unsigned long currentMillis = millis();
-                if(currentMillis - tempChecked >= 1000) {
-                    if(OF_Prefs::pins[OF_Const::tempPin] >= 0) {
-                        const char buf[] = {OF_Const::sTemperatureUpd, (uint8_t)OF_FFB::temperatureCurrent};
+                    if(currentMillis - tempChecked >= 1000) {
+                        buf[0] = OF_Const::sTemperatureUpd, buf[1] = OF_FFB::temperatureCurrent;
                         Serial.write(buf, 2);
-                    }
 
-                    tempChecked = currentMillis;
+                        tempChecked = currentMillis;
+                    }
                 }
             #endif // USES_TEMP
             
@@ -903,10 +900,10 @@ void ExecGunModeDocked()
                     uint16_t analogValueX = analogRead(OF_Prefs::pins[OF_Const::analogX]);
                     uint16_t analogValueY = analogRead(OF_Prefs::pins[OF_Const::analogY]);
 
-                    char buf[5] = {OF_Const::sAnalogPosUpd};
+                    buf[0] = OF_Const::sAnalogPosUpd;
                     memcpy(&buf[1], (uint8_t*)&analogValueX, sizeof(uint16_t));
                     memcpy(&buf[3], (uint8_t*)&analogValueY, sizeof(uint16_t));
-                    Serial.write(buf, sizeof(buf));
+                    Serial.write(buf, 5);
                 }
             #endif // USES_ANALOG
         }
