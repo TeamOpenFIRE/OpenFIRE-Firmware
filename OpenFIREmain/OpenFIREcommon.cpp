@@ -1096,25 +1096,10 @@ void FW_Common::UpdateBindings(const bool &lowButtons)
     }
     #endif // PLAYER_NUMBER
 
-    for(int i = 0; i < ButtonCount; ++i) {
+    for(int i = 0; i < ButtonCount; ++i)
         memcpy(&LightgunButtons::ButtonDesc[i].reportType,
                OF_Prefs::backupButtonDesc[i],
                sizeof(OF_Prefs::backupButtonDesc[0]));
-        
-        while(true) {
-            uint8_t *ptr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFF, sizeof(OF_Prefs::backupButtonDesc[i]-1));
-            if(ptr != nullptr)
-                *ptr = playerStartBtn;
-            else break;
-        }
-
-        while(true) {
-            uint8_t *ptr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFE, sizeof(OF_Prefs::backupButtonDesc[i]-1));
-            if(ptr != nullptr)
-                *ptr = playerSelectBtn;
-            else break;
-        }
-    }
 
     // Updates button functions for low-button mode
     if(lowButtons) {
@@ -1124,5 +1109,25 @@ void FW_Common::UpdateBindings(const bool &lowButtons)
         memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_B].reportType2,
                OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Select],
                2);
+    }
+
+    UpdateStartSelect();
+}
+
+void FW_Common::UpdateStartSelect()
+{
+    uint8_t *btnMatchedPtr;
+    for(int i = 0; i < ButtonCount; ++i) {
+        do {
+            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFF, sizeof(OF_Prefs::backupButtonDesc[i]-1));
+            if(btnMatchedPtr != nullptr)
+                *btnMatchedPtr = playerStartBtn;
+        } while(btnMatchedPtr != nullptr);
+
+        do {
+            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFE, sizeof(OF_Prefs::backupButtonDesc[i]-1));
+            if(btnMatchedPtr != nullptr)
+                *btnMatchedPtr = playerSelectBtn;
+        } while(btnMatchedPtr != nullptr);
     }
 }
