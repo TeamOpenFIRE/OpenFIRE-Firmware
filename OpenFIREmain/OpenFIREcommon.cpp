@@ -1075,26 +1075,36 @@ int FW_Common::SavePreferences()
     }
 }
 
-void FW_Common::UpdateBindings(const bool &lowButtons)
+void FW_Common::UpdateBindings(const bool &rebindStrSel)
 {
-    if(gunMode != FW_Const::GunMode_Run) {
+    switch(gunMode) {
+    case FW_Const::GunMode_Run:
+        buttons.ReleaseAll();
+        break;
+    case FW_Const::GunMode_Docked:
+    case FW_Const::GunMode_Init:
         // Updates pins
         for(int i = 0; i < ButtonCount; ++i)
             LightgunButtons::ButtonDesc[i].pin = OF_Prefs::pins[i];
+        break;
+    default:
+        break;
     }
 
-    #if defined(PLAYER_START) && defined(PLAYER_SELECT)
-    playerStartBtn = PLAYER_START;
-    playerSelectBtn = PLAYER_SELECT;
-    #else
-    if(OF_Prefs::usb.devicePID > 0 && OF_Prefs::usb.devicePID < 5) {
-        playerStartBtn = OF_Prefs::usb.devicePID + '0';
-        playerSelectBtn = OF_Prefs::usb.devicePID + '4';
-    } else {
-        playerStartBtn = '1';
-        playerSelectBtn = '5';
+    if(rebindStrSel) {
+        #if defined(PLAYER_START) && defined(PLAYER_SELECT)
+        playerStartBtn = PLAYER_START;
+        playerSelectBtn = PLAYER_SELECT;
+        #else
+        if(OF_Prefs::usb.devicePID > 0 && OF_Prefs::usb.devicePID < 5) {
+            playerStartBtn = OF_Prefs::usb.devicePID + '0';
+            playerSelectBtn = OF_Prefs::usb.devicePID + '4';
+        } else {
+            playerStartBtn = '1';
+            playerSelectBtn = '5';
+        }
+        #endif // PLAYER_NUMBER
     }
-    #endif // PLAYER_NUMBER
 
     for(int i = 0; i < ButtonCount; ++i)
         memcpy(&LightgunButtons::ButtonDesc[i].reportType,
@@ -1102,7 +1112,7 @@ void FW_Common::UpdateBindings(const bool &lowButtons)
                sizeof(OF_Prefs::backupButtonDesc[0]));
 
     // Updates button functions for low-button mode
-    if(lowButtons) {
+    if(OF_Prefs::toggles[OF_Const::lowButtonsMode]) {
         memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType2,
                OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Start],
                2);
@@ -1110,6 +1120,35 @@ void FW_Common::UpdateBindings(const bool &lowButtons)
                OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Select],
                2);
     }
+
+    #ifdef MAMEHOOKER
+    if(OF_Serial::serialMappingsOffscreenShot) {
+        memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2,
+               OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_A],
+               sizeof(LightgunButtons::Desc_s::reportType)*2);
+
+        // remap bindings for low button users to make e.g. VCop 3 playable with 1 btn + pedal
+        if(OF_Prefs::toggles[OF_Const::lowButtonsMode])
+            memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_A].reportType,
+                   OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_Reload],
+                   sizeof(LightgunButtons::Desc_s::reportType)*2);
+    }
+
+    if(OF_Serial::serialMappingsPedalMode) switch(OF_Serial::serialMappingsPedalMode) {
+    case 1:
+        memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
+               OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_A],
+               sizeof(OF_Prefs::backupButtonDesc[0]));
+        break;
+    case 2:
+        memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
+               OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_B],
+               sizeof(OF_Prefs::backupButtonDesc[0]));
+        break;
+    default:
+        break;
+    }
+    #endif // MAMEHOOKER
 
     UpdateStartSelect();
 }
