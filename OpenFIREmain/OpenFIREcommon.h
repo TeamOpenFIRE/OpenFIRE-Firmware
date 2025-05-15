@@ -159,11 +159,6 @@ public:
 
     static LightgunButtons buttons;
 
-    // For keeping track of button state modifications
-    #ifdef MAMEHOOKER
-    
-    #endif // MAMEHOOKER
-
     // For offscreen button stuff:
     static inline bool triggerPressedOffscreen = false;            // Set if shot offscreen; determines whether we release trigger btn code 1 or 2
 
