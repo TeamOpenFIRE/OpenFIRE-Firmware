@@ -160,7 +160,7 @@ void OF_Serial::SerialProcessing()
                       memcpy(&LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Pedal].reportType,
                              OF_Prefs::backupButtonDesc[FW_Const::BtnIdx_B],
                              sizeof(OF_Prefs::backupButtonDesc[0]));
-                      serialMappingsPedalMode = 0;
+                      serialMappingsPedalMode = 2;
                       break;
                 }
                 FW_Common::UpdateBindings(false);
