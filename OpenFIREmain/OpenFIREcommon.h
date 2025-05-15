@@ -106,12 +106,9 @@ public:
 
     /// @brief    Updates LightgunButtons::ButtonDesc[] buttons descriptor array
     ///           with new pin mappings and control bindings, if any.
-    /// @param    lowButtons
-    ///           Flag that determines whether offscreen button compatibility bit is enabled.
-    ///           When true, Mouse+Keyboard slots' offscreen mapping is set to a different key.
-    ///           TODO: should be able to set offscreen button mode mappings too,
-    ///           but these are handled directly in firing modes currently.
-    static void UpdateBindings(const bool &lowButtons = false);
+    /// @param    rebindStrSel
+    ///           Flag that determines whether to reset the bindings of the special macros playerStartBtn/playerSelectBtn
+    static void UpdateBindings(const bool &rebindStrSel);
 
     /// @brief    Checks Button Descriptor and replaces instances of 0xFF/0xFE with player-relative Start/Select
     static void UpdateStartSelect();

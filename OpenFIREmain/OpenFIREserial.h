@@ -61,6 +61,8 @@ public:
     static inline bool serialMode = false;                         // Set if we're prioritizing force feedback over serial commands or not.
     static inline bool serialQueue[SerialQueueBitsCount] = {false};// Array of events we've queued from the serial receipt.
     static inline bool serialARcorrection = false;                 // 4:3 AR correction mode flag
+    static inline bool serialMappingsOffscreenShot = false;        // Marker if Offscreen Shot Mode's been enabled, for FW_Common::UpdateBindings
+    static inline int  serialMappingsPedalMode = 0;                // Marker if Pedal has been remapped, for FW_Common::UpdateBindings
     // from least to most significant bit: solenoid digital, solenoid pulse, rumble digital, rumble pulse, R/G/B direct, RGB (any) pulse.
 
     // These do get addressed by the main code
