@@ -159,6 +159,9 @@ public:
 
     static LightgunButtons buttons;
 
+    static inline char playerStartBtn = '1';
+    static inline char playerSelectBtn = '5';
+
     // For offscreen button stuff:
     static inline bool triggerPressedOffscreen = false;            // Set if shot offscreen; determines whether we release trigger btn code 1 or 2
 
@@ -182,9 +185,6 @@ public:
     #endif // MAMEHOOKER
     #endif // USES_DISPLAY
 };
-
-static inline char playerStartBtn = '1';
-static inline char playerSelectBtn = '5';
 
 // button runtime data arrays
 static inline LightgunButtonsStatic<ButtonCount> lgbData;
