@@ -330,8 +330,8 @@ void OF_Serial::SerialProcessing()
               {
                 char serialInput = Serial.read();
                 if(serialInput >= '1' && serialInput <= '4') {
-                    playerStartBtn = serialInput;
-                    playerSelectBtn = serialInput + 4;
+                    FW_Common::playerStartBtn = serialInput;
+                    FW_Common::playerSelectBtn = serialInput + 4;
                     FW_Common::UpdateBindings(false);
                 } else Serial.println("SERIALREAD: Player remap command called, but an invalid or no slot number was declared!");
                 break;

@@ -1158,13 +1158,13 @@ void FW_Common::UpdateStartSelect()
     uint8_t *btnMatchedPtr;
     for(int i = 0; i < ButtonCount; ++i) {
         do {
-            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFF, sizeof(OF_Prefs::backupButtonDesc[i]-1));
+            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFF, sizeof(OF_Prefs::backupButtonDesc[i])-1);
             if(btnMatchedPtr != nullptr)
                 *btnMatchedPtr = playerStartBtn;
         } while(btnMatchedPtr != nullptr);
 
         do {
-            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFE, sizeof(OF_Prefs::backupButtonDesc[i]-1));
+            btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFE, sizeof(OF_Prefs::backupButtonDesc[i])-1);
             if(btnMatchedPtr != nullptr)
                 *btnMatchedPtr = playerSelectBtn;
         } while(btnMatchedPtr != nullptr);
