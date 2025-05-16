@@ -11,32 +11,37 @@
                        (x) = GND/No Connect | (-) = GPIO | (p) = Power
 ```
 
-### NOTE: Any button/function GPIO pin assignments written here are the *defaults*, and can be changed for any other function from the OpenFIRE App.
+> [!NOTE]
+> Any button/function GPIO pin assignments written here are the ***defaults***, and can be changed for any other function from within the OpenFIRE App.
+> 
+> All of these layouts can also be previewed from within the OpenFIRE App (v3.0+) under *Help->View Compatible Boards*.
+
+### 
 
 ## Raspberry Pi Pico (Non/W)
 ```
 
                                         (_____)
-                     A Button     0  |-) *USB* (-| VBUS (USB voltage)
-                     B Button     1  |-)       (-| VSYS (Input from Battery/Output to NeoPixels)
-                                 GND |x)       (x| GND
-                     C Button     2  |-)       (x| 3V3 En
-                     Start        3  |-)       (p| 3V3 Out (to Display/Cam/Analog Inputs)
-                     Select       4  |-)       (x| ADCVREF
-                     Home Button  5  |-)       (-|  A2 Temp Sensor
-                                 GND |x)       (x| AGND (for ADC VREF)
-                     D-Pad Up     6  |-)       (-|  A1 *Unmapped*
-                     D-Pad Down   7  |-)       (-|  A0 *Unmapped*
-                     D-Pad Left   8  |-)       (x| RUN
-                     D-Pad Right  9  |-)       (-|  22 *Unmapped*
-                                 GND |x)       (x| GND
-                     RGB Red     10  |-)       (-|  21 Camera SCL
-                     RGB Green   11  |-)       (-|  20 Camera SDA
-                     RGB Blue    12  |-)       (-|  19 *Unmapped*
-                     Pump Action 13  |-)       (-|  18 *Unmapped*
-                                 GND |x)       (x| GND
-                     Pedal       14  |-)       (-|  17 Rumble Signal
-                     Trigger     15  |-) _|_|_ (-|  16 Solenoid Signal
+                   A Button     0  |-)   *USB*   (-| VBUS (USB voltage)
+                   B Button     1  |-)           (-| VSYS (Input from Battery/Output to NeoPixels)
+                               GND |x)           (x| GND
+                   C Button     2  |-)           (x| 3V3 En
+                   Start        3  |-)           (p| 3V3 Out (to Display/Cam/Analog Inputs)
+                   Select       4  |-)           (x| ADCVREF
+                   Home Button  5  |-)           (-|  A2 Temp Sensor
+                               GND |x)           (x| AGND (for ADC VREF)
+                   D-Pad Up     6  |-)           (-|  A1 *Unmapped*
+                   D-Pad Down   7  |-)           (-|  A0 *Unmapped*
+                   D-Pad Left   8  |-)           (x| RUN
+                   D-Pad Right  9  |-)           (-|  22 *Unmapped*
+                               GND |x)           (x| GND
+                   RGB Red     10  |-)           (-|  21 Camera SCL
+                   RGB Green   11  |-)           (-|  20 Camera SDA
+                   RGB Blue    12  |-)           (-|  19 Peripherals SCL
+                   Pump Action 13  |-)           (-|  18 Peripherals SDA
+                               GND |x)           (x| GND
+                   Pedal       14  |-)           (-|  17 Rumble Signal
+                   Trigger     15  |-)   _|_|_   (-|  16 Solenoid Signal
 
 ```
 ## Adafruit ItsyBitsy RP2040
