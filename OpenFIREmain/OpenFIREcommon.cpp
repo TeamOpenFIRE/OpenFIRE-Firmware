@@ -306,6 +306,8 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
     buttons.ReportDisable();
 
     uint8_t calStage = 0;
+    char buf[6];
+    buf[0] = OF_Const::sCaliInfoUpd;
 
     // hold values in a buffer till calibration is complete
     int topOffset;
@@ -382,6 +384,7 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
         // Handle button presses and calibration stages
         if((buttons.pressedReleased & (FW_Const::ExitPauseModeBtnMask | FW_Const::ExitPauseModeHoldBtnMask) || Serial.read() == OF_Const::serialTerminator) && !justBooted) {
             Serial.printf("%c%c", OF_Const::sCaliStageUpd, FW_Const::Cali_Verify+1);
+            Serial.flush();
 
             // Reapplying backed up data
             OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = _topOffset;
@@ -404,7 +407,6 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
             return;
         } else if(buttons.pressed == FW_Const::BtnMask_Trigger && !mouseMoving) {
             Serial.printf("%c%c", OF_Const::sCaliStageUpd, ++calStage);
-
             // Ensure our messages go through, or else the HID reports eat UART.
             Serial.flush();
 
@@ -453,14 +455,11 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Bottom:
                     // Set Offset buffer
                     topOffset = mouseY;
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 1;
-                      memcpy(&buf[2], &topOffset, sizeof(int));
-                      Serial.write(buf, sizeof(buf));
-                      Serial.flush();
-                    }
+
+                    buf[1] = 1;
+                    memcpy(&buf[2], &topOffset, sizeof(int));
+                    Serial.write(buf, sizeof(buf));
+                    Serial.flush();
 
                     // Set mouse movement to bottom position
                     if(!fromDesktop) {
@@ -472,14 +471,11 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Left:
                     // Set Offset buffer
                     bottomOffset = (res_y - mouseY);
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 2;
-                      memcpy(&buf[2], &bottomOffset, sizeof(int));
-                      Serial.write(buf, sizeof(buf));
-                      Serial.flush();
-                    }
+
+                    buf[1] = 2;
+                    memcpy(&buf[2], &bottomOffset, sizeof(int));
+                    Serial.write(buf, sizeof(buf));
+                    Serial.flush();
 
                     // Set mouse movement to left position
                     if(!fromDesktop) {
@@ -491,14 +487,11 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Right:
                     // Set Offset buffer
                     leftOffset = mouseX;
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 3;
-                      memcpy(&buf[2], &leftOffset, sizeof(int));
-                      Serial.write(buf, sizeof(buf));
-                      Serial.flush();
-                    }
+
+                    buf[1] = 3;
+                    memcpy(&buf[2], &leftOffset, sizeof(int));
+                    Serial.write(buf, sizeof(buf));
+                    Serial.flush();
 
                     // Set mouse movement to right position
                     if(!fromDesktop) {
@@ -510,14 +503,11 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                 case FW_Const::Cali_Center:
                     // Set Offset buffer
                     rightOffset = (res_x - mouseX);
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 4;
-                      memcpy(&buf[2], &rightOffset, sizeof(int));
-                      Serial.write(buf, sizeof(buf));
-                      Serial.flush();
-                    }
+
+                    buf[1] = 4;
+                    memcpy(&buf[2], &rightOffset, sizeof(int));
+                    Serial.write(buf, sizeof(buf));
+                    Serial.flush();
 
                     // Save Offset buffer to profile
                     OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset = topOffset;
@@ -546,20 +536,14 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
                                                                      (OpenFIREsquare.testMedianY() - (384 << 2)) * cos(OpenFIREsquare.Ang()) + (384 << 2);
                     }
 
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 5;
-                      memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, sizeof(float));
-                      Serial.write(buf, sizeof(buf));
-                    }
-                    {
-                      char buf[6];
-                      buf[0] = OF_Const::sCaliInfoUpd;
-                      buf[1] = 6;
-                      memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, sizeof(float));
-                      Serial.write(buf, sizeof(buf));
-                    }
+                    buf[1] = 5;
+                    memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, sizeof(float));
+                    Serial.write(buf, sizeof(buf));
+                    Serial.flush();
+
+                    buf[1] = 6;
+                    memcpy(&buf[2], &OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, sizeof(float));
+                    Serial.write(buf, sizeof(buf));
                     Serial.flush();
 
                     // Update Cam centre in perspective library
