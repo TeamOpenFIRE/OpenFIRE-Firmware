@@ -16,6 +16,7 @@
 #endif // ARDUINO_ARCH_RP2040
 
 #include "OpenFIREcommon.h"
+#include "OpenFIREFeedback.h"
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
 
@@ -215,6 +216,10 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
     switch(gunMode) {
     case FW_Const::GunMode_Run:
         stateFlags |= FW_Const::StateFlag_PrintPreferences;
+        // MAKE SURE EVERYTHING IS DISENGAGED:
+        OF_FFB::FFBShutdown();
+        buttons.ReleaseAll();
+        buttons.ReportDisable();
         break;
     case FW_Const::GunMode_Pause:
         break;

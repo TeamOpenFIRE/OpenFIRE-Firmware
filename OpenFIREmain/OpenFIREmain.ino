@@ -265,6 +265,7 @@ void setup1()
 // currently handles all button & serial processing when Core 0 is in ExecRunMode()
 void loop1()
 {
+    rp2040.fifo.pop();
     while(FW_Common::gunMode == FW_Const::GunMode_Run) {
         // All buttons' outputs except for the trigger are processed here.
         FW_Common::buttons.Poll(0);
@@ -314,25 +315,25 @@ void loop1()
             } else if(pauseHoldStarted) {
                 unsigned long t = millis();
                 if(t - pauseHoldStartstamp > OF_Prefs::settings[OF_Const::holdToPauseLength]) {
-                    // MAKE SURE EVERYTHING IS DISENGAGED:
-                    OF_FFB::FFBShutdown();
-                    FW_Common::buttons.ReportDisable();
-                    // Signal the main core to set mode, since it's more stable there.
-                    // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
-                    rp2040.fifo.push(FW_Const::GunMode_Pause);
-                    rp2040.fifo.pop();
+                    // in the infinitely tiny chance that this happens at the same time as a serial-pinged Dock request:
+                    if(FW_Common::gunMode == FW_Const::GunMode_Run) {
+                        // Signal the main core to set mode, since it's more stable there.
+                        // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
+                        rp2040.fifo.push(FW_Const::GunMode_Pause);
+                        rp2040.fifo.pop();
+                    }
                 }
             }
         } else {
             if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask ||
                FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
-                // MAKE SURE EVERYTHING IS DISENGAGED:
-                OF_FFB::FFBShutdown();
-                FW_Common::buttons.ReportDisable();
-                // Signal the main core to set mode, since it's more stable there.
-                // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
-                rp2040.fifo.push(FW_Const::GunMode_Pause);
-                rp2040.fifo.pop();
+                // in the infinitely tiny chance that this happens at the same time as a serial-pinged Dock request:
+                if(FW_Common::gunMode == FW_Const::GunMode_Run) {
+                    // Signal the main core to set mode, since it's more stable there.
+                    // Pop blocks until we get the okay from the main core (the value returned doesn't matter atm)
+                    rp2040.fifo.push(FW_Const::GunMode_Pause);
+                    rp2040.fifo.pop();
+                }
             }
         }
     }
@@ -639,6 +640,11 @@ void ExecRunMode()
         FW_Common::justBooted = false;
     }
 
+    #if defined(ARDUINO_ARCH_RP2040) && defined(DUAL_CORE)
+        // wake up second core
+        rp2040.fifo.push(0);
+    #endif // ARDUINO_ARCH_RP2040 && DUAL_CORE
+
     for(;;) {
         // Setting the state of our toggles, if used.
         // Only sets these values if the switches are mapped to valid pins.
@@ -759,8 +765,6 @@ void ExecRunMode()
                     // MAKE SURE EVERYTHING IS DISENGAGED:
                     OF_FFB::FFBShutdown();
                     FW_Common::SetMode(FW_Const::GunMode_Pause);
-                    FW_Common::buttons.ReleaseAll();
-                    FW_Common::buttons.ReportDisable();
                     return;
                 }
             }
@@ -768,9 +772,7 @@ void ExecRunMode()
             if(FW_Common::buttons.pressedReleased == FW_Const::EnterPauseModeBtnMask || FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Home) {
                 // MAKE SURE EVERYTHING IS DISENGAGED:
                 OF_FFB::FFBShutdown();
-		FW_Common::SetMode(FW_Const::GunMode_Pause);
-                FW_Common::buttons.ReleaseAll();
-                FW_Common::buttons.ReportDisable();
+                FW_Common::SetMode(FW_Const::GunMode_Pause);
                 return;
             }
         }
@@ -778,7 +780,6 @@ void ExecRunMode()
         if(rp2040.fifo.pop_nb(&fifoData)) {
             FW_Common::SetMode((FW_Const::GunMode_e)fifoData);
             fifoData = 0;
-            FW_Common::buttons.ReleaseAll();
             // the value doesn't matter; all core1 is doing is waiting for any signal from the FIFO.
             rp2040.fifo.push(true);
             return;
