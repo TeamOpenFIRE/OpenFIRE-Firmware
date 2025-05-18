@@ -1064,6 +1064,7 @@ void OF_Serial::SerialProcessingDocked()
                     case OF_Const::serialTerminator:
                         // Assumed failed/aborting save, so roll back to what's in flash.
                         OF_Prefs::Load();
+                        FW_Common::buttons.Begin();
                         exit = true;
                         break;
 
