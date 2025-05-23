@@ -976,10 +976,13 @@ void OF_Serial::SerialProcessingDocked()
         if(Serial.peek() < PROFILE_COUNT) {
             FW_Common::SelectCalProfile(Serial.read());
             char buf[2] = {OF_Const::sCurrentProf, (uint8_t)OF_Prefs::currentProfile};
-            Serial.write(buf, 2);
+            Serial.write(buf, sizeof(buf));
             if(Serial.read() == OF_Const::sCaliStart) {
-                if(FW_Common::camNotAvailable) Serial.write(OF_Const::sError);
-                else {
+                if(FW_Common::camNotAvailable) {
+                    buf[0] = OF_Const::sError;
+                    buf[1] = OF_Const::sErrCam;
+                    Serial.write(buf, sizeof(buf));
+                } else {
                   // sensitivity/layout preset
                   if(Serial.peek() != -1) {
                     FW_Common::SetIrSensitivity(Serial.peek() & 0b11110000);
