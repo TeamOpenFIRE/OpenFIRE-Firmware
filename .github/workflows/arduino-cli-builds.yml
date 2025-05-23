@@ -69,8 +69,10 @@ jobs:
         if: ${{ matrix.fqbn == 'arduino_nano_connect' }}
         run: arduino-cli lib install WiFiNINA
         
+      # use our fork with patched TUSB
+      # TODO: for now, select version manually (as our -tusb version is currently considered prior to upstream 4.5.4)
       - name: Setting up Arduino-cli
-        run: arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
+        run: arduino-cli core install rp2040:rp2040@4.5.4-tusb --additional-urls https://github.com/TeamOpenFIRE/arduino-pico/releases/download/global/package_rp2040_index.json
 
       - name: Get short SHA
         id: get-short-sha
