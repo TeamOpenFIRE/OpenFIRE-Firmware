@@ -61,8 +61,8 @@ jobs:
             flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
 
           - name: Generic RP2350
-            fqbn: generic-rp2350
-            pretty: generic-rp2350
+            fqbn: generic_rp2350
+            pretty: generic_rp2350
             flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3,arch=arm
             
           - name: Generic RP2040
