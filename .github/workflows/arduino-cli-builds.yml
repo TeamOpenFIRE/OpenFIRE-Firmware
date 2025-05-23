@@ -35,7 +35,7 @@ jobs:
 
           - name: Raspberry Pi Pico 2W [ARM] (USB)
             fqbn: rpipico2w
-            pretty: rpipico2w
+            pretty: rpipico2w-noBT
             flags: freq=133,usbstack=tinyusb,flash=4194304_65536,opt=Optimize3,wificountry=worldwide,ipbtstack=ipv4only,arch=arm
             extra_flags: -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1
 

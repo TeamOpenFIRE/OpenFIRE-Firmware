@@ -11,14 +11,14 @@
 - **Easy installation** with simple *.UF2* binaries that can be drag'n'dropped directly onto an *RP2040*-based Microcontroller.
 - **Portable on-board settings** to store calibration profiles, toggles, settings, USB identifier, and more.
 - **Integrates with the [OpenFIRE App](https://github.com/TeamOpenFIRE/OpenFIRE-App)** for user-friendly, and cross-platform on-the-fly configuration.
-- **Optimized for the RP2040**, using its second core for input polling & queuing and serial handling, and the main core for camera and peripherals processing, whenever possible.
+- **Optimized for the RP2040 & RP2350**, using its second core for input polling & queuing and serial handling, and the main core for camera and peripherals processing, whenever possible.
 - **Compatible with PC Force Feedback handlers** such as [Mame Hooker](https://dragonking.arcadecontrols.com/static.php?page=aboutmamehooker), [The Hook Of The Reaper](https://github.com/6Bolt/Hook-Of-The-Reaper), and [QMamehook](https://github.com/SeongGino/QMamehook).
 - **Supports integrated OLED display output** for *SSD1306 I2C displays* for menu navigation and visual feedback of game elements such as life and current ammo counts.
 - **Compatible with the MiSTer FPGA ecosystem**, with dedicated mappings to streamline the user experience as much as possible.
 - **Forever free and open source to the lightgun community!**
 
 ## Requirements
-- An **RP2040** microcontroller for running the OpenFIRE firmware.
+- An **RP2040** or **RP2350** microcontroller for running the OpenFIRE firmware.
   * Recommended boards for new builds would be the [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) *(cheapest, most pins available),* Adafruit [Kee Boar KB2040](https://www.adafruit.com/product/5302) *(cheaper, Pro Micro formfactor, compatible with other carrier boards),* or [ItsyBitsy RP2040](https://www.adafruit.com/product/4888) *(compatible with [SAMCO carrier boards](https://www.ebay.com/itm/184699412596))*
 - **DFRobot IR Positioning Camera [SEN0158]:** [Mouser (US Distributor)](https://www.mouser.com/ProductDetail/DFRobot/SEN0158?qs=lqAf%2FiVYw9hCccCG%2BpzjbQ%3D%3D) | [DF-Robot (International)](https://www.dfrobot.com/product-1088.html) | [Mirrors list](https://octopart.com/sen0158-dfrobot-81833633)
 - **4 IR LED emitters:** regular Wii sensor bars might work for small distances, but it's HIGHLY recommended to use [SFH 4547 LEDs](https://www.mouser.com/ProductDetail/720-SFH4547) w/ 5.6Ω *(ohm)* resistors. [DIY build tutorial here!*](https://www.youtube.com/watch?v=dNoWT8CaGRc)
