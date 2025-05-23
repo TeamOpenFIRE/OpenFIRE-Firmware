@@ -18,13 +18,27 @@ jobs:
           - name: Raspberry Pi Pico W (USB)
             fqbn: rpipicow
             pretty: rpipicow-noBT
-            flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
-            
+            flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3,wificountry=worldwide,ipbtstack=ipv4only
+            extra_flags: -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1
+
+          # Disabled until issues surrounding interacting with cyw southbridge causing lockups is solved
           #- name: Raspberry Pi Pico W (Bluetooth)
           #  fqbn: rpipicow
           #  pretty: rpipicow-btBETA
-          #  flags: freq=133,usbstack=tinyusb,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
-            
+          #  flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3,ipbtstack=ipv4btcble,wificountry=worldwide
+          #  extra_flags: -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1
+
+          - name: Raspberry Pi Pico 2 [ARM]
+            fqbn: rpipico2
+            pretty: rpipico2
+            flags: freq=133,usbstack=tinyusb,flash=4194304_65536,opt=Optimize3,arch=arm
+
+          - name: Raspberry Pi Pico 2W [ARM] (USB)
+            fqbn: rpipico2w
+            pretty: rpipico2w
+            flags: freq=133,usbstack=tinyusb,flash=4194304_65536,opt=Optimize3,wificountry=worldwide,ipbtstack=ipv4only,arch=arm
+            extra_flags: -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1
+
           - name: Adafruit ItsyBitsy RP2040
             fqbn: adafruit_itsybitsy
             pretty: adafruitItsy
@@ -49,6 +63,11 @@ jobs:
             fqbn: waveshare_rp2040_zero
             pretty: waveshareZero
             flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
+
+          - name: Generic RP2350
+            fqbn: generic_rp2350
+            pretty: generic_rp2350
+            flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3,arch=arm
             
           - name: Generic RP2040
             fqbn: generic
@@ -69,8 +88,10 @@ jobs:
         if: ${{ matrix.fqbn == 'arduino_nano_connect' }}
         run: arduino-cli lib install WiFiNINA
         
+      # use our fork with patched TUSB
+      # TODO: for now, select version manually (as our -tusb version is currently considered prior to upstream 4.5.4)
       - name: Setting up Arduino-cli
-        run: arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/SeongGino/arduino-pico/releases/download/3.9.2-fix/package_rp2040_fix_index_orig.json
+        run: arduino-cli core install rp2040:rp2040@4.5.4-tusb --additional-urls https://github.com/TeamOpenFIRE/arduino-pico/releases/download/global/package_rp2040_index.json
 
       - name: Get short SHA
         id: get-short-sha
@@ -83,7 +104,8 @@ jobs:
           OpenFIREmain
           --libraries libraries
           --build-property 'build.extra_flags=
-          -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"'
+          -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"
+          ${{matrix.extra_flags}}'
         
       - name: Rename build file
         run: cp ${{github.workspace}}/OpenFIREmain/build/rp2040.rp2040.${{matrix.fqbn}}/OpenFIREmain.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
