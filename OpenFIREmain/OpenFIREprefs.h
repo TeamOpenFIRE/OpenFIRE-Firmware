@@ -140,11 +140,11 @@ public:
 
     /// @brief Generic saving method using provided pointers to a block of data and its associated string map for lookups
     /// @return An error code from Errors_e
-    static int SaveToPtr(File, void*, const std::unordered_map<std::string, int>&, const size_t&);
+    static int SaveToPtr(File, void*, const std::unordered_map<std::string_view, int>&, const size_t&);
 
     /// @brief Generic loading method using provided pointers to a block of data and its associated string map for lookups
     /// @return An error code from Errors_e
-    static int LoadToPtr(File, void*, const std::unordered_map<std::string, int>&);
+    static int LoadToPtr(File, void*, const std::unordered_map<std::string_view, int>&);
 
     /// @brief Load preferences
     /// @return An error code from Errors_e

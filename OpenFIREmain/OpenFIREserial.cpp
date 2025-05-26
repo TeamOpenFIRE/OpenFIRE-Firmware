@@ -1125,14 +1125,14 @@ void OF_Serial::SerialProcessingDocked()
     }
 }
 
-void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize, const int &profNum)
+void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::string_view, int> &mapPtr, const size_t &dataSize, const int &profNum)
 {
     size_t pos;
     bool profNumSent = false;
     for(auto &pair : mapPtr) {
         if(pair.second >= 0) {
             pos = 0;
-            strcpy(&TXbuf[pos], pair.first.c_str());
+            strcpy(&TXbuf[pos], pair.first.data());
             pos += pair.first.length()+1;
             if(&mapPtr == &OF_Prefs::OFPresets.profSettingTypes_Strings) {
                 if(pair.second == OF_Const::profCurrent) {
@@ -1184,7 +1184,7 @@ void OF_Serial::SerialBatchSend(void *dataPtr, const std::unordered_map<std::str
     }
 }
 
-void OF_Serial::SerialBatchRecv(const char *bufPtr, void *dataPtr, const std::unordered_map<std::string, int> &mapPtr, const size_t &dataSize, const size_t &rxDatSize, const size_t &rxBufSize)
+void OF_Serial::SerialBatchRecv(const char *bufPtr, void *dataPtr, const std::unordered_map<std::string_view, int> &mapPtr, const size_t &dataSize, const size_t &rxDatSize, const size_t &rxBufSize)
 {
     if(mapPtr.count(bufPtr)) {
         if(&mapPtr == &OF_Prefs::OFPresets.profSettingTypes_Strings && mapPtr.at(bufPtr) == OF_Const::profCurrent) {
