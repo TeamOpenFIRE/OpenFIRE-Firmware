@@ -767,7 +767,7 @@ void FW_Common::GetPosition()
                     int rawX[4];
                     int rawY[4];
                     // RAW Output for viewing in processing sketch mapped to 1920x1080 screen resolution
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < 4; ++i) {
                         if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
                             rawX[i] = map(OpenFIREdiamond.X(i), 0, 1023 << 2, 1920, 0);
                             rawY[i] = map(OpenFIREdiamond.Y(i), 0, 768 << 2, 0, 1080);

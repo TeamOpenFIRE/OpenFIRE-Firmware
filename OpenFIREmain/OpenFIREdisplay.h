@@ -32,7 +32,7 @@ public:
     void TopPanelUpdate(const char *, const char * = nullptr);
 
     /// @brief Clear screen for different gun modes
-    void ScreenModeChange(int8_t screenMode, bool isAnalog = false);
+    void ScreenModeChange(const int &screenMode, const bool &isAnalog = false);
 
     /// @brief Perform maintenance operations (WIP)
     /// @details For when values aren't being updated, but still want to change something on the screen
@@ -41,25 +41,26 @@ public:
 
     /// @brief Draw seen points here
     /// @details Should ONLY be used in scenarios where the mouse isn't being updated, i.e. calibration.
-    void DrawVisibleIR(int pointX[4], int pointY[4]);
+    ///          Arguments here point to the original arrays of seen coords [4]
+    void DrawVisibleIR(int *pointX, int *pointY);
 
     /// @brief Draw hotkey pause mode layout
-    void PauseScreenShow(uint8_t currentProf, char name1[16], char name2[16], char name3[16], char name4[16]);
+    void PauseScreenShow(const int &currentProf, const char* name1, const char* name2, const char* name3, const char* name4);
 
     /// @brief Update simple pause mode list on screen
-    void PauseListUpdate(uint8_t selection);
+    void PauseListUpdate(const int &selection);
 
     /// @brief Update simple pause mode profiles list on screen
-    void PauseProfileUpdate(uint8_t selection, char name1[16], char name2[16], char name3[16], char name4[16]);
+    void PauseProfileUpdate(const int &selection, const char* name1, const char* name2, const char* name3, const char* name4);
 
     /// @brief Print save status message
-    void SaveScreen(uint8_t status);
+    void SaveScreen(const int &status);
 
     /// @brief Update main screen ammo glyphs
-    void PrintAmmo(uint8_t ammo);
+    void PrintAmmo(const uint &ammo);
 
     /// @brief Update main screen life glyphs
-    void PrintLife(uint8_t life);
+    void PrintLife(const uint &life);
 
     enum ScreenMode_e {
         Screen_None = -1,
@@ -105,7 +106,7 @@ public:
     bool mister = false;
 
 private:
-    int8_t screenState = Screen_None;
+    int screenState = Screen_None;
 
     bool ammoEmpty = false;
     bool lifeEmpty = false;
