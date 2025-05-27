@@ -752,14 +752,15 @@ void FW_Common::GetPosition()
                      Gamepad16.moveCam(conMoveX, conMoveY);
                 else AbsMouse5.move(conMoveX, conMoveY);
 
-            } else if(gunMode == FW_Const::GunMode_Verification) {
-                // Output mapped to Mouse resolution
-                conMoveX = map(conMoveX, 0, res_x, 0, 32767);
-                conMoveY = map(conMoveY, 0, res_y, 0, 32767);
-
-                AbsMouse5.move(conMoveX, conMoveY);
-                AbsMouse5.report();
             } else {
+                if(gunMode == FW_Const::GunMode_Verification) {
+                    // Output mapped to Mouse resolution
+                    conMoveX = map(conMoveX, 0, res_x, 0, 32767);
+                    conMoveY = map(conMoveY, 0, res_y, 0, 32767);
+
+                    AbsMouse5.move(conMoveX, conMoveY);
+                    AbsMouse5.report();
+                }
                 if(millis() - testLastStamp > 50) {
                     testLastStamp = millis();
                     // RAW Camera Output mapped to screen res (1920x1080)
