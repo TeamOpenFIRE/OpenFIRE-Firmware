@@ -9,13 +9,59 @@
 #ifndef _OPENFIREDISPLAY_H_
 #define _OPENFIREDISPLAY_H_
 
+#define USE_LOVYAN_GFX // remove for use adafruit library
+
 #include <stdint.h>
-#include <Adafruit_SSD1306.h>
+
+#ifdef USE_LOVYAN_GFX
+    #define LGFX_USE_V1
+    #include <LovyanGFX.hpp>
+#else
+    #include <Adafruit_SSD1306.h>
+    #include <Adafruit_GFX.h>
+#endif //USE_LOVYAN_GFX
 
 #include "OpenFIREDefines.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+
+#ifdef USE_LOVYAN_GFX
+
+#define BLACK TFT_BLACK
+#define WHITE TFT_WHITE
+
+class LGFX_SSD1306 : public lgfx::LGFX_Device
+{
+  lgfx::Panel_SSD1306 _panel_instance;
+  lgfx::Bus_I2C _bus_instance;
+public:
+  LGFX_SSD1306(uint8_t i2c_port, int16_t sda, int16_t scl, uint8_t i2c_addr, uint16_t width, uint16_t height)
+  { 
+    {   
+        auto cfg = _bus_instance.config();
+        cfg.i2c_port = i2c_port;
+        cfg.pin_sda = sda;
+        cfg.pin_scl = scl;
+        cfg.i2c_addr = i2c_addr;
+        cfg.freq_write = 400000;
+        cfg.freq_read  = 400000;
+        _bus_instance.config(cfg);
+        _panel_instance.setBus(&_bus_instance);
+    }
+    {   
+        auto cfg = _panel_instance.config();
+        cfg.panel_width = width;
+        cfg.panel_height = height;
+        _panel_instance.setRotation(2);
+        _panel_instance.setBrightness(255);
+        _panel_instance.config(cfg);
+    }
+    setPanel(&_panel_instance);
+  }
+};
+
+#endif //USE_LOVYAN_GFX
 
 class ExtDisplay {
 public:
@@ -94,7 +140,11 @@ public:
         ScreenSerial_Both
     };
 
-    Adafruit_SSD1306 *display = nullptr;
+    #ifdef USE_LOVYAN_GFX
+        LGFX_SSD1306 *display = nullptr;
+    #else
+        Adafruit_SSD1306 *display = nullptr;
+    #endif //USE_LOVYAN_GFX
 
     /// @brief Whether life updates are in lifebar or life glyphs form
     bool lifeBar = false;
