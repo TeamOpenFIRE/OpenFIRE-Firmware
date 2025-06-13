@@ -51,8 +51,10 @@ void setup() {
         // Profile sanity checks
         // resets offsets that are wayyyyy too unreasonably high
         for(int i = 0; i < PROFILE_COUNT; ++i) {
-            if(OF_Prefs::profiles[i].rightOffset >= 32768 || OF_Prefs::profiles[i].bottomOffset >= 32768 ||
-               OF_Prefs::profiles[i].topOffset >= 32768   || OF_Prefs::profiles[i].leftOffset >= 32768) {
+            if(OF_Prefs::profiles[i].topOffset >= 32768     || OF_Prefs::profiles[i].topOffset <= -32768 ||
+               OF_Prefs::profiles[i].bottomOffset >= 32768  || OF_Prefs::profiles[i].bottomOffset <= -32768 ||
+               OF_Prefs::profiles[i].rightOffset >= 32768   || OF_Prefs::profiles[i].rightOffset <= -32768 ||
+               OF_Prefs::profiles[i].leftOffset >= 32768    || OF_Prefs::profiles[i].leftOffset <= -32768 || ) {
                 OF_Prefs::profiles[i].topOffset = 0;
                 OF_Prefs::profiles[i].bottomOffset = 0;
                 OF_Prefs::profiles[i].leftOffset = 0;
