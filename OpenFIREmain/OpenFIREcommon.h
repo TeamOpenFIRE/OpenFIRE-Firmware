@@ -189,4 +189,10 @@ public:
 // button runtime data arrays
 static inline LightgunButtonsStatic<ButtonCount> lgbData;
 
+#ifdef USE_COUNTER
+  // Defines what type of data will be sent to the counter: 0 = life, 1 = amno
+  #define COUNTER_TYPE 1  // 0 = life, 1 = amno
+#endif
+
+
 #endif // _OPENFIRECOMMON_H_

@@ -95,4 +95,7 @@
   // Leave this uncommented to enable support for SSD1306 monochrome OLED displays as an I2C peripheral.
 #define USES_DISPLAY
 
+// Enable sending life or ammo values to an external Arduino counter via UART
+#define USE_COUNTER
+
 #endif // _OPENFIREDEFINES_H_

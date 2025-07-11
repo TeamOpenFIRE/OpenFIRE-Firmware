@@ -125,6 +125,10 @@ void setup() {
         Serial.setTimeout(0);
         #endif // ARDUINO_RASPBERRY_PI_PICO_W
     #endif // USE_TINYUSB
+	
+	#ifdef USE_COUNTER
+		Serial1.begin(9600);
+	#endif
 
     // this is needed for both customs and builtins, as defaults are all uninitialized
     FW_Common::UpdateBindings(true);
