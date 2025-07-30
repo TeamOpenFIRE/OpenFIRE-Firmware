@@ -22,6 +22,7 @@
 #include "OpenFIREdisplay.h"
 #include "OpenFIREDefines.h"
 #include "OpenFIREconstant.h"
+#include "OpenFireCounter.h"
 
 inline AbsMouse5_ AbsMouse5(2);
 
@@ -84,6 +85,10 @@ public:
     /// @brief    Redraws display based on current state.
     static void RedrawDisplay();
     #endif // USES_DISPLAY
+
+    #ifdef USE_COUNTER
+    static inline OpenFireCounter* counter;
+    #endif // USE_COUNTER
 
     /// @brief    Applies loaded gun profile settings from profileData[PROFILE_COUNT]
     /// @param    profile
