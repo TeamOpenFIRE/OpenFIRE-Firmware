@@ -2,7 +2,7 @@
 #include <cctype> // para toupper
 
 // Definimos la fuente como estática
-const uint8_t CounterDisplay::font[] = {
+const uint8_t OpenFireCounter::font[] = {
     // Números 0-9 (índices 0-9)
     0b11000000, 0b11111001, 0b10100100, 0b10110000, 0b10011001, 0b10010010, 
     0b10000010, 0b11111000, 0b10000000, 0b10010000,
@@ -20,10 +20,10 @@ const uint8_t CounterDisplay::font[] = {
     0b10100100
 };
 
-CounterDisplay::CounterDisplay(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
+OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
-void CounterDisplay::init() {
+void OpenFireCounter::init() {
     // Inicializa el SPI a 1MHz
     spi_init(_spi, 1000 * 1000);
     
@@ -40,7 +40,7 @@ void CounterDisplay::init() {
     print("HI");
 }
 
-void CounterDisplay::print(const std::string& text) {
+void OpenFireCounter::print(const std::string& text) {
     uint8_t patterns[2];
     patterns[0] = font[27]; // Dígito izquierdo en blanco
     patterns[1] = font[27]; // Dígito derecho en blanco
@@ -74,7 +74,7 @@ void CounterDisplay::print(const std::string& text) {
     gpio_put(_cs_pin, 1); // Sube el Latch para mostrar los datos
 }
 
-uint8_t CounterDisplay::getPattern(char c) {
+uint8_t OpenFireCounter::getPattern(char c) {
     // La lógica de esta función es idéntica a la versión de Arduino
     if (c >= '0' && c <= '9') {
         return font[c - '0'];
