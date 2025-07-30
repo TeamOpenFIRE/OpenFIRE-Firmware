@@ -1,4 +1,4 @@
-#include "CounterDisplay.h"
+#include "OpenFireCounter.h"
 #include <cctype> // para toupper
 
 // Definimos la fuente como estática
