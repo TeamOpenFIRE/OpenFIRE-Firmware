@@ -126,9 +126,10 @@ void setup() {
         #endif // ARDUINO_RASPBERRY_PI_PICO_W
     #endif // USE_TINYUSB
 	
-	#ifdef USE_COUNTER
-		Serial1.begin(9600);
-	#endif
+    #ifdef USE_COUNTER
+        FW_Common::counter = new OpenFireCounter(spi0, PIN_COUNTER_SCLK, PIN_COUNTER_SDI, PIN_COUNTER_LOAD);
+        FW_Common::counter->init();
+    #endif // USE_COUNTER
 
     // this is needed for both customs and builtins, as defaults are all uninitialized
     FW_Common::UpdateBindings(true);
