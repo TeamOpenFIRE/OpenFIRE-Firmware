@@ -4,24 +4,45 @@
 // --- "FUENTE" DE CARACTERES ---
 const uint8_t OpenFireCounter::font[] = {
   // Números 0-9 (índices 0-9)
-  0b11000000, 0b11111001, 0b10100100, 0b10110000, 0b10011001,
-  0b10010010, 0b10000010, 0b11111000, 0b10000000, 0b10010000,
-  // Letras A, b, C, d, E, F, H, I, L, O, P, S, U (índices 10-22)
-  0b10001000, 0b10000011, 0b11000110, 0b10100001, 0b10000110,
-  0b10001110, 0b10001001, 0b11111001, 0b11000111, 0b11000000,
-  0b10001100, 0b10010010, 0b11000001,
+  0b11000000, // 0
+  0b11111001, // 1
+  0b10100100, // 2
+  0b10110000, // 3
+  0b10011001, // 4
+  0b10010010, // 5
+  0b10010000, // 6  <-- Este es el patrón estándar del '9'.
+  0b11111000, // 7
+  0b10000000, // 8
+  0b10000010, // 9  <-- Este es el patrón estándar del '6'.
+  // Letras Claras: A, b, C, d, E, F, H, I, L, O, P, S, U (índices 10-22)
+  0b10001000, // A
+  0b10000011, // b
+  0b11000110, // C
+  0b10100001, // d
+  0b10000110, // E
+  0b10001110, // F
+  0b10001001, // H
+  0b11111001, // I (es igual que el 1)
+  0b11000111, // L
+  0b11000000, // O (es igual que el 0)
+  0b10001100, // P
+  0b10010010, // S (es igual que el 5)
+  0b11000001, // U
   // Símbolos: grado (°), guion (-), bajo (_), punto (.) (índices 23-26)
-  0b10011100, 0b10111111, 0b11110111, 0b01111111,
+  0b10011100, // grado
+  0b10111111, // guion
+  0b11110111, // bajo
+  0b01111111, // punto
   // Caracter en blanco (espacio) (índice 27)
   0b11111111
 };
 
 
-
+// Constructor 
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
-
+// init() 
 void OpenFireCounter::init() {
     spi_init(_spi, 1000 * 1000);
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
@@ -32,11 +53,11 @@ void OpenFireCounter::init() {
     print("HI");
 }
 
-// print() CON LA LÓGICA DE FORMATEO DE UN SOLO DÍGITO
+// print() con la lógica de formateo de un solo dígito 
 void OpenFireCounter::print(const std::string& text) {
     uint8_t patterns[2];
-    patterns[0] = font[27]; // Dígito izquierdo en blanco por defecto
-    patterns[1] = font[27]; // Dígito derecho en blanco por defecto
+    patterns[0] = font[27]; 
+    patterns[1] = font[27];
     int digit_index = 0;
 
     for (int i = 0; i < text.length() && digit_index < 2; i++) {
@@ -56,19 +77,16 @@ void OpenFireCounter::print(const std::string& text) {
         }
     }
     
-    // --- LÓGICA DE FORMATEO PARA UN SOLO CARACTER ---
     if (digit_index == 1) {
         bool is_numeric = false;
         if (!text.empty()) {
             is_numeric = (text[0] >= '0' && text[0] <= '9');
         }
-        
-        patterns[1] = patterns[0]; // Mueve el caracter al dígito de la derecha
-        
+        patterns[1] = patterns[0];
         if (is_numeric) {
-            patterns[0] = getPattern('0'); // Añade un cero a la izquierda
+            patterns[0] = getPattern('0');
         } else {
-            patterns[0] = getPattern(' '); // Añade un espacio a la izquierda
+            patterns[0] = getPattern(' ');
         }
     }
 
@@ -80,7 +98,7 @@ void OpenFireCounter::print(const std::string& text) {
     gpio_put(_cs_pin, 1);
 }
 
-// getPattern() (set de caracteres limitado)
+// getPattern() 
 uint8_t OpenFireCounter::getPattern(char c) {
   if (c >= '0' && c <= '9') {
     return font[c - '0'];
@@ -107,6 +125,6 @@ uint8_t OpenFireCounter::getPattern(char c) {
     case '_': return font[25];
     case '.': return font[26];
     case ' ': return font[27];
-    default: return font[27]; // Espacio para caracteres no reconocidos
+    default: return font[27]; 
   }
 }
