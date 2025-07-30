@@ -3,21 +3,17 @@
 
 // Definimos la fuente como estática
 const uint8_t OpenFireCounter::font[] = {
-    // Números 0-9 (índices 0-9)
-    0b11000000, 0b11111001, 0b10100100, 0b10110000, 0b10011001, 0b10010010, 
-    0b10000010, 0b11111000, 0b10000000, 0b10010000,
-    // Letras Claras A, b, C, d, E, F, H, I, L, o, P, S, U (índices 10-22)
-    0b10001000, 0b10000011, 0b11000110, 0b10100001, 0b10000110, 0b10001110, 
-    0b10001001, 0b11111001, 0b11000111, 0b11000000, 0b10001100, 0b10010010, 
-    0b11000001,
-    // Símbolos: grado (°), guion (-), bajo (_), punto (.) (índices 23-26)
-    0b10011100, 0b10111111, 0b11110111, 0b01111111,
-    // Caracter en blanco (espacio) (índice 27)
-    0b11111111,
-    // Letras "parecidas" G, J, K, M, N, Q, R, T, V, W, X, Y, Z (índices 28-40)
-    0b10000010, 0b11110001, 0b10001011, 0b11001010, 0b10101011, 0b10011000, 
-    0b10101111, 0b10000111, 0b11100101, 0b10110101, 0b10001001, 0b10010001, 
-    0b10100100
+  // Números 0-9 (índices 0-9) 
+  0b00000011, 0b10011111, 0b00100101, 0b00001101, 0b10011001, 
+  0b01001001, 0b01000001, 0b00011111, 0b00000001, 0b00011001,
+  // Letras Claras A, b, C, d, E, F, H, I, L, O, P, S, U (índices 10-22) 
+  0b00010001, 0b11000001, 0b01100011, 0b10000101, 0b01100001, 0b01110001, 
+  0b10010001, 0b10011111, 0b01110011, 0b00000011, 0b00110001, 0b01001001, 
+  0b10000011,
+  // Símbolos: grado (°), guion (-), bajo (_), punto (.) (índices 23-26) 
+  0b00111001, 0b11111101, 0b11110111, 0b11111110,
+  // Caracter en blanco (espacio) (índice 27) 
+  0b11111111
 };
 
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
@@ -36,16 +32,19 @@ void OpenFireCounter::init() {
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1); // Mantenerlo en alto por defecto
 
-    // Muestra "HI" al iniciar
-    print("HI");
+    // Muestra "OF" al iniciar
+    print("OF");
 }
+
+// En src/OpenFireCounter.cpp
 
 void OpenFireCounter::print(const std::string& text) {
     uint8_t patterns[2];
-    patterns[0] = font[27]; // Dígito izquierdo en blanco
-    patterns[1] = font[27]; // Dígito derecho en blanco
+    patterns[0] = font[27]; // Dígito izquierdo en blanco por defecto
+    patterns[1] = font[27]; // Dígito derecho en blanco por defecto
     int digit_index = 0;
 
+    // Lógica de análisis de la cadena 
     for (int i = 0; i < text.length() && digit_index < 2; i++) {
         char current_char = text[i];
         char next_char = (i + 1 < text.length()) ? text[i + 1] : '\0';
@@ -63,15 +62,33 @@ void OpenFireCounter::print(const std::string& text) {
         }
     }
     
-    // El orden de envío es {Dígito_Izquierdo, Dígito_Derecho}
-    // porque el primer byte enviado termina en el último registro de la cadena.
+    // LÓGICA DE FORMATEO ---
+    // Si solo hemos procesado un caracter (un dígito o una letra)
+    if (digit_index == 1) {
+        bool is_numeric = false;
+        if (!text.empty()) {
+            // Comprobamos si el primer caracter de la cadena es un número
+            is_numeric = (text[0] >= '0' && text[0] <= '9');
+        }
+        
+        // Movemos el caracter al dígito de la derecha (patterns[1])
+        patterns[1] = patterns[0]; 
+        
+        if (is_numeric) {
+            patterns[0] = getPattern('0'); // Añadimos un cero a la izquierda
+        } else {
+            patterns[0] = getPattern(' '); // Añadimos un espacio a la izquierda
+        }
+    }
+   
+
+    // Envío a los registros 
     uint8_t buffer_to_send[2] = {patterns[0], patterns[1]};
-    
-    gpio_put(_cs_pin, 0); // Baja el Latch para empezar la transmisión
+    gpio_put(_cs_pin, 0);
     sleep_us(1);
-    spi_write_blocking(_spi, buffer_to_send, 2); // Envía los 2 bytes
+    spi_write_blocking(_spi, buffer_to_send, 2);
     sleep_us(1);
-    gpio_put(_cs_pin, 1); // Sube el Latch para mostrar los datos
+    gpio_put(_cs_pin, 1);
 }
 
 uint8_t OpenFireCounter::getPattern(char c) {
