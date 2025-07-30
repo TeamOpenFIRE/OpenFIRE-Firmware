@@ -1,14 +1,14 @@
-#ifndef COUNTER_DISPLAY_H
-#define COUNTER_DISPLAY_H
+#ifndef OPENFIRE_COUNTER_H // <-- Cambiado para consistencia
+#define OPENFIRE_COUNTER_H // <-- Cambiado para consistencia
 
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include <string>
 
-class CounterDisplay {
+class OpenFireCounter { // <-- NOMBRE DE LA CLASE CORREGIDO
 public:
     // Constructor: Define los pines SPI y de Latch (LOAD/CS)
-    CounterDisplay(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin);
+    OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin);
 
     // Inicializa el hardware SPI
     void init();
@@ -30,4 +30,4 @@ private:
     static const uint8_t font[41];
 };
 
-#endif // COUNTER_DISPLAY_H
+#endif // OPENFIRE_COUNTER_H // <-- Cambiado para consistencia
