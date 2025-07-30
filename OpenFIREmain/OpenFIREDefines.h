@@ -98,4 +98,10 @@
 // Enable sending life or ammo values to an external Arduino counter via UART
 #define USE_COUNTER
 
+#ifdef USE_COUNTER
+  #define PIN_COUNTER_SDI 19 // Pin de Datos (MOSI en SPI0)
+  #define PIN_COUNTER_SCLK 18 // Pin de Reloj (SCK en SPI0)
+  #define PIN_COUNTER_LOAD 17 // Pin de Latch/CS (CSn en SPI0)
+#endif // USE_COUNTER
+
 #endif // _OPENFIREDEFINES_H_
