@@ -601,6 +601,14 @@ void OF_Serial::SerialProcessing()
                         serialAmmoCount = atoi(serialInputS);
                         serialAmmoCount = constrain(serialAmmoCount, 0, 99);
                         serialDisplayChange = true;
+			
+			#ifdef USE_COUNTER
+			  #if COUNTER_TYPE == 1
+			    Serial1.print('<');
+			    Serial1.print(serialAmmoCount);
+			    Serial1.println('>');
+			  #endif
+			#endif
                     }
                     break;
                 case 'L':
@@ -620,6 +628,14 @@ void OF_Serial::SerialProcessing()
                             FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife; // Calculate the Life % to show 
                         }
                         serialDisplayChange = true;
+
+			#ifdef USE_COUNTER
+			  #if COUNTER_TYPE == 0
+			    Serial1.print('<');
+			    Serial1.print(serialLifeCount);
+			    Serial1.println('>');
+			  #endif
+			#endif
                     }
                     break;
                 }
