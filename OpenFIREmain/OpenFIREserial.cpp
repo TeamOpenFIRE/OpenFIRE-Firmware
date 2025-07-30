@@ -586,7 +586,7 @@ void OF_Serial::SerialProcessing()
                 }
                 break;
               #endif // LED_ENABLE
-              #ifdef USES_DISPLAY
+              #if defined(USES_DISPLAY) || defined(USE_COUNTER)
               case 'D':
                 switch(Serial.read()) {
                 case 'A':
@@ -601,14 +601,6 @@ void OF_Serial::SerialProcessing()
                         serialAmmoCount = atoi(serialInputS);
                         serialAmmoCount = constrain(serialAmmoCount, 0, 99);
                         serialDisplayChange = true;
-			
-			#ifdef USE_COUNTER
-			  #if COUNTER_TYPE == 1
-			    Serial1.print('<');
-			    Serial1.print(serialAmmoCount);
-			    Serial1.println('>');
-			  #endif
-			#endif
                     }
                     break;
                 case 'L':
@@ -628,19 +620,11 @@ void OF_Serial::SerialProcessing()
                             FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife; // Calculate the Life % to show 
                         }
                         serialDisplayChange = true;
-
-			#ifdef USE_COUNTER
-			  #if COUNTER_TYPE == 0
-			    Serial1.print('<');
-			    Serial1.print(serialLifeCount);
-			    Serial1.println('>');
-			  #endif
-			#endif
                     }
                     break;
                 }
                 break;
-              #endif // USES_DISPLAY
+              #endif // USES_DISPLAY  || USE_COUNTER
               #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
               default:
                 //Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");
