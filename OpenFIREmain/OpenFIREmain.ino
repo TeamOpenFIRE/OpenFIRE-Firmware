@@ -692,31 +692,44 @@ void ExecRunMode()
             FW_Common::GetPosition();
         }
         #ifdef USES_DISPLAY
-            else {
-                FW_Common::OLED.IdleOps();
-                #ifdef MAMEHOOKER
-                    // Solenoid feedback on the second core is hella wonky when ammo updates are performed there likely due to blocking I2C transactions,
-                    // so just do it here using the signal sent by it.
-                    if(OF_Serial::serialDisplayChange) {
-                        if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
-                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
-                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
-                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
-                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
-                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                            FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
-                        } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
-                            FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
-                            FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
-                        }
+            FW_Common::OLED.IdleOps();
+        #endif
 
-                        OF_Serial::serialDisplayChange = false;
+	#ifdef MAMEHOOKER
+            if(OF_Serial::serialDisplayChange) {
+
+                // ---- Bloque para el Display OLED ----
+                #ifdef USES_DISPLAY
+                    if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
+                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life && FW_Common::OLED.lifeBar) {
+                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Life) {
+                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
+                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both && FW_Common::OLED.lifeBar) {
+                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                        FW_Common::OLED.PrintLife(FW_Common::dispLifePercentage);
+                    } else if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Both) {
+                        FW_Common::OLED.PrintAmmo(OF_Serial::serialAmmoCount);
+                        FW_Common::OLED.PrintLife(OF_Serial::serialLifeCount);
                     }
-                #endif // MAMEHOOKER
+                #endif // USES_DISPLAY
+
+                // ---- Bloque INDEPENDIENTE para el Contador 7-Segmentos ----
+                #ifdef USE_COUNTER
+                    // Comprobamos qué tipo de dato debemos mostrar (definido en OpenFIREDefines.h)
+                    #if COUNTER_TYPE == 1 // 1 = Munición
+                        // Usamos std::to_string para convertir el número a texto
+                        FW_Common::counter->print(std::to_string(OF_Serial::serialAmmoCount));
+                    #else // 0 = Vidas
+                        FW_Common::counter->print(std::to_string(OF_Serial::serialLifeCount));
+                    #endif
+                #endif // USE_COUNTER
+
+                // Reseteamos la bandera una sola vez, después de actualizar todos los displays
+                OF_Serial::serialDisplayChange = false;
             }
-        #endif // USES_DISPLAY
+        #endif // MAMEHOOKER
 
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
