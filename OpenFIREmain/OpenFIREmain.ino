@@ -127,9 +127,16 @@ void setup() {
     #endif // USE_TINYUSB
 	
     #ifdef USE_COUNTER
-        FW_Common::counter = new OpenFireCounter(spi0, PIN_COUNTER_SCLK, PIN_COUNTER_SDI, PIN_COUNTER_LOAD);
+    // Comprueba si el contador está habilitado en las preferencias
+    if (OF_Prefs::toggles[OF_Const::counterEnable]) {
+        // Inicializa el contador usando los pines de las preferencias
+        FW_Common::counter = new OpenFireCounter(spi0, 
+                                                 OF_Prefs::pins[OF_Const::counterSclkPin], 
+                                                 OF_Prefs::pins[OF_Const::counterSdiPin], 
+                                                 OF_Prefs::pins[OF_Const::counterLoadPin]);
         FW_Common::counter->init();
-    #endif // USE_COUNTER
+    }
+    #endif
 
     // this is needed for both customs and builtins, as defaults are all uninitialized
     FW_Common::UpdateBindings(true);
