@@ -12,4 +12,4 @@
 	url = https://github.com/adafruit/Adafruit_BusIO
 [submodule "OpenFIREmain/boards"]
 	path = OpenFIREmain/boards
-	url = https://github.com/TeamOpenFIRE/OpenFIRE-Boards
+	url = https://github.com/gustavoalara/OpenFIRE-Boards
