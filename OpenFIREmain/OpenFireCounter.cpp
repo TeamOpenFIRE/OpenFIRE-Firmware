@@ -1,34 +1,34 @@
 #include "OpenFireCounter.h"
 #include <cctype> // para toupper
 
-// --- "FUENTE" DE CARACTERES ESTÁNDAR (PARA TRANSMISIÓN LSB-FIRST) ---
+// --- "FUENTE" DE CARACTERES PRE-GIRADA 180° PARA HARDWARE INVERTIDO ---
 const uint8_t OpenFireCounter::font[] = {
-  // Números 0-9
-  0b11000000, // 0
-  0b11111001, // 1
-  0b10100100, // 2
-  0b10110000, // 3
-  0b10011001, // 4
-  0b10010010, // 5
-  0b10000010, // 6
-  0b11111000, // 7
-  0b10000000, // 8
-  0b10010000, // 9
-  // Letras...
+  // Números 0-9 (índices 0-9)
+  0b11000000, // 0 (simétrico)
+  0b11001111, // 1 (pre-girado)
+  0b10100100, // 2 (simétrico)
+  0b10001110, // 3 (pre-girado)
+  0b10011011, // 4 (pre-girado)
+  0b10010010, // 5 (simétrico)
+  0b10000010, // 6 (pre-girado)
+  0b11111000, // 7 (no es simétrico, pero su patrón estándar sí lo parece)
+  0b10000000, // 8 (simétrico)
+  0b10010000, // 9 (pre-girado)
+  // Letras Claras: A, b, C, d, E, F, H, I, L, O, P, S, U
   0b10001000, // A
-  0b10000011, // b
+  0b11100001, // b
   0b11000110, // C
-  0b10100001, // d
+  0b11000010, // d
   0b10000110, // E
   0b10001110, // F
   0b10001001, // H
-  0b11111001, // I
+  0b11001111, // I
   0b11000111, // L
   0b11000000, // O
   0b10001100, // P
   0b10010010, // S
   0b11000001, // U
-  // Símbolos...
+  // Símbolos
   0b10011100, // grado
   0b10111111, // guion
   0b11110111, // bajo
@@ -37,17 +37,19 @@ const uint8_t OpenFireCounter::font[] = {
   0b11111111
 };
 
-// Constructor 
+
+// Constructor (sin cambios)
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
-// init() 
+// init() CON LA LÍNEA CRÍTICA LSB_FIRST
 void OpenFireCounter::init() {
     spi_init(_spi, 1000 * 1000);
-  
-    // Configura el formato SPI a 8 bits, polaridad y fase estándar, y LSB First.
+    
+    // --- LÍNEA CRÍTICA ---
+    // Configura el formato SPI a 8 bits y, lo más importante, LSB First.
     spi_set_format(_spi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_LSB_FIRST);
-  
+    
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
     gpio_set_function(_mosi_pin, GPIO_FUNC_SPI);
     gpio_init(_cs_pin);
@@ -56,7 +58,7 @@ void OpenFireCounter::init() {
     print("HI");
 }
 
-// print() con la lógica de formateo de un solo dígito 
+// print() (sin cambios)
 void OpenFireCounter::print(const std::string& text) {
     uint8_t patterns[2];
     patterns[0] = font[27]; 
@@ -101,7 +103,7 @@ void OpenFireCounter::print(const std::string& text) {
     gpio_put(_cs_pin, 1);
 }
 
-// getPattern() 
+// getPattern() (sin cambios)
 uint8_t OpenFireCounter::getPattern(char c) {
   if (c >= '0' && c <= '9') {
     return font[c - '0'];
