@@ -10,7 +10,7 @@ public:
     // Constructor
     OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin);
 
-    // Inicializa el hardware y ejecuta el test de segmentos
+    // Inicializa el hardware
     void init();
 
     // La función principal que analiza una cadena y la muestra
@@ -19,9 +19,6 @@ public:
 private:
     // Devuelve el patrón de bits para un caracter dado
     uint8_t getPattern(char c);
-    
-    // NUEVO: Envía dos patrones de 8 bits directamente a los registros
-    void displayRawPatterns(uint8_t pattern_left, uint8_t pattern_right);
 
     // Variables de hardware
     spi_inst_t *_spi;
