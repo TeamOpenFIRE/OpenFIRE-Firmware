@@ -3,8 +3,7 @@
 #include <string>
 #include <cstdio>
 
-// --- "FUENTE" DE CARACTERES ESTÁNDAR DEFINITIVA (ÁNODO COMÚN) ---
-// Basada en el mapa de pines 100% estándar que confirmamos con tu test.
+// --- "FUENTE" DE CARACTERES ESTÁNDAR (ÁNODO COMÚN) ---
 const uint8_t OpenFireCounter::font[] = {
   // Números 0-9
   0b11000000, 0b11111001, 0b10100100, 0b10110000, 0b10011001,
@@ -24,7 +23,7 @@ const uint8_t OpenFireCounter::font[] = {
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
-// init() - Versión final y simple
+// init() 
 void OpenFireCounter::init() {
     spi_init(_spi, 1000 * 1000);
     // NO se necesita spi_set_format, el modo por defecto (MSB_FIRST) es el correcto.
@@ -76,7 +75,7 @@ void OpenFireCounter::print(const std::string& text) {
     }
 
     // Lógica de envío SPI (antes en displayRawPatterns)
-    uint8_t buffer_to_send[2] = {patterns[0], patterns[1]};
+    uint8_t buffer_to_send[2] = {patterns[1], patterns[2]};
     gpio_put(_cs_pin, 0);
     sleep_us(1);
     spi_write_blocking(_spi, buffer_to_send, 2);
