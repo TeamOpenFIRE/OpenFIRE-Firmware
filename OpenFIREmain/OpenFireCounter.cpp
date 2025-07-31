@@ -1,42 +1,41 @@
 #include "OpenFireCounter.h"
 #include <cctype> // para toupper
 
-// --- "FUENTE" DE CARACTERES ---
+// --- "FUENTE" DE CARACTERES ESTÁNDAR (PARA TRANSMISIÓN LSB-FIRST) ---
 const uint8_t OpenFireCounter::font[] = {
-  // Números 0-9 (índices 0-9)
+  // Números 0-9
   0b11000000, // 0
   0b11111001, // 1
   0b10100100, // 2
-  0b10000110, // 3 
-  0b10011100, // 4
+  0b10110000, // 3
+  0b10011001, // 4
   0b10010010, // 5
-  0b10010000, // 6  
-  0b11000111, // 7
+  0b10000010, // 6
+  0b11111000, // 7
   0b10000000, // 8
-  0b10000010, // 9  
-  // Letras Claras: A, b, C, d, E, F, H, I, L, O, P, S, U (índices 10-22)
+  0b10010000, // 9
+  // Letras...
   0b10001000, // A
   0b10000011, // b
   0b11000110, // C
   0b10100001, // d
-  0b10110000, // E
+  0b10000110, // E
   0b10001110, // F
   0b10001001, // H
-  0b11111001, // I (es igual que el 1)
-  0b11111000, // L
-  0b11000000, // O (es igual que el 0)
+  0b11111001, // I
+  0b11000111, // L
+  0b11000000, // O
   0b10001100, // P
-  0b10010010, // S (es igual que el 5)
+  0b10010010, // S
   0b11000001, // U
-  // Símbolos: grado (°), guion (-), bajo (_), punto (.) (índices 23-26)
+  // Símbolos...
   0b10011100, // grado
   0b10111111, // guion
   0b11110111, // bajo
   0b01111111, // punto
-  // Caracter en blanco (espacio) (índice 27)
+  // Caracter en blanco
   0b11111111
 };
-
 
 // Constructor 
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
@@ -45,6 +44,10 @@ OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mo
 // init() 
 void OpenFireCounter::init() {
     spi_init(_spi, 1000 * 1000);
+  
+    // Configura el formato SPI a 8 bits, polaridad y fase estándar, y LSB First.
+    spi_set_format(_spi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_LSB_FIRST);
+  
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
     gpio_set_function(_mosi_pin, GPIO_FUNC_SPI);
     gpio_init(_cs_pin);
