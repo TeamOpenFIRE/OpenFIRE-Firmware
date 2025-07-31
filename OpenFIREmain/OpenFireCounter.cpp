@@ -1,5 +1,7 @@
 #include "OpenFireCounter.h"
 #include <cctype> // para toupper
+#include <string> // Necesario para std::string
+#include <cstdio> // Necesario para printf
 
 // --- "FUENTE" DE CARACTERES PRE-GIRADA 180° PARA HARDWARE INVERTIDO ---
 const uint8_t OpenFireCounter::font[] = {
@@ -56,29 +58,24 @@ void OpenFireCounter::init() {
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1);
 
-    Serial.begin(9600);
-  
+      
     // --- BUCLE DE PRUEBA ---
     // Creamos una cadena con todos los caracteres a probar
-    std::string test_chars = "AbCdEFHILoPSUº-_. ";
+    std::string test_chars = "AbCdEFHILoPSU*-_. ";
 
-    Serial.println("--- Iniciando test visual de caracteres ---");
+    printf("--- Iniciando test visual de caracteres ---\n");
 
     for (char const& c : test_chars) {
-        Serial.print("Mostrando: '");
-        Serial.print(c);
-        Serial.println("'");
+        printf("Mostrando: '%c'\n", c);
         
-        // Creamos una cadena de 2 caracteres para enviarla a la función print
-        // ej: " A", " b", etc.
         std::string display_str = " ";
         display_str += c;
         
         print(display_str);
-        sleep_ms(2000);// 2 segundos para ver cada caracter
+        sleep_ms(2000); // 2 segundos para ver cada caracter
     }
     
-    Serial.println("--- Test finalizado ---");
+    printf("--- Test finalizado ---\n");
     print("OF"); // Dejamos un estado final en el display
 }
 
@@ -132,7 +129,7 @@ uint8_t OpenFireCounter::getPattern(char c) {
   if (c >= '0' && c <= '9') {
     return font[c - '0'];
   }
-  if (c == 'º') {
+  if (c == '*') {
     return font[23];
   }
   char upper_c = toupper(c);
