@@ -78,7 +78,7 @@ jobs:
       - name: Checkout OpenFIRE-Firmware
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           
       - name: Install Arduino-cli
         uses: arduino/setup-arduino-cli@v2
