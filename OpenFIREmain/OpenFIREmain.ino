@@ -723,15 +723,17 @@ void ExecRunMode()
                 #endif // USES_DISPLAY
 
                 // ---- Bloque INDEPENDIENTE para el Contador 7-Segmentos ----
-                #ifdef USE_COUNTER
-                    // Comprobamos qué tipo de dato debemos mostrar (definido en OpenFIREDefines.h)
-                    #if COUNTER_TYPE == 1 // 1 = Munición
-                        // Usamos std::to_string para convertir el número a texto
-                        FW_Common::counter->print(std::to_string(OF_Serial::serialAmmoCount));
-                    #else // 0 = Vidas
-                        FW_Common::counter->print(std::to_string(OF_Serial::serialLifeCount));
-                    #endif
-                #endif // USE_COUNTER
+	    	#ifdef USE_COUNTER
+		        // Comprueba si el contador está habilitado antes de intentar usarlo
+		        if (OF_Prefs::toggles[OF_Const::counterEnable]) {
+		            // Ahora lee el tipo de contador desde las preferencias
+		            if (OF_Prefs::settings[OF_Const::counterType] == 1) { // 1 = Munición
+		                FW_Common::counter->print(std::to_string(OF_Serial::serialAmmoCount));
+		            } else { // 0 = Vidas
+		                FW_Common::counter->print(std::to_string(OF_Serial::serialLifeCount));
+		            }
+		        }
+		#endif // USE_COUNTER
 
                 // Reseteamos la bandera una sola vez, después de actualizar todos los displays
                 OF_Serial::serialDisplayChange = false;
