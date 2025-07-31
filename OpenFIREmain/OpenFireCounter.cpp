@@ -4,16 +4,16 @@
 // --- "FUENTE" DE CARACTERES PRE-GIRADA 180° PARA HARDWARE INVERTIDO ---
 const uint8_t OpenFireCounter::font[] = {
   // Números 0-9 (índices 0-9)
-  0b11000000, // 0 (simétrico)
-  0b11001111, // 1 (pre-girado)
-  0b10100100, // 2 (simétrico)
-  0b10001110, // 3 (pre-girado)
-  0b10011011, // 4 (pre-girado)
-  0b10010010, // 5 (simétrico)
-  0b10000010, // 6 (pre-girado)
-  0b11111000, // 7 (no es simétrico, pero su patrón estándar sí lo parece)
-  0b10000000, // 8 (simétrico)
-  0b10010000, // 9 (pre-girado)
+  0b11000000, // 0 
+  0b11001111, // 1 
+  0b10100100, // 2 
+  0b10000110, // 3 
+  0b10001001, // 4 
+  0b10010010, // 5 
+  0b10010000, // 6 
+  0b10001111, // 7 
+  0b10000000, // 8 
+  0b10000010, // 9 
   // Letras Claras: A, b, C, d, E, F, H, I, L, O, P, S, U
   0b10001000, // A
   0b11100001, // b
