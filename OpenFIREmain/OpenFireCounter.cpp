@@ -75,7 +75,7 @@ void OpenFireCounter::print(const std::string& text) {
     }
 
     // Lógica de envío SPI (antes en displayRawPatterns)
-    uint8_t buffer_to_send[2] = {patterns[1], patterns[2]};
+    uint8_t buffer_to_send[2] = {patterns[1], patterns[0]};
     gpio_put(_cs_pin, 0);
     sleep_us(1);
     spi_write_blocking(_spi, buffer_to_send, 2);
