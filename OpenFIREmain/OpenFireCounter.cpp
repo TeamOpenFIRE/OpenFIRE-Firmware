@@ -55,7 +55,28 @@ void OpenFireCounter::init() {
     gpio_init(_cs_pin);
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1);
-    print("HI");
+    // --- BUCLE DE PRUEBA ---
+    // Creamos una cadena con todos los caracteres a probar
+    std::string test_chars = "AbCdEFHILoPSUº-_. ";
+
+    Serial.println("--- Iniciando test visual de caracteres ---");
+
+    for (char const& c : test_chars) {
+        Serial.print("Mostrando: '");
+        Serial.print(c);
+        Serial.println("'");
+        
+        // Creamos una cadena de 2 caracteres para enviarla a la función print
+        // ej: " A", " b", etc.
+        std::string display_str = " ";
+        display_str += c;
+        
+        print(display_str);
+        delay(2000); // 2 segundos para ver cada caracter
+    }
+    
+    Serial.println("--- Test finalizado ---");
+    print("OF"); // Dejamos un estado final en el display
 }
 
 // print() (sin cambios)
