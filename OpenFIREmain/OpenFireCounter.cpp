@@ -1,42 +1,42 @@
 #include "OpenFireCounter.h"
-#include <cctype> // para toupper
-#include <string> // Necesario para std::string
-#include <cstdio> // Necesario para printf
+#include <cctype>
+#include <string>
+#include <cstdio>
 
-// --- "FUENTE" DE CARACTERES PRE-GIRADA 180° PARA HARDWARE INVERTIDO ---
+// --- "FUENTE" DE CARACTERES PRE-GIRADA 180° PARA COMPENSAR EL DISPLAY ---
 const uint8_t OpenFireCounter::font[] = {
-  // Números 0-9 (índices 0-9)
-  0b11000000, // 0 
-  0b11001111, // 1 
-  0b10100100, // 2 
-  0b10000110, // 3 
-  0b10001011, // 4 
-  0b10010010, // 5 
-  0b10010000, // 6 
-  0b11000111, // 7 
-  0b10000000, // 8 
-  0b10000010, // 9 
-  // Letras Claras: A, b, C, d, E, F, H, I, L, O, P, S, U
-  0b10000001, // A
+  // Números 0-9
+  0b11000000, // 0 (simétrico)
+  0b11001111, // 1 (pre-girado)
+  0b10100100, // 2 (simétrico)
+  0b10001110, // 3 (pre-girado)
+  0b10011011, // 4 (pre-girado)
+  0b10010010, // 5 (simétrico)
+  0b10000010, // 6 (pre-girado)
+  0b11111000, // 7 (el patrón estándar es casi simétrico)
+  0b10000000, // 8 (simétrico)
+  0b10010000, // 9 (pre-girado)
+  // Letras Claras
+  0b10001000, // A (índice 10)
   0b11100001, // b
   0b11000110, // C
   0b11000010, // d
   0b10000110, // E
-  0b10000111, // F
+  0b10001110, // F
   0b10001001, // H
-  0b11001111, // I
-  0b11111000, // L
+  0b11001111, // I (igual que el 1)
+  0b11000111, // L
   0b11000000, // O
   0b10001100, // P
   0b10010010, // S
   0b11000001, // U
   // Símbolos
-  0b10011100, // grado
-  0b10111111, // guion
-  0b11110111, // bajo
-  0b01111111, // punto
+  0b10011100, // grado (*) (índice 23)
+  0b10111111, // guion (-)
+  0b11110111, // bajo (_)
+  0b01111111, // punto (.)
   // Caracter en blanco
-  0b11111111
+  0b11111111 // (índice 27)
 };
 
 
@@ -44,12 +44,11 @@ const uint8_t OpenFireCounter::font[] = {
 OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
-// init() CON LA LÍNEA CRÍTICA LSB_FIRST
+// init() CON EL BUCLE DE PRUEBA RESTAURADO
 void OpenFireCounter::init() {
     spi_init(_spi, 1000 * 1000);
     
-    // --- LÍNEA CRÍTICA ---
-    // Configura el formato SPI a 8 bits y, lo más importante, LSB First.
+    // Configura el formato SPI a 8 bits y LSB First para compensar el hardware girado.
     spi_set_format(_spi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_LSB_FIRST);
     
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
@@ -58,32 +57,30 @@ void OpenFireCounter::init() {
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1);
 
-      
     // --- BUCLE DE PRUEBA ---
-    // Creamos una cadena con todos los caracteres a probar
-    std::string test_chars = "AbCdEFHILoPSU*-_. ";
-
     printf("--- Iniciando test visual de caracteres ---\n");
+    std::string test_chars = "0123456789AbCdEFHILOPSU*-_.";
 
     for (char const& c : test_chars) {
         printf("Mostrando: '%c'\n", c);
         
-        std::string display_str = " ";
-        display_str += c;
+        // La función print ya se encarga de formatear un solo caracter
+        std::string s(1, c);
+        print(s);
         
-        print(display_str);
-        sleep_ms(2000); // 2 segundos para ver cada caracter
+        sleep_ms(1500); // 1.5 segundos para ver cada caracter
     }
     
     printf("--- Test finalizado ---\n");
     print("OF"); // Dejamos un estado final en el display
 }
 
-// print() (sin cambios)
+
+// print() con la corrección del orden de los dígitos
 void OpenFireCounter::print(const std::string& text) {
     uint8_t patterns[2];
-    patterns[0] = font[27]; 
-    patterns[1] = font[27];
+    patterns[0] = font[27]; // Dígito izquierdo en la lógica
+    patterns[1] = font[27]; // Dígito derecho en la lógica
     int digit_index = 0;
 
     for (int i = 0; i < text.length() && digit_index < 2; i++) {
@@ -116,7 +113,9 @@ void OpenFireCounter::print(const std::string& text) {
         }
     }
 
-    uint8_t buffer_to_send[2] = {patterns[0], patterns[1]};
+    // Intercambiamos los patrones para corregir el orden de los dígitos
+    uint8_t buffer_to_send[2] = {patterns[1], patterns[0]};
+    
     gpio_put(_cs_pin, 0);
     sleep_us(1);
     spi_write_blocking(_spi, buffer_to_send, 2);
@@ -135,9 +134,9 @@ uint8_t OpenFireCounter::getPattern(char c) {
   char upper_c = toupper(c);
   switch (upper_c) {
     case 'A': return font[10];
-    case 'B': return font[11]; // Muestra 'b'
+    case 'B': return font[11];
     case 'C': return font[12];
-    case 'D': return font[13]; // Muestra 'd'
+    case 'D': return font[13];
     case 'E': return font[14];
     case 'F': return font[15];
     case 'H': return font[16];
