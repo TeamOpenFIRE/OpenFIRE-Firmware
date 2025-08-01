@@ -130,7 +130,7 @@ void setup() {
     // Comprueba si el contador está habilitado en las preferencias
     if (OF_Prefs::toggles[OF_Const::counterEnable]) {
         // Inicializa el contador usando los pines de las preferencias
-        FW_Common::counter = new OpenFireCounter(spi0, 
+        FW_Common::counter = new OpenFIREcounter(spi0, 
                                                  OF_Prefs::pins[OF_Const::counterSclkPin], 
                                                  OF_Prefs::pins[OF_Const::counterSdiPin], 
                                                  OF_Prefs::pins[OF_Const::counterLoadPin]);
