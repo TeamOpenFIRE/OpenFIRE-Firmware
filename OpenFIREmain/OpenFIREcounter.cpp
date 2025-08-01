@@ -1,47 +1,55 @@
-#include "OpenFireCounter.h"
+ /*!
+ * @file OpenFIREcounter.h
+ * @Implementation of a 7-segment, 2-digit counter with shift registers based on the uhmxe-595-2 board for the OpenFIRE project.
+ *
+ * @copyright GustavoALara/PapaGustavoKratos, 2025
+ * @copyright GNU Lesser General Public License
+ */ 
+
+
+#include "OpenFIREcounter.h"
 #include <cctype>
 #include <string>
 #include <cstdio>
 
-// --- "FUENTE" DE CARACTERES ESTÁNDAR (ÁNODO COMÚN) ---
-const uint8_t OpenFireCounter::font[] = {
-  // Números 0-9
+// --- STANDAR CHARACTER "FONT" (COMMON ANODE) ---
+const uint8_t OpenFIREcounter::font[] = {
+  // Numbers 0-9
   0b11000000, 0b11111001, 0b10100100, 0b10110000, 0b10011001,
   0b10010010, 0b10000010, 0b11111000, 0b10000000, 0b10010000,
-  // Letras: A, b, C, d, E, F, G, H, I, J, L, O, P, S, U
+  // Letters: A, b, C, d, E, F, G, H, I, J, L, O, P, S, U
   0b10001000, 0b10000011, 0b11000110, 0b10100001, 0b10000110,
   0b10001110, 0b11000010, 0b10001001, 0b11111001, 0b11110001,
   0b11000111, 0b11000000, 0b10001100, 0b10010010, 0b11000001,
-  // Símbolos: grado (*), guion (-), bajo (_), punto (.)
+  // Simbols: degree (*), hyphen (-), underscore (_), period (.)
   0b10011100, 0b10111111, 0b11110111, 0b01111111,
-  // Caracter en blanco (espacio)
+  // Blank character (space)
   0b11111111
 };
 
 
 // Constructor
-OpenFireCounter::OpenFireCounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
+OpenFIREcounter::OpenFIREcounter(spi_inst_t *spi_instance, uint sck_pin, uint mosi_pin, uint cs_pin)
     : _spi(spi_instance), _sck_pin(sck_pin), _mosi_pin(mosi_pin), _cs_pin(cs_pin) {}
 
 // init() 
-void OpenFireCounter::init() {
+void OpenFIREcounter::init() {
     spi_init(_spi, 1000 * 1000);
-    // NO se necesita spi_set_format, el modo por defecto (MSB_FIRST) es el correcto.
-    
+        
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
     gpio_set_function(_mosi_pin, GPIO_FUNC_SPI);
     gpio_init(_cs_pin);
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1);
     
-    print("OF"); // Mensaje de inicio
+    print("OF"); // Start message
 }
 
-// print() con la lógica de envío integrada
-void OpenFireCounter::print(const std::string& text) {
+// print() with integrated sending logic
+void OpenFIREcounter::print(const std::string& text) {
     uint8_t patterns[2];
-    patterns[0] = font[29]; // Dígito izquierdo en blanco
-    patterns[1] = font[29]; // Dígito derecho en blanco
+    patterns[0] = font[29]; // Left digit in blank
+    patterns[1] = font[29]; // Right digit in blank
     int digit_index = 0;
 
     for (int i = 0; i < text.length() && digit_index < 2; i++) {
@@ -74,7 +82,7 @@ void OpenFireCounter::print(const std::string& text) {
         }
     }
 
-    // Lógica de envío SPI (antes en displayRawPatterns)
+    //  SPI logic sending
     uint8_t buffer_to_send[2] = {patterns[1], patterns[0]};
     gpio_put(_cs_pin, 0);
     sleep_us(1);
@@ -84,8 +92,8 @@ void OpenFireCounter::print(const std::string& text) {
 }
 
 
-// getPattern() con el set de caracteres completo
-uint8_t OpenFireCounter::getPattern(char c) {
+// getPattern() with full characters set
+uint8_t OpenFIREcounter::getPattern(char c) {
   if (c >= '0' && c <= '9') {
     return font[c - '0'];
   }
