@@ -80,6 +80,19 @@ jobs:
         with:
           submodules: recursive
           
+      - name: Update submodule to latest commit
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Actualiza el submódulo
+          git submodule update --remote --merge
+
+          # Añade y commitea el cambio del puntero
+          git add openFIREmain/boards
+          git commit -m "chore: update submodule to latest commit" || echo "No changes"
+          git push
+          
       - name: Install Arduino-cli
         uses: arduino/setup-arduino-cli@v2
 
