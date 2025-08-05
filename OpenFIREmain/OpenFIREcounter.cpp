@@ -8,6 +8,7 @@
 
 
 #include "OpenFIREcounter.h"
+#include "OpenFIREcommon.h"
 #include <cctype>
 #include <string>
 #include <cstdio>
