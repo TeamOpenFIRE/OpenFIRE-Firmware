@@ -11,7 +11,33 @@
 #include "OpenFIRElights.h"
 #include "OpenFIREprefs.h"
 #include "OpenFIREcommon.h"
+#include "OpenFIREserial.h"
 #include "boards/OpenFIREshared.h"
+
+OF_RGB::NeoPixelEffect OF_RGB::currentEffect = OF_RGB::EFFECT_NONE;
+char OF_RGB::effectColorChar = 'R';
+uint8_t OF_RGB::fire_heat[150];
+
+//  Knight Rider effect
+int OF_RGB::riderPosition = 0;
+bool OF_RGB::riderDirection = true;
+unsigned long OF_RGB::lastRiderUpdate = 0;
+char OF_RGB::knightRiderColor = 'R';
+
+// Utilities for effects
+// Sum with saturation for 8 bits (prevents overflow)
+uint8_t qadd8(uint8_t i, uint8_t j) {
+    unsigned int t = i + j;
+    if (t > 255) t = 255;
+    return t;
+}
+
+// Subtract with saturation for 8 bits (avoids negative values)
+uint8_t qsub8(uint8_t i, uint8_t j) {
+    int t = i - j;
+    if (t < 0) t = 0;
+    return t;
+}
 
 #ifdef LED_ENABLE
 void OF_RGB::LedInit()
@@ -207,4 +233,312 @@ void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
         analogWrite(LEDB, b);
     #endif // NANO_RP2040 */
 }
+void OF_RGB::updateNeoPixelBar(uint16_t currentValue, uint8_t mode) {
+     if (externPixel == nullptr) return;
+
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    uint16_t maxValue;
+ 
+    if (numLeds == 0) return;
+
+    if (mode == 1) { // Modo Barra de Vida
+        maxValue = FW_Common::dispMaxLife;
+    } else { // Modo Barra de Munición
+        maxValue = FW_Common::dispMaxAmmo;
+    }
+
+    if (maxValue == 0) maxValue = 1;
+
+    uint16_t ledsToShow = map(currentValue, 0, maxValue, 0, numLeds);
+
+    uint32_t colorFull, colorEmpty;
+    if (mode == 1) {
+        colorFull = OF_Prefs::settings[OF_Const::neoPixelLifeFull];
+        colorEmpty = OF_Prefs::settings[OF_Const::neoPixelLifeEmpty];
+    } else {
+        colorFull = OF_Prefs::settings[OF_Const::neoPixelAmmoFull];
+        colorEmpty = OF_Prefs::settings[OF_Const::neoPixelAmmoEmpty];
+    }
+
+    uint8_t r1 = (colorFull >> 16) & 0xFF, g1 = (colorFull >> 8) & 0xFF, b1 = colorFull & 0xFF;
+    uint8_t r2 = (colorEmpty >> 16) & 0xFF, g2 = (colorEmpty >> 8) & 0xFF, b2 = colorEmpty & 0xFF;
+
+    for (uint16_t i = ledOffset; i < totalLeds; i++) {
+        uint16_t virtual_i = i - ledOffset;
+        if (virtual_i < ledsToShow) {
+            float ratio = (numLeds > 1) ? ((float)virtual_i / (float)(numLeds - 1)) : 0.0f;
+            uint8_t r = r2 + ratio * (r1 - r2);
+            uint8_t g = g2 + ratio * (g1 - g2);
+            uint8_t b = b2 + ratio * (b1 - b2);
+            externPixel->setPixelColor(i, externPixel->Color(r, g, b));
+        } else {
+            externPixel->setPixelColor(i, 0);
+        }
+    }
+    externPixel->show();
+}
+
+void OF_RGB::setEffect(NeoPixelEffect effect, char color) {
+    currentEffect = effect;
+    effectColorChar = toupper(color);
+
+    if (effect == EFFECT_KNIGHT_RIDER) {
+        riderPosition = 0;
+        riderDirection = true;
+    }
+
+    if (effect == EFFECT_NONE) {
+        memset(fire_heat, 0, sizeof(fire_heat));
+        if (externPixel != nullptr) {
+            // --- SWITCH OFF LOGIC WITH OFFSET ---
+            uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+            uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; 
+            for (int i = ledOffset; i < totalLeds; i++) {
+                externPixel->setPixelColor(i, 0); 
+            }
+            externPixel->show();
+            // ------------------------------------
+        }
+    }
+}
+
+//LED effects
+void OF_RGB::updateEffects() {
+    if (externPixel == nullptr || currentEffect == EFFECT_NONE) return;
+
+    switch (currentEffect) {
+        case EFFECT_FIRE:
+            fireEffect();
+            break;
+        case EFFECT_ICE:
+            iceEffect();
+            break;
+        case EFFECT_PLASMA:
+            plasmaEffect();
+            break;
+        case EFFECT_BEAM:
+            beamEffect();
+            break;
+        case EFFECT_KNIGHT_RIDER:
+            knightRiderEffect();
+            break;
+        default:
+            break;
+    }
+}
+
+uint32_t OF_RGB::getColorFromChar(char colorChar) {
+    switch(colorChar) {
+        case 'R': return externPixel->Color(255, 0, 0);   // Rojo
+        case 'G': return externPixel->Color(0, 255, 0);   // Verde
+        case 'B': return externPixel->Color(0, 0, 255);   // Azul
+        case 'O': return externPixel->Color(255, 165, 0); // Naranja
+        case 'P': return externPixel->Color(128, 0, 128); // Púrpura
+        case 'Y': return externPixel->Color(255, 255, 0); // Amarillo
+        case 'C': return externPixel->Color(0, 255, 255); // Cian
+        case 'M': return externPixel->Color(255, 0, 255); // Magenta
+        case 'W': return externPixel->Color(255, 255, 255); // Blanco
+        case 'L': return externPixel->Color(180, 255, 0); // Lima
+        default:  return externPixel->Color(255, 0, 0);   // Rojo por defecto
+    }
+}
+
+void OF_RGB::fireEffect() {
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    if (numLeds == 0) return;
+
+    int Cooling = 55;
+    int Sparks = 120;
+
+    for (int i = 0; i < numLeds; i++) {
+        fire_heat[i] = qsub8(fire_heat[i], random(0, ((Cooling * 10) / numLeds) + 2));
+    }
+    for (int k = (numLeds - 1); k >= 2; k--) {
+        fire_heat[k] = (fire_heat[k - 1] + fire_heat[k - 2] + fire_heat[k - 2]) / 3;
+    }
+    if (random(255) < Sparks) {
+        int y = random(7);
+        fire_heat[y] = qadd8(fire_heat[y], random(160, 255));
+    }
+
+    for (int j = 0; j < numLeds; j++) {
+        byte temperature = fire_heat[j];
+        byte t192 = round((temperature / 255.0) * 191);
+        byte heatramp = t192 & 0x3F;
+        heatramp <<= 2;
+        uint8_t r, g, b;
+
+        // --- SWITCH AMPLIADO PARA TODOS LOS COLORES ---
+        switch(effectColorChar) {
+            case 'G': // Verde
+                if (t192 > 0x80) { r = heatramp; g = 255; b = heatramp; }
+                else if (t192 > 0x40) { r = 0; g = 255; b = heatramp / 2; }
+                else { r = 0; g = heatramp; b = 0; }
+                break;
+            case 'B': // Azul
+                if (t192 > 0x80) { r = heatramp; g = heatramp; b = 255; }
+                else if (t192 > 0x40) { r = 0; g = heatramp; b = 255; }
+                else { r = 0; g = 0; b = heatramp; }
+                break;
+            case 'O': // Naranja
+                if (t192 > 0x80) { r = 255; g = 255; b = heatramp; }
+                else if (t192 > 0x40) { r = 255; g = heatramp; b = 0; }
+                else { r = heatramp; g = heatramp / 2; b = 0; }
+                break;
+            case 'P': // Púrpura
+                if (t192 > 0x80) { r = 255; g = heatramp; b = 255; }
+                else if (t192 > 0x40) { r = 255; g = 0; b = heatramp; }
+                else { r = heatramp; g = 0; b = heatramp; }
+                break;
+            case 'Y': // Amarillo
+                if (t192 > 0x80) { r = 255; g = 255; b = heatramp; }
+                else if (t192 > 0x40) { r = 255; g = 255; b = 0; }
+                else { r = heatramp; g = heatramp; b = 0; }
+                break;
+            case 'C': // Cian
+                if (t192 > 0x80) { r = heatramp; g = 255; b = 255; }
+                else if (t192 > 0x40) { r = 0; g = 255; b = 255; }
+                else { r = 0; g = heatramp; b = heatramp; }
+                break;
+            case 'M': // Magenta
+                if (t192 > 0x80) { r = 255; g = heatramp; b = 255; }
+                else if (t192 > 0x40) { r = 255; g = 0; b = 255; }
+                else { r = heatramp; g = 0; b = heatramp; }
+                break;
+            case 'W': // Blanco
+                if (t192 > 0x80) { r = 255; g = 255; b = 255; }
+                else if (t192 > 0x40) { r = heatramp; g = heatramp; b = 255; }
+                else { r = heatramp; g = heatramp; b = heatramp; }
+                break;
+            case 'L': // Lima
+                if (t192 > 0x80) { r = 255; g = 255; b = heatramp; }
+                else if (t192 > 0x40) { r = heatramp; g = 255; b = 0; }
+                else { r = heatramp / 2; g = heatramp; b = 0; }
+                break;
+            case 'R': default: // Rojo
+                if (t192 > 0x80) { r = 255; g = 255; b = heatramp; }
+                else if (t192 > 0x40) { r = 255; g = heatramp; b = 0; }
+                else { r = heatramp; g = 0; b = 0; }
+                break;
+        }
+        externPixel->setPixelColor(j + ledOffset, externPixel->Color(r, g, b));
+    }
+    externPixel->show();
+}
+
+void OF_RGB::iceEffect() {
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    if (numLeds == 0) return;
+
+    uint32_t color = getColorFromChar(effectColorChar);
+
+    if (random(255) < 80) {
+        int led = random(numLeds);
+        externPixel->setPixelColor(led + ledOffset, color);
+    }
+    for (int i = ledOffset; i < totalLeds; i++) {
+        uint32_t currentColor = externPixel->getPixelColor(i);
+        uint8_t r = ((currentColor >> 16) & 0xFF) / 2;
+        uint8_t g = ((currentColor >> 8) & 0xFF) / 2;
+        uint8_t b = (currentColor & 0xFF) / 2;
+        externPixel->setPixelColor(i, externPixel->Color(r, g, b));
+    }
+    externPixel->show();
+}
+
+void OF_RGB::plasmaEffect() {
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    if (numLeds == 0) return;
+
+    uint32_t baseColor = getColorFromChar(effectColorChar);
+    uint8_t base_r = (baseColor >> 16) & 0xFF;
+    uint8_t base_g = (baseColor >> 8) & 0xFF;
+    uint8_t base_b = baseColor & 0xFF;
+
+    for (int i = ledOffset; i < totalLeds; i++) {
+        uint16_t virtual_i = i - ledOffset;
+        uint8_t r = (uint8_t)((base_r / 2.0) + (base_r / 2.0) * sin(virtual_i / 8.0 + millis() / 500.0));
+        uint8_t g = (uint8_t)((base_g / 2.0) + (base_g / 2.0) * sin(virtual_i / 7.0 + millis() / 400.0));
+        uint8_t b = (uint8_t)((base_b / 2.0) + (base_b / 2.0) * sin(virtual_i / 6.0 + millis() / 600.0));
+        externPixel->setPixelColor(i, externPixel->Color(r, g, b));
+    }
+    externPixel->show();
+}
+
+void OF_RGB::beamEffect() {
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    if (numLeds == 0) return;
+
+    if ((millis() / 80) % 2 == 0) {
+        uint32_t color = getColorFromChar(effectColorChar);
+        for (int i = ledOffset; i < totalLeds; i++) {
+            externPixel->setPixelColor(i, color);
+        }
+    } else {
+        for (int i = ledOffset; i < totalLeds; i++) {
+            externPixel->setPixelColor(i, 0);
+        }
+    }
+    externPixel->show();
+}
+
+void OF_RGB::knightRiderEffect() {
+    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+    uint16_t ledOffset = OF_Prefs::settings[OF_Const::customLEDstatic]; // Usa la variable correcta
+    uint16_t numLeds = totalLeds > ledOffset ? totalLeds - ledOffset : 0;
+    if (numLeds == 0) return;
+
+    int ridingWidth = 4;
+    int delayDuration = 50;
+
+    if (millis() - lastRiderUpdate < delayDuration) {
+        return;
+    }
+    lastRiderUpdate = millis();
+
+    for (int i = ledOffset; i < totalLeds; i++) { externPixel->setPixelColor(i, 0); }
+
+    uint32_t color = getColorFromChar(effectColorChar);
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+
+    for (int j = 0; j < ridingWidth; j++) {
+        int ledIndex = riderPosition + j + ledOffset;
+        if (ledIndex >= 0 && ledIndex < numLeds) {
+            externPixel->setPixelColor(ledIndex, externPixel->Color(r, g, b));
+        }
+    }
+    if (riderPosition - 1 >= 0) {
+        externPixel->setPixelColor(riderPosition - 1, externPixel->Color(r / 4, g / 4, b / 4));
+    }
+    if (riderPosition + ridingWidth < numLeds) {
+        externPixel->setPixelColor(riderPosition + ridingWidth, externPixel->Color(r / 4, g / 4, b / 4));
+    }
+
+    externPixel->show();
+
+    if (riderDirection) {
+        riderPosition++;
+        if (riderPosition + ridingWidth >= numLeds) {
+            riderDirection = false;
+        }
+    } else {
+        riderPosition--;
+        if (riderPosition <= 0) {
+            riderDirection = true;
+        }
+    }
+}
+
 #endif // LED_ENABLE

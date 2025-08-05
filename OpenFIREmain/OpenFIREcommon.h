@@ -184,10 +184,14 @@ public:
     static inline ExtDisplay OLED;
     // Selector for which option in the simple pause menu you're scrolled on.
     static inline uint8_t pauseModeSelection = 0;
-    #ifdef MAMEHOOKER
-    static inline uint16_t dispMaxLife = 0; 			                 // Max value for life in lifebar mode (100%)
-    static inline uint16_t dispLifePercentage = 0; 		             // Actual value to show in lifebar mode #%
-    #endif // MAMEHOOKER
+      #if defined(USES_DISPLAY) || defined(USE_COUNTER) || defined(CUSTOM_NEOPIXEL)
+        #ifdef MAMEHOOKER
+        static inline uint16_t dispMaxLife = 0;
+        static inline uint16_t dispMaxAmmo = 0;
+        static inline uint16_t dispLifePercentage = 0;
+        static inline uint16_t dispAmmoPercentage = 0;
+        #endif // MAMEHOOKER
+      #endif
     #endif // USES_DISPLAY
 };
 

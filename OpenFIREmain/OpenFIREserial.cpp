@@ -261,6 +261,35 @@ void OF_Serial::SerialProcessing()
                 }
                 break;
               #endif // USES_DISPLAY
+		  
+	      #ifdef CUSTOM_NEOPIXEL
+              case 'L': // LED Strip Mode
+		    {
+			uint8_t newMode = Serial.read() - '0';
+			OF_Prefs::settings[OF_Const::neoPixelBarMode] = newMode;
+	
+			// --- LÓGICA DE REDIBUJADO INMEDIATO ---
+			// Forzamos una actualización de la barra con el nuevo modo
+			if (newMode == 1) { // Si el nuevo modo es Vida
+			    OF_RGB::updateNeoPixelBar(OF_Serial::serialLifeCount, 1);
+			} else if (newMode == 2) { // Si el nuevo modo es Munición
+			    OF_RGB::updateNeoPixelBar(OF_Serial::serialAmmoCount, 2);
+			} else { // Si es modo apagado (0) o cualquier otro
+			    OF_RGB::setEffect(OF_RGB::EFFECT_NONE); // Apaga la tira
+			}
+	  	    }
+                    serialDisplayChange = true;
+                    break;
+              #endif
+
+              #ifdef USE_COUNTER
+              case 'C': // Counter Mode
+		{
+                    OF_Prefs::settings[OF_Const::counterType] = Serial.read() - '0';
+                    serialDisplayChange = true;
+		}
+                    break;
+              #endif
               default:
                 if(!serialMode) Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
                 break;
@@ -585,46 +614,103 @@ void OF_Serial::SerialProcessing()
                     break;
                 }
                 break;
-              #endif // LED_ENABLE
-              #if defined(USES_DISPLAY) || defined(USE_COUNTER)
-              case 'D':
-                switch(Serial.read()) {
-                case 'A':
-                    Serial.read(); // nomf the padding
-                    if(Serial.peek() >= '0' && Serial.peek() <= '9') {
-                        char serialInputS[4] = {0,0,0,0};
-                        for(uint n = 0; n < 3; ++n) {
-                            serialInputS[n] = Serial.read();
-                            if(Serial.peek() < '0' || Serial.peek() > '9')
-                                break;
-                        }
-                        serialAmmoCount = atoi(serialInputS);
-                        serialAmmoCount = constrain(serialAmmoCount, 0, 99);
-                        serialDisplayChange = true;
-                    }
-                    break;
-                case 'L':
-                    Serial.read(); // nomf the padding
-                    if(Serial.peek() >= '0' && Serial.peek() <= '9') {
-                        char serialInputS[4] = {0,0,0,0};
-                        for(uint n = 0; n < 3; ++n) {
-                            serialInputS[n] = Serial.read();
-                            if(Serial.peek() < '0' || Serial.peek() > '9')
-                                break;
-                        }
+                case 'X':
+                #ifdef CUSTOM_NEOPIXEL
+                {
+                    char effectType = toupper(Serial.read());
+                    char colorType = 'R'; // Color por defecto
+                    OF_RGB::NeoPixelEffect targetEffect = OF_RGB::EFFECT_NONE;
 
-                        serialLifeCount = atoi(serialInputS);
-                        if(FW_Common::OLED.lifeBar) {
-                            if(serialLifeCount > FW_Common::dispMaxLife)
-                                FW_Common::dispMaxLife = serialLifeCount;
-                            FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife; // Calculate the Life % to show 
-                        }
-                        serialDisplayChange = true;
+                    switch(effectType) {
+                        case 'F': targetEffect = OF_RGB::EFFECT_FIRE; break;
+                        case 'I': targetEffect = OF_RGB::EFFECT_ICE; break;
+                        case 'P': targetEffect = OF_RGB::EFFECT_PLASMA; break;
+                        case 'B': targetEffect = OF_RGB::EFFECT_BEAM; break;
+                        case 'K': targetEffect = OF_RGB::EFFECT_KNIGHT_RIDER; break;
                     }
-                    break;
+
+                    // Todos los efectos que toman color leen el siguiente parámetro
+                    if (targetEffect != OF_RGB::EFFECT_NONE) {
+                        Serial.read(); // Consume el separador 'x'
+                        colorType = toupper(Serial.read());
+                    }
+
+                    Serial.read(); // Consume el separador del estado
+                    char effectState = Serial.read();
+
+                    if (effectState == '1' && targetEffect != OF_RGB::EFFECT_NONE) {
+                        OF_RGB::setEffect(targetEffect, colorType);
+                    } else {
+                        OF_RGB::setEffect(OF_RGB::EFFECT_NONE);
+                    }
                 }
+                #endif
                 break;
-              #endif // USES_DISPLAY  || USE_COUNTER
+              #endif // LED_ENABLE
+              #if defined(USES_DISPLAY) || defined(USE_COUNTER) || defined(CUSTOM_NEOPIXEL)
+		    case 'D':
+		        switch(Serial.read()) {
+		        case 'A':
+		            Serial.read(); // nomf the padding
+		            if(Serial.peek() >= '0' && Serial.peek() <= '9') {
+		                char serialInputS[4] = {0,0,0,0};
+		                for(uint n = 0; n < 3; ++n) {
+		                    serialInputS[n] = Serial.read();
+		                    if(Serial.peek() < '0' || Serial.peek() > '9')
+		                        break;
+		                }
+		                serialAmmoCount = atoi(serialInputS);
+
+				#ifdef CUSTOM_NEOPIXEL
+			                // Lógica para calcular el máximo y el porcentaje de munición
+			                if(serialAmmoCount > FW_Common::dispMaxAmmo)
+			                    FW_Common::dispMaxAmmo = serialAmmoCount;
+					if (OF_Prefs::settings[OF_Const::neoPixelBarMode] == 2) 
+					    OF_RGB::updateNeoPixelBar(serialAmmoCount, 2);
+					    
+			                if (FW_Common::dispMaxAmmo > 0) {
+			                    FW_Common::dispAmmoPercentage = (100 * serialAmmoCount) / FW_Common::dispMaxAmmo;
+			                } else {
+			                    FW_Common::dispAmmoPercentage = 0;
+			                }
+				#endif
+		
+		                serialDisplayChange = true;
+		            }
+		            break;
+		        case 'L':
+		            Serial.read(); // nomf the padding
+		            if(Serial.peek() >= '0' && Serial.peek() <= '9') {
+		                char serialInputS[4] = {0,0,0,0};
+		                for(uint n = 0; n < 3; ++n) {
+		                    serialInputS[n] = Serial.read();
+		                    if(Serial.peek() < '0' || Serial.peek() > '9')
+		                        break;
+		                }
+		                serialLifeCount = atoi(serialInputS);
+		
+		                if(serialLifeCount > FW_Common::dispMaxLife)
+				        FW_Common::dispMaxLife = serialLifeCount;
+				
+				
+				#ifdef CUSTOM_NEOPIXEL
+					if (OF_Prefs::settings[OF_Const::neoPixelBarMode] == 1)
+			                    OF_RGB::updateNeoPixelBar(serialLifeCount, 1);
+				#endif
+
+				#ifdef USES_DISPLAY
+					if(FW_Common::OLED.lifeBar) {
+					    FW_Common::dispLifePercentage = (100 * serialLifeCount) / FW_Common::dispMaxLife;
+					}
+				#endif
+		
+		                serialDisplayChange = true;
+		            }
+		            break;
+		        }
+		        break;
+		#endif // USES_DISPLAY || USE_COUNTER || CUSTOM_NEOPIXEL
+	      
               #if !defined(USES_SOLENOID) && !defined(USES_RUMBLE) && !defined(LED_ENABLE)
               default:
                 //Serial.println("SERIALREAD: Feedback command detected, but no feedback devices are built into this firmware!");

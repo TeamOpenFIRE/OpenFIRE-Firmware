@@ -693,7 +693,11 @@ void ExecRunMode()
             if(OF_Prefs::pins[OF_Const::autofireSwitch] >= 0)
                 OF_Prefs::toggles[OF_Const::autofire] = !digitalRead(OF_Prefs::pins[OF_Const::autofireSwitch]);
         #endif // USES_SWITCHES
-
+	    
+	#ifdef CUSTOM_NEOPIXEL
+            OF_RGB::updateEffects();
+        #endif
+	
         if(FW_Common::irPosUpdateTick) {
             FW_Common::irPosUpdateTick = 0;
             FW_Common::GetPosition();
@@ -722,20 +726,22 @@ void ExecRunMode()
                     }
                 #endif // USES_DISPLAY
 
-                // ---- Bloque INDEPENDIENTE para el Contador 7-Segmentos ----
+                // ---- 7-Seg Counter ----
 	    	#ifdef USE_COUNTER
-		        // Comprueba si el contador está habilitado antes de intentar usarlo
-		        if (OF_Prefs::toggles[OF_Const::counterEnable]) {
-		            // Ahora lee el tipo de contador desde las preferencias
-		            if (OF_Prefs::settings[OF_Const::counterType] == 1) { // 1 = Munición
-		                FW_Common::counter->print(std::to_string(OF_Serial::serialAmmoCount));
-		            } else { // 0 = Vidas
-		                FW_Common::counter->print(std::to_string(OF_Serial::serialLifeCount));
-		            }
-		        }
+		///Check if enabled first
+		if (OF_Prefs::toggles[OF_Const::counterEnable]) {
+			    if (OF_Prefs::settings[OF_Const::counterType] == 1) { // 1 = Life
+					FW_Common::counter->print(std::to_string(OF_Serial::serialLifeCount));
+				} 
+			    else if (OF_Prefs::settings[OF_Const::counterType] == 2) { // 2 = Ammo
+					FW_Common::counter->print(std::to_string(OF_Serial::serialAmmoCount));
+				} 
+			    else { // Si es modo 0 o cualquier otro, se apaga
+                        	FW_Common::counter->print(""); // Envía una cadena vacía para apagarlo
+                		}
+		}
 		#endif // USE_COUNTER
-
-                // Reseteamos la bandera una sola vez, después de actualizar todos los displays
+	    
                 OF_Serial::serialDisplayChange = false;
             }
         #endif // MAMEHOOKER

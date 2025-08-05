@@ -63,6 +63,20 @@ public:
     // colour when calibrating
     static inline uint32_t CalModeColor = WikiColor::Red;
 
+    enum NeoPixelEffect {
+        EFFECT_NONE = 0,
+        EFFECT_FIRE,
+        EFFECT_ICE,
+        EFFECT_PLASMA,
+        EFFECT_BEAM,   
+        EFFECT_KNIGHT_RIDER 
+    };
+
+    static void updateNeoPixelBar(uint16_t currentValue, uint8_t mode);
+
+    static void updateEffects();
+    static void setEffect(NeoPixelEffect effect, char color = 'R');
+
 private:
     // internal addressable LEDs inits
     #ifdef DOTSTAR_ENABLE
@@ -74,6 +88,25 @@ private:
     #ifdef NEOPIXEL_PIN
     static inline Adafruit_NeoPixel neopixel = Adafruit_NeoPixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
     #endif // CUSTOM_NEOPIXEL
+
+    static NeoPixelEffect currentEffect;
+    static uint8_t fire_heat[150];
+    static char effectColorChar;
+
+    static int riderPosition;
+    static bool riderDirection;
+    static unsigned long lastRiderUpdate;
+    static char knightRiderColor;
+    
+
+    static void fireEffect();
+    static void iceEffect();
+    static void plasmaEffect();
+    static void beamEffect();
+    static void knightRiderEffect();
+
+    static uint32_t getColorFromChar(char colorChar);
+    
 };
 
 #endif // _OPENFIRELIGHTS_H_

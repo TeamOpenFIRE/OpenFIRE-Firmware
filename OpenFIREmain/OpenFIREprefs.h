@@ -107,6 +107,12 @@ public:
         38,                         // temp warning
         45,                         // temp shutoff
         OF_Const::analogModeStick,  // analog stick mode
+        0,                          // counterType (0=Life)
+        0,                          // neoPixelBarMode (0=Dsabled)
+        0x00FF00,                   // neoPixelLifeFull (Green)
+        0xFF0000,                   // neoPixelLifeEmpty (Red)
+        0xFF0000,                   // neoPixelAmmoFull (Red)
+        0xFFFF00                    // neoPixelAmmoEmpty (Yellow)
     };
 
     typedef struct USBMap_s {
