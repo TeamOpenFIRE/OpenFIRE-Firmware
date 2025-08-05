@@ -435,11 +435,10 @@ void OF_RGB::plasmaEffect() {
     uint8_t base_g = (baseColor >> 8) & 0xFF;
     uint8_t base_b = baseColor & 0xFF;
 
-     for (int i = 0; i < numLeds; i++) {
-        uint16_t virtual_i = i - ledOffset;
-        uint8_t r = (uint8_t)((base_r / 2.0) + (base_r / 2.0) * sin(virtual_i / 8.0 + millis() / 500.0));
-        uint8_t g = (uint8_t)((base_g / 2.0) + (base_g / 2.0) * sin(virtual_i / 7.0 + millis() / 400.0));
-        uint8_t b = (uint8_t)((base_b / 2.0) + (base_b / 2.0) * sin(virtual_i / 6.0 + millis() / 600.0));
+    for (int i = 0; i < numLeds; i++) {
+        uint8_t r = (uint8_t)((base_r / 2.0) + (base_r / 2.0) * sin(i / 8.0 + millis() / 500.0));
+        uint8_t g = (uint8_t)((base_g / 2.0) + (base_g / 2.0) * sin(i / 7.0 + millis() / 400.0));
+        uint8_t b = (uint8_t)((base_b / 2.0) + (base_b / 2.0) * sin(i / 6.0 + millis() / 600.0));
         externPixel->setPixelColor(i + startLed, externPixel->Color(r, g, b));
     }
     externPixel->show();
