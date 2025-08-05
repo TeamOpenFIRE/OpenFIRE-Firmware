@@ -35,14 +35,27 @@ OpenFIREcounter::OpenFIREcounter(spi_inst_t *spi_instance, uint sck_pin, uint mo
 // init() 
 void OpenFIREcounter::init() {
     spi_init(_spi, 1000 * 1000);
-        
+    
     gpio_set_function(_sck_pin, GPIO_FUNC_SPI);
     gpio_set_function(_mosi_pin, GPIO_FUNC_SPI);
     gpio_init(_cs_pin);
     gpio_set_dir(_cs_pin, GPIO_OUT);
     gpio_put(_cs_pin, 1);
     
-    print("OF"); // Start message
+    // read custom message from settings
+    uint16_t messagePacked = OF_Prefs::settings[OF_Const::counterStartupMessage];
+    std::string startupMsg = "OF"; // Default message
+
+    if (messagePacked != 0) {
+        char msg[3];
+        msg[0] = (messagePacked >> 8) & 0xFF; // first character
+        msg[1] = messagePacked & 0xFF;        // second character
+        msg[2] = '\0';
+        startupMsg = msg;
+    }
+    
+    print(startupMsg); // Muestra el mensaje de inicio
+    // -------------------------
 }
 
 // print() with integrated sending logic
