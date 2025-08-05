@@ -262,27 +262,7 @@ void OF_Serial::SerialProcessing()
                 break;
               #endif // USES_DISPLAY
 		  
-	      #ifdef CUSTOM_NEOPIXEL
-              case 'L': // LED Strip Mode
-		    {
-			uint8_t newMode = Serial.read() - '0';
-			OF_Prefs::settings[OF_Const::neoPixelBarMode] = newMode;
-	
-			// --- LÓGICA DE REDIBUJADO INMEDIATO ---
-			// Forzamos una actualización de la barra con el nuevo modo
-			if (newMode == 1) { // Si el nuevo modo es Vida
-			    OF_RGB::updateNeoPixelBar(OF_Serial::serialLifeCount, 1);
-			} else if (newMode == 2) { // Si el nuevo modo es Munición
-			    OF_RGB::updateNeoPixelBar(OF_Serial::serialAmmoCount, 2);
-			} else { // Si es modo apagado (0) o cualquier otro
-			    OF_RGB::setEffect(OF_RGB::EFFECT_NONE); // Apaga la tira
-			}
-	  	    }
-                    serialDisplayChange = true;
-                    break;
-              #endif
-
-              #ifdef USE_COUNTER
+	      #ifdef USE_COUNTER
               case 'C': // Counter Mode
 		{
                     OF_Prefs::settings[OF_Const::counterType] = Serial.read() - '0';
@@ -660,20 +640,20 @@ void OF_Serial::SerialProcessing()
 		                        break;
 		                }
 		                serialAmmoCount = atoi(serialInputS);
+				
+				if(serialAmmoCount > FW_Common::dispMaxAmmo)
+                			FW_Common::dispMaxAmmo = serialAmmoCount;
 
 				#ifdef CUSTOM_NEOPIXEL
-			                // Lógica para calcular el máximo y el porcentaje de munición
-			                if(serialAmmoCount > FW_Common::dispMaxAmmo)
-			                    FW_Common::dispMaxAmmo = serialAmmoCount;
-					if (OF_Prefs::settings[OF_Const::neoPixelBarMode] == 2) 
-					    OF_RGB::updateNeoPixelBar(serialAmmoCount, 2);
-					    
-			                if (FW_Common::dispMaxAmmo > 0) {
-			                    FW_Common::dispAmmoPercentage = (100 * serialAmmoCount) / FW_Common::dispMaxAmmo;
-			                } else {
-			                    FW_Common::dispAmmoPercentage = 0;
-			                }
-				#endif
+				OF_RGB::updateNeoPixelBar(
+				    serialAmmoCount,
+				    FW_Common::dispMaxAmmo,
+				    OF_Prefs::settings[OF_Const::ammoBarStartLed],
+				    OF_Prefs::settings[OF_Const::ammoBarLedCount],
+				    OF_Prefs::settings[OF_Const::neoPixelAmmoFull],
+				    OF_Prefs::settings[OF_Const::neoPixelAmmoEmpty]
+				);
+			    	#endif
 		
 		                serialDisplayChange = true;
 		            }
@@ -694,9 +674,16 @@ void OF_Serial::SerialProcessing()
 				
 				
 				#ifdef CUSTOM_NEOPIXEL
-					if (OF_Prefs::settings[OF_Const::neoPixelBarMode] == 1)
-			                    OF_RGB::updateNeoPixelBar(serialLifeCount, 1);
-				#endif
+		                
+		                OF_RGB::updateNeoPixelBar(
+		                    serialLifeCount,
+		                    FW_Common::dispMaxLife,
+		                    OF_Prefs::settings[OF_Const::healthBarStartLed],
+		                    OF_Prefs::settings[OF_Const::healthBarLedCount],
+		                    OF_Prefs::settings[OF_Const::neoPixelLifeFull],
+		                    OF_Prefs::settings[OF_Const::neoPixelLifeEmpty]
+		                );
+		            	#endif
 
 				#ifdef USES_DISPLAY
 					if(FW_Common::OLED.lifeBar) {

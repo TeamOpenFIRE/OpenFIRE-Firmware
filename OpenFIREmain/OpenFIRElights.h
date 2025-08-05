@@ -72,8 +72,8 @@ public:
         EFFECT_KNIGHT_RIDER 
     };
 
-    static void updateNeoPixelBar(uint16_t currentValue, uint8_t mode);
-
+    static void updateNeoPixelBar(uint16_t currentValue, uint16_t maxValue, uint16_t startLed, uint16_t ledCount, uint32_t colorFull, uint32_t colorEmpty);
+    
     static void updateEffects();
     static void setEffect(NeoPixelEffect effect, char color = 'R');
 
