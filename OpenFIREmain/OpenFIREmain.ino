@@ -44,7 +44,10 @@ void setup() {
 
     // Init pins array, and OFPresets for later load ops
     OF_Prefs::LoadPresets();
-    
+
+
+
+	
     if(OF_Prefs::InitFS() == OF_Prefs::Error_Success) {
         OF_Prefs::LoadProfiles();
     
@@ -137,7 +140,7 @@ void setup() {
         FW_Common::counter->init();
     }
     #endif
-
+	
     // this is needed for both customs and builtins, as defaults are all uninitialized
     FW_Common::UpdateBindings(true);
 
@@ -283,7 +286,11 @@ void loop1()
     while(FW_Common::gunMode == FW_Const::GunMode_Run) {
         // All buttons' outputs except for the trigger are processed here.
         FW_Common::buttons.Poll(0);
-
+	
+	#ifdef CUSTOM_NEOPIXEL
+            checkAllButtonEffects();
+        #endif
+	    
         #ifdef USES_TEMP
             if(OF_Prefs::pins[OF_Const::tempPin] > -1)
                 OF_FFB::TemperatureUpdate();
@@ -638,6 +645,123 @@ void loop()
 /* --------------------------- METHODS ------------------------- */
 /*        -----------------------------------------------        */
 
+#ifdef CUSTOM_NEOPIXEL
+void checkAllButtonEffects() {
+    if (OF_Serial::buttonEffectsDisabled) {
+        // Si los efectos de botón están desactivados, restaura el efecto serie si es necesario
+        if (OF_RGB::getEffectSource() == OF_RGB::SOURCE_BUTTON) {
+             // --- CORRECCIÓN: Usa los nuevos getters ---
+             OF_RGB::setEffect(OF_RGB::getSerialEffect(), OF_RGB::getSerialEffectColor(), OF_RGB::SOURCE_SERIAL);
+        }
+        return;
+    }
+
+    OF_RGB::NeoPixelEffect activeEffect = OF_RGB::EFFECT_NONE;
+    char activeColor = 'R';
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Trigger) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnTriggerOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnTriggerOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnTriggerOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnTriggerOnColor];
+        }
+    }
+    
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_A) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunAOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunAOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunAOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunAOnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_B) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunBOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunBOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunBOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunBOnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Reload) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunCOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunCOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnGunCOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnGunCOnColor];
+        }
+    }
+    
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Pedal) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPedalOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPedalOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPedalOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPedalOnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Pedal2) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPedal2OffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPedal2OffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPedal2OnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPedal2OnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Pump) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPumpOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPumpOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnPumpOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnPumpOnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Start) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnStartOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnStartOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnStartOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnStartOnColor];
+        }
+    }
+
+    if (FW_Common::buttons.debounced & FW_Const::BtnMask_Select) {
+        if (FW_Common::buttons.offScreen) {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnSelectOffEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnSelectOffColor];
+        } else {
+            activeEffect = (OF_RGB::NeoPixelEffect)OF_Prefs::settings[OF_Const::btnSelectOnEffect];
+            activeColor = (char)OF_Prefs::settings[OF_Const::btnSelectOnColor];
+        }
+    }
+    
+   // Si un botón está pulsado, siempre toma prioridad
+    if (activeEffect != OF_RGB::EFFECT_NONE) {
+        OF_RGB::setEffect(activeEffect, activeColor, OF_RGB::SOURCE_BUTTON);
+    } 
+    // Si no hay ningún botón pulsado, solo actúa si el efecto actual era de un botón
+    else if (OF_RGB::getEffectSource() == OF_RGB::SOURCE_BUTTON) {
+        // Restaura el último efecto que se envió por comando serie
+        // --- CORRECCIÓN: Usa los nuevos getters ---
+        OF_RGB::setEffect(OF_RGB::getSerialEffect(), OF_RGB::getSerialEffectColor(), OF_RGB::SOURCE_SERIAL);
+    }
+}
+#endif
+
 // Main core loop
 void ExecRunMode()
 {
@@ -706,9 +830,9 @@ void ExecRunMode()
             FW_Common::OLED.IdleOps();
         #endif
 
-	#ifdef MAMEHOOKER
+	
             if(OF_Serial::serialDisplayChange) {
-
+		#ifdef MAMEHOOKER
                 // ---- Bloque para el Display OLED ----
                 #ifdef USES_DISPLAY
                     if(FW_Common::OLED.serialDisplayType == ExtDisplay::ScreenSerial_Ammo) {
@@ -741,11 +865,74 @@ void ExecRunMode()
                 		}
 		}
 		#endif // USE_COUNTER
-	    
+	    	
+        #endif // MAMEHOOKER
+	#ifdef CUSTOM_NEOPIXEL
+                // Si no hay ningún efecto de botón activo, redibuja las barras o apágalas
+                if (OF_RGB::getCurrentEffect() == OF_RGB::EFFECT_NONE) {
+                    
+                    // --- AÑADE ESTA LLAMADA PARA LIMPIAR EL SECTOR DE EFECTOS ---
+                    if (OF_Prefs::settings[OF_Const::effectsLedCount] > 0) {
+                        OF_RGB::updateNeoPixelBar(
+                            0, 1, // Dibuja una barra vacía para apagar los LEDs
+                            OF_Prefs::settings[OF_Const::effectsStartLed],
+                            OF_Prefs::settings[OF_Const::effectsLedCount],
+                            0, 0 // Los colores no importan
+                        );
+                    }
+                    // -----------------------------------------------------------
+
+                    // Si estamos en modo serie, redibuja las barras activas con los datos del juego
+                    if (OF_Serial::serialMode) {
+                        // Redibuja la barra de vida solo si está configurada
+                        if (OF_Prefs::settings[OF_Const::healthBarLedCount] > 0) {
+                            OF_RGB::updateNeoPixelBar(
+                                OF_Serial::serialLifeCount,
+                                FW_Common::dispMaxLife,
+                                OF_Prefs::settings[OF_Const::healthBarStartLed],
+                                OF_Prefs::settings[OF_Const::healthBarLedCount],
+                                OF_Prefs::settings[OF_Const::neoPixelLifeFull],
+                                OF_Prefs::settings[OF_Const::neoPixelLifeEmpty]
+                            );
+                        }
+
+                        // Redibuja la barra de munición solo si está configurada
+                        if (OF_Prefs::settings[OF_Const::ammoBarLedCount] > 0) {
+                            OF_RGB::updateNeoPixelBar(
+                                OF_Serial::serialAmmoCount,
+                                FW_Common::dispMaxAmmo,
+                                OF_Prefs::settings[OF_Const::ammoBarStartLed],
+                                OF_Prefs::settings[OF_Const::ammoBarLedCount],
+                                OF_Prefs::settings[OF_Const::neoPixelAmmoFull],
+                                OF_Prefs::settings[OF_Const::neoPixelAmmoEmpty]
+                            );
+                        }
+                    } else {
+                        // Si NO estamos en modo serie, apaga los sectores de las barras
+                        // llamando a la función de actualización con un valor de 0.
+                        if (OF_Prefs::settings[OF_Const::healthBarLedCount] > 0) {
+                            OF_RGB::updateNeoPixelBar(
+                                0, FW_Common::dispMaxLife,
+                                OF_Prefs::settings[OF_Const::healthBarStartLed],
+                                OF_Prefs::settings[OF_Const::healthBarLedCount],
+                                OF_Prefs::settings[OF_Const::neoPixelLifeFull],
+                                OF_Prefs::settings[OF_Const::neoPixelLifeEmpty]
+                            );
+                        }
+                        if (OF_Prefs::settings[OF_Const::ammoBarLedCount] > 0) {
+                            OF_RGB::updateNeoPixelBar(
+                                0, FW_Common::dispMaxAmmo,
+                                OF_Prefs::settings[OF_Const::ammoBarStartLed],
+                                OF_Prefs::settings[OF_Const::ammoBarLedCount],
+                                OF_Prefs::settings[OF_Const::neoPixelAmmoFull],
+                                OF_Prefs::settings[OF_Const::neoPixelAmmoEmpty]
+                            );
+                        }
+                    }
+                }
+            #endif
                 OF_Serial::serialDisplayChange = false;
             }
-        #endif // MAMEHOOKER
-
         // If using RP2040, we offload the button processing to the second core.
         #if !defined(ARDUINO_ARCH_RP2040) || !defined(DUAL_CORE)
 
@@ -755,7 +942,7 @@ void ExecRunMode()
         #endif // USES_TEMP
 
         FW_Common::buttons.Poll(0);
-
+	    
         // For processing the trigger specifically.
         // (FW_Common::buttons.debounced is a binary variable intended to be read 1 bit at a time,
         // with the 0'th point == rightmost == decimal 1 == trigger, 3 = start, 4 = select)
@@ -848,7 +1035,7 @@ void ExecRunModeProcessing()
 
             OF_Serial::SerialProcessingDocked();
         }
-
+	
         if(FW_Common::runMode != FW_Const::RunMode_Processing)
             return;
 

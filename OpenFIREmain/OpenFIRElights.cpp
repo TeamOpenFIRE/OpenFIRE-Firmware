@@ -14,8 +14,14 @@
 #include "OpenFIREserial.h"
 #include "boards/OpenFIREshared.h"
 
+OF_RGB::EffectSource OF_RGB::currentEffectSource = OF_RGB::SOURCE_NONE;
+
 OF_RGB::NeoPixelEffect OF_RGB::currentEffect = OF_RGB::EFFECT_NONE;
 char OF_RGB::effectColorChar = 'R';
+
+OF_RGB::NeoPixelEffect OF_RGB::serialEffect = OF_RGB::EFFECT_NONE;
+char OF_RGB::serialEffectColor = 'R';
+
 uint8_t OF_RGB::fire_heat[150];
 
 //  Knight Rider effect
@@ -257,8 +263,18 @@ void OF_RGB::updateNeoPixelBar(uint16_t currentValue, uint16_t maxValue, uint16_
     externPixel->show();
 }
 
-void OF_RGB::setEffect(NeoPixelEffect effect, char color) {
+void OF_RGB::setEffect(NeoPixelEffect effect, char color, EffectSource source) {
+    // Si el origen es un comando serie, actualizamos la "memoria"
+    if (source == SOURCE_SERIAL) {
+        serialEffect = effect;
+        serialEffectColor = toupper(color);
+    }
+
+    // Si el nuevo estado es idéntico al actual, no hacemos nada para optimizar
+    if (effect == currentEffect && toupper(color) == effectColorChar) return;
+
     currentEffect = effect;
+    currentEffectSource = source;
     effectColorChar = toupper(color);
 
     if (effect == EFFECT_KNIGHT_RIDER) {
@@ -267,14 +283,9 @@ void OF_RGB::setEffect(NeoPixelEffect effect, char color) {
     }
 
     if (effect == EFFECT_NONE) {
-        if (externPixel != nullptr) {
-            uint16_t startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
-            uint16_t ledCount = OF_Prefs::settings[OF_Const::effectsLedCount];
-            for (int i = startLed; i < startLed + ledCount; i++) {
-                externPixel->setPixelColor(i, 0);
-            }
-            externPixel->show();
-        }
+        currentEffectSource = SOURCE_NONE;
+        memset(fire_heat, 0, sizeof(fire_heat));
+        OF_Serial::serialDisplayChange = true;
     }
 }
 
@@ -509,4 +520,18 @@ void OF_RGB::knightRiderEffect() {
     }
 }
 
+OF_RGB::NeoPixelEffect OF_RGB::getCurrentEffect() {
+    return currentEffect;
+}
+
+OF_RGB::EffectSource OF_RGB::getEffectSource() {
+    return currentEffectSource;
+}
+         OF_RGB::NeoPixelEffect OF_RGB::getSerialEffect() {
+    return serialEffect;
+}
+
+char OF_RGB::getSerialEffectColor() {
+    return serialEffectColor;
+}
 #endif // LED_ENABLE

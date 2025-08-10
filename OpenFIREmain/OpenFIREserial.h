@@ -72,6 +72,8 @@ public:
     static inline uint serialAmmoCount = 0;
     #endif // USES_DISPLAY
 
+    static inline bool buttonEffectsDisabled = false; //Enables/Disables effects when press buttons
+
     #endif // MAMEHOOKER
 
 private:

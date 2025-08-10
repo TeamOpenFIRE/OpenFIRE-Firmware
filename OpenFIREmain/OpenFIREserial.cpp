@@ -270,6 +270,15 @@ void OF_Serial::SerialProcessing()
 		}
                     break;
               #endif
+	      #ifdef CUSTOM_NEOPIXEL
+	      case 'X': // eXtra effects override
+                    if (Serial.read() == '0') {
+                        OF_Serial::buttonEffectsDisabled = true;
+                    } else {
+                        OF_Serial::buttonEffectsDisabled = false;
+                    }
+                    break;
+	      #endif // CUSTOM_NEOPIXEL
               default:
                 if(!serialMode) Serial.println("SERIALREAD: Serial modesetting command found, but no valid set bit found!");
                 break;
@@ -619,9 +628,9 @@ void OF_Serial::SerialProcessing()
                     char effectState = Serial.read();
 
                     if (effectState == '1' && targetEffect != OF_RGB::EFFECT_NONE) {
-                        OF_RGB::setEffect(targetEffect, colorType);
+                        OF_RGB::setEffect(targetEffect, colorType, OF_RGB::SOURCE_SERIAL);
                     } else {
-                        OF_RGB::setEffect(OF_RGB::EFFECT_NONE);
+                        OF_RGB::setEffect(OF_RGB::EFFECT_NONE, 'R', OF_RGB::SOURCE_SERIAL);
                     }
                 }
                 #endif
@@ -1108,7 +1117,9 @@ void OF_Serial::SerialProcessingDocked()
     {
         if(Serial.available() == 1 && Serial.read() == true) {
             FW_Common::buttons.Unset();
+	    OF_Prefs::Load();
             bool exit = false;
+		
             size_t type, rxLen, datSize, profNum;
             Serial.write(OF_Const::sCommitStart), Serial.flush();
             while(!exit) {

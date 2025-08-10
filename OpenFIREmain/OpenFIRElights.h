@@ -72,10 +72,22 @@ public:
         EFFECT_KNIGHT_RIDER 
     };
 
+    enum EffectSource {
+        SOURCE_NONE,
+        SOURCE_BUTTON,
+        SOURCE_SERIAL
+    };
+
     static void updateNeoPixelBar(uint16_t currentValue, uint16_t maxValue, uint16_t startLed, uint16_t ledCount, uint32_t colorFull, uint32_t colorEmpty);
     
     static void updateEffects();
-    static void setEffect(NeoPixelEffect effect, char color = 'R');
+    static void setEffect(NeoPixelEffect effect, char color = 'R', EffectSource source = SOURCE_BUTTON);
+
+    static NeoPixelEffect getCurrentEffect();
+    static EffectSource getEffectSource();
+
+    static NeoPixelEffect getSerialEffect();
+    static char getSerialEffectColor();
 
 private:
     // internal addressable LEDs inits
@@ -89,9 +101,7 @@ private:
     static inline Adafruit_NeoPixel neopixel = Adafruit_NeoPixel(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
     #endif // CUSTOM_NEOPIXEL
 
-    static NeoPixelEffect currentEffect;
     static uint8_t fire_heat[150];
-    static char effectColorChar;
 
     static int riderPosition;
     static bool riderDirection;
@@ -106,6 +116,11 @@ private:
     static void knightRiderEffect();
 
     static uint32_t getColorFromChar(char colorChar);
+    static NeoPixelEffect currentEffect;
+    static EffectSource currentEffectSource;
+    static char effectColorChar;
+    static NeoPixelEffect serialEffect;
+    static char serialEffectColor;
     
 };
 

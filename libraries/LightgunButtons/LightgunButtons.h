@@ -154,6 +154,7 @@ public:
     /// @returns Converted D-Pad mask
     uint32_t PadMaskConvert(const uint32_t &);
 
+
 private:
     /// @brief millis() value from last Poll
     unsigned long lastMillis;
