@@ -190,15 +190,42 @@ void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
 
     #ifdef CUSTOM_NEOPIXEL
         if(externPixel != nullptr) {
-            // Obtenemos la configuración del segmento de efectos.
-            uint16_t startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
-            uint16_t numLeds = OF_Prefs::settings[OF_Const::effectsLedCount];
+            // First, we try to obtain the configuration of the status segment.
+            uint16_t startLed = OF_Prefs::settings[OF_Const::statusStartLed];
+            uint16_t numLeds = OF_Prefs::settings[OF_Const::statusLedCount];
 
-            // Si hay LEDs definidos para efectos, los coloreamos.
+            // If the status segment is not configured (numLeds == 0),
+            // we use the effects segment as a backup.
+            if (numLeds == 0) {
+                startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
+                numLeds = OF_Prefs::settings[OF_Const::effectsLedCount];
+            }
+
+            // If we finally have LEDs to color, we do so.
             if (numLeds > 0) {
                 externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), startLed, numLeds);
-                externPixel->show();
             }
+            
+
+            // If the color is black (0,0,0), we make sure to turn off ALL dynamic segments
+            // so that LedOff() is a total and reliable shutdown.
+            if (r == 0 && g == 0 && b == 0) {
+                // Turn off the effects segment (if it wasn't the main one)
+                if (OF_Prefs::settings[OF_Const::effectsLedCount] > 0) {
+                     externPixel->fill(0, OF_Prefs::settings[OF_Const::effectsStartLed], OF_Prefs::settings[OF_Const::effectsLedCount]);
+                }
+                // Turn off life and ammo bars (if not in serial mode)
+                if (!OF_Serial::serialMode) {
+                    if (OF_Prefs::settings[OF_Const::healthBarLedCount] > 0) {
+                        externPixel->fill(0, OF_Prefs::settings[OF_Const::healthBarStartLed], OF_Prefs::settings[OF_Const::healthBarLedCount]);
+                    }
+                    if (OF_Prefs::settings[OF_Const::ammoBarLedCount] > 0) {
+                        externPixel->fill(0, OF_Prefs::settings[OF_Const::ammoBarStartLed], OF_Prefs::settings[OF_Const::ammoBarLedCount]);
+                    }
+                }
+            }
+
+            externPixel->show();
         }
     #endif // CUSTOM_NEOPIXEL
 
