@@ -190,10 +190,13 @@ void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
 
     #ifdef CUSTOM_NEOPIXEL
         if(externPixel != nullptr) {
-            if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
-                if(OF_Prefs::toggles[OF_Const::invertStaticPixels])
-                     externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), 0, OF_Prefs::settings[OF_Const::customLEDcount] - OF_Prefs::settings[OF_Const::customLEDstatic]);
-                else externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), OF_Prefs::settings[OF_Const::customLEDstatic]);
+            // Obtenemos la configuración del segmento de efectos.
+            uint16_t startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
+            uint16_t numLeds = OF_Prefs::settings[OF_Const::effectsLedCount];
+
+            // Si hay LEDs definidos para efectos, los coloreamos.
+            if (numLeds > 0) {
+                externPixel->fill(Adafruit_NeoPixel::Color(r, g, b), startLed, numLeds);
                 externPixel->show();
             }
         }
@@ -238,32 +241,7 @@ void OF_RGB::LedUpdate(const uint8_t &r, const uint8_t &g, const uint8_t &b)
         analogWrite(LEDG, g);
         analogWrite(LEDB, b);
     #endif // NANO_RP2040 */
-}
-void OF_RGB::setEffectSegmentColor(const uint8_t &r, const uint8_t &g, const uint8_t &b)
-{
-    // Solo actuar si tenemos un puntero válido a la tira de LEDs externa
-    if (externPixel == nullptr) return;
-
-    // Obtener la configuración del segmento de efectos desde las preferencias
-    uint16_t startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
-    uint16_t numLeds = OF_Prefs::settings[OF_Const::effectsLedCount];
-
-    // Si no hay LEDs configurados para efectos, no hacemos nada
-    if (numLeds == 0) return;
-
-    // Detener cualquier efecto de animación que se esté ejecutando.
-    // Esto es crucial para que el color estático no sea sobreescrito inmediatamente.
-    setEffect(EFFECT_NONE, 'R', SOURCE_SERIAL);
-
-    // Crear el color de 32 bits a partir de los componentes R, G, B
-    uint32_t color = Adafruit_NeoPixel::Color(r, g, b);
-
-    // Rellenar SOLO el segmento de efectos con el color especificado
-    externPixel->fill(color, startLed, numLeds);
-
-    // Mostrar los cambios en la tira de LEDs
-    externPixel->show();
-}         
+}       
 void OF_RGB::updateNeoPixelBar(uint16_t currentValue, uint16_t maxValue, uint16_t startLed, uint16_t ledCount, uint32_t colorFull, uint32_t colorEmpty) {
     if (externPixel == nullptr || ledCount == 0) return;
     if (maxValue == 0) maxValue = 1;
