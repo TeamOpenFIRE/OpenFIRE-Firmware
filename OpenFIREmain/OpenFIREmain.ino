@@ -126,7 +126,7 @@ void setup() {
 	        OF_Prefs::settings[OF_Const::effectsLedCount] = availableLeds;
 	    }
 	}
-	
+	#endif
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
         // Initializes TinyUSB identifier
