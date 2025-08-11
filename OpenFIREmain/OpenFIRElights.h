@@ -89,8 +89,7 @@ public:
     static NeoPixelEffect getSerialEffect();
     static char getSerialEffectColor();
 
-    static void setEffectSegmentColor(const uint8_t &r, const uint8_t &g, const uint8_t &b);
-
+    
 private:
     // internal addressable LEDs inits
     #ifdef DOTSTAR_ENABLE
