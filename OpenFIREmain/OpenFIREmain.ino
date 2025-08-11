@@ -84,30 +84,48 @@ void setup() {
 
     // NeoPixel Strip Auto-configuration Logic
     #ifdef CUSTOM_NEOPIXEL
-    // checks if NONE of the dynamic segments have been configured.
-    // This indicates that the user has only defined the total number of LEDs, but not the segments.
-    if (OF_Prefs::settings[OF_Const::healthBarLedCount] == 0 &&
-        OF_Prefs::settings[OF_Const::ammoBarLedCount] == 0 &&
-        OF_Prefs::settings[OF_Const::effectsLedCount] == 0 &&
-        OF_Prefs::settings[OF_Const::statusLedCount] == 0 &&
-        OF_Prefs::settings[OF_Const::customLEDcount] > 0) {
-            
-        // calculatse the available space after the static LEDs.
-        uint16_t staticLeds = OF_Prefs::settings[OF_Const::customLEDstatic];
-        uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
-        uint16_t availableLeds = totalLeds - staticLeds;
-
-        // If there is space, we assign it by default to the effects segment.
-        // Since ‘LedUpdate’ now uses the status segment (with fallback to the effects segment),
-        // this covers both use cases for a new user.
-        if (availableLeds > 0) {
-            OF_Prefs::settings[OF_Const::effectsStartLed] = staticLeds;
-            OF_Prefs::settings[OF_Const::effectsLedCount] = availableLeds;
-            
-            Serial.println("NeoPixel: No segment configuration detected. Assigning the rest of the strip to effects/status.");
-        }
-    }
-    #endif
+	// This logic is triggered only if the EFFECTS segment has not been configured manually.
+	if (OF_Prefs::settings[OF_Const::effectsLedCount] == 0 &&
+	    OF_Prefs::settings[OF_Const::customLEDcount] > 0) {
+	
+	    // 1. Calculate the last pixel index already occupied by OTHER segments.
+	    uint16_t lastUsedPixel = 0;
+	
+	    // Start by accounting for the static LEDs.
+	    lastUsedPixel = OF_Prefs::settings[OF_Const::customLEDstatic];
+	
+	    // Check for the end of the health bar, if configured.
+	    if (OF_Prefs::settings[OF_Const::healthBarLedCount] > 0) {
+	        lastUsedPixel = max(lastUsedPixel,
+	                            (uint16_t)(OF_Prefs::settings[OF_Const::healthBarStartLed] + OF_Prefs::settings[OF_Const::healthBarLedCount]));
+	    }
+	
+	    // Check for the end of the ammo bar, if configured.
+	    if (OF_Prefs::settings[OF_Const::ammoBarLedCount] > 0) {
+	        lastUsedPixel = max(lastUsedPixel,
+	                            (uint16_t)(OF_Prefs::settings[OF_Const::ammoBarStartLed] + OF_Prefs::settings[OF_Const::ammoBarLedCount]));
+	    }
+	
+	    // Check for the end of the status bar, if configured.
+	    if (OF_Prefs::settings[OF_Const::statusLedCount] > 0) {
+	        lastUsedPixel = max(lastUsedPixel,
+	                            (uint16_t)(OF_Prefs::settings[OF_Const::statusStartLed] + OF_Prefs::settings[OF_Const::statusLedCount]));
+	    }
+	
+	    // 2. Calculate the remaining space.
+	    uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+	    uint16_t availableLeds = 0;
+	
+	    if (totalLeds > lastUsedPixel) {
+	        availableLeds = totalLeds - lastUsedPixel;
+	    }
+	
+	    // 3. Assign the remaining space to the effects segment.
+	    if (availableLeds > 0) {
+	        OF_Prefs::settings[OF_Const::effectsStartLed] = lastUsedPixel;
+	        OF_Prefs::settings[OF_Const::effectsLedCount] = availableLeds;
+	    }
+	}
 	
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
