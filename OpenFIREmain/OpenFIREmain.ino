@@ -81,7 +81,34 @@ void setup() {
 
         OF_Prefs::Load();
     } else Serial.printf("%c%c (No Storage Available)", OF_Const::sError, (char)OF_Prefs::Error_NoStorage);
- 
+
+    // NeoPixel Strip Auto-configuration Logic
+    #ifdef CUSTOM_NEOPIXEL
+    // checks if NONE of the dynamic segments have been configured.
+    // This indicates that the user has only defined the total number of LEDs, but not the segments.
+    if (OF_Prefs::settings[OF_Const::healthBarLedCount] == 0 &&
+        OF_Prefs::settings[OF_Const::ammoBarLedCount] == 0 &&
+        OF_Prefs::settings[OF_Const::effectsLedCount] == 0 &&
+        OF_Prefs::settings[OF_Const::statusLedCount] == 0 &&
+        OF_Prefs::settings[OF_Const::customLEDcount] > 0) {
+            
+        // calculatse the available space after the static LEDs.
+        uint16_t staticLeds = OF_Prefs::settings[OF_Const::customLEDstatic];
+        uint16_t totalLeds = OF_Prefs::settings[OF_Const::customLEDcount];
+        uint16_t availableLeds = totalLeds - staticLeds;
+
+        // If there is space, we assign it by default to the effects segment.
+        // Since ‘LedUpdate’ now uses the status segment (with fallback to the effects segment),
+        // this covers both use cases for a new user.
+        if (availableLeds > 0) {
+            OF_Prefs::settings[OF_Const::effectsStartLed] = staticLeds;
+            OF_Prefs::settings[OF_Const::effectsLedCount] = availableLeds;
+            
+            Serial.println("NeoPixel: No segment configuration detected. Assigning the rest of the strip to effects/status.");
+        }
+    }
+    #endif
+	
     // We're setting our custom USB identifiers, as defined in the configuration area!
     #ifdef USE_TINYUSB
         // Initializes TinyUSB identifier
