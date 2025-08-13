@@ -120,6 +120,7 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
     neopixel.show();
 #endif // NEOPIXEL_PIN
 
+ /*
 #ifdef CUSTOM_NEOPIXEL
     if(externPixel != nullptr) {
         if(OF_Prefs::settings[OF_Const::customLEDstatic] < OF_Prefs::settings[OF_Const::customLEDcount]) {
@@ -128,6 +129,28 @@ void OF_RGB::SetLedPackedColor(const uint32_t &color)
             else externPixel->fill(color, OF_Prefs::settings[OF_Const::customLEDstatic]);
             externPixel->show();
         }
+    }
+#endif // CUSTOM_NEOPIXEL
+*/
+
+ #ifdef CUSTOM_NEOPIXEL
+    if (externPixel != nullptr) {
+        // 1. Intentamos obtener la configuración del segmento de estado.
+        uint16_t startLed = OF_Prefs::settings[OF_Const::statusStartLed];
+        uint16_t numLeds = OF_Prefs::settings[OF_Const::statusLedCount];
+
+        // 2. Si el segmento de estado no está configurado, usamos el de efectos como respaldo.
+        if (numLeds == 0) {
+            startLed = OF_Prefs::settings[OF_Const::effectsStartLed];
+            numLeds = OF_Prefs::settings[OF_Const::effectsLedCount];
+        }
+
+        // 3. Si finalmente tenemos un segmento válido, aplicamos el color.
+        if (numLeds > 0) {
+            externPixel->fill(color, startLed, numLeds);
+        }
+        
+        externPixel->show();
     }
 #endif // CUSTOM_NEOPIXEL
 
