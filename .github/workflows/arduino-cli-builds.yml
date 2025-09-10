@@ -83,7 +83,7 @@ jobs:
 
       - name: Actualizar submódulos a las últimas versiones remotas
         run: |
-          git submodule update --remote --merge
+          git submodule update --init --remote --recursive
     
       - name: Install Arduino-cli
         uses: arduino/setup-arduino-cli@v2
