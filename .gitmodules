@@ -13,3 +13,4 @@
 [submodule "OpenFIREmain/boards"]
 	path = OpenFIREmain/boards
 	url = https://github.com/gustavoalara/OpenFIRE-Boards
+	branch = main
