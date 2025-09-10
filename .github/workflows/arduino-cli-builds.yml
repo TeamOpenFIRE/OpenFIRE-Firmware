@@ -75,17 +75,15 @@ jobs:
             flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3
 
     steps:
-      - name: Checkout OpenFIRE-Firmware
+      - name: Checkout repositorio principal con submódulos
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-          
+          submodules: true
+          fetch-depth: 0
 
-      - name: Actualizar submódulo OpenFIRE-Boards a la última versión remota
+      - name: Actualizar submódulos a las últimas versiones remotas
         run: |
-          cd OpenFIREmain/boards
-          git fetch
-          git checkout origin/main
+          git submodule update --remote --merge
     
       - name: Install Arduino-cli
         uses: arduino/setup-arduino-cli@v2
