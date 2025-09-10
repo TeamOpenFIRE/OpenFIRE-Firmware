@@ -78,7 +78,6 @@ jobs:
       - name: Checkout repositorio principal con submódulos
         uses: actions/checkout@v4
         with:
-          submodules: true
           fetch-depth: 0
 
       - name: Actualizar submódulos a las últimas versiones remotas
