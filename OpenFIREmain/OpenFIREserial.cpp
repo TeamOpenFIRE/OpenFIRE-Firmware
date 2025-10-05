@@ -270,7 +270,9 @@ void OF_Serial::SerialProcessing()
         // Check to make sure that 'E' is not actually a glitched command bit
         // by ensuring that there's no adjacent bit.
         case 'E':
-          if(Serial.peek() == -1) {
+          // Either "no buffer" (-1) or any of the non-visual control bits, mainly Carriage Returns/Newlines
+          // (as Windows sends these implicitly in `echo` commands by default)
+          if(Serial.peek() <= 32) {
               if(!serialMode) Serial.println("SERIALREAD: Detected Serial End command while Serial Handoff mode is already off!");
               else {
                   serialMode = false;
