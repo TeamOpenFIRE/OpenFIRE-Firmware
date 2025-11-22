@@ -92,9 +92,14 @@ void FW_Common::FeedbackSet()
         // wrapper will manage display validity
         // check it's not using the camera's I2C line
         if(OF_Prefs::toggles[OF_Const::i2cOLED]) {
-            if(!OLED.Begin()) { if(OLED.display != nullptr) delete OLED.display; }
+            if(!OLED.Begin()) { 
+                if(OLED.display != nullptr) {
+                    delete OLED.display; 
+                    OLED.display = nullptr; 
+                }
+            }
         }
-    #endif // USES_DISPLAY
+     #endif // USES_DISPLAY
     }
 }
 
