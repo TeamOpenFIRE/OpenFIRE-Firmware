@@ -26,6 +26,8 @@ bool ExtDisplay::Begin()
         display = nullptr;
     }
 
+    TwoWire *twi;
+
     // TODO: for some reason, doing this AFTER saving updated pins settings (even when doing it from defaults and there's no default mappings for peripheral pins)
     // causes the board to hang. Even though this is all correct (and any display objects should get deleted from the above, so don't think it can be a new object thing)...
     if(OF_Prefs::pins[OF_Const::periphSCL] >= 0 && OF_Prefs::pins[OF_Const::periphSDA] >= 0) {
@@ -34,23 +36,24 @@ bool ExtDisplay::Begin()
             if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
                 Wire1.end();
                 // SDA/SCL are indeed on verified correct pins
-                Wire1.setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
-                Wire1.setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
+                twi = &Wire1;
             } else return false;
         } else if(!bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
             // I2C0
             if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
                 Wire.end();
                 // SDA/SCL are indeed on verified correct pins
-                Wire.setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
-                Wire.setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+                twi = &Wire;
             } else return false;
         } else return false;
     } else return false;
 
-    if(display->begin(SSD1306_SWITCHCAPVCC, OF_Prefs::toggles[OF_Const::i2cOLEDaltAddr] ? 0x3D : 0x3C)) {
+    twi->setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
+    twi->setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
+
+    display = new Adafruit_MultiDisplay(twi, (OF_Const::OLEDTypes_e)OF_Prefs::settings[OF_Const::displayOLEDType]);
+
+    if(display->begin(OF_Prefs::toggles[OF_Const::i2cOLEDaltAddr])) {
         display->clearDisplay();
         ScreenModeChange(Screen_None);
         return true;

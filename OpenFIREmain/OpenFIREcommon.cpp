@@ -20,6 +20,8 @@
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
 
+// button runtime data arrays
+static inline LightgunButtonsStatic<ButtonCount> lgbData;
 // button object instance (defined in OpenFIREcommon.h/OpenFIREprefs.h)
 LightgunButtons FW_Common::buttons(lgbData, ButtonCount);
 
@@ -226,11 +228,11 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
         buttons.ReleaseAll();
         buttons.ReportDisable();
         break;
-    case FW_Const::GunMode_Pause:
-        break;
     case FW_Const::GunMode_Docked:
         if(newMode != FW_Const::GunMode_Calibration)
             Serial.println("Undocking.");
+        break;
+    default: // pause mode, init, and cali stuff shouldn't be doing anything
         break;
     }
     
@@ -279,6 +281,8 @@ void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
             OLED.ScreenModeChange(ExtDisplay::Screen_Docked);
         #endif // USES_DISPLAY
 
+        break;
+    default: // Calibration and verification don't do anything special
         break;
     }
 
@@ -855,7 +859,7 @@ void FW_Common::UpdateLastSeen()
     if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
         if(lastSeen != OpenFIREdiamond.seen()) {
             #ifdef MAMEHOOKER
-            if(!OF_Serial::serialMode)
+            if(!OF_Serial::serialMode) {
             #endif // MAMEHOOKER
                 #ifdef LED_ENABLE
                 if(!lastSeen && OpenFIREdiamond.seen())
@@ -863,7 +867,9 @@ void FW_Common::UpdateLastSeen()
                 else if(lastSeen && !OpenFIREdiamond.seen())
                     OF_RGB::SetLedPackedColor(OF_RGB::IRSeen0Color);
                 #endif // LED_ENABLE
-
+            #ifdef MAMEHOOKER
+            }
+            #endif // MAMEHOOKER
             lastSeen = OpenFIREdiamond.seen();
         }
     } else {
@@ -885,7 +891,7 @@ void FW_Common::UpdateLastSeen()
     }
 }
 
-bool FW_Common::SelectCalProfile(const int &profile)
+bool FW_Common::SelectCalProfile(const uint &profile)
 {
     if(profile >= PROFILE_COUNT)
         return false;
@@ -1079,7 +1085,7 @@ void FW_Common::UpdateBindings(const bool &rebindStrSel)
     case FW_Const::GunMode_Docked:
     case FW_Const::GunMode_Init:
         // Updates pins
-        for(int i = 0; i < ButtonCount; ++i)
+        for(uint i = 0; i < ButtonCount; ++i)
             LightgunButtons::ButtonDesc[i].pin = OF_Prefs::pins[i];
         break;
     default:
@@ -1101,7 +1107,7 @@ void FW_Common::UpdateBindings(const bool &rebindStrSel)
         #endif // PLAYER_NUMBER
     }
 
-    for(int i = 0; i < ButtonCount; ++i)
+    for(uint i = 0; i < ButtonCount; ++i)
         memcpy(&LightgunButtons::ButtonDesc[i].reportType,
                OF_Prefs::backupButtonDesc[i],
                sizeof(OF_Prefs::backupButtonDesc[0]));
@@ -1151,7 +1157,7 @@ void FW_Common::UpdateBindings(const bool &rebindStrSel)
 void FW_Common::UpdateStartSelect()
 {
     uint8_t *btnMatchedPtr;
-    for(int i = 0; i < ButtonCount; ++i) {
+    for(uint i = 0; i < ButtonCount; ++i) {
         do {
             btnMatchedPtr = (uint8_t*)memchr(&LightgunButtons::ButtonDesc[i].reportCode, 0xFF, sizeof(OF_Prefs::backupButtonDesc[i])-1);
             if(btnMatchedPtr != nullptr)

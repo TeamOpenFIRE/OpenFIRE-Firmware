@@ -88,7 +88,7 @@ public:
     /// @brief    Applies loaded gun profile settings from profileData[PROFILE_COUNT]
     /// @param    profile
     ///           Profile slot number to load settings from.
-    static bool SelectCalProfile(const int &profile);
+    static bool SelectCalProfile(const uint &profile);
 
     /// @brief    Set a new IR camera sensitivity, and apply to the currently selected calibration profile
     /// @param    sensitivity
@@ -185,8 +185,5 @@ public:
     #endif // MAMEHOOKER
     #endif // USES_DISPLAY
 };
-
-// button runtime data arrays
-static inline LightgunButtonsStatic<ButtonCount> lgbData;
 
 #endif // _OPENFIRECOMMON_H_

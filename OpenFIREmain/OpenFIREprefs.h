@@ -84,7 +84,7 @@ public:
         false,          // low buttons mode
         false,          // rumble force-feedback mode
         false,          // invert static pixels
-        false,          // i2c OLED enabled
+        false,          // OLED enabled
         false,          // i2c OLED alt address
     };
 
@@ -107,6 +107,7 @@ public:
         38,                         // temp warning
         45,                         // temp shutoff
         OF_Const::analogModeStick,  // analog stick mode
+        OF_Const::displayNone,      // OLED display type
     };
 
     typedef struct USBMap_s {
