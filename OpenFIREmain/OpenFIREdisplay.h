@@ -28,41 +28,61 @@
 */
 class Adafruit_MultiDisplay {
 public:
-    OF_Const::OLEDTypes_e dispType = OF_Const::displayNone;
+    OF_Const::I2COLEDTypes_e i2cDispType;
     Adafruit_SSD1306 *display1306 = nullptr;
     Adafruit_SH1106G *display1106 = nullptr;
     Adafruit_SH1107 *display1107 = nullptr;
 
     // constructor
-    Adafruit_MultiDisplay(TwoWire *twi, const OF_Const::OLEDTypes_e &displayType)
-        : dispType(displayType)
+    Adafruit_MultiDisplay(TwoWire *twi, const OF_Const::I2COLEDTypes_e &displayType)
+        : i2cDispType(displayType)
     {
         switch(displayType) {
-        case OF_Const::displaySSD1306_I2C:
+        case OF_Const::I2Cdisp_SSD1306:
             display1306 = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, twi, -1, 1000000);
             break;
-        case OF_Const::displaySH1106_I2C:
+        case OF_Const::I2Cdisp_SH1106:
             display1106 = new Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, twi, -1, 1000000);
             break;
-        case OF_Const::displaySH1107_I2C:
+        case OF_Const::I2Cdisp_SH1107:
             display1107 = new Adafruit_SH1107(SCREEN_WIDTH, SCREEN_HEIGHT, twi, -1, 1000000);
             break;
         default: break;
         }
     }
 
+    // SPI constructor
+    /* TODO: hook up in a way that actually works
+    Adafruit_MultiDisplay(SPIClassRP2040 *spi, const int &csn const int &dc, const int &reset, const OF_Const::SPIOLEDTypes_e &displayType)
+        : spiDispType(displayType)
+    {
+        switch(displayType) {
+        case OF_Const::displaySSD1306_SPI:
+            display1306 = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, spi, dc, reset, csn);
+            break;
+        case OF_Const::displaySH1106_SPI:
+            display1106 = new Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, spi, dc, reset, csn);
+            break;
+        case OF_Const::displaySH1107_SPI:
+            display1107 = new Adafruit_SH1107(SCREEN_WIDTH, SCREEN_HEIGHT, spi, dc, reset, csn);
+            break;
+        default: break;
+        }
+    }
+    */
+
     // destructor: cleanup
     ~Adafruit_MultiDisplay() {
-        switch(dispType) {
-        case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+        case OF_Const::I2Cdisp_SSD1306:
             delete display1306;
             display1306 = nullptr;
             break;
-        case OF_Const::displaySH1106_I2C:
+        case OF_Const::I2Cdisp_SH1106:
             delete display1106;
             display1106 = nullptr;
             break;
-        case OF_Const::displaySH1107_I2C:
+        case OF_Const::I2Cdisp_SH1107:
             delete display1107;
             display1107 = nullptr;
             break;
@@ -71,12 +91,12 @@ public:
     }
 
     bool begin(const bool altI2Caddr) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 return display1306->begin(SSD1306_SWITCHCAPVCC, altI2Caddr ? 0x3D : 0x3C);
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 return display1106->begin();
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 return display1107->begin();
             default: return false;
         }
@@ -86,12 +106,12 @@ public:
         #ifdef SERIAL_DEBUG
         unsigned long preDispTS = millis();
         #endif // SERIAL_DEBUG
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->display(); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->display(); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->display(); break;
             default: break;
         }
@@ -101,24 +121,24 @@ public:
     }
 
     void invertDisplay(const bool &i) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->invertDisplay(i); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->invertDisplay(i); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->invertDisplay(i); break;
             default: break;
         }
     }
 
     void clearDisplay() {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->clearDisplay(); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->clearDisplay(); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->clearDisplay(); break;
             default: break;
         }
@@ -127,13 +147,13 @@ public:
     // only SSD1306 has a predefined dim function (which sets contrast to 0x8F), with no public "set contrast" method
     // SH1106 also seems to have virtually no range in contrast - 0x2F seems to have the same effect as 0x01
     void dim(const bool &dim) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->dim(dim); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setContrast(dim ? 0x01 : 0xFF);
                 break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setContrast(dim ? 0x2F : 0x4F);
                 break;
             default: break;
@@ -141,276 +161,276 @@ public:
     }
 
     void cp437(const bool &x) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->cp437(x); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->cp437(x); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->cp437(x); break;
             default: break;
         }
     }
 
     void drawFastVLine(const int16_t &x, const int16_t &y, const int16_t &h, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawFastVLine(x, y, h, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawFastVLine(x, y, h, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawFastVLine(x, y, h, color); break;
             default: break;
         }
     }
 
     void drawFastHLine(const int16_t &x, const int16_t &y, const int16_t &w, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawFastHLine(x, y, w, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawFastHLine(x, y, w, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawFastHLine(x, y, w, color); break;
             default: break;
         }
     }
 
     void fillRect(const int16_t &x, const int16_t &y, const int16_t &w, const int16_t &h, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->fillRect(x, y, w, h, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->fillRect(x, y, w, h, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->fillRect(x, y, w, h, color); break;
             default: break;
         }
     }
 
     void fillCircle(const int16_t &x, const int16_t &y, const int16_t &r, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->fillCircle(x, y, r, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->fillCircle(x, y, r, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->fillCircle(x, y, r, color); break;
             default: break;
         }
     }
 
     void fillScreen(const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->fillScreen(color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->fillScreen(color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->fillScreen(color); break;
             default: break;
         }
     }
 
     void drawLine(const int16_t &x0, const int16_t &y0, const int16_t &x1, const int16_t &y1, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawLine(x0, y0, x1, y1, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawLine(x0, y0, x1, y1, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawLine(x0, y0, x1, y1, color); break;
             default: break;
         }
     }
 
     void drawRect(const int16_t &x, const int16_t &y, const int16_t &w, const int16_t &h, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawRect(x, y, w, h, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawRect(x, y, w, h, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawRect(x, y, w, h, color); break;
             default: break;
         }
     }
 
     void drawBitmap(const int16_t &x, const int16_t &y, const uint8_t bitmap[], const int16_t &w, const int16_t &h, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawBitmap(x, y, bitmap, w, h, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawBitmap(x, y, bitmap, w, h, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawBitmap(x, y, bitmap, w, h, color); break;
             default: break;
         }
     }
 
     void drawBitmap(const int16_t &x, const int16_t &y, uint8_t *bitmap, const int16_t &w, const int16_t &h, const uint16_t &color) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->drawBitmap(x, y, bitmap, w, h, color); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->drawBitmap(x, y, bitmap, w, h, color); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->drawBitmap(x, y, bitmap, w, h, color); break;
             default: break;
         }
     }
 
     void setTextSize(const uint8_t &s) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setTextSize(s); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setTextSize(s); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setTextSize(s); break;
             default: break;
         }
     }
 
     void setFont(const GFXfont *f = NULL) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setFont(f); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setFont(f); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setFont(f); break;
             default: break;
         }
     }
 
     void setCursor(const int16_t &x, const int16_t &y) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setCursor(x, y); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setCursor(x, y); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setCursor(x, y); break;
             default: break;
         }
     }
 
     void setTextColor(const uint16_t &c) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setTextColor(c); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setTextColor(c); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setTextColor(c); break;
             default: break;
         }
     }
 
     void setTextColor(const uint16_t &c, const uint16_t &bg) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setTextColor(c, bg); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setTextColor(c, bg); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setTextColor(c, bg); break;
             default: break;
         }
     }
 
     void setTextWrap(const bool &w) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->setTextWrap(w); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->setTextWrap(w); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->setTextWrap(w); break;
             default: break;
         }
     }
 
     void print(const char *str) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->print(str); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->print(str); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->print(str); break;
             default: break;
         }
     }
 
     void print(const int &str) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->print(str); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->print(str); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->print(str); break;
             default: break;
         }
     }
 
     void println(const char *str) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->println(str); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->println(str); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->println(str); break;
             default: break;
         }
     }
 
     int16_t getCursorX() {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 return display1306->getCursorX();
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 return display1106->getCursorX();
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 return display1107->getCursorX();
             default: return 0;
         }
     }
 
     int16_t getCursorY() {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 return display1306->getCursorY();
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 return display1106->getCursorY();
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 return display1107->getCursorY();
             default: return 0;
         }
     }
 
     bool getPixel(const int16_t &x, const int16_t &y) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 return display1306->getPixel(x, y);
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 return display1106->getPixel(x, y);
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 return display1107->getPixel(x, y);
             default: return false;
         }
     }
 
     void getTextBounds(const char *str, const int16_t &x, const int16_t &y, int16_t *x1, int16_t *y1, uint16_t *w, uint16_t *h) {
-        switch(dispType) {
-            case OF_Const::displaySSD1306_I2C:
+        switch(i2cDispType) {
+            case OF_Const::I2Cdisp_SSD1306:
                 display1306->getTextBounds(str, x, y, x1, y1, w, h); break;
-            case OF_Const::displaySH1106_I2C:
+            case OF_Const::I2Cdisp_SH1106:
                 display1106->getTextBounds(str, x, y, x1, y1, w, h); break;
-            case OF_Const::displaySH1107_I2C:
+            case OF_Const::I2Cdisp_SH1107:
                 display1107->getTextBounds(str, x, y, x1, y1, w, h); break;
             default: break;
         }
@@ -419,7 +439,7 @@ public:
 
 class ExtDisplay {
 public:
-    /// @brief Attempt to start display using current pin numbers from SamcoPreferences
+    /// @brief Attempt to start display using current pin numbers from OF_Prefs
     /// @return success (true) or fail (false)
     bool Begin();
 
@@ -525,7 +545,7 @@ private:
     #ifdef USES_TEMP
         void ShowTemp();
 
-        int currentTemp;
+        uint currentTemp;
         unsigned long idleTempStamp = 0;
         bool showingTemp = false;
         // storage of temperature string

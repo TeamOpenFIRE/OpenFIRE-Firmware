@@ -84,8 +84,9 @@ public:
         false,          // low buttons mode
         false,          // rumble force-feedback mode
         false,          // invert static pixels
-        false,          // OLED enabled
-        false,          // i2c OLED alt address
+        false,          // I2C OLED enabled
+        false,          // I2C OLED alt address
+        false,          // SPI OLED enabled
     };
 
     /// @brief Pin functions array
@@ -107,7 +108,8 @@ public:
         38,                         // temp warning
         45,                         // temp shutoff
         OF_Const::analogModeStick,  // analog stick mode
-        OF_Const::displayNone,      // OLED display type
+        OF_Const::I2Cdisp_SSD1306,  // I2C OLED display type
+        OF_Const::SPIdisp_SSD1306,  // SPI OLED display type
     };
 
     typedef struct USBMap_s {
