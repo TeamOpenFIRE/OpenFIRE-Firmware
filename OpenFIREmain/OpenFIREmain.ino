@@ -1236,9 +1236,9 @@ void SelectCalProfileFromBtnMask(const uint32_t &mask)
     if(!mask)
         return;
 
-    for(uint i = 0; i < PROFILE_COUNT; ++i) {
+    for(uint i = 1; i <= PROFILE_COUNT; ++i) {
         if(bitRead(mask, i)) {
-            FW_Common::SelectCalProfile(i);
+            FW_Common::SelectCalProfile(i-1);
             return;
         }
     }
