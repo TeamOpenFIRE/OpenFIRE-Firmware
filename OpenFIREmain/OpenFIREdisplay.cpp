@@ -214,7 +214,11 @@ void ExtDisplay::IdleOps()
 #ifdef USES_TEMP
 void ExtDisplay::ShowTemp()
 {
-    if(OF_FFB::temperatureCurrent < 10) {
+    if (OF_FFB::temperatureCurrent == OF_Const::TEMPERATURE_SENSOR_ERROR_VALUE) {
+      // Analog read maxed out, likely disconnected/temp sensor fault
+      TopPanelUpdate("Temp sensor: ", "Fault!");
+      return;
+    } else if(OF_FFB::temperatureCurrent < 10) {
         tempString[0] = OF_FFB::temperatureCurrent + '0';
         tempString[1] = ' ';
         tempString[2] = 'C';
