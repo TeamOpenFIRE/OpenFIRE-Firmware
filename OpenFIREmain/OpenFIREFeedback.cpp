@@ -149,7 +149,7 @@ void OF_FFB::TemperatureUpdate()
     currentMillis = millis();
     if(currentMillis - previousMillisTemp > TEMP_UPDATE_INTERVAL) {
         previousMillisTemp = currentMillis;
-        auto analogValue = analogRead(OF_Prefs::pins[OF_Const::tempPin]);
+        unsigned int analogValue = analogRead(OF_Prefs::pins[OF_Const::tempPin]);
         if (analogValue < 100 || analogValue > 2500) {
             // Out of range reading, set to fatal value. Ranges out of 100-2500 correspond to
             // -40°C to 150°C which is outside the expected operating range :)
