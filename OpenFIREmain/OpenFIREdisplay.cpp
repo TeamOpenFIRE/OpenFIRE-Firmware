@@ -21,40 +21,74 @@
 
 bool ExtDisplay::Begin()
 {
-    if(display != nullptr) {
-        delete display;
-        display = nullptr;
+    Stop();
+
+    bool activatedDisplays = false;
+
+    if(OF_Prefs::toggles[OF_Const::i2cOLED]) {
+        TwoWire *twi = nullptr;
+        // TODO: for some reason, doing this AFTER saving updated pins settings (even when doing it from defaults and there's no default mappings for peripheral pins)
+        // causes the board to hang. Even though this is all correct (and any display objects should get deleted from the above, so don't think it can be a new object thing)...
+        if(OF_Prefs::pins[OF_Const::periphSCL] >= 0 && OF_Prefs::pins[OF_Const::periphSDA] >= 0) {
+            if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) && bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
+                // I2C1
+                if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
+                    Wire1.end();
+                    // SDA/SCL are indeed on verified correct pins
+                    twi = &Wire1;
+                }
+            } else if(!bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
+                // I2C0
+                if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
+                    Wire.end();
+                    // SDA/SCL are indeed on verified correct pins
+                    twi = &Wire;
+                }
+            }
+        }
+
+        if(twi) {
+            twi->setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
+            twi->setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
+
+            display = new Adafruit_MultiDisplay(twi, (OF_Const::I2COLEDTypes_e)OF_Prefs::settings[OF_Const::i2cOLEDType]);
+
+            if(display->begin(OF_Prefs::toggles[OF_Const::i2cOLEDaltAddr])) {
+                display->clearDisplay();
+                ScreenModeChange(Screen_None);
+                activatedDisplays = true;
+            }
+        }
     }
 
-    // TODO: for some reason, doing this AFTER saving updated pins settings (even when doing it from defaults and there's no default mappings for peripheral pins)
-    // causes the board to hang. Even though this is all correct (and any display objects should get deleted from the above, so don't think it can be a new object thing)...
-    if(OF_Prefs::pins[OF_Const::periphSCL] >= 0 && OF_Prefs::pins[OF_Const::periphSDA] >= 0) {
-        if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) && bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
-            // I2C1
-            if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
-                Wire1.end();
-                // SDA/SCL are indeed on verified correct pins
-                Wire1.setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
-                Wire1.setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, -1);
-            } else return false;
-        } else if(!bitRead(OF_Prefs::pins[OF_Const::periphSCL], 1) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 1)) {
-            // I2C0
-            if(bitRead(OF_Prefs::pins[OF_Const::periphSCL], 0) && !bitRead(OF_Prefs::pins[OF_Const::periphSDA], 0)) {
-                Wire.end();
-                // SDA/SCL are indeed on verified correct pins
-                Wire.setSDA(OF_Prefs::pins[OF_Const::periphSDA]);
-                Wire.setSCL(OF_Prefs::pins[OF_Const::periphSCL]);
-                display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+    /* TODO: need to allow routing calls to multiple displays if both SPI & I2C disps are available
+    if(OF_Prefs::toggles[OF_Const::spiOLED]) {
+        SPIClassRP2040 *spi;
+        if(tx >= 0 && sck >= 0 && csn >= 0 && dc >= 0 && reset >= 0) {
+            if(tx & 8 && sck & 8 && csn & 8) {
+                // SPI1
+                // TODO: does this need a more rigorous channel clash check?
+                if(tx & 3 && sck & 2 && csn & 1) {
+                    // SPI pins check out
+                    spi = &spi1_hw;
+                } else return false;
+            } else if(!(tx & 8) && !(sck & 8) && !(csn & 8)) {
+                // SPI0
+                if(tx & 3 && sck & 2 && csn & 1) {
+                    // SPI pins check out
+                    spi = &spi0_hw;
+                } else return false;
             } else return false;
         } else return false;
-    } else return false;
 
-    if(display->begin(SSD1306_SWITCHCAPVCC, OF_Prefs::toggles[OF_Const::i2cOLEDaltAddr] ? 0x3D : 0x3C)) {
-        display->clearDisplay();
-        ScreenModeChange(Screen_None);
-        return true;
-    } else return false;
+        spi->setTX(tx);
+        spi->setSCK(sck);
+
+        display = new Adafruit_MultiDisplay(spi, csn, dc, reset, displayType);
+    }
+    */
+
+    return activatedDisplays;
 }
 
 void ExtDisplay::Stop()
