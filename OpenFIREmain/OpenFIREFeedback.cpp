@@ -149,7 +149,20 @@ void OF_FFB::TemperatureUpdate()
     currentMillis = millis();
     if(currentMillis - previousMillisTemp > TEMP_UPDATE_INTERVAL) {
         previousMillisTemp = currentMillis;
-        temperatureGraph[tempGraphIndex] = (((analogRead(OF_Prefs::pins[OF_Const::tempPin]) * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
+        unsigned int analogValue = analogRead(OF_Prefs::pins[OF_Const::tempPin]);
+        if (analogValue < 100 || analogValue > 2500) {
+            // Out of range reading, set to fatal value. Ranges out of 100-2500 correspond to
+            // -40°C to 150°C which is outside the expected operating range :)
+            // This case can happen if the sensor is faulty or the µC ADC is malfunctioning.
+            // In case no sensor is connected the pin is floating and may read out-of-range values but
+            // mostly return low values which makes it impossible to detect a disconnected sensor by
+            // simple thresholding.
+            tempStatus = Temp_Fatal;
+            temperatureCurrent = OF_Const::TEMPERATURE_SENSOR_ERROR_VALUE; // Set to a high temp to reflect error.
+            return;
+        }
+
+        temperatureGraph[tempGraphIndex] = (((analogValue * 3.3) / 4096) - 0.5) * 100; // Convert reading from mV->3.3->12-bit->Celsius
         if(tempGraphIndex < 3) {
             tempGraphIndex++;
         } else {
@@ -159,7 +172,14 @@ void OF_FFB::TemperatureUpdate()
                                   temperatureGraph[1] +
                                   temperatureGraph[2] +
                                   temperatureGraph[3]) >> 2;
-                                  
+
+            if (temperatureCurrent > OF_Const::TEMPERATURE_SENSOR_ERROR_VALUE) {
+              // Cap the temperature to avoid issues with faulty readings.
+              // This leads to Temp_Fatal state which is the safest option.
+              // This also prevents issues with unsigned int underflow in the tempStatus checks below.
+              temperatureCurrent = OF_Const::TEMPERATURE_SENSOR_ERROR_VALUE;
+            }
+
             if(tempStatus == Temp_Fatal) {
                 if(temperatureCurrent < OF_Prefs::settings[OF_Const::tempShutdown]-5)
                     tempStatus = Temp_Warning;

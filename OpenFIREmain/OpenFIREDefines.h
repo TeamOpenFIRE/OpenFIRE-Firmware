@@ -10,7 +10,7 @@
 #define _OPENFIREDEFINES_H_
 
 #ifndef OPENFIRE_VERSION
-#define OPENFIRE_VERSION 6.1
+#define OPENFIRE_VERSION 6.2
 #endif // OPENFIRE_VERSION
 
  // For custom builders, remember to check (COMPILING.md) for IDE instructions!
