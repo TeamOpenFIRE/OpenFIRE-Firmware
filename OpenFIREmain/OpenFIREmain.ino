@@ -376,9 +376,11 @@ void loop()
         case FW_Const::GunMode_Pause:
             if(OF_Prefs::toggles[OF_Const::simplePause]) {
                 if(pauseModeSelectingProfile) {
-                    if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
+                    if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A || 
+                       FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Up) {
                         SetProfileSelection(false);
-                    } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
+                    } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B||
+                              FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Down) {
                         SetProfileSelection(true);
                     } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                         FW_Common::SelectCalProfile(profileModeSelection);
@@ -418,9 +420,11 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
                     }
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A || 
+                            FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Up) {
                     SetPauseModeSelection(false);
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B || 
+                            FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Down) {
                     SetPauseModeSelection(true);
                 } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                     switch(FW_Common::pauseModeSelection) {
