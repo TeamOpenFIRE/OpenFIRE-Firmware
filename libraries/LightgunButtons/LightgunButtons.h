@@ -123,6 +123,9 @@ public:
     /// @brief Bit mask of buttons to enable reporting HID events to host.
     uint32_t report;
 
+    /// @brief Counts the ReleaseAll() calls, so other code can tell that every report was cleared.
+    uint32_t releaseAllCount = 0;
+
     /// @brief Enable reporting for all buttons. Set report to 0xFFFFFFFF.
     void ReportEnable() { report = 0xFFFFFFFF; }
 

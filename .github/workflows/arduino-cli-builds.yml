@@ -4,6 +4,40 @@ on:
   pull_request:
 
 jobs:
+  # The unit tests and the tracking regression test run on the PC (see tests/README.md), and the share of the code they run
+  # must not fall below the minimum. A change that lowers it too far fails here.
+  unit-tests:
+    name: Unit tests and coverage
+    runs-on: ubuntu-latest
+    env:
+      # Minimum share of lines run by the unit tests, in percent. Raise it as tests are added.
+      MINIMUM_COVERAGE: 95
+    steps:
+      - name: Checkout OpenFIRE-Firmware
+        uses: actions/checkout@v5
+        with:
+          # the board presets of the firmware (OpenFIREmain/boards) are a submodule, and the firmware's tests need them
+          submodules: true
+
+      - name: Install gcovr
+        run: sudo apt-get update && sudo apt-get install -y gcovr
+
+      # g++ builds and runs all of them: advanced, classic, board drivers and the firmware (as a Pico and a Pico 2), the last
+      # with AddressSanitizer and UndefinedBehaviorSanitizer, then the golden-hash test of the tracking
+      - name: Run the tests
+        run: tests/run_all.sh
+
+      - name: Measure coverage (at least ${{ env.MINIMUM_COVERAGE }}%)
+        run: tests/unit/coverage.sh --min ${{ env.MINIMUM_COVERAGE }} --html coverage-report
+
+      - name: Upload coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: Unit test coverage report
+          path: coverage-report
+          if-no-files-found: ignore
+
   arduino-build:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -14,7 +48,7 @@ jobs:
             fqbn: rpipico
             pretty: rpipico
             flags: freq=133,usbstack=tinyusb,flash=2097152_65536,opt=Optimize3
-            
+
           - name: Raspberry Pi Pico W (USB)
             fqbn: rpipicow
             pretty: rpipicow-noBT
@@ -43,22 +77,22 @@ jobs:
             fqbn: adafruit_itsybitsy
             pretty: adafruitItsy
             flags: freq=133,usbstack=tinyusb,flash=8388608_65536,opt=Optimize3
-            
+
           - name: Adafruit KB2040
             fqbn: adafruit_kb2040
             pretty: adafruitKB2040
             flags: freq=133,usbstack=tinyusb,flash=8388608_65536,opt=Optimize3
-            
+
           - name: Arduino Nano RP2040 Connect
             fqbn: arduino_nano_connect
             pretty: arduinoNano
             flags: freq=133,usbstack=tinyusb,flash=16777216_65536,opt=Optimize3
-            
+
           - name: VCC-GND YD RP2040
             fqbn: vccgnd_yd_rp2040
             pretty: vccgndYD
             flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3
-            
+
           - name: Waveshare RP2040 Zero
             fqbn: waveshare_rp2040_zero
             pretty: waveshareZero
@@ -68,7 +102,7 @@ jobs:
             fqbn: generic_rp2350
             pretty: generic_rp2350
             flags: freq=133,usbstack=tinyusb,flash=2097152_1048576,opt=Optimize3,arch=arm
-            
+
           - name: Generic RP2040
             fqbn: generic
             pretty: generic
@@ -76,18 +110,24 @@ jobs:
 
     steps:
       - name: Checkout OpenFIRE-Firmware
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
-          
+
+      # Installed by hand, as arduino/setup-arduino-cli (latest v2.0.0) still targets Node.js 20.
+      # Seems like arduino/setup-arduino-cli is currently unmaintained as PRs and Issues long open without response.
       - name: Install Arduino-cli
-        uses: arduino/setup-arduino-cli@v2
+        env:
+          ARDUINO_CLI_VERSION: 1.5.1
+        run: |
+          curl -fsSL "https://github.com/arduino/arduino-cli/releases/download/v${ARDUINO_CLI_VERSION}/arduino-cli_${ARDUINO_CLI_VERSION}_Linux_64bit.tar.gz" | sudo tar -xz -C /usr/local/bin arduino-cli
+          arduino-cli version
 
       # arduino nano uses this just to access LEDs, grr...
       - name: Install Arduino Nano Connect library
         if: ${{ matrix.fqbn == 'arduino_nano_connect' }}
         run: arduino-cli lib install WiFiNINA
-        
+
       # use our fork with patched TUSB
       # TODO: for now, select version manually (as our -tusb version is currently considered prior to upstream 4.5.4)
       - name: Setting up Arduino-cli
@@ -96,7 +136,18 @@ jobs:
       - name: Get short SHA
         id: get-short-sha
         run: echo "id=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        
+
+      # the version is defined in OpenFIREDefines.h, and is used in the file name to tell local copies apart
+      - name: Get firmware version
+        id: get-version
+        run: |
+          version=$(sed -n 's/^#define OPENFIRE_VERSION[[:space:]]\+\([0-9][0-9.]*\).*/\1/p' OpenFIREmain/OpenFIREDefines.h)
+          if [ -z "$version" ]; then
+            echo "Could not read OPENFIRE_VERSION from OpenFIREmain/OpenFIREDefines.h" >&2
+            exit 1
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+
       - name: Compile for ${{ matrix.name }}
         run: >
           arduino-cli compile -e
@@ -106,14 +157,13 @@ jobs:
           --build-property 'build.extra_flags=
           -DGIT_HASH="${{steps.get-short-sha.outputs.id}}"
           ${{matrix.extra_flags}}'
-        
+
       - name: Rename build file
-        run: cp ${{github.workspace}}/OpenFIREmain/build/rp2040.rp2040.${{matrix.fqbn}}/OpenFIREmain.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.uf2
-        
+        run: cp ${{github.workspace}}/OpenFIREmain/build/rp2040.rp2040.${{matrix.fqbn}}/OpenFIREmain.ino.uf2 OpenFIREfw.${{ matrix.pretty }}.v${{ steps.get-version.outputs.version }}-${{ steps.get-short-sha.outputs.id }}.uf2
+
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: OpenFIREfw.${{ matrix.pretty }}.uf2
-          name: OpenFIREfw - ${{ matrix.name }}
+          path: OpenFIREfw.${{ matrix.pretty }}.v${{ steps.get-version.outputs.version }}-${{ steps.get-short-sha.outputs.id }}.uf2
+          name: OpenFIREfw - ${{ matrix.name }} - v${{ steps.get-version.outputs.version }}-${{ steps.get-short-sha.outputs.id }}
           if-no-files-found: error
-          

@@ -40,4 +40,30 @@ constexpr int MouseMaxY = MouseResY - 1;
 constexpr int res_x = 1920 << 2;
 constexpr int res_y = 1080 << 2;
 
+// DFRobot IR positioning camera update rate, in Hz.
+// Must match the rate the sketch polls the camera at (startIrCamTimer()).
+constexpr int CamFps = 209;
+
+// Physical Square LED rectangle base / height ratio.
+// Used by Square tracking (advanced tracking) as the initial shape guess.
+constexpr float IRSquareBaseHeightRatio = 0.711f;
+
+// Default Square LED positions in camera pixels, used until the first 4-LED lock:
+// the largest IRSquareBaseHeightRatio rectangle in the middle 90% of the camera area.
+constexpr int SquareDefaultTLX = 266;
+constexpr int SquareDefaultTRX = 757;
+constexpr int SquareDefaultTY = 38;
+constexpr int SquareDefaultBY = 729;
+
+// Default Diamond LED positions in camera pixels, used until the first 4-LED lock:
+// the largest res_x:res_y diamond in the middle 90% of the camera area.
+constexpr int DiamondDefaultTopX = 512;
+constexpr int DiamondDefaultTopY = 124;
+constexpr int DiamondDefaultRightX = 972;
+constexpr int DiamondDefaultRightY = 384;
+constexpr int DiamondDefaultBottomX = 512;
+constexpr int DiamondDefaultBottomY = 643;
+constexpr int DiamondDefaultLeftX = 51;
+constexpr int DiamondDefaultLeftY = 384;
+
 #endif // _OPENFIRECONST_H_

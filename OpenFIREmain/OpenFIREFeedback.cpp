@@ -65,7 +65,10 @@ void OF_FFB::FFBOffScreen()
 
     if(burstFiring) BurstFire();
     else if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]) && !burstFireActive) { // If the solenoid is engaged, since we're not shooting the screen, shut off the solenoid a'la an idle cycle
-        SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidOnLength]);
+        if(solenoidFirstShot) {                               // Single shot still in its first pulse: end it on its timer, without starting it again.
+            if(millis() - previousMillisSol >= OF_Prefs::settings[OF_Const::solenoidOnLength])
+                digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+        } else SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidOnLength]);
     }
 }
 
@@ -102,9 +105,11 @@ void OF_FFB::FFBRelease()
 
 void OF_FFB::SolenoidActivation(const int &solenoidFinalInterval)
 {
-    if(solenoidFirstShot) {                                       // If this is the first time we're shooting, it's probably safe to shoot regardless of temps.
+    if(solenoidFirstShot) {                                       // First shot: fire at once, without waiting for the interval timer.
         previousMillisSol = millis();                             // Calibrate the timer for future calcs.
-        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);     // Since we're shooting the first time, just turn it on aaaaand fire.
+        if(OF_Prefs::pins[OF_Const::tempPin] >= 0 && tempStatus == Temp_Fatal)
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);   // Too hot, or temperature sensor fault: do not fire.
+        else digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH); // Since we're shooting the first time, just turn it on aaaaand fire.
     } else {
         if(OF_Prefs::pins[OF_Const::tempPin] >= 0) { // If a temp sensor is installed and enabled,
             TemperatureUpdate();
@@ -224,14 +229,18 @@ void OF_FFB::RumbleActivation()
 
 void OF_FFB::BurstFire()
 {
+    if(OF_Prefs::pins[OF_Const::tempPin] >= 0 && tempStatus == Temp_Fatal)
+        burstFireCount = 4;                                       // Too hot: end the burst now, so it does not resume by itself once cooled.
     if(burstFireCount < 4) {  // Are we within the three shots alotted to a burst fire command?
         #ifdef USES_SOLENOID
             if(!digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]) &&  // Is the solenoid NOT on right now, and the counter hasn't matched?
             (burstFireCount == burstFireCountLast)) {
                 burstFireCount++;                                 // Increment the counter.
+                if(burstFireCount > 3)                            // Third shot done: no fourth pulse, the burst ends on the next call.
+                    return;
             }
             if(!digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {  // Now, is the solenoid NOT on right now?
-                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidOffLength] << autofireDoubleLengthWait ? 1 : 0);     // Hold it off a bit longer,
+                SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidOffLength] << (autofireDoubleLengthWait ? 1 : 0));     // Hold it off a bit longer,
             } else {                         // or if it IS on,
                 burstFireCountLast = burstFireCount;              // sync the counters since we completed one bullet cycle,
                 SolenoidActivation(OF_Prefs::settings[OF_Const::solenoidOnLength]);         // And start trying to activate the dingus.
@@ -239,6 +248,9 @@ void OF_FFB::BurstFire()
         #endif // USES_SOLENOID
         return;
     } else {  // If we're at three bullets fired,
+        #ifdef USES_SOLENOID
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW); // A burst always ends with the solenoid off,
+        #endif // USES_SOLENOID
         burstFiring = false;                                      // Disable the currently firing tag,
         burstFireCount = 0;                                       // And set the count off.
         return;                                                   // Let's go back.

@@ -18,6 +18,12 @@
 
 */
 
+#include "OpenFIRETracking.h"
+
+// The classic tracking is replaced by OpenFIRE_*_Advanced when ADVANCED_TRACKING is set
+#ifndef ADVANCED_TRACKING
+
+
 #ifndef OpenFIRE_Perspective_h
 #define OpenFIRE_Perspective_h
 
@@ -47,7 +53,7 @@ private:
   int dstY;
 
 public:
-  void warp(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, float dx0, float dy0, float dx1, float dy1, float dx2, float dy2, float dx3, float dy3);
+  void warp(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, float dx0, float dy0, float dx1, float dy1, float dx2, float dy2, float dx3, float dy3);
   void source(float adjustedX, float adjustedY);
   void deinit (bool set);
   int getX();
@@ -55,3 +61,5 @@ public:
 };
 
 #endif
+
+#endif // !ADVANCED_TRACKING

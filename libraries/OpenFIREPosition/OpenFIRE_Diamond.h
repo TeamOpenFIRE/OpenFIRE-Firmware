@@ -11,6 +11,12 @@
  * @date 2024
  */
 
+#include "OpenFIRETracking.h"
+
+// The classic tracking is replaced by OpenFIRE_*_Advanced when ADVANCED_TRACKING is set
+#ifndef ADVANCED_TRACKING
+
+
 #ifndef _OpenFIRE_Diamond_h_
 #define _OpenFIRE_Diamond_h_
 
@@ -91,3 +97,5 @@ public:
 };
 
 #endif // _OpenFIRE_Diamond_h_
+
+#endif // !ADVANCED_TRACKING

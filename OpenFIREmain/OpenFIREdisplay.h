@@ -129,7 +129,7 @@ private:
         unsigned long idleTempStamp = 0;
         bool showingTemp = false;
         // storage of temperature string
-        char tempString[5];
+        char tempString[8];
     #endif // USES_TEMP
 
     #define NUMBER_GLYPH_WIDTH 21

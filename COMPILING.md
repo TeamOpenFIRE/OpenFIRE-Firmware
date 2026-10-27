@@ -6,6 +6,7 @@
  - [Arduino (-cli) Setup](#arduino--cli-setup)
  - [Sketch Configuration](#sketch-configuration)
  - [Define Buttons & Timers](#define-buttons--timers)
+ - [Advanced Tracking](#advanced-tracking)
 
 ### Arduino IDE Setup
 For most people, you may prefer editing, testing and using the Arduino IDE. This applies to Arduino IDE 2.x, though 1.x can also be made to work.
@@ -93,3 +94,14 @@ Remember that the sketch uses the Arduino GPIO pin numbers; on many boards, incl
 For boards already implemented, the OpenFIRE Desktop App has an embedded interactive *boards previewer* to view the default layout, location, and extra capabilities of GPIO for supported microcontrollers. You can also refer to [this interactive webpage](https://pico.pinout.xyz/) for detailed information on the Pico/W's layout, or your board vendor's documentation for more information about your particular microcontroller.
 
 The default button:pins layout used will be reflected by default in the OpenFIRE App, which can be used as reference or can be changed to any custom pins layout to suit your needs - custom settings will take priority over board defaults if enabled & detected.
+
+### Advanced Tracking
+OpenFIRE has two IR tracking implementations behind the same interface:
+ - **Classic tracking** (`OpenFIRE_Square`, `OpenFIRE_Diamond`, `OpenFIRE_Perspective`): the original SAMCO code, with integer-based maths.
+ - **Advanced tracking** (`OpenFIRE_*_Advanced`): keeps LED identities through gun roll, rebuilds hidden emitters from the last full view (including perspective), smooths changes in the number of visible emitters, validates the geometry before using it, and corrects the DFRobot lens' distortion. It runs a lot of floating-point maths per camera frame.
+
+Which one is built is decided by `libraries/OpenFIREPosition/OpenFIRETracking.h`:
+ - **RP2350 (ARM)**: advanced tracking is enabled automatically. To build the classic tracking there instead, add `-DNO_ADVANCED_TRACKING` to the build flags (e.g. `--build-property "compiler.cpp.extra_flags=-DNO_ADVANCED_TRACKING"` with `arduino-cli`).
+ - **RP2040**: advanced tracking can't be selected, as the chip has no FPU. Defining `ADVANCED_TRACKING` for an RP2040 (or an RP2350 RISC-V) build is a build error.
+
+Independently of the above, the **OneEuro** run mode (a [1€ filter](https://github.com/casiez/OneEuroFilter) on the LED positions, as an alternative to the 2 and 3 frame averages) is available on every chip. In the hotkey pause mode, the same button combination that switches between the averaging modes now cycles through Averaging, Averaging2 and OneEuro. The mode is saved with the profile as run mode `4`.

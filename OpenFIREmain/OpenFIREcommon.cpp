@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <limits>
 #ifdef ARDUINO_ARCH_RP2040
   // for RP2040 Wii Clock Gen
   #include <pico/stdlib.h>
@@ -16,6 +17,7 @@
 #endif // ARDUINO_ARCH_RP2040
 
 #include "OpenFIREcommon.h"
+#include "OpenFIREcalibration.h"
 #include "OpenFIREFeedback.h"
 #include "OpenFIRElights.h"
 #include "OpenFIREserial.h"
@@ -163,6 +165,13 @@ void FW_Common::PinsReset()
 
 void FW_Common::CameraSet()
 {
+    // Start tracking from the default geometry, without any history of the previous camera setup.
+    #ifdef ADVANCED_TRACKING
+        OpenFIREsquare.configure();
+        OpenFIREdiamond.configure();
+    #endif // ADVANCED_TRACKING
+    OpenFIREoef.reset();
+
     // Sanity check: which channel do these pins correlate to?
     if(bitRead(OF_Prefs::pins[OF_Const::camSCL], 1) && bitRead(OF_Prefs::pins[OF_Const::camSDA], 1)) {
         // I2C1
@@ -194,11 +203,9 @@ void FW_Common::CameraSet()
         pwm_set_chan_level(slice_num, pwm_gpio_to_channel(OF_Prefs::pins[OF_Const::wiiClockGen]), 2);
         pwm_set_enabled(slice_num, true);
     } else {
+        // No clock generator pin: the system clock stays at the board's default. There is no pin to release, so none is
+        // touched (the pin number is -1 here, which the SDK would take as a pin far beyond the chip's).
         set_sys_clock_khz(133000, true);
-        pwm_set_enabled(pwm_gpio_to_slice_num(OF_Prefs::pins[OF_Const::wiiClockGen]), false);
-        gpio_set_function(OF_Prefs::pins[OF_Const::wiiClockGen], GPIO_FUNC_SIO);
-        gpio_put(OF_Prefs::pins[OF_Const::wiiClockGen], 0);
-        gpio_set_dir(OF_Prefs::pins[OF_Const::wiiClockGen], GPIO_IN);
     }
     #endif // ARDUINO_ARCH_RP2040
 
@@ -214,6 +221,16 @@ void FW_Common::CameraSet()
 
 void FW_Common::SetMode(const FW_Const::GunMode_e &newMode)
 {
+    #ifdef ADVANCED_TRACKING
+        // Calibration faces the screen with next to no roll, so the LEDs can simply be sorted by height.
+        OpenFIREsquare.setCalibrationMode(newMode == FW_Const::GunMode_Calibration);
+
+        // A Square wider than the screen is tall (LEDs at the screen corners) labels its LEDs differently.
+        // Checked on every call, even without a mode change, since the profile may have changed meanwhile.
+        if(newMode != FW_Const::GunMode_Calibration && OF_Prefs::currentProfile < PROFILE_COUNT && !OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout)
+            OpenFIREsquare.setWideLayout((OF_Prefs::profiles[OF_Prefs::currentProfile].TRled - OF_Prefs::profiles[OF_Prefs::currentProfile].TLled) > res_y);
+    #endif // ADVANCED_TRACKING
+
     if(gunMode == newMode)
         return;
     
@@ -293,7 +310,7 @@ void FW_Common::SetRunMode(const FW_Const::RunMode_e &newMode)
         return;
 
     // block Processing/test modes being applied to a profile
-    if(newMode <= FW_Const::RunMode_ProfileMax && OF_Prefs::profiles[OF_Prefs::currentProfile].runMode != newMode) {
+    if(newMode != FW_Const::RunMode_Processing && OF_Prefs::profiles[OF_Prefs::currentProfile].runMode != newMode) {
         OF_Prefs::profiles[OF_Prefs::currentProfile].runMode = newMode;
         stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
     }
@@ -645,41 +662,97 @@ void FW_Common::ExecCalMode(const bool &fromDesktop)
     Serial.flush();
 }
 
+
 void FW_Common::GetPosition()
 {
     if(dfrIRPos != nullptr) {
         int error = dfrIRPos->basicAtomic(DFRobotIRPositionEx::Retry_2);
         if(error == DFRobotIRPositionEx::Error_Success) {
+            // The filter keeps one history per LED slot, and Square and Diamond use the slots for
+            // different LEDs: restart it when the layout changes, so the two are never blended.
+            static int filterLayout = -1;
+            if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout != filterLayout) {
+                filterLayout = OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout;
+                OpenFIREoef.reset();
+            }
+
+            // LED positions from the tracker, then (in One Euro mode) filtered, as the Perspective input
+            int ledX[4], ledY[4];
+            float warpX[4], warpY[4];
+
             // if diamond layout, or square
             if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
                 OpenFIREdiamond.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
-                OpenFIREper.warp(OpenFIREdiamond.X(0), OpenFIREdiamond.Y(0),
-                                OpenFIREdiamond.X(1), OpenFIREdiamond.Y(1),
-                                OpenFIREdiamond.X(2), OpenFIREdiamond.Y(2),
-                                OpenFIREdiamond.X(3), OpenFIREdiamond.Y(3),
-                                res_x / 2, 0, 0,
-                                res_y / 2, res_x / 2,
-                                res_y, res_x, res_y / 2);
+                for(int i = 0; i < 4; ++i) {
+                    ledX[i] = OpenFIREdiamond.X(i);
+                    ledY[i] = OpenFIREdiamond.Y(i);
+                }
             } else {
                 OpenFIREsquare.begin(dfrIRPos->xPositions(), dfrIRPos->yPositions(), dfrIRPos->seen());
-                OpenFIREper.warp(OpenFIREsquare.X(0), OpenFIREsquare.Y(0),
-                                OpenFIREsquare.X(1), OpenFIREsquare.Y(1),
-                                OpenFIREsquare.X(2), OpenFIREsquare.Y(2),
-                                OpenFIREsquare.X(3), OpenFIREsquare.Y(3),
-                                OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, 0,
-                                OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, 0,
-                                OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, res_y,
-                                OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, res_y);
+                for(int i = 0; i < 4; ++i) {
+                    ledX[i] = OpenFIREsquare.X(i);
+                    ledY[i] = OpenFIREsquare.Y(i);
+                }
             }
 
-            // Output mapped to screen resolution because offsets are measured in pixels
-            mouseX = map(OpenFIREper.getX(), 0, res_x, (0 - OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset), (res_x + OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset));                 
-            mouseY = map(OpenFIREper.getY(), 0, res_y, (0 - OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset), (res_y + OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset));
+            if(runMode == FW_Const::RunMode_OneEuro)
+                OpenFIREoef.process(ledX, ledY, warpX, warpY);
+            else for(int i = 0; i < 4; ++i) {
+                warpX[i] = ledX[i];
+                warpY[i] = ledY[i];
+            }
+
+            if(OF_Prefs::profiles[OF_Prefs::currentProfile].irLayout) {
+                #ifdef ADVANCED_TRACKING
+                    // The advanced Perspective takes its points as TL, TR, BL, BR, so the last two
+                    // points of the Diamond's cycle (top, left, bottom, right) are swapped, with their targets.
+                    OpenFIREper.warp(warpX[0], warpY[0],
+                                     warpX[1], warpY[1],
+                                     warpX[3], warpY[3],
+                                     warpX[2], warpY[2],
+                                     res_x / 2, 0,
+                                     0, res_y / 2,
+                                     res_x, res_y / 2,
+                                     res_x / 2, res_y);
+                #else
+                    OpenFIREper.warp(warpX[0], warpY[0],
+                                     warpX[1], warpY[1],
+                                     warpX[2], warpY[2],
+                                     warpX[3], warpY[3],
+                                     res_x / 2, 0,
+                                     0, res_y / 2,
+                                     res_x / 2, res_y,
+                                     res_x, res_y / 2);
+                #endif // ADVANCED_TRACKING
+            } else {
+                OpenFIREper.warp(warpX[0], warpY[0],
+                                 warpX[1], warpY[1],
+                                 warpX[2], warpY[2],
+                                 warpX[3], warpY[3],
+                                 OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, 0,
+                                 OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, 0,
+                                 OF_Prefs::profiles[OF_Prefs::currentProfile].TLled, res_y,
+                                 OF_Prefs::profiles[OF_Prefs::currentProfile].TRled, res_y);
+            }
+
+            // Output mapped to screen resolution because offsets are measured in pixels.
+            // The offsets are the readings taken during calibration while aiming at the screen edges
+            // (top/left reading, res minus bottom/right reading), so those readings must land exactly
+            // on 0 and res. Stretching from 0 and res instead, as map() would, misses every
+            // calibrated edge by a few pixels.
+            mouseX = MapCalibratedAxis(OpenFIREper.getX(), res_x,
+                                       OF_Prefs::profiles[OF_Prefs::currentProfile].leftOffset,
+                                       OF_Prefs::profiles[OF_Prefs::currentProfile].rightOffset);
+            mouseY = MapCalibratedAxis(OpenFIREper.getY(), res_y,
+                                       OF_Prefs::profiles[OF_Prefs::currentProfile].topOffset,
+                                       OF_Prefs::profiles[OF_Prefs::currentProfile].bottomOffset);
 
             switch(runMode) {
                 case FW_Const::RunMode_Average:
                     // 2 position moving average
-                    moveIndex ^= 1;
+                    // moveIndex can be 2 when coming from RunMode_Average2: "moveIndex ^= 1" would then
+                    // write past the end of the buffers and freeze the average on stale samples.
+                    moveIndex = (moveIndex == 0) ? 1 : 0;
                     moveXAxisArr[moveIndex] = mouseX;
                     moveYAxisArr[moveIndex] = mouseY;
                     mouseX = (moveXAxisArr[0] + moveXAxisArr[1]) / 2;
@@ -903,7 +976,7 @@ bool FW_Common::SelectCalProfile(const int &profile)
         SetIrSensitivity((DFRobotIRPositionEx::Sensitivity_e)OF_Prefs::profiles[profile].irSens);
 
     // set run mode
-    if(OF_Prefs::profiles[profile].runMode < FW_Const::RunMode_Count)
+    if(FW_Const::IsProfileRunMode(OF_Prefs::profiles[profile].runMode))
         SetRunMode((FW_Const::RunMode_e)OF_Prefs::profiles[profile].runMode);
 
     #ifdef USES_DISPLAY
@@ -1003,21 +1076,40 @@ int FW_Common::SavePreferences()
         #endif // USES_DISPLAY
     }
 
-    if(OF_Prefs::SaveProfiles() == OF_Prefs::Error_Success) {
+    // The save only counts as done if every file was written: the first failure is the one reported.
+    int saveResult = OF_Prefs::SaveProfiles();
+
+    if(saveResult == OF_Prefs::Error_Success) {
+        int result = OF_Prefs::SaveToggles();
+        if(result != OF_Prefs::Error_Success)
+            saveResult = result;
+
+        if(OF_Prefs::toggles[OF_Const::customPins]) {
+            result = OF_Prefs::SavePins();
+            if(saveResult == OF_Prefs::Error_Success && result != OF_Prefs::Error_Success)
+                saveResult = result;
+        }
+
+        result = OF_Prefs::SaveSettings();
+        if(saveResult == OF_Prefs::Error_Success && result != OF_Prefs::Error_Success)
+            saveResult = result;
+
+        result = OF_Prefs::SaveButtons();
+        if(saveResult == OF_Prefs::Error_Success && result != OF_Prefs::Error_Success)
+            saveResult = result;
+
+        result = OF_Prefs::SaveUSBID();
+        if(saveResult == OF_Prefs::Error_Success && result != OF_Prefs::Error_Success)
+            saveResult = result;
+    }
+
+    if(saveResult == OF_Prefs::Error_Success) {
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveSuccess);
         #endif // USES_DISPLAY
 
         if(gunMode != FW_Const::GunMode_Docked) Serial.println("Settings saved to Flash"), Serial.flush();
         else Serial.printf("%c%c (Successfully saved to LittleFS Storage)", OF_Const::sSave, true), Serial.flush();
-        OF_Prefs::SaveToggles();
-
-        if(OF_Prefs::toggles[OF_Const::customPins])
-            OF_Prefs::SavePins();
-
-        OF_Prefs::SaveSettings();
-        OF_Prefs::SaveButtons();
-        OF_Prefs::SaveUSBID();
 
         #ifdef LED_ENABLE
             for(uint i = 0; i < 3; ++i) {
@@ -1034,6 +1126,10 @@ int FW_Common::SavePreferences()
 
         return OF_Prefs::Error_Success;
     } else {
+        // Failed: allow another try in the same pause.
+        if(gunMode != FW_Const::GunMode_Docked)
+            stateFlags |= FW_Const::StateFlag_SavePreferencesEn;
+
         #ifdef USES_DISPLAY
             OLED.ScreenModeChange(ExtDisplay::Screen_SaveError);
         #endif // USES_DISPLAY
@@ -1066,7 +1162,7 @@ int FW_Common::SavePreferences()
             RedrawDisplay();
         #endif // USES_DISPLAY
 
-        return OF_Prefs::Error_Write;
+        return saveResult;
     }
 }
 

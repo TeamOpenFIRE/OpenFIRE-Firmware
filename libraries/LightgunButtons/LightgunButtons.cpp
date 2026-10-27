@@ -310,7 +310,9 @@ void LightgunButtons::ReleaseAll()
     AbsMouse5.releaseAll();
     Keyboard.releaseAll();
     Gamepad16.releaseAll();
+    padMask = 0;                    // The D-pad directions are released too, so a stale one cannot come back later.
     SendReports(true);
+    releaseAllCount++;
 }
 
 uint32_t LightgunButtons::Repeat()

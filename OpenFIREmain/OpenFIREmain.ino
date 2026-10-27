@@ -64,7 +64,7 @@ void setup() {
             if(OF_Prefs::profiles[i].irSens > DFRobotIRPositionEx::Sensitivity_Max)
                 OF_Prefs::profiles[i].irSens = DFRobotIRPositionEx::Sensitivity_Default;
 
-            if(OF_Prefs::profiles[i].runMode >= FW_Const::RunMode_Count)
+            if(!FW_Const::IsProfileRunMode(OF_Prefs::profiles[i].runMode))
                 OF_Prefs::profiles[i].runMode = FW_Const::RunMode_Normal;
         }
 
@@ -73,7 +73,7 @@ void setup() {
             OF_Prefs::currentProfile = 0;
 
         // set the run mode
-        if(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode < FW_Const::RunMode_Count)
+        if(FW_Const::IsProfileRunMode(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode))
             FW_Common::runMode = (FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode;
 
         OF_Prefs::Load();
@@ -376,9 +376,9 @@ void loop()
         case FW_Const::GunMode_Pause:
             if(OF_Prefs::toggles[OF_Const::simplePause]) {
                 if(pauseModeSelectingProfile) {
-                    if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
+                    if(MenuUpPressed()) {
                         SetProfileSelection(false);
-                    } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
+                    } else if(MenuDownPressed()) {
                         SetProfileSelection(true);
                     } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                         FW_Common::SelectCalProfile(profileModeSelection);
@@ -418,9 +418,9 @@ void loop()
                             FW_Common::OLED.PauseListUpdate(ExtDisplay::ScreenPause_Calibrate);
                         #endif // USES_DISPLAY
                     }
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A) {
+                } else if(MenuUpPressed()) {
                     SetPauseModeSelection(false);
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B) {
+                } else if(MenuDownPressed()) {
                     SetPauseModeSelection(true);
                 } else if(FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Trigger) {
                     switch(FW_Common::pauseModeSelection) {
@@ -540,6 +540,9 @@ void loop()
                                 case FW_Const::RunMode_Average2:
                                   FW_Common::SetRunMode(FW_Const::RunMode_Average2);
                                   break;
+                                case FW_Const::RunMode_OneEuro:
+                                  FW_Common::SetRunMode(FW_Const::RunMode_OneEuro);
+                                  break;
                                 default:
                                   break;
                             }
@@ -574,7 +577,18 @@ void loop()
             } else if(FW_Common::buttons.pressedReleased == FW_Const::RunModeNormalBtnMask) {
                 FW_Common::SetRunMode(FW_Const::RunMode_Normal);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::RunModeAverageBtnMask) {
-                FW_Common::SetRunMode(FW_Common::runMode == FW_Const::RunMode_Average ? FW_Const::RunMode_Average2 : FW_Const::RunMode_Average);
+                // Cycles through the smoothing modes: 2 frame average, 3 frame average, One Euro filter
+                switch(FW_Common::runMode) {
+                    case FW_Const::RunMode_Average:
+                        FW_Common::SetRunMode(FW_Const::RunMode_Average2);
+                        break;
+                    case FW_Const::RunMode_Average2:
+                        FW_Common::SetRunMode(FW_Const::RunMode_OneEuro);
+                        break;
+                    default:
+                        FW_Common::SetRunMode(FW_Const::RunMode_Average);
+                        break;
+                }
             } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityUpBtnMask) {
                 IncreaseIrSensitivity(OF_Prefs::profiles[OF_Prefs::currentProfile].irSens);
             } else if(FW_Common::buttons.pressedReleased == FW_Const::IRSensitivityDownBtnMask) {
@@ -582,11 +596,17 @@ void loop()
             } else if(FW_Common::buttons.pressedReleased == FW_Const::SaveBtnMask) {
                 FW_Common::SavePreferences();
             #ifdef USES_RUMBLE
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask && OF_Prefs::pins[OF_Const::rumbleSwitch] >= 0) {
+                // Software toggle only without a hardware switch (the switch would override it in
+                // run mode) and with a rumble pin, as in the Simple Pause Menu.
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::RumbleToggleBtnMask &&
+                          OF_Prefs::pins[OF_Const::rumbleSwitch] < 0 && OF_Prefs::pins[OF_Const::rumblePin] >= 0) {
                     RumbleToggle();
             #endif // USES_RUMBLE
             #ifdef USES_SOLENOID
-                } else if(FW_Common::buttons.pressedReleased == FW_Const::SolenoidToggleBtnMask && OF_Prefs::pins[OF_Const::solenoidSwitch] >= 0) {
+                // Software toggle only without a hardware switch (the switch would override it in
+                // run mode) and with a solenoid pin, as in the Simple Pause Menu.
+                } else if(FW_Common::buttons.pressedReleased == FW_Const::SolenoidToggleBtnMask &&
+                          OF_Prefs::pins[OF_Const::solenoidSwitch] < 0 && OF_Prefs::pins[OF_Const::solenoidPin] >= 0) {
                     SolenoidToggle();
             #endif // USES_SOLENOID
             } else SelectCalProfileFromBtnMask(FW_Common::buttons.pressedReleased);
@@ -609,6 +629,7 @@ void loop()
                 //break;
             case FW_Const::RunMode_Average:
             case FW_Const::RunMode_Average2:
+            case FW_Const::RunMode_OneEuro:
             case FW_Const::RunMode_Normal:
             default:
                 ExecRunMode();
@@ -635,6 +656,8 @@ void ExecRunMode()
 #endif
 
     FW_Common::buttons.ReportEnable();
+    triggerHidPressed = false;                              // Leaving Run released all the buttons.
+    FW_Common::triggerPressedOffscreen = false;
     if(FW_Common::justBooted) {
         // center the joystick so RetroArch doesn't throw a hissy fit about uncentered joysticks
         delay(100);  // Exact time needed to wait seems to vary, so make a safe assumption here.
@@ -670,7 +693,7 @@ void ExecRunMode()
                     #ifdef MAMEHOOKER
                     if(!OF_Serial::serialMode) {
                     #endif // MAMEHOOKER
-                        if(!OF_Prefs::toggles[OF_Const::solenoid] && digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {
+                        if(!OF_Prefs::toggles[OF_Const::solenoid] && (digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]) || OF_FFB::burstFiring)) {  // also ends a burst between two shots
                             OF_FFB::FFBShutdown();
                         }
                     #ifdef MAMEHOOKER
@@ -931,11 +954,42 @@ void SetModeWaitNoButtons(const FW_Const::GunMode_e &newMode, const unsigned lon
     FW_Common::SetMode(newMode);
 }
 
+// The simple pause menu is scrolled with the D-pad's Up and Down, and with A and B. Both always work: a mapped
+// D-pad pin doesn't mean a D-pad is wired, since the board presets map Up and Down by default.
+
+// Whether a button that moves the cursor up was just pressed and released (alone, so not as part of a combination).
+bool MenuUpPressed()
+{
+    return FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Up ||
+           FW_Common::buttons.pressedReleased == FW_Const::BtnMask_A;
+}
+
+// Whether a button that moves the cursor down was just pressed and released.
+bool MenuDownPressed()
+{
+    return FW_Common::buttons.pressedReleased == FW_Const::BtnMask_Down ||
+           FW_Common::buttons.pressedReleased == FW_Const::BtnMask_B;
+}
+
+// If every button was released on the host since the last check, the trigger isn't pressed there any more.
+// Forgetting that it was lets TriggerFire() press it again while it is still held, and keeps TriggerNotFire()
+// from releasing a button the host already released.
+void SyncTriggerWithReleaseAll()
+{
+    if(triggerReleaseAllSeen != FW_Common::buttons.releaseAllCount) {
+        triggerReleaseAllSeen = FW_Common::buttons.releaseAllCount;
+        triggerHidPressed = false;
+        FW_Common::triggerPressedOffscreen = false;
+    }
+}
+
 // Handles events when trigger is pulled/held
 void TriggerFire()
 {
+    SyncTriggerWithReleaseAll();
+
     if(!FW_Common::buttons.offScreen) {
-        if(!OF_FFB::triggerHeld) {
+        if(!triggerHidPressed) {
             if(FW_Common::buttons.analogOutput) // this should only ever be gamepad outputs
                 Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
             else switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType) {
@@ -944,16 +998,24 @@ void TriggerFire()
                 case LightgunButtons::ReportType_Gamepad: Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode); break;
                 default: break;
             }
+            FW_Common::triggerPressedOffscreen = false;
+            triggerHidPressed = true;
         }
 
         if(!OF_Serial::serialMode && 
            !bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Start) &&
            !bitRead(FW_Common::buttons.debounced, FW_Const::BtnIdx_Select))
             OF_FFB::FFBOnScreen();
+        else if(!OF_Serial::serialMode) {                    // Start or Select held: no new effects, but end the running ones.
+            if(OF_Prefs::pins[OF_Const::solenoidPin] >= 0 && digitalRead(OF_Prefs::pins[OF_Const::solenoidPin]))
+                digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+            if(OF_FFB::rumbleHappening)
+                OF_FFB::RumbleActivation();
+        }
     // We're shooting outside of the screen boundaries!
     } else {  
         // If we are in offscreen button mode (and aren't dragging a shot offscreen)
-        if(!OF_FFB::triggerHeld) {
+        if(!triggerHidPressed) {
             if(FW_Common::buttons.analogOutput) // always uses the same button
                 Gamepad16.press(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
             else switch(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportType2) {
@@ -964,6 +1026,7 @@ void TriggerFire()
             }
 
             FW_Common::triggerPressedOffscreen = true;
+            triggerHidPressed = true;
         }
 
         if(!OF_Serial::serialMode) OF_FFB::FFBOffScreen();
@@ -974,7 +1037,9 @@ void TriggerFire()
 // Handles events when trigger is released
 void TriggerNotFire()
 {
-    if(OF_FFB::triggerHeld) {
+    SyncTriggerWithReleaseAll();
+
+    if(triggerHidPressed) {
         if(FW_Common::buttons.analogOutput)
             Gamepad16.release(LightgunButtons::ButtonDesc[FW_Const::BtnIdx_Trigger].reportCode3);
         else if(FW_Common::triggerPressedOffscreen) {
@@ -995,6 +1060,7 @@ void TriggerNotFire()
         }
     }
 
+    triggerHidPressed = false;
     OF_FFB::triggerHeld = false;
 
     if(!OF_Serial::serialMode) OF_FFB::FFBRelease();
@@ -1032,18 +1098,24 @@ void AnalogStickPoll()
 
         switch(OF_Prefs::settings[OF_Const::analogMode]) {
         case OF_Const::analogModeDpad: Gamepad16.padUpdate(FW_Common::buttons.PadMaskConvert(newPos)); break;
-        case OF_Const::analogModeKeys:
-            if(FW_Common::aStickADCLastPos ^ newPos) {
+        case OF_Const::analogModeKeys: {
+            // After a ReleaseAll() the arrows are no longer pressed: forget the last direction,
+            // so the ones still held are pressed again.
+            static uint32_t releaseAllSeen = 0;
+            if(releaseAllSeen != FW_Common::buttons.releaseAllCount) {
+                releaseAllSeen = FW_Common::buttons.releaseAllCount;
+                FW_Common::aStickADCLastPos = 0;
+            }
+            if(FW_Common::aStickADCLastPos != newPos) {
                 for(int i = 0; i < 4; ++i) {
-                    if(FW_Common::aStickADCLastPos ^ newPos & 1 << i)
+                    const uint32_t bit = 1 << i;
+                    if((FW_Common::aStickADCLastPos & bit) && !(newPos & bit))
                         Keyboard.release(KEY_UP_ARROW-i);
+                    else if(!(FW_Common::aStickADCLastPos & bit) && (newPos & bit))
+                        Keyboard.press(KEY_UP_ARROW-i);
                 }
             }
-            for(int i = 0; i < 4; ++i) {
-                if(newPos & 1 << i)
-                    Keyboard.press(KEY_UP_ARROW-i);
-            }
-            break;
+            break; }
         }
         FW_Common::aStickADCLastPos = newPos;
     }
@@ -1326,6 +1398,7 @@ void BurstFireToggle()
 void RumbleToggle()
 {
     OF_Prefs::toggles[OF_Const::rumble] = !OF_Prefs::toggles[OF_Const::rumble];
+    FW_Common::stateFlags |= FW_Const::StateFlag_SavePreferencesEn;  // Changed: allow saving it again in this pause.
     if(OF_Prefs::toggles[OF_Const::rumble]) {
         if(!OF_Serial::serialMode) 
             Serial.println("Rumble enabled!");
@@ -1378,6 +1451,7 @@ void RumbleToggle()
 void SolenoidToggle()
 {
     OF_Prefs::toggles[OF_Const::solenoid] = !OF_Prefs::toggles[OF_Const::solenoid];                             // Toggle
+    FW_Common::stateFlags |= FW_Const::StateFlag_SavePreferencesEn;  // Changed: allow saving it again in this pause.
     if(OF_Prefs::toggles[OF_Const::solenoid]) {                                          // If we turned ON this mode,
         if(!OF_Serial::serialMode)
             Serial.println("Solenoid enabled!");
@@ -1390,7 +1464,8 @@ void SolenoidToggle()
             OF_RGB::SetLedPackedColor(WikiColor::Yellow);                 // Set a color,
         #endif // LED_ENABLE
 
-        digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);                          // Engage the solenoid on to notify the user,
+        if(!(OF_Prefs::pins[OF_Const::tempPin] >= 0 && OF_FFB::tempStatus == OF_FFB::Temp_Fatal))
+            digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], HIGH);                      // Engage the solenoid on to notify the user (not if too hot, or the sensor is faulty),
         delay(300);                                               // Hold it that way for a bit,
         digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);                           // Release it,
 

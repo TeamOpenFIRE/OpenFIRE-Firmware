@@ -218,21 +218,10 @@ void ExtDisplay::ShowTemp()
       // Analog read maxed out, likely disconnected/temp sensor fault
       TopPanelUpdate("Temp sensor: ", "Fault!");
       return;
-    } else if(OF_FFB::temperatureCurrent < 10) {
-        tempString[0] = OF_FFB::temperatureCurrent + '0';
-        tempString[1] = ' ';
-        tempString[2] = 'C';
-        tempString[3] = '\0';
-    } else {
-        int tempLeft = OF_FFB::temperatureCurrent / 10;
-        int tempRight = OF_FFB::temperatureCurrent - (tempLeft * 10);
-        tempString[0] = tempLeft + '0';
-        tempString[1] = tempRight + '0';
-        tempString[2] = ' ';
-        tempString[3] = 'C';
-        tempString[4] = '\0';
     }
 
+    // Up to three digits (the error value above is the highest the temperature can be), then the unit.
+    snprintf(tempString, sizeof(tempString), "%u C", OF_FFB::temperatureCurrent);
     TopPanelUpdate("Current Temp: ", tempString);
     currentTemp = OF_FFB::temperatureCurrent;
 }

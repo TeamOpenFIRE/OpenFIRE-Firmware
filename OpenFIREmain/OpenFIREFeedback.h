@@ -43,6 +43,7 @@ public:
     // For autofire:
     static inline bool triggerHeld = false;                  // Trigger SHOULDN'T be being pulled by default, right?
     static inline bool burstFireActive = false;
+    static inline bool burstFiring = false;                  // Are we in a burst fire command?
     static inline bool autofireDoubleLengthWait = false;
 
     // Current temperature as read from TMP36, in (approximate) Celsius
@@ -77,7 +78,6 @@ private:
     // For burst firing stuff:
     static inline uint burstFireCount = 0;                   // What shot are we on?
     static inline uint burstFireCountLast = 0;               // What shot have we last processed?
-    static inline bool burstFiring = false;                  // Are we in a burst fire command?
 
     // For rumble:
     static inline unsigned long previousMillisRumble = 0;    // our time since the rumble motor event started

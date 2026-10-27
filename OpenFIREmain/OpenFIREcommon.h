@@ -11,9 +11,15 @@
 
 #include <stdint.h>
 #include <DFRobotIRPositionEx.h>
+#include <OpenFIRETracking.h>
+// The classic and advanced trackers share class names; OpenFIRETracking.h picks which one builds.
 #include <OpenFIRE_Square.h>
+#include <OpenFIRE_Square_Advanced.h>
 #include <OpenFIRE_Diamond.h>
+#include <OpenFIRE_Diamond_Advanced.h>
 #include <OpenFIRE_Perspective.h>
+#include <OpenFIRE_Perspective_Advanced.h>
+#include <OpenFIRE_OneEuro_Filter.h>
 #include <OpenFIREConst.h>
 #include <LightgunButtons.h>
 #include <TinyUSB_Devices.h>
@@ -136,6 +142,9 @@ public:
     static inline OpenFIRE_Square OpenFIREsquare;
     static inline OpenFIRE_Diamond OpenFIREdiamond;
     static inline OpenFIRE_Perspective OpenFIREper;
+
+    // One Euro filter for the LED positions, used by RunMode_OneEuro
+    static inline OpenFIRE_OneEuro_Filter OpenFIREoef;
 
     // IR coords stuff:
     static inline int mouseX;

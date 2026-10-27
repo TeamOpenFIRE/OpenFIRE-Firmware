@@ -1,0 +1,22 @@
+# Scenarios for the tracking test: one per line, as the arguments of driver.cpp, optionally followed by a
+# description after a '#'.
+#
+# Arguments: layout (0 square, 1 diamond), wide (square only), frames, seed, calibration frames,
+#            maximum roll speed in degrees per frame, average number of frames between blackouts.
+#
+# After adding or changing a scenario, run `run.sh --update` and review the changed lines of expected.sha256.
+
+0 0 60000 1 0 0.4 1500     # square, gentle roll
+0 0 60000 2 0 0.4 1500     # square, gentle roll, other seed
+0 0 60000 4 0 3.0 1500     # square, fast roll
+0 0 60000 5 0 8.0 1500     # square, very fast roll
+0 0 60000 12 0 0.6 60      # square, frequent blackouts
+0 0 80000 21 0 6.0 25      # square, fast roll and very frequent blackouts
+0 1 60000 6 0 0.4 1500     # wide square
+0 1 60000 7 0 3.0 60       # wide square, fast roll, frequent blackouts
+0 0 30000 8 300 0.4 1500   # square, starting in calibration mode
+0 1 30000 9 500 3.0 1500   # wide square, starting in calibration mode
+1 0 60000 1 0 0.4 1500     # diamond, gentle roll
+1 0 60000 4 0 3.0 1500     # diamond, fast roll
+1 0 60000 5 0 8.0 25       # diamond, very fast roll and very frequent blackouts
+1 0 80000 31 0 6.0 12      # diamond, fast roll and constant blackouts

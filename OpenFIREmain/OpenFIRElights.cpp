@@ -54,7 +54,8 @@ void OF_RGB::InitExternPixel(const int &pin)
     if(OF_Prefs::settings[OF_Const::customLEDstatic] > 0 &&
        OF_Prefs::settings[OF_Const::customLEDstatic] <= OF_Prefs::settings[OF_Const::customLEDcount]) {
         for(uint i = 0; i < OF_Prefs::settings[OF_Const::customLEDstatic]; ++i) {
-            uint32_t color;
+            // Only three colors can be set; static pixels beyond the third are off.
+            uint32_t color = 0;
             switch(i) {
               case 0:
                 color = OF_Prefs::settings[OF_Const::customLEDcolor1];

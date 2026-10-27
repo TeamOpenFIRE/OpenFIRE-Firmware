@@ -35,11 +35,12 @@ int OF_Prefs::LoadProfiles()
     File prefsFile = LittleFS.open("/profiles.conf", "r");
     if(prefsFile) {
         int profileNum = 0;
+        // Room for a name of up to 31 characters and the terminator.
         char buf[32];
         size_t bWritten = 0;
         size_t readSize = 0;
         while(prefsFile.available()) {
-            bWritten = prefsFile.readBytesUntil('\0', buf, 32);
+            bWritten = prefsFile.readBytesUntil('\0', buf, sizeof(buf) - 1);
             // readBytesUntil discards the terminator, so plop one at the end
             buf[bWritten++] = '\0';
             if(bWritten && OFPresets.profSettingTypes_Strings.count(buf)) {
@@ -51,7 +52,11 @@ int OF_Prefs::LoadProfiles()
                   default:
                       profileNum = prefsFile.read();
                       readSize = prefsFile.read();
-                      profileNum < PROFILE_COUNT ? prefsFile.readBytes((char*)&profiles[profileNum] + (sizeof(uint32_t) * OFPresets.profSettingTypes_Strings.at(buf)), readSize) : prefsFile.seek(readSize, fs::SeekCur);
+                      // A setting is loaded into a profile that exists, from a record of the setting's own size (the name
+                      // is 16 bytes, everything else a 32-bit number): anything else would write outside the profile.
+                      if(profileNum < PROFILE_COUNT && readSize == (OFPresets.profSettingTypes_Strings.at(buf) == OF_Const::profName ? sizeof(ProfileData_t::name) : sizeof(uint32_t)))
+                          prefsFile.readBytes((char*)&profiles[profileNum] + (sizeof(uint32_t) * OFPresets.profSettingTypes_Strings.at(buf)), readSize);
+                      else prefsFile.seek(readSize, fs::SeekCur);
                       break;
                 }
             } else {
@@ -124,18 +129,22 @@ int OF_Prefs::SaveToPtr(File prefsFile, void *dataPtr, const std::unordered_map<
     } else return Error_NoData;
 }
 
-int OF_Prefs::LoadToPtr(File prefsFile, void *dataPtr, const std::unordered_map<std::string_view, int> &mapPtr)
+int OF_Prefs::LoadToPtr(File prefsFile, void *dataPtr, const std::unordered_map<std::string_view, int> &mapPtr, const size_t &elementSize, const size_t &elementCount)
 {
     if(prefsFile) {
+        // Room for a name of up to 31 characters and the terminator.
         char buf[32];
         size_t bWritten = 0;
         size_t dataSize = 0;
         while(prefsFile.available()) {
-            bWritten = prefsFile.readBytesUntil('\0', buf, 32);
+            bWritten = prefsFile.readBytesUntil('\0', buf, sizeof(buf) - 1);
             // readBytesUntil discards the terminator, so plop one at the end
             buf[bWritten++] = '\0';
             dataSize = prefsFile.read();
-            if(bWritten && mapPtr.count(buf))
+            // Only a setting that exists, with a record of its own size, is loaded: the name and the size come from the
+            // file (or from an upload by the app), and an index from the map can be -1 ("Unmapped") or past the data.
+            if(bWritten && mapPtr.count(buf) && dataSize == elementSize &&
+               mapPtr.at(buf) >= 0 && (size_t)mapPtr.at(buf) < elementCount)
                 prefsFile.readBytes((char*)dataPtr + (dataSize * mapPtr.at(buf)), dataSize);
             else prefsFile.seek(dataSize, fs::SeekCur);
         }

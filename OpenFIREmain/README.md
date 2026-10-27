@@ -49,8 +49,9 @@ The gun has the following modes of operation:
 2. Averaging - The position is calculated from a 2 frame moving average (current + previous position)
 3. Averaging2 - The position is calculated from a weighted average of the current frame and 2 previous frames
 4. Processing - Test mode for use with the Desktop App (this mode is prevented from being assigned to a profile)
+5. OneEuro - The 4 IR points are smoothed with an adaptive [1€ filter](https://github.com/casiez/OneEuroFilter) before the position is calculated: strong smoothing while aiming slowly, almost none while moving fast
 
-The averaging modes are subtle but do reduce the motion jitter a bit without adding much if any noticeable lag.
+The averaging modes are subtle but do reduce the motion jitter a bit without adding much if any noticeable lag. The 1€ filter (OneEuro) is a steadier alternative for the same purpose. It is saved in the profile as run mode `4` (`3` stays reserved for Processing), so the Desktop App needs to be able to set that value to offer it.
 
 ### Default Buttons
 - Trigger: Left mouse button
@@ -69,8 +70,8 @@ Pause mode can be entered by either pressing C + Select by default, pressing the
 
 #### Default Buttons in Pause mode (Hotkey)
 - A, B, Start, Select: select a profile
-- Start + Down: Normal gun mode (averaging disabled)
-- Start + Up: Normal gun with averaging, switch between the 2 averaging modes (use serial monitor to see the setting)
+- Start + A: Normal gun mode (averaging disabled)
+- Start + B: Normal gun with smoothing, cycle through the 2 averaging modes and the 1€ filter (use serial monitor to see the setting)
 - B + Down: Decrease IR camera sensitivity (use a serial monitor to see the setting)
 - B + Up: Increase IR camera sensitivity (use a serial monitor to see the setting)
 - C/Reload: Exit pause mode
@@ -80,15 +81,15 @@ Pause mode can be entered by either pressing C + Select by default, pressing the
 - Start + Select: save settings to non-volatile flash storage space
 
 #### Controls for Simple Pause Menu
-- A: Navigate Cursor Up
-- B: Navigate Cursor Down
+- D-pad Up or A: Navigate Cursor Up
+- D-pad Down or B: Navigate Cursor Down
 - Trigger: Select option
 - C: Exit pause mode
   - Holding A or B for half the duration of the hold-to-pause time (so ~2s by default) will also exit the simple pause menu.
 Available options in simple pause menu are as follows, from first option to last before rolling back:
 * Calibrate current profile (always the initial option)
 * Switch profiles (submenu)
-  * Select from profile 1-4 using the navigation buttons/trigger to select, or press C to back out.
+  * Select from profile 1-4 using the navigation buttons (D-pad or A/B) and the trigger to select, or press C to back out.
 * Save settings to non-volatile memory
 * Toggle Rumble *(when rumble is enabled & no switch is detected)*
 * Toggle Solenoid *(when solenoid is enabled & no switch is detected)*

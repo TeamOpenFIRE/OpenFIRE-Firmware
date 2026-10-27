@@ -56,6 +56,14 @@ bool pauseExitHoldStarted = false;
 // Timestamp of last USB packet update.
 unsigned long lastUSBpoll = 0;
 
+// Whether the trigger is currently pressed on the host. Kept apart from OF_FFB::triggerHeld, which
+// FFBShutdown() clears whenever the effects are reset (switches, MAMEHOOKER, pause), as the release must not be lost then.
+bool triggerHidPressed = false;
+
+// LightgunButtons::releaseAllCount when the trigger state was last synced. If ReleaseAll() runs while the trigger is
+// held (serial M0/M1/M2/E commands, binding updates), the host no longer has it pressed.
+uint32_t triggerReleaseAllSeen = 0;
+
 uint32_t fifoData = 0;
 
 #endif // _SAMCOENHANCED_H_

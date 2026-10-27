@@ -11,6 +11,12 @@
  * @date 2024
  */
 
+#include "OpenFIRETracking.h"
+
+// The classic tracking is replaced by OpenFIRE_*_Advanced when ADVANCED_TRACKING is set
+#ifndef ADVANCED_TRACKING
+
+
 #include <Arduino.h>
 #include "OpenFIRE_Diamond.h"
 
@@ -299,3 +305,5 @@ void OpenFIRE_Diamond::begin(const int* px, const int* py, unsigned int seen)
 
 
 }
+
+#endif // !ADVANCED_TRACKING

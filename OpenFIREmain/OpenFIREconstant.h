@@ -24,14 +24,20 @@ public:
 
     // run modes
     // note that this is a 5 bit value when stored in the profiles
+    // The values up to RunMode_Processing are known to the Desktop App, so new modes go after it.
     enum RunMode_e {
         RunMode_Normal = 0,         ///< Normal gun mode, no averaging
         RunMode_Average = 1,        ///< 2 frame moving average
         RunMode_Average2 = 2,       ///< weighted average with 3 frames
-        RunMode_ProfileMax = 2,     ///< maximum mode allowed for profiles
-        RunMode_Processing = 3,     ///< Processing test mode
+        RunMode_Processing = 3,     ///< Processing test mode (never stored in a profile)
+        RunMode_OneEuro = 4,        ///< One Euro filter on the 4 LED positions
         RunMode_Count
     };
+
+    // Whether a run mode may be stored in, and taken from, a profile: a valid mode, other than the Processing test mode.
+    static inline constexpr bool IsProfileRunMode(const int mode) {
+        return mode >= 0 && mode < RunMode_Count && mode != RunMode_Processing;
+    }
 
     // numbered index of buttons, must match ButtonDesc[] order
     enum ButtonIndex_e {
@@ -135,7 +141,8 @@ public:
         "Normal",
         "Averaging",
         "Averaging2",
-        "Processing"
+        "Processing",
+        "OneEuro"
     };
 
     enum StateFlag_e {

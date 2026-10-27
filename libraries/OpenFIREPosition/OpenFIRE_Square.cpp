@@ -11,6 +11,12 @@
  * @date 2021
  */
 
+#include "OpenFIRETracking.h"
+
+// The classic tracking is replaced by OpenFIRE_*_Advanced when ADVANCED_TRACKING is set
+#ifndef ADVANCED_TRACKING
+
+
 #include <Arduino.h>
 #include "OpenFIRE_Square.h"
 
@@ -235,3 +241,5 @@ void OpenFIRE_Square::begin(const int* px, const int* py, unsigned int seen)
     float cosAngle = cos(angle);
     float sinAngle = sin(angle);
 }
+
+#endif // !ADVANCED_TRACKING

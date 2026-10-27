@@ -18,6 +18,12 @@
 
 */
 
+#include "OpenFIRETracking.h"
+
+// The classic tracking is replaced by OpenFIRE_*_Advanced when ADVANCED_TRACKING is set
+#ifndef ADVANCED_TRACKING
+
+
 
 
 #include "OpenFIRE_Perspective.h"
@@ -117,7 +123,7 @@ void multMats(float* a, float* b, float* res) {
   }
 }
 
-void OpenFIRE_Perspective::warp(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, float dx0, float dy0, float dx1, float dy1, float dx2, float dy2, float dx3, float dy3) {
+void OpenFIRE_Perspective::warp(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, float dx0, float dy0, float dx1, float dy1, float dx2, float dy2, float dx3, float dy3) {
   if (!init) {
    // float dx0 = 567;
    // float dx1 = 1360;
@@ -125,7 +131,7 @@ void OpenFIRE_Perspective::warp(int x0, int y0, int x1, int y1, int x2, int y2, 
     computeSquareToQuad(dstmatrix, dx0, dy0, dx1, dy1, dx2, dy2, dx3, dy3);
     init = true;
   }
-  computeQuadToSquare(srcmatrix, float(x0), float(y0), float(x1), float(y1), float(x2), float(y2), float(x3), float(y3));
+  computeQuadToSquare(srcmatrix, x0, y0, x1, y1, x2, y2, x3, y3);
   multMats(srcmatrix, dstmatrix, warpmatrix);
   float r0 = (srcX * warpmatrix[0] + srcY * warpmatrix[4] + warpmatrix[12]);
   float r1 = (srcX * warpmatrix[1] + srcY * warpmatrix[5] + warpmatrix[13]);
@@ -150,3 +156,5 @@ int OpenFIRE_Perspective::getX() {
 int OpenFIRE_Perspective::getY() {
   return dstY;
 }
+
+#endif // !ADVANCED_TRACKING

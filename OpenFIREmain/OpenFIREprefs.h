@@ -143,8 +143,13 @@ public:
     static int SaveToPtr(File, void*, const std::unordered_map<std::string_view, int>&, const size_t&);
 
     /// @brief Generic loading method using provided pointers to a block of data and its associated string map for lookups
+    /// @details The file says how large each record is, but only a record of the size of the setting it is for
+    ///          (the first size passed) is loaded, and only into one of the settings that exist (the count passed):
+    ///          anything else is skipped, so that a damaged or foreign file can't write outside the data.
+    /// @param elementSize  Size of one setting in the block, in bytes
+    /// @param elementCount Number of settings in the block
     /// @return An error code from Errors_e
-    static int LoadToPtr(File, void*, const std::unordered_map<std::string_view, int>&);
+    static int LoadToPtr(File, void*, const std::unordered_map<std::string_view, int>&, const size_t &elementSize, const size_t &elementCount);
 
     /// @brief Load preferences
     /// @return An error code from Errors_e
@@ -156,7 +161,7 @@ public:
 
     /// @brief Load toggles (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), toggles, OFPresets.boolTypes_Strings); }
+    static int LoadToggles() { return LoadToPtr(LittleFS.open("/toggles.conf", "r"), toggles, OFPresets.boolTypes_Strings, sizeof(toggles) / OF_Const::boolTypesCount, OF_Const::boolTypesCount); }
 
     /// @brief Save current toggles states (macro for SaveToPtr)
     /// @return An error code from Errors_e
@@ -164,7 +169,7 @@ public:
 
     /// @brief Load pin mapping (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), pins, OFPresets.boardInputs_Strings); }
+    static int LoadPins() { return LoadToPtr(LittleFS.open("/pins.conf", "r"), pins, OFPresets.boardInputs_Strings, sizeof(pins) / OF_Const::boardInputsCount, OF_Const::boardInputsCount); }
 
     /// @brief Save current pin mapping (macro for SaveToPtr)
     /// @return An error code from Errors_e
@@ -172,7 +177,7 @@ public:
 
     /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), settings, OFPresets.settingsTypes_Strings); }
+    static int LoadSettings() { return LoadToPtr(LittleFS.open("/settings.conf", "r"), settings, OFPresets.settingsTypes_Strings, sizeof(settings) / OF_Const::settingsTypesCount, OF_Const::settingsTypesCount); }
 
     /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
@@ -180,7 +185,7 @@ public:
 
     /// @brief Load settings (macro for LoadToPtr)
     /// @return An error code from Errors_e
-    static int LoadButtons() { return LoadToPtr(LittleFS.open("/btns.conf", "r"), backupButtonDesc, OFPresets.boardInputs_Strings); }
+    static int LoadButtons();
 
     /// @brief Save current settings (macro for SaveToPtr)
     /// @return An error code from Errors_e
@@ -228,6 +233,7 @@ static inline constexpr unsigned int ButtonCount = sizeof(LightgunButtons::Butto
 
 inline uint8_t OF_Prefs::backupButtonDesc[ButtonCount][6];
 
+inline int OF_Prefs::LoadButtons() { return LoadToPtr(LittleFS.open("/btns.conf", "r"), backupButtonDesc, OFPresets.boardInputs_Strings, sizeof(backupButtonDesc) / ButtonCount, ButtonCount); }
 inline int OF_Prefs::SaveButtons() { return SaveToPtr(LittleFS.open("/btns.conf", "w"), backupButtonDesc, OFPresets.boardInputs_Strings, sizeof(backupButtonDesc) / ButtonCount); }
 
 #endif // _OPENFIREPREFS_H_

@@ -62,6 +62,7 @@ void OF_Serial::SerialProcessing()
                     case '2': // "hybrid" - just use the default m&kb mode
                     case '0': // mouse & kb 
                       FW_Common::buttons.analogOutput = false;
+                      Gamepad16.stickRight = false;   // the physical stick goes back on the left, as at startup
                       break;
                     // gamepad
                     case '1':
@@ -208,8 +209,9 @@ void OF_Serial::SerialProcessing()
                 break;
               #ifdef USES_SOLENOID
               // solenoid automatic mode
-              case '8':
+              case '8': {
                 Serial.read(); // Nomf the padding bit.
+                const bool burstWas = OF_FFB::burstFireActive, autofireWas = OF_Prefs::toggles[OF_Const::autofire];
                 switch(Serial.read()) {
                 // "auto"
                 case '1':
@@ -227,7 +229,13 @@ void OF_Serial::SerialProcessing()
                     OF_FFB::burstFireActive = false;
                     break;
                 }
-                break;
+                // Firing mode changed with the local feedback: end the shot in progress, or it could stay on.
+                if(!serialMode && (OF_FFB::burstFireActive != burstWas || OF_Prefs::toggles[OF_Const::autofire] != autofireWas)) {
+                    const bool held = OF_FFB::triggerHeld;
+                    OF_FFB::FFBShutdown();
+                    OF_FFB::triggerHeld = held;                    // Keep the trigger state, so holding it does not count as a new pull.
+                }
+                break; }
               #endif // USES_SOLENOID
               #ifdef USES_DISPLAY
               case 'D':
@@ -725,6 +733,8 @@ void OF_Serial::SerialHandling()
 
     #ifdef USES_SOLENOID
       if(OF_Prefs::toggles[OF_Const::solenoid]) {
+          if(OF_Prefs::pins[OF_Const::tempPin] >= 0 && OF_FFB::tempStatus == OF_FFB::Temp_Fatal)
+              serialQueue[SerialQueue_Solenoid] = false, serialQueue[SerialQueue_SolPulse] = false;  // Too hot, or sensor fault: cancel the requests (forced off below), so they do not resume by themselves once cooled.
           // Solenoid "on" command
           if(serialQueue[SerialQueue_Solenoid]) {
               if(digitalRead(OF_Prefs::pins[OF_Const::solenoidPin])) {
@@ -777,7 +787,10 @@ void OF_Serial::SerialHandling()
           // Solenoid "off" command
           } else digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
       // solenoid toggle not allowed, just force it off.
-      } else digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+      } else {
+          serialQueue[SerialQueue_Solenoid] = false, serialQueue[SerialQueue_SolPulse] = false;  // Cancel the requests, so they do not resume by themselves when the switch is turned back on.
+          digitalWrite(OF_Prefs::pins[OF_Const::solenoidPin], LOW);
+      }
   #endif // USES_SOLENOID
 
   #ifdef USES_RUMBLE
@@ -801,14 +814,16 @@ void OF_Serial::SerialHandling()
                   if(serialRumbCustomHoldLength && serialRumbCustomPauseLength) {
                       if(!serialRumbPulseStage) {
                           if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomHoldLength) {
-                              serialRumbPulseStage = 0;
+                              serialRumbPulseStage = 1;
                               digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
                               if(serialRumbPulsesLast >= serialRumbPulses)
                                   serialQueue[SerialQueue_RumbPulse] = false;
+                              else serialRumbPulsesLast++, serialRumbPulsesLastUpdate = millis();  // Timestamp our last pulse event.
                           }
                       } else if(millis() - serialRumbPulsesLastUpdate > serialRumbCustomPauseLength) {
-                          serialRumbPulseStage++;
+                          serialRumbPulseStage = 0;
                           analogWrite(OF_Prefs::pins[OF_Const::rumblePin], OF_Prefs::settings[OF_Const::rumbleStrength]);
+                          serialRumbPulsesLastUpdate = millis();          // Timestamp our last pulse event.
                       }
                   // OF-style analog ramping
                   } else if(millis() - serialRumbPulsesLastUpdate > serialRumbPulsesLength) { // have we waited enough time between pulse stages?
@@ -844,7 +859,10 @@ void OF_Serial::SerialHandling()
           // Rumble "off"
           } else digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
       // Rumble disabled, not allowed to be on
-      } else digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+      } else {
+          serialQueue[SerialQueue_Rumble] = false, serialQueue[SerialQueue_RumbPulse] = false;  // Cancel the requests, so they do not resume by themselves when the switch is turned back on.
+          digitalWrite(OF_Prefs::pins[OF_Const::rumblePin], LOW);
+      }
   #endif // USES_RUMBLE
 
   #ifdef LED_ENABLE
@@ -937,7 +955,9 @@ void OF_Serial::SerialProcessingDocked()
         if(!FW_Common::justBooted)
             FW_Common::SetMode(FW_Const::GunMode_Run);
         else FW_Common::SetMode(FW_Const::GunMode_Init);
-        FW_Common::SetRunMode((FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode);
+        if(FW_Const::IsProfileRunMode(OF_Prefs::profiles[OF_Prefs::currentProfile].runMode))
+            FW_Common::SetRunMode((FW_Const::RunMode_e)OF_Prefs::profiles[OF_Prefs::currentProfile].runMode);
+        else FW_Common::SetRunMode(FW_Const::RunMode_Normal);
         break;
         
     //// Prefs senders
@@ -968,6 +988,9 @@ void OF_Serial::SerialProcessingDocked()
                 break;
             case FW_Const::RunMode_Average2:
                 FW_Common::SetRunMode(FW_Const::RunMode_Average2);
+                break;
+            case FW_Const::RunMode_OneEuro:
+                FW_Common::SetRunMode(FW_Const::RunMode_OneEuro);
                 break;
             }
         } else if(Serial.read() == true)
@@ -1051,6 +1074,7 @@ void OF_Serial::SerialProcessingDocked()
                             // For updating pin data for buttons, cams and periphs
                             FW_Common::PinsReset();
                             FW_Common::CameraSet();
+                            FW_Common::SetMode(FW_Common::gunMode); // re-syncs the tracking with the saved profiles (layout), without changing mode
                             FW_Common::FeedbackSet();
                             
                             FW_Common::UpdateBindings(true);
